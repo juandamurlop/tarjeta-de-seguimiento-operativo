@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Freimanautos &mdash; Tarjeta de Seguimiento</title>
+	<style type="text/css">@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+    :root {
+      --rojo: #D0021B;
+      --gris: #F4F4F4;
+      --borde: #DDDDDD;
+      --texto: #222222;
+      --muted: #888888;
+      --verde: #1A7F4B;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'IBM Plex Sans', sans-serif; background: #EFEFEF; color: var(--texto); min-height: 100vh; }
+    header { background: var(--rojo); color: white; padding: 16px 32px; }
+    header h1 { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+    header p { font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; opacity: 0.75; margin-top: 2px; letter-spacing: 0.5px; }
+    .container { max-width: 860px; margin: 32px auto; padding: 0 16px; }
+
+    .tabs { display: flex; gap: 4px; }
+    .tab { padding: 10px 20px; background: #CCCCCC; border: none; cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500; color: #555; border-radius: 4px 4px 0 0; transition: background 0.15s; }
+    .tab.active { background: white; color: var(--rojo); font-weight: 600; }
+    .panel { background: white; border-radius: 0 4px 4px 4px; padding: 28px; display: none; }
+    .panel.active { display: block; }
+
+    .seccion { margin-bottom: 28px; }
+    .seccion-titulo { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--rojo); border-bottom: 2px solid var(--rojo); padding-bottom: 6px; margin-bottom: 16px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .full { grid-column: 1 / -1; }
+
+    label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
+    input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--borde); border-radius: 4px; font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; color: var(--texto); background: white; transition: border-color 0.15s; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--rojo); }
+    textarea { resize: vertical; min-height: 72px; }
+
+    .etapa-card { border: 1px solid var(--borde); border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
+    .etapa-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--gris); cursor: pointer; user-select: none; }
+    .etapa-nombre { font-weight: 600; font-size: 14px; }
+    .etapa-badge { font-size: 11px; font-family: 'IBM Plex Mono', monospace; padding: 3px 8px; border-radius: 20px; background: #E0E0E0; color: #666; }
+    .etapa-badge.iniciada { background: #FFF3CD; color: #856404; }
+    .etapa-badge.completada { background: #D1FAE5; color: #065F46; }
+    .etapa-body { padding: 16px; display: none; }
+    .etapa-body.open { display: block; }
+
+    .timestamps { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+    .timestamp-info { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); background: var(--gris); padding: 6px 12px; border-radius: 4px; flex: 1; min-width: 180px; }
+    .timestamp-info strong { color: var(--texto); }
+
+    .fotos-section { margin-top: 16px; border-top: 1px solid var(--borde); padding-top: 16px; }
+    .fotos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 10px; }
+    .foto-thumb { position: relative; aspect-ratio: 1; border-radius: 4px; overflow: hidden; border: 1px solid var(--borde); cursor: pointer; }
+    .foto-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .foto-delete { position: absolute; top: 3px; right: 3px; background: rgba(0,0,0,0.65); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; cursor: pointer; opacity: 0; transition: opacity 0.15s; display: flex; align-items: center; justify-content: center; }
+    .foto-thumb:hover .foto-delete { opacity: 1; }
+
+    .upload-area { border: 2px dashed var(--borde); border-radius: 6px; padding: 16px; text-align: center; cursor: pointer; transition: border-color 0.15s; margin-top: 10px; }
+    .upload-area:hover { border-color: var(--rojo); }
+    .upload-area input[type=file] { display: none; }
+    .upload-area p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .upload-progreso { font-size: 12px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; margin-top: 6px; min-height: 18px; }
+
+    .btn { padding: 10px 20px; border: none; border-radius: 4px; font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-rojo { background: var(--rojo); color: white; }
+    .btn-verde { background: var(--verde); color: white; }
+    .btn-gris { background: #DDD; color: #444; }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-row { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+    .etapa-actions { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+
+    .orden-item { border: 1px solid var(--borde); border-radius: 6px; padding: 14px 18px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: border-color 0.15s; }
+    .orden-item:hover { border-color: var(--rojo); }
+    .orden-placa { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; }
+    .orden-info { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .orden-estado { font-size: 12px; font-family: 'IBM Plex Mono', monospace; padding: 4px 10px; border-radius: 20px; background: var(--gris); }
+
+    #toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; color: white; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+    #toast.show { opacity: 1; }
+    #toast.ok { background: var(--verde); }
+    #toast.err { background: var(--rojo); }
+
+    #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 1000; align-items: center; justify-content: center; }
+    #lightbox.show { display: flex; }
+    #lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 4px; }
+    #lightbox-close { position: absolute; top: 16px; right: 24px; color: white; font-size: 28px; cursor: pointer; background: none; border: none; }
+
+    .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+    .loading { text-align: center; padding: 20px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+	</style>
+</head>
+<body>
+<header>
+<h1>Freimanautos</h1>
+
+<p>P&aacute;gina de Seguimiento operativo</p>
+</header>
+
+<div class="container">
+<div class="tabs"><button class="tab active" onclick="showTab('ordenes')">&Oacute;rdenes</button><button class="tab" onclick="showTab('nueva')">+ Nueva Orden</button><button class="tab" id="tab-detalle" onclick="showTab('detalle')" style="display:none">Detalle</button></div>
+<!-- ÓRDENES -->
+
+<div class="panel active" id="panel-ordenes">
+<div class="seccion">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+<div class="seccion-titulo" style="margin-bottom:0;border-bottom:none">&Oacute;rdenes</div>
+
+<div style="display:flex;gap:6px"><button class="btn btn-rojo btn-sm" id="filtro-activa" onclick="setFiltro('Activa')">Activas</button><button class="btn btn-gris btn-sm" id="filtro-entregada" onclick="setFiltro('Entregada')">Entregadas</button><button class="btn btn-gris btn-sm" id="filtro-archivada" onclick="setFiltro('Archivada')">Archivadas</button></div>
+</div>
+
+<div id="lista-ordenes">
+<div class="loading">Cargando...</div>
+</div>
+</div>
+</div>
+<!-- NUEVA ORDEN -->
+
+<div class="panel" id="panel-nueva">
+<div class="seccion">
+<div class="seccion-titulo">Datos del veh&iacute;culo</div>
+
+<div class="grid-2">
+<div><label>Placa *</label><input id="n-placa" placeholder="LUN954" style="text-transform:uppercase" type="text" /></div>
+
+<div><label>Aseguradora</label> <select id="n-aseguradora"><option value="">&mdash; Seleccionar &mdash;</option><option>HDI</option><option>AXA</option><option>Sura</option><option>Bol&iacute;var</option><option>Allianz</option><option>Liberty</option><option>Particular</option> </select></div>
+
+<div><label>Marca</label><input id="n-marca" placeholder="Toyota" type="text" /></div>
+
+<div><label>L&iacute;nea</label><input id="n-linea" placeholder="Hilux" type="text" /></div>
+
+<div><label>Propietario</label><input id="n-propietario" placeholder="Nombre completo" type="text" /></div>
+
+<div><label>Tel&eacute;fono</label><input id="n-telefono" placeholder="3134753389" type="tel" /></div>
+
+<div><label>Nivel de da&ntilde;o</label> <select id="n-dano"><option value="">&mdash; Seleccionar &mdash;</option><option>Leve</option><option>Moderado</option><option>Fuerte</option><option>P&eacute;rdida Total</option> </select></div>
+
+<div>&nbsp;</div>
+
+<div><label>Fecha Entrega 1</label><input id="n-fecha1" type="date" /></div>
+
+<div><label>Fecha Entrega 2</label><input id="n-fecha2" type="date" /></div>
+</div>
+</div>
+
+<div class="btn-row"><button class="btn btn-gris" onclick="showTab('ordenes')">Cancelar</button><button class="btn btn-rojo" onclick="crearOrden()">Crear Orden</button></div>
+</div>
+<!-- DETALLE -->
+
+<div class="panel" id="panel-detalle">
+<div class="seccion">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+<div class="seccion-titulo" style="margin-bottom:0;border-bottom:none">Orden</div>
+
+<div style="display:flex;align-items:center;gap:8px"><select id="d-estado-select" onchange="cambiarEstado()" style="font-size:12px;padding:6px 10px;width:auto"><option value="Activa">Activa</option><option value="Entregada">Entregada</option><option value="Archivada">Archivada</option> </select></div>
+</div>
+
+<div class="grid-3">
+<div><label>Propietario</label>
+
+<div id="d-propietario" style="font-size:14px;padding:6px 0">&nbsp;</div>
+</div>
+
+<div><label>Veh&iacute;culo</label>
+
+<div id="d-vehiculo" style="font-size:14px;padding:6px 0">&nbsp;</div>
+</div>
+
+<div><label>Aseguradora</label>
+
+<div id="d-aseguradora" style="font-size:14px;padding:6px 0">&nbsp;</div>
+</div>
+
+<div><label>Nivel de Da&ntilde;o</label>
+
+<div id="d-dano" style="font-size:14px;padding:6px 0">&nbsp;</div>
+</div>
+
+<div><label>Entrega 1</label>
+
+<div id="d-fecha1" style="font-size:14px;padding:6px 0">&nbsp;</div>
+</div>
+
+<div><label>Entrega 2</label>
+
+<div id="d-fecha2" style="font-size:14px;padding:6px 0">&nbsp;</div>
+</div>
+</div>
+</div>
+
+<div class="seccion">
+<div class="seccion-titulo">Etapas de reparaci&oacute;n</div>
+
+<div id="etapas-container">&nbsp;</div>
+</div>
+
+<div class="seccion">
+<div class="seccion-titulo">Registrar Novedad</div>
+
+<div class="grid-2">
+<div><label>Tipo</label> <select id="nov-tipo"><option value="Detenido">Detenido</option><option value="Reproceso">Reproceso</option><option value="Garantia">Garant&iacute;a</option> </select></div>
+
+<div><label>Responsable</label> <select id="nov-resp"><option value="S.C.">Servicio al Cliente</option><option value="A.S.">Asesor de Servicio</option><option value="C.P.">Control de Producci&oacute;n</option><option value="A">Almac&eacute;n</option> </select></div>
+
+<div class="full"><label>Motivo</label><textarea id="nov-motivo" placeholder="Describe la novedad..."></textarea></div>
+</div>
+
+<div class="btn-row" style="margin-top:10px"><button class="btn btn-rojo" onclick="guardarNovedad()">Guardar Novedad</button></div>
+</div>
+</div>
+</div>
+
+<div id="lightbox"><button id="lightbox-close" onclick="cerrarLightbox()">✕</button><img alt="" id="lightbox-img" src="" /></div>
+
+<div id="toast">&nbsp;</div>
+<script>
+  const SUPABASE_URL = 'https://tcbbugjtzqrdrmimnpwb.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_ZHqiBPBIiSJDVfOTPrwyww_hjgKkn5x';
+  const BUCKET = 'fotos-etapas';
+  const ETAPAS = ['Desarmado','Carrocería','Alistamiento','Cabina','Armado','Lavado','Control Calidad'];
+
+  let ordenActual = null;
+  let filtroEstado = 'Activa';
+
+  // API
+  async function api(path, method = 'GET', body = null, extra = {}) {
+    const opts = { method, headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, ...extra } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(SUPABASE_URL + '/rest/v1' + path, opts);
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || res.statusText); }
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
+  }
+
+  async function storageUpload(file, path) {
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': file.type, 'x-upsert': 'true' },
+      body: file
+    });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Error subiendo foto'); }
+    return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  }
+
+  function toast(msg, tipo = 'ok') {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'show ' + tipo;
+    setTimeout(() => t.className = '', 3000);
+  }
+
+  function showTab(tab) {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+    const btn = Array.from(document.querySelectorAll('.tab')).find(b => b.getAttribute('onclick')?.includes("'" + tab + "'"));
+    if (btn) btn.classList.add('active');
+  }
+
+  function formatFecha(f) { return f ? new Date(f).toLocaleDateString('es-CO') : '—'; }
+  function formatTS(ts) { return ts ? new Date(ts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '—'; }
+  function key(nombre) { return nombre.replace(/ /g, '_'); }
+
+  // FILTRO
+  function setFiltro(estado) {
+    filtroEstado = estado;
+    ['Activa','Entregada','Archivada'].forEach(e => {
+      const btn = document.getElementById('filtro-' + e.toLowerCase());
+      btn.className = e === estado ? 'btn btn-rojo btn-sm' : 'btn btn-gris btn-sm';
+    });
+    cargarOrdenes();
+  }
+
+  // ÓRDENES
+  async function cargarOrdenes() {
+    const lista = document.getElementById('lista-ordenes');
+    lista.innerHTML = '<div class="loading">Cargando...</div>';
+    try {
+      const data = await api(`/ordenes?estado=eq.${filtroEstado}&order=creado_en.desc&limit=50`);
+      if (!data || !data.length) { lista.innerHTML = `<div class="empty">No hay órdenes ${filtroEstado.toLowerCase()}s.</div>`; return; }
+      lista.innerHTML = data.map(o => `
+        <div class="orden-item" onclick="abrirOrden(${o.id})">
+          <div>
+            <div class="orden-placa">${o.placa}</div>
+            <div class="orden-info">${o.marca || ''} ${o.linea || ''} · ${o.propietario || ''}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="orden-estado">${o.aseguradora || 'Sin aseg.'}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Entrega: ${formatFecha(o.fecha_entrega_1)}</div>
+          </div>
+        </div>`).join('');
+    } catch(e) { lista.innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+  }
+
+  async function crearOrden() {
+    const placa = document.getElementById('n-placa').value.trim().toUpperCase();
+    if (!placa) { toast('La placa es obligatoria', 'err'); return; }
+    const body = {
+      placa,
+      aseguradora: document.getElementById('n-aseguradora').value || null,
+      marca: document.getElementById('n-marca').value || null,
+      linea: document.getElementById('n-linea').value || null,
+      propietario: document.getElementById('n-propietario').value || null,
+      telefono: document.getElementById('n-telefono').value || null,
+      nivel_dano: document.getElementById('n-dano').value || null,
+      fecha_entrega_1: document.getElementById('n-fecha1').value || null,
+      fecha_entrega_2: document.getElementById('n-fecha2').value || null,
+    };
+    try {
+      const res = await api('/ordenes?select=id', 'POST', body, { 'Prefer': 'return=representation' });
+      toast('Orden creada ✓');
+      ['n-placa','n-aseguradora','n-marca','n-linea','n-propietario','n-telefono','n-dano','n-fecha1','n-fecha2'].forEach(id => document.getElementById(id).value = '');
+      await cargarOrdenes();
+      if (res?.[0]) abrirOrden(res[0].id);
+    } catch(e) { toast('Error: ' + e.message, 'err'); }
+  }
+
+  async function abrirOrden(id) {
+    try {
+      const data = await api(`/ordenes?id=eq.${id}`);
+      if (!data?.[0]) { toast('Orden no encontrada', 'err'); return; }
+      ordenActual = data[0];
+      document.getElementById('d-propietario').textContent = ordenActual.propietario || '—';
+      document.getElementById('d-vehiculo').textContent = `${ordenActual.marca || ''} ${ordenActual.linea || ''}`.trim() || '—';
+      document.getElementById('d-aseguradora').textContent = ordenActual.aseguradora || '—';
+      document.getElementById('d-dano').textContent = ordenActual.nivel_dano || '—';
+      document.getElementById('d-fecha1').textContent = formatFecha(ordenActual.fecha_entrega_1);
+      document.getElementById('d-fecha2').textContent = formatFecha(ordenActual.fecha_entrega_2);
+      const estado = ordenActual.estado || 'Activa';
+      document.getElementById('d-estado-select').value = estado;
+      document.getElementById('tab-detalle').style.display = '';
+      showTab('detalle');
+      await cargarEtapas();
+    } catch(e) { toast('Error: ' + e.message, 'err'); }
+  }
+
+  async function cambiarEstado() {
+    const nuevoEstado = document.getElementById('d-estado-select').value;
+    try {
+      await api(`/ordenes?id=eq.${ordenActual.id}`, 'PATCH', { estado: nuevoEstado });
+      ordenActual.estado = nuevoEstado;
+      const badge = document.getElementById('d-estado-badge');
+      badge.textContent = nuevoEstado;
+      badge.style.background = nuevoEstado === 'Activa' ? '#D1FAE5' : nuevoEstado === 'Entregada' ? '#DBEAFE' : '#F3F4F6';
+      badge.style.color = nuevoEstado === 'Activa' ? '#065F46' : nuevoEstado === 'Entregada' ? '#1E40AF' : '#6B7280';
+      toast(`Estado: ${nuevoEstado} ✓`);
+      cargarOrdenes();
+    } catch(e) { toast('Error: ' + e.message, 'err'); }
+  }
+
+  // ETAPAS
+  async function cargarEtapas() {
+    const container = document.getElementById('etapas-container');
+    const existentes = await api(`/etapas?orden_id=eq.${ordenActual.id}`).catch(() => []) || [];
+    const todasFotos = await api(`/fotos_etapas?orden_id=eq.${ordenActual.id}`).catch(() => []) || [];
+    const hayActiva = existentes.some(x => x.inicio && !x.fin);
+
+    container.innerHTML = ETAPAS.map(nombre => {
+      const e = existentes.find(x => x.etapa === nombre);
+      const eId = e?.id || '';
+      const badge = !e ? 'Pendiente' : (e.fin ? 'Completada' : 'En proceso');
+      const badgeClass = !e ? '' : (e.fin ? 'completada' : 'iniciada');
+      const fotos = todasFotos.filter(f => f.etapa_nombre === nombre);
+
+      let acciones = '';
+      if (!e && !hayActiva) {
+        acciones = `<button class="btn btn-verde btn-sm" onclick="iniciarEtapa('${nombre}')">▶ Iniciar</button>`;
+      } else if (e && e.inicio && !e.fin) {
+        acciones = `<button class="btn btn-rojo btn-sm" onclick="finalizarEtapa('${nombre}', ${e.id})">■ Finalizar</button>`;
+      } else if (e && e.fin) {
+        acciones = `<span style="font-size:12px;color:var(--muted);font-style:italic">Etapa completada</span>`;
+      } else {
+        acciones = `<span style="font-size:12px;color:var(--muted);font-style:italic">Esperando etapa anterior</span>`;
+      }
+
+      const fotosHtml = fotos.map(f => `
+        <div class="foto-thumb" onclick="abrirLightbox('${f.url}')">
+          <img src="${f.url}" alt="">
+          <button class="foto-delete" onclick="event.stopPropagation();eliminarFoto(${f.id},'${f.url}','${nombre}')">✕</button>
+        </div>`).join('');
+
+      return `
+        <div class="etapa-card">
+          <div class="etapa-header" onclick="toggleEtapa('et-${key(nombre)}')">
+            <span class="etapa-nombre">${nombre}</span>
+            <span class="etapa-badge ${badgeClass}">${badge}</span>
+          </div>
+          <div class="etapa-body" id="et-${key(nombre)}">
+            <div class="etapa-actions">${acciones}</div>
+            <div class="timestamps">
+              <div class="timestamp-info">Inicio: <strong>${e?.inicio ? formatTS(e.inicio) : '—'}</strong></div>
+              <div class="timestamp-info">Fin: <strong>${e?.fin ? formatTS(e.fin) : '—'}</strong></div>
+            </div>
+            ${e ? `
+            <div class="grid-2" style="margin-bottom:4px">
+              <div>
+                <label>Técnico</label>
+                <input id="tec-${nombre}" type="text" value="${e.tecnico || ''}" placeholder="Nombre técnico" onblur="actualizarCampo(${e.id},'tecnico','tec-${nombre}')">
+              </div>
+              <div style="display:flex;gap:8px">
+                <div style="flex:1"><label>H. Facturadas</label><input id="hf-${nombre}" type="number" step="0.5" value="${e.horas_facturadas || ''}" placeholder="0" onblur="actualizarHoras(${e.id},'${nombre}')"></div>
+                <div style="flex:1"><label>H. Adicionales</label><input id="ha-${nombre}" type="number" step="0.5" value="${e.horas_adicionales || ''}" placeholder="0" onblur="actualizarHoras(${e.id},'${nombre}')"></div>
+              </div>
+            </div>` : ''}
+            <div class="fotos-section">
+              <label>Fotos (${fotos.length})</label>
+              <div class="fotos-grid" id="fotos-grid-${key(nombre)}">${fotosHtml}</div>
+              <div class="upload-area" onclick="document.getElementById('input-foto-${key(nombre)}').click()">
+                <input type="file" id="input-foto-${key(nombre)}" accept="image/*" multiple onchange="subirFotos(this,'${nombre}','${eId}')">
+                <div style="font-size:20px">📷</div>
+                <p>Clic para subir fotos</p>
+                <div class="upload-progreso" id="prog-${key(nombre)}"></div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function toggleEtapa(id) { document.getElementById(id)?.classList.toggle('open'); }
+
+  async function iniciarEtapa(nombre) {
+    try {
+      await api('/etapas', 'POST', { orden_id: ordenActual.id, etapa: nombre, inicio: new Date().toISOString() }, { 'Prefer': 'return=minimal' });
+      toast(`${nombre} iniciada ✓`);
+      await cargarEtapas();
+      document.getElementById('et-' + key(nombre))?.classList.add('open');
+    } catch(e) { toast('Error: ' + e.message, 'err'); }
+  }
+
+  async function finalizarEtapa(nombre, etapaId) {
+    try {
+      await api(`/etapas?id=eq.${etapaId}`, 'PATCH', { fin: new Date().toISOString() });
+      toast(`${nombre} finalizada ✓`);
+      await cargarEtapas();
+    } catch(e) { toast('Error: ' + e.message, 'err'); }
+  }
+
+  async function actualizarCampo(etapaId, campo, inputId) {
+    const val = document.getElementById(inputId)?.value || null;
+    await api(`/etapas?id=eq.${etapaId}`, 'PATCH', { [campo]: val }).catch(() => {});
+  }
+
+  async function actualizarHoras(etapaId, nombre) {
+    const hf = parseFloat(document.getElementById(`hf-${nombre}`)?.value) || null;
+    const ha = parseFloat(document.getElementById(`ha-${nombre}`)?.value) || null;
+    await api(`/etapas?id=eq.${etapaId}`, 'PATCH', { horas_facturadas: hf, horas_adicionales: ha }).catch(() => {});
+  }
+
+  // FOTOS
+  async function subirFotos(input, etapaNombre, etapaId) {
+    const files = Array.from(input.files);
+    if (!files.length) return;
+    const progEl = document.getElementById('prog-' + key(etapaNombre));
+    let subidas = 0;
+    progEl.textContent = `Subiendo 0 / ${files.length}...`;
+    for (const file of files) {
+      try {
+        const ext = file.name.split('.').pop();
+        const path = `${ordenActual.id}/${etapaNombre}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const url = await storageUpload(file, path);
+        await api('/fotos_etapas', 'POST', {
+          etapa_id: etapaId ? parseInt(etapaId) : null,
+          orden_id: ordenActual.id,
+          etapa_nombre: etapaNombre,
+          url, nombre: file.name
+        }, { 'Prefer': 'return=minimal' });
+        subidas++;
+        progEl.textContent = `Subiendo ${subidas} / ${files.length}...`;
+      } catch(e) { toast(`Error: ${file.name} — ${e.message}`, 'err'); }
+    }
+    progEl.textContent = '';
+    input.value = '';
+    toast(`${subidas} foto(s) subida(s) ✓`);
+    await cargarEtapas();
+    document.getElementById('et-' + key(etapaNombre))?.classList.add('open');
+  }
+
+  async function eliminarFoto(fotoId, url, etapaNombre) {
+    if (!confirm('¿Eliminar esta foto?')) return;
+    try {
+      await api(`/fotos_etapas?id=eq.${fotoId}`, 'DELETE');
+      const path = url.split(`/object/public/${BUCKET}/`)[1];
+      if (path) await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } });
+      toast('Foto eliminada ✓');
+      await cargarEtapas();
+      document.getElementById('et-' + key(etapaNombre))?.classList.add('open');
+    } catch(e) { toast('Error: ' + e.message, 'err'); }
+  }
+
+  function abrirLightbox(url) { document.getElementById('lightbox-img').src = url; document.getElementById('lightbox').classList.add('show'); }
+  function cerrarLightbox() { document.getElementById('lightbox').classList.remove('show'); document.getElementById('lightbox-img').src = ''; }
+  document.getElementById('lightbox').addEventListener('click', function(e) { if (e.target === this) cerrarLightbox(); });
+
+  // NOVEDADES
+  async function guardarNovedad() {
+    const body = { orden_id: ordenActual.id, tipo: document.getElementById('nov-tipo').value, responsable: document.getElementById('nov-resp').value, motivo: document.getElementById('nov-motivo').value, desde: new Date().toISOString() };
+    try {
+      await api('/novedades', 'POST', body, { 'Prefer': 'return=minimal' });
+      toast('Novedad registrada ✓');
+      document.getElementById('nov-motivo').value = '';
+    } catch(e) { toast('Error: ' + e.message, 'err'); }
+  }
+
+  cargarOrdenes();
+</script></body>
+</html>
