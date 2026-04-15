@@ -879,6 +879,36 @@ async function guardarEtapasNueva() {
     }
     toast('Etapas guardadas ✓');
     document.getElementById('modal-servicios').classList.remove('show');
+
+    // Notificar al jefe: nueva orden creada
+    const ordenData = await api(`/ordenes?id=eq.${modalOrdenId}`).catch(() => []);
+    if (ordenData?.[0]) {
+      const ord = ordenData[0];
+      const serviciosResumen = etapas.map(et => {
+        const mec = mecanicos.find(m => m.id === et.mecanico_id);
+        return { servicio: et.servicio, etapa: et.nombre, tecnico: mec?.nombre || et.tercero || 'Sin asignar' };
+      });
+      fetch('https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          evento: 'orden_creada',
+          orden: {
+            id:              ord.id,
+            placa:           ord.placa,
+            propietario:     ord.propietario,
+            marca:           ord.marca,
+            linea:           ord.linea,
+            aseguradora:     ord.aseguradora,
+            fecha_entrega_1: ord.fecha_entrega_1,
+            fecha_entrega_2: ord.fecha_entrega_2,
+          },
+          servicios: serviciosResumen,
+          link: `${window.location.origin}${window.location.pathname}`
+        })
+      }).catch(() => {});
+    }
+
     await cargarOrdenes();
     await abrirOrden(modalOrdenId);
     modalOrdenId = null;
@@ -988,7 +1018,7 @@ function renderEtapa(e, fotos, novedades, hayActiva) {
 
   let acc = '';
   if (!e.inicio && !hayActiva)     acc = `<button class="btn btn-verde btn-sm" onclick="iniciarEtapa(${eid},'${nombre}')">▶ Iniciar</button>`;
-  else if (e.inicio && !e.fin)     acc = `<button class="btn btn-rojo btn-sm"  onclick="finalizarEtapa(${eid},'${nombre}')">■ Finalizar</button>`;
+  else if (e.inicio && !e.fin)     acc = `<button class="btn btn-rojo btn-sm"  onclick="finalizarEtapa(${eid},'${nombre}','${e.servicio||''}')">■ Finalizar</button>`;
   else if (e.fin)                  acc = `<span style="font-size:12px;color:var(--muted);font-style:italic">Completada</span>`;
   else                             acc = `<span style="font-size:12px;color:var(--muted);font-style:italic">Esperando turno</span>`;
 
@@ -1089,20 +1119,30 @@ async function iniciarEtapa(eid, nombre) {
   try { await api(`/etapas?id=eq.${eid}`, 'PATCH', { inicio: new Date().toISOString() }); toast(`${nombre} iniciada ✓`); await cargarEtapas(); document.getElementById('eb-'+kid(eid))?.classList.add('open'); }
   catch(e) { toast('Error: ' + e.message, 'err'); }
 }
-async function finalizarEtapa(eid, nombre) {
+async function finalizarEtapa(eid, nombre, servicio) {
   try {
     await api(`/etapas?id=eq.${eid}`, 'PATCH', { fin: new Date().toISOString() });
     toast(`${nombre} finalizada ✓`);
 
     // Notificar a n8n
     const etapasOrden = await api(`/etapas?orden_id=eq.${ordenActual.id}&order=creado_en.asc`);
-    const idx = etapasOrden.findIndex(e => e.id === eid);
-    const siguiente = etapasOrden[idx + 1] || null;
+
+    // Etapa actual (ya tiene fin seteado)
+    const etapaActual = etapasOrden.find(e => e.id === eid);
+
+    // Siguiente etapa del MISMO servicio que no tenga fin ni inicio
+    const etapasMismoServicio = etapasOrden.filter(e => e.servicio === (etapaActual?.servicio || servicio));
+    const idxEnServicio = etapasMismoServicio.findIndex(e => e.id === eid);
+    const siguiente = etapasMismoServicio.slice(idxEnServicio + 1).find(e => !e.fin) || null;
+
+    // Orden completa: todas las etapas de todos los servicios tienen fin
+    const todasCompletadas = etapasOrden.every(e => e.fin || e.id === eid);
 
     fetch('https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        evento: todasCompletadas ? 'orden_completada' : 'etapa_finalizada',
         orden: {
           id:          ordenActual.id,
           placa:       ordenActual.placa,
@@ -1112,16 +1152,20 @@ async function finalizarEtapa(eid, nombre) {
           aseguradora: ordenActual.aseguradora,
         },
         etapa_finalizada: {
-          id:     eid,
-          nombre: nombre,
+          id:       eid,
+          nombre:   nombre,
+          servicio: etapaActual?.servicio || servicio,
+          tecnico:  etapaActual?.tecnico || null,
         },
         siguiente_etapa: siguiente ? {
           id:          siguiente.id,
           nombre:      siguiente.etapa,
+          servicio:    siguiente.servicio,
           mecanico_id: siguiente.mecanico_id,
           tecnico:     siguiente.tecnico,
         } : null,
-        todas_completadas: etapasOrden.every(e => e.fin || e.id === eid)
+        todas_completadas: todasCompletadas,
+        link: `${window.location.origin}${window.location.pathname}`
       })
     }).catch(() => {}); // silencioso — no bloquea si n8n falla
 
