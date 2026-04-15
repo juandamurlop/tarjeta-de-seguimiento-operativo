@@ -1,4 +1,4 @@
-const CACHE_NAME = "freimapp-v1";
+const CACHE_NAME = "freimapp-v2";
 const urlsToCache = [
   "/",
   "/index.html"
