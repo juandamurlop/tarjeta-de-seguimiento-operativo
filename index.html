@@ -1,510 +1,1251 @@
 <!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Freimanautos &mdash; Tarjeta de Seguimiento</title>
-	<style type="text/css">@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Freimanautos — Tarjeta de Seguimiento</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 
-    :root {
-      --rojo: #D0021B;
-      --gris: #F4F4F4;
-      --borde: #DDDDDD;
-      --texto: #222222;
-      --muted: #888888;
-      --verde: #1A7F4B;
-    }
+:root {
+  --rojo: #D0021B;
+  --gris: #F4F4F4;
+  --borde: #DDDDDD;
+  --texto: #222222;
+  --muted: #888888;
+  --verde: #1A7F4B;
+  --azul: #1A4A8A;
+}
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'IBM Plex Sans', sans-serif; background: #EFEFEF; color: var(--texto); min-height: 100vh; }
-    header { background: var(--rojo); color: white; padding: 16px 32px; }
-    header h1 { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
-    header p { font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; opacity: 0.75; margin-top: 2px; letter-spacing: 0.5px; }
-    .container { max-width: 860px; margin: 32px auto; padding: 0 16px; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'IBM Plex Sans', sans-serif; background: #EFEFEF; color: var(--texto); min-height: 100vh; }
+header { background: var(--rojo); color: white; padding: 16px 32px; }
+header h1 { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+header p { font-size: 12px; opacity: 0.75; margin-top: 2px; letter-spacing: 0.5px; }
+.container { max-width: 900px; margin: 32px auto; padding: 0 16px; }
 
-    .tabs { display: flex; gap: 4px; }
-    .tab { padding: 10px 20px; background: #CCCCCC; border: none; cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500; color: #555; border-radius: 4px 4px 0 0; transition: background 0.15s; }
-    .tab.active { background: white; color: var(--rojo); font-weight: 600; }
-    .panel { background: white; border-radius: 0 4px 4px 4px; padding: 28px; display: none; }
-    .panel.active { display: block; }
+.tabs { display: flex; gap: 4px; }
+.tab { padding: 10px 20px; background: #CCC; border: none; cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500; color: #555; border-radius: 4px 4px 0 0; transition: background 0.15s; }
+.tab.active { background: white; color: var(--rojo); font-weight: 600; }
+.panel { background: white; border-radius: 0 4px 4px 4px; padding: 28px; display: none; }
+.panel.active { display: block; }
 
-    .seccion { margin-bottom: 28px; }
-    .seccion-titulo { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--rojo); border-bottom: 2px solid var(--rojo); padding-bottom: 6px; margin-bottom: 16px; }
+.seccion { margin-bottom: 28px; }
+.seccion-titulo { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--rojo); border-bottom: 2px solid var(--rojo); padding-bottom: 6px; margin-bottom: 16px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.full { grid-column: 1 / -1; }
+label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
+input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--borde); border-radius: 4px; font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; color: var(--texto); background: white; transition: border-color 0.15s; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--rojo); }
+textarea { resize: vertical; min-height: 72px; }
 
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
-    .full { grid-column: 1 / -1; }
+.btn { padding: 10px 20px; border: none; border-radius: 4px; font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+.btn:hover { opacity: 0.85; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-rojo { background: var(--rojo); color: white; }
+.btn-verde { background: var(--verde); color: white; }
+.btn-gris { background: #DDD; color: #444; }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+.btn-row { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
 
-    label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
-    input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--borde); border-radius: 4px; font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; color: var(--texto); background: white; transition: border-color 0.15s; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--rojo); }
-    textarea { resize: vertical; min-height: 72px; }
+/* LISTA ORDENES */
+.orden-item { border: 1px solid var(--borde); border-radius: 6px; padding: 14px 18px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: border-color 0.15s; }
+.orden-item:hover { border-color: var(--rojo); }
+.orden-placa { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; }
+.orden-info { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.servicios-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+.srv-badge { font-size: 10px; font-family: 'IBM Plex Mono', monospace; padding: 2px 7px; border-radius: 20px; font-weight: 600; }
+.srv-badge.latoneria  { background: #FEE2E2; color: #991B1B; }
+.srv-badge.pintura    { background: #FEF3C7; color: #92400E; }
+.srv-badge.mecanica   { background: #DBEAFE; color: #1E3A5F; }
+.srv-badge.adicionales{ background: #D1FAE5; color: #065F46; }
 
-    .etapa-card { border: 1px solid var(--borde); border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
-    .etapa-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--gris); cursor: pointer; user-select: none; }
-    .etapa-nombre { font-weight: 600; font-size: 14px; }
-    .etapa-badge { font-size: 11px; font-family: 'IBM Plex Mono', monospace; padding: 3px 8px; border-radius: 20px; background: #E0E0E0; color: #666; }
-    .etapa-badge.iniciada { background: #FFF3CD; color: #856404; }
-    .etapa-badge.completada { background: #D1FAE5; color: #065F46; }
-    .etapa-body { padding: 16px; display: none; }
-    .etapa-body.open { display: block; }
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 500; align-items: center; justify-content: center; padding: 16px; }
+.modal-overlay.show { display: flex; }
+.modal { background: white; border-radius: 8px; width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--borde); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: white; z-index: 1; }
+.modal-header h2 { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--rojo); }
+.modal-body { padding: 24px; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--borde); display: flex; gap: 10px; justify-content: flex-end; position: sticky; bottom: 0; background: white; }
+.modal-step { display: none; }
+.modal-step.active { display: block; }
 
-    .timestamps { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
-    .timestamp-info { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); background: var(--gris); padding: 6px 12px; border-radius: 4px; flex: 1; min-width: 180px; }
-    .timestamp-info strong { color: var(--texto); }
+/* SERVICIO CARDS */
+.srv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.srv-card { border: 2px solid var(--borde); border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.15s; user-select: none; }
+.srv-card:hover { border-color: #aaa; }
+.srv-card.selected { border-color: var(--rojo); background: #FFF5F5; }
+.srv-card-icon { font-size: 22px; margin-bottom: 6px; }
+.srv-card-name { font-weight: 700; font-size: 14px; }
+.srv-card-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
-    .fotos-section { margin-top: 16px; border-top: 1px solid var(--borde); padding-top: 16px; }
-    .fotos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 10px; }
-    .foto-thumb { position: relative; aspect-ratio: 1; border-radius: 4px; overflow: hidden; border: 1px solid var(--borde); cursor: pointer; }
-    .foto-thumb img { width: 100%; height: 100%; object-fit: cover; }
-    .foto-delete { position: absolute; top: 3px; right: 3px; background: rgba(0,0,0,0.65); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; cursor: pointer; opacity: 0; transition: opacity 0.15s; display: flex; align-items: center; justify-content: center; }
-    .foto-thumb:hover .foto-delete { opacity: 1; }
+/* CHECKLIST */
+.etapas-grupo { margin-bottom: 20px; }
+.etapas-grupo-titulo { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; padding: 3px 10px; border-radius: 4px; margin-bottom: 10px; display: inline-block; }
+.etapas-grupo-titulo.latoneria  { background: #FEE2E2; color: #991B1B; }
+.etapas-grupo-titulo.pintura    { background: #FEF3C7; color: #92400E; }
+.etapas-grupo-titulo.mecanica   { background: #DBEAFE; color: #1E3A5F; }
+.etapas-grupo-titulo.adicionales{ background: #D1FAE5; color: #065F46; }
+.check-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--borde); }
+.check-item:last-child { border-bottom: none; }
+.check-item input[type=checkbox] { width: 16px; height: 16px; margin-top: 2px; accent-color: var(--rojo); flex-shrink: 0; cursor: pointer; }
+.check-item-label { font-size: 14px; font-weight: 500; }
+.extra-input { margin-top: 6px; display: none; }
+.extra-input.show { display: block; }
 
-    .upload-area { border: 2px dashed var(--borde); border-radius: 6px; padding: 16px; text-align: center; cursor: pointer; transition: border-color 0.15s; margin-top: 10px; }
-    .upload-area:hover { border-color: var(--rojo); }
-    .upload-area input[type=file] { display: none; }
-    .upload-area p { font-size: 13px; color: var(--muted); margin-top: 4px; }
-    .upload-progreso { font-size: 12px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; margin-top: 6px; min-height: 18px; }
+/* DETALLE */
+.detalle-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid var(--gris); }
+.detalle-placa { font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; letter-spacing: 2px; }
+.detalle-meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.detalle-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
+.info-box { background: var(--gris); border-radius: 6px; padding: 11px 13px; }
+.info-box label { margin-bottom: 3px; }
+.info-box span { font-size: 14px; font-weight: 500; display: block; }
 
-    .btn { padding: 10px 20px; border: none; border-radius: 4px; font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
-    .btn:hover { opacity: 0.85; }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-rojo { background: var(--rojo); color: white; }
-    .btn-verde { background: var(--verde); color: white; }
-    .btn-gris { background: #DDD; color: #444; }
-    .btn-sm { padding: 6px 14px; font-size: 12px; }
-    .btn-row { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
-    .etapa-actions { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+/* SERVICIO PANEL */
+.srv-panel { border: 1px solid var(--borde); border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+.srv-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; user-select: none; }
+.srv-panel-header.latoneria  { background: #FEE2E2; }
+.srv-panel-header.pintura    { background: #FEF3C7; }
+.srv-panel-header.mecanica   { background: #DBEAFE; }
+.srv-panel-header.adicionales{ background: #D1FAE5; }
+.srv-panel-titulo { font-weight: 700; font-size: 13px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 1px; text-transform: uppercase; }
+.srv-panel-titulo.latoneria  { color: #991B1B; }
+.srv-panel-titulo.pintura    { color: #92400E; }
+.srv-panel-titulo.mecanica   { color: #1E3A5F; }
+.srv-panel-titulo.adicionales{ color: #065F46; }
+.srv-panel-body { display: none; padding: 12px; }
+.srv-panel-body.open { display: block; }
 
-    .orden-item { border: 1px solid var(--borde); border-radius: 6px; padding: 14px 18px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: border-color 0.15s; }
-    .orden-item:hover { border-color: var(--rojo); }
-    .orden-placa { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; }
-    .orden-info { font-size: 13px; color: var(--muted); margin-top: 2px; }
-    .orden-estado { font-size: 12px; font-family: 'IBM Plex Mono', monospace; padding: 4px 10px; border-radius: 20px; background: var(--gris); }
+/* ETAPA CARD */
+.etapa-card { border: 1px solid var(--borde); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+.etapa-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--gris); cursor: pointer; user-select: none; }
+.etapa-nombre { font-weight: 600; font-size: 13px; }
+.etapa-badge { font-size: 10px; font-family: 'IBM Plex Mono', monospace; padding: 3px 8px; border-radius: 20px; background: #E0E0E0; color: #666; }
+.etapa-badge.iniciada   { background: #FFF3CD; color: #856404; }
+.etapa-badge.completada { background: #D1FAE5; color: #065F46; }
+.etapa-body { padding: 14px; display: none; }
+.etapa-body.open { display: block; }
+.etapa-actions { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
 
-    #toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; color: white; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
-    #toast.show { opacity: 1; }
-    #toast.ok { background: var(--verde); }
-    #toast.err { background: var(--rojo); }
+.timestamps { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.timestamp-info { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); background: var(--gris); padding: 5px 10px; border-radius: 4px; flex: 1; min-width: 150px; }
+.timestamp-info strong { color: var(--texto); }
 
-    #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 1000; align-items: center; justify-content: center; }
-    #lightbox.show { display: flex; }
-    #lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 4px; }
-    #lightbox-close { position: absolute; top: 16px; right: 24px; color: white; font-size: 28px; cursor: pointer; background: none; border: none; }
+/* FOTOS */
+.fotos-section { margin-top: 14px; border-top: 1px solid var(--borde); padding-top: 14px; }
+.fotos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; margin-top: 8px; }
+.foto-thumb { position: relative; aspect-ratio: 1; border-radius: 4px; overflow: hidden; border: 1px solid var(--borde); cursor: pointer; }
+.foto-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.foto-delete { position: absolute; top: 3px; right: 3px; background: rgba(0,0,0,0.65); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; opacity: 0; transition: opacity 0.15s; display: flex; align-items: center; justify-content: center; }
+.foto-thumb:hover .foto-delete { opacity: 1; }
+.upload-area { border: 2px dashed var(--borde); border-radius: 6px; padding: 12px; text-align: center; cursor: pointer; transition: border-color 0.15s; margin-top: 8px; }
+.upload-area:hover { border-color: var(--rojo); }
+.upload-area input[type=file] { display: none; }
+.upload-area p { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.upload-progreso { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; margin-top: 4px; min-height: 16px; }
 
-    .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
-    .loading { text-align: center; padding: 20px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
-	</style>
+/* NOVEDADES */
+.novedad-etapa { margin-top: 14px; border-top: 1px solid var(--borde); padding-top: 12px; }
+.novedad-etapa-titulo { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.novedad-item { background: var(--gris); border-radius: 4px; padding: 8px 10px; margin-bottom: 5px; font-size: 12px; }
+.novedad-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+.novedad-item-tipo { font-weight: 600; font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
+.novedad-item-tipo.detenido  { color: var(--rojo); }
+.novedad-item-tipo.reproceso { color: #856404; }
+.novedad-item-tipo.garantia  { color: var(--azul); }
+.novedad-item-fecha { color: var(--muted); font-size: 10px; font-family: 'IBM Plex Mono', monospace; }
+.novedad-item-motivo { color: #444; margin-top: 2px; }
+.novedad-item-resp { color: var(--muted); font-size: 10px; margin-top: 2px; }
+
+/* RECEPCIÓN */
+.placa-busqueda { position: relative; }
+.placa-resultado { margin-top: 8px; padding: 10px 14px; border-radius: 6px; font-size: 13px; display: none; }
+.placa-resultado.encontrado { background: #D1FAE5; border: 1px solid #6EE7B7; color: #065F46; }
+.placa-resultado.nuevo      { background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; }
+.historial-previo { margin-top: 10px; }
+.historial-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: white; border: 1px solid var(--borde); border-radius: 4px; margin-bottom: 4px; font-size: 12px; cursor: pointer; transition: border-color 0.15s; }
+.historial-item:hover { border-color: var(--rojo); }
+.historial-item-placa { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+.inv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.inv-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--borde); border-radius: 4px; cursor: pointer; user-select: none; transition: all 0.12s; font-size: 13px; }
+.inv-item:hover { border-color: #aaa; }
+.inv-item.checked { background: #D1FAE5; border-color: #6EE7B7; color: #065F46; }
+.inv-item input[type=checkbox] { accent-color: var(--verde); width: 15px; height: 15px; flex-shrink: 0; }
+.fotos-ingreso-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px,1fr)); gap: 6px; margin-top: 8px; }
+
+#toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; color: white; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 9999; }
+#toast.show { opacity: 1; }
+#toast.ok  { background: var(--verde); }
+#toast.err { background: var(--rojo); }
+#lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 1000; align-items: center; justify-content: center; }
+#lightbox.show { display: flex; }
+#lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 4px; }
+#lightbox-close { position: absolute; top: 16px; right: 24px; color: white; font-size: 28px; cursor: pointer; background: none; border: none; }
+.empty { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+.loading { text-align: center; padding: 20px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+</style>
 </head>
 <body>
-<header>
-<h1>Freimanautos</h1>
 
-<p>P&aacute;gina de Seguimiento operativo</p>
+<header>
+  <h1>Freimanautos</h1>
+  <p>Página de Seguimiento Operativo</p>
 </header>
 
 <div class="container">
-<div class="tabs"><button class="tab active" onclick="showTab('ordenes')">&Oacute;rdenes</button><button class="tab" onclick="showTab('nueva')">+ Nueva Orden</button><button class="tab" id="tab-detalle" onclick="showTab('detalle')" style="display:none">Detalle</button></div>
-<!-- ÓRDENES -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('ordenes')">Órdenes</button>
+    <button class="tab" onclick="showTab('nueva')">+ Nueva Orden</button>
+    <button class="tab" id="tab-detalle" onclick="showTab('detalle')" style="display:none">Detalle</button>
+  </div>
 
-<div class="panel active" id="panel-ordenes">
-<div class="seccion">
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-<div class="seccion-titulo" style="margin-bottom:0;border-bottom:none">&Oacute;rdenes</div>
+  <!-- ÓRDENES -->
+  <div class="panel active" id="panel-ordenes">
+    <div class="seccion">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div class="seccion-titulo" style="margin-bottom:0;border-bottom:none">Órdenes</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-rojo btn-sm" id="filtro-activa"    onclick="setFiltro('Activa')">Activas</button>
+          <button class="btn btn-gris btn-sm" id="filtro-entregada" onclick="setFiltro('Entregada')">Entregadas</button>
+          <button class="btn btn-gris btn-sm" id="filtro-archivada" onclick="setFiltro('Archivada')">Archivadas</button>
+        </div>
+      </div>
+      <div id="lista-ordenes"><div class="loading">Cargando...</div></div>
+    </div>
+  </div>
 
-<div style="display:flex;gap:6px"><button class="btn btn-rojo btn-sm" id="filtro-activa" onclick="setFiltro('Activa')">Activas</button><button class="btn btn-gris btn-sm" id="filtro-entregada" onclick="setFiltro('Entregada')">Entregadas</button><button class="btn btn-gris btn-sm" id="filtro-archivada" onclick="setFiltro('Archivada')">Archivadas</button></div>
+  <!-- NUEVA ORDEN -->
+  <div class="panel" id="panel-nueva">
+
+    <!-- SECCIÓN 1: PLACA -->
+    <div class="seccion">
+      <div class="seccion-titulo">Identificación del vehículo</div>
+      <div class="placa-busqueda">
+        <label>Placa *</label>
+        <div style="display:flex;gap:8px">
+          <input id="n-placa" placeholder="LUN954" style="text-transform:uppercase;flex:1" type="text"
+            oninput="this.value=this.value.toUpperCase()" onblur="buscarPorPlaca()">
+          <button class="btn btn-gris btn-sm" onclick="buscarPorPlaca()" style="white-space:nowrap">Buscar →</button>
+        </div>
+        <div id="placa-resultado" class="placa-resultado"></div>
+        <div id="historial-previo" class="historial-previo" style="display:none">
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Órdenes anteriores con esta placa</div>
+          <div id="historial-lista"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 2: DATOS DEL VEHÍCULO -->
+    <div class="seccion">
+      <div class="seccion-titulo">Datos del vehículo</div>
+      <div class="grid-2">
+        <div><label>Marca</label><input id="n-marca" placeholder="Toyota" type="text"></div>
+        <div><label>Línea</label><input id="n-linea" placeholder="Hilux" type="text"></div>
+        <div><label>Modelo (año)</label><input id="n-modelo" placeholder="2021" type="text" maxlength="4"></div>
+        <div><label>Color</label><input id="n-color" placeholder="Blanco" type="text"></div>
+        <div><label>Propietario</label><input id="n-propietario" placeholder="Nombre completo" type="text"></div>
+        <div><label>Teléfono</label><input id="n-telefono" placeholder="3134753389" type="tel"></div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 3: DATOS DE LA ORDEN -->
+    <div class="seccion">
+      <div class="seccion-titulo">Datos de la orden</div>
+      <div class="grid-2">
+        <div><label>Aseguradora</label>
+          <select id="n-aseguradora">
+            <option value="">— Seleccionar —</option>
+            <option>HDI</option><option>AXA</option><option>Sura</option>
+            <option>Bolívar</option><option>Allianz</option><option>Liberty</option><option>Particular</option>
+          </select>
+        </div>
+        <div><label>Nivel de daño</label>
+          <select id="n-dano">
+            <option value="">— Seleccionar —</option>
+            <option>Leve</option><option>Moderado</option><option>Fuerte</option><option>Pérdida Total</option>
+          </select>
+        </div>
+        <div><label>Kilometraje</label><input id="n-km" placeholder="45000" type="number" min="0"></div>
+        <div></div>
+        <div><label>Fecha Entrega 1</label><input id="n-fecha1" type="date"></div>
+        <div><label>Fecha Entrega 2</label><input id="n-fecha2" type="date"></div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 4: INVENTARIO -->
+    <div class="seccion">
+      <div class="seccion-titulo">Inventario del vehículo</div>
+      <div class="inv-grid" id="inv-grid">
+        <div class="inv-item" onclick="toggleInv(this,'llantas')">
+          <input type="checkbox" value="llantas"> 4 Llantas completas
+        </div>
+        <div class="inv-item" onclick="toggleInv(this,'llanta_repuesto')">
+          <input type="checkbox" value="llanta_repuesto"> Llanta de repuesto
+        </div>
+        <div class="inv-item" onclick="toggleInv(this,'gato')">
+          <input type="checkbox" value="gato"> Gato
+        </div>
+        <div class="inv-item" onclick="toggleInv(this,'radio')">
+          <input type="checkbox" value="radio"> Radio / Pantalla
+        </div>
+        <div class="inv-item" onclick="toggleInv(this,'documentos')">
+          <input type="checkbox" value="documentos"> Documentos
+        </div>
+        <div class="inv-item" onclick="toggleInv(this,'tapetes')">
+          <input type="checkbox" value="tapetes"> Tapetes
+        </div>
+        <div class="inv-item" onclick="toggleInv(this,'herramientas')">
+          <input type="checkbox" value="herramientas"> Herramientas
+        </div>
+        <div class="inv-item" onclick="toggleInv(this,'extintor')">
+          <input type="checkbox" value="extintor"> Extintor
+        </div>
+      </div>
+      <div>
+        <label>Objetos adicionales / observaciones de inventario</label>
+        <textarea id="n-inv-obs" placeholder="Ej: Cargador iPhone en guantera, silla de bebé en baúl..." style="min-height:56px"></textarea>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 5: FOTOS DE INGRESO -->
+    <div class="seccion">
+      <div class="seccion-titulo">Fotos de ingreso</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Registra el estado visual del vehículo al momento de recepción. Estas fotos quedan separadas de las fotos de trabajo.</p>
+      <div class="fotos-ingreso-grid" id="fotos-ingreso-preview"></div>
+      <div class="upload-area" onclick="document.getElementById('input-fotos-ingreso').click()">
+        <input type="file" id="input-fotos-ingreso" accept="image/*" multiple onchange="previewFotosIngreso(this)">
+        <div style="font-size:18px">📷</div>
+        <p>Clic para agregar fotos del estado del vehículo</p>
+        <div class="upload-progreso" id="prog-ingreso"></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-gris" onclick="cancelarNuevaOrden()">Cancelar</button>
+      <button class="btn btn-rojo" onclick="crearOrden()">Crear Orden →</button>
+    </div>
+  </div>
+
+  <!-- DETALLE -->
+  <div class="panel" id="panel-detalle">
+    <div class="detalle-header">
+      <div>
+        <div class="detalle-placa" id="d-placa">—</div>
+        <div class="detalle-meta"  id="d-meta">—</div>
+      </div>
+      <select id="d-estado-select" onchange="cambiarEstado()" style="font-size:12px;padding:6px 10px;width:auto;margin-top:4px">
+        <option value="Activa">Activa</option>
+        <option value="Entregada">Entregada</option>
+        <option value="Archivada">Archivada</option>
+      </select>
+    </div>
+
+    <div class="detalle-info-grid">
+      <div class="info-box"><label>Propietario</label><span id="d-propietario">—</span></div>
+      <div class="info-box"><label>Vehículo</label><span id="d-vehiculo">—</span></div>
+      <div class="info-box"><label>Aseguradora</label><span id="d-aseguradora">—</span></div>
+      <div class="info-box"><label>Nivel de Daño</label><span id="d-dano">—</span></div>
+      <div class="info-box"><label>Kilometraje</label><span id="d-km">—</span></div>
+      <div class="info-box"><label>Entrega 1</label><span id="d-fecha1">—</span></div>
+      <div class="info-box"><label>Entrega 2</label><span id="d-fecha2">—</span></div>
+    </div>
+
+    <!-- RECEPCIÓN: inventario y fotos de ingreso (colapsable) -->
+    <div class="seccion">
+      <div class="srv-panel">
+        <div class="srv-panel-header" style="background:#F8F8F8" onclick="togglePanel('panel-recepcion')">
+          <span style="font-weight:700;font-size:13px;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:#444">Recepción del vehículo</span>
+          <span style="font-size:11px;font-family:'IBM Plex Mono',monospace;opacity:0.6">▾</span>
+        </div>
+        <div class="srv-panel-body" id="panel-recepcion">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Inventario</div>
+              <div id="d-inventario" style="font-size:13px;color:var(--texto)">—</div>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Observaciones</div>
+              <div id="d-inv-obs" style="font-size:13px;color:var(--texto)">—</div>
+            </div>
+          </div>
+          <div style="margin-top:14px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Fotos de ingreso</div>
+            <div class="fotos-ingreso-grid" id="d-fotos-ingreso"><span style="font-size:12px;color:var(--muted)">Sin fotos de ingreso.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="seccion">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="seccion-titulo" style="margin-bottom:0;border-bottom:none">Servicios y Etapas</div>
+        <button class="btn btn-gris btn-sm" onclick="abrirModalAgregar()">+ Agregar etapas</button>
+      </div>
+      <div id="servicios-container"><div class="loading">Cargando...</div></div>
+    </div>
+  </div>
 </div>
 
-<div id="lista-ordenes">
-<div class="loading">Cargando...</div>
-</div>
-</div>
-</div>
-<!-- NUEVA ORDEN -->
-
-<div class="panel" id="panel-nueva">
-<div class="seccion">
-<div class="seccion-titulo">Datos del veh&iacute;culo</div>
-
-<div class="grid-2">
-<div><label>Placa *</label><input id="n-placa" placeholder="LUN954" style="text-transform:uppercase" type="text" /></div>
-
-<div><label>Aseguradora</label> <select id="n-aseguradora"><option value="">&mdash; Seleccionar &mdash;</option><option>HDI</option><option>AXA</option><option>Sura</option><option>Bol&iacute;var</option><option>Allianz</option><option>Liberty</option><option>Particular</option> </select></div>
-
-<div><label>Marca</label><input id="n-marca" placeholder="Toyota" type="text" /></div>
-
-<div><label>L&iacute;nea</label><input id="n-linea" placeholder="Hilux" type="text" /></div>
-
-<div><label>Propietario</label><input id="n-propietario" placeholder="Nombre completo" type="text" /></div>
-
-<div><label>Tel&eacute;fono</label><input id="n-telefono" placeholder="3134753389" type="tel" /></div>
-
-<div><label>Nivel de da&ntilde;o</label> <select id="n-dano"><option value="">&mdash; Seleccionar &mdash;</option><option>Leve</option><option>Moderado</option><option>Fuerte</option><option>P&eacute;rdida Total</option> </select></div>
-
-<div>&nbsp;</div>
-
-<div><label>Fecha Entrega 1</label><input id="n-fecha1" type="date" /></div>
-
-<div><label>Fecha Entrega 2</label><input id="n-fecha2" type="date" /></div>
-</div>
-</div>
-
-<div class="btn-row"><button class="btn btn-gris" onclick="showTab('ordenes')">Cancelar</button><button class="btn btn-rojo" onclick="crearOrden()">Crear Orden</button></div>
-</div>
-<!-- DETALLE -->
-
-<div class="panel" id="panel-detalle">
-<div class="seccion">
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-<div class="seccion-titulo" style="margin-bottom:0;border-bottom:none">Orden</div>
-
-<div style="display:flex;align-items:center;gap:8px"><select id="d-estado-select" onchange="cambiarEstado()" style="font-size:12px;padding:6px 10px;width:auto"><option value="Activa">Activa</option><option value="Entregada">Entregada</option><option value="Archivada">Archivada</option> </select></div>
+<!-- MODAL: NUEVA ORDEN — SELECCIÓN DE SERVICIOS -->
+<div class="modal-overlay" id="modal-servicios">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-titulo">Paso 1 — ¿Qué servicios necesita?</h2>
+      <button class="btn btn-gris btn-sm" onclick="cerrarModalServicios()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-step active" id="paso-1">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Selecciona uno o más servicios para este vehículo.</p>
+        <div class="srv-grid">
+          <div class="srv-card" id="srv-latoneria"   onclick="toggleServicio('latoneria')">
+            <div class="srv-card-name">Latonería</div>
+            <div class="srv-card-desc">Desarmado, carrocería, vidriería...</div>
+          </div>
+          <div class="srv-card" id="srv-pintura"     onclick="toggleServicio('pintura')">
+            <div class="srv-card-name">Pintura</div>
+            <div class="srv-card-desc">Alistador, pintor, T.O.T...</div>
+          </div>
+          <div class="srv-card" id="srv-mecanica"    onclick="toggleServicio('mecanica')">
+            <div class="srv-card-name">Mecánica</div>
+            <div class="srv-card-desc">Mecánica, eléctrica, T.O.T...</div>
+          </div>
+          <div class="srv-card" id="srv-adicionales" onclick="toggleServicio('adicionales')">
+            <div class="srv-card-name">Adicionales</div>
+            <div class="srv-card-desc">Polarizados, radio, lavado...</div>
+          </div>
+        </div>
+        <p id="srv-error" style="color:var(--rojo);font-size:12px;margin-top:10px;display:none">Selecciona al menos un servicio.</p>
+      </div>
+      <div class="modal-step" id="paso-2">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Marca las etapas que aplican para este vehículo.</p>
+        <div id="checklist-nuevo"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gris" id="btn-back" onclick="modalBack()" style="display:none">← Atrás</button>
+      <button class="btn btn-gris" onclick="cerrarModalServicios()">Cancelar</button>
+      <button class="btn btn-rojo" id="btn-next" onclick="modalNext()">Continuar →</button>
+    </div>
+  </div>
 </div>
 
-<div class="grid-3">
-<div><label>Propietario</label>
-
-<div id="d-propietario" style="font-size:14px;padding:6px 0">&nbsp;</div>
+<!-- MODAL: AGREGAR ETAPAS DESDE DETALLE -->
+<div class="modal-overlay" id="modal-agregar">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Agregar Etapas</h2>
+      <button class="btn btn-gris btn-sm" onclick="cerrarModalAgregar()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Agrega nuevas etapas al vehículo. Las etapas ya iniciadas no pueden eliminarse.</p>
+      <div id="checklist-agregar"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gris" onclick="cerrarModalAgregar()">Cancelar</button>
+      <button class="btn btn-rojo" onclick="confirmarAgregarEtapas()">Guardar cambios</button>
+    </div>
+  </div>
 </div>
 
-<div><label>Veh&iacute;culo</label>
-
-<div id="d-vehiculo" style="font-size:14px;padding:6px 0">&nbsp;</div>
+<div id="lightbox">
+  <button id="lightbox-close" onclick="cerrarLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="">
 </div>
-
-<div><label>Aseguradora</label>
-
-<div id="d-aseguradora" style="font-size:14px;padding:6px 0">&nbsp;</div>
-</div>
-
-<div><label>Nivel de Da&ntilde;o</label>
-
-<div id="d-dano" style="font-size:14px;padding:6px 0">&nbsp;</div>
-</div>
-
-<div><label>Entrega 1</label>
-
-<div id="d-fecha1" style="font-size:14px;padding:6px 0">&nbsp;</div>
-</div>
-
-<div><label>Entrega 2</label>
-
-<div id="d-fecha2" style="font-size:14px;padding:6px 0">&nbsp;</div>
-</div>
-</div>
-</div>
-
-<div class="seccion">
-<div class="seccion-titulo">Etapas de reparaci&oacute;n</div>
-
-<div id="etapas-container">&nbsp;</div>
-</div>
-
-<div class="seccion">
-<div class="seccion-titulo">Registrar Novedad</div>
-
-<div class="grid-2">
-<div><label>Tipo</label> <select id="nov-tipo"><option value="Detenido">Detenido</option><option value="Reproceso">Reproceso</option><option value="Garantia">Garant&iacute;a</option> </select></div>
-
-<div><label>Responsable</label> <select id="nov-resp"><option value="S.C.">Servicio al Cliente</option><option value="A.S.">Asesor de Servicio</option><option value="C.P.">Control de Producci&oacute;n</option><option value="A">Almac&eacute;n</option> </select></div>
-
-<div class="full"><label>Motivo</label><textarea id="nov-motivo" placeholder="Describe la novedad..."></textarea></div>
-</div>
-
-<div class="btn-row" style="margin-top:10px"><button class="btn btn-rojo" onclick="guardarNovedad()">Guardar Novedad</button></div>
-</div>
-</div>
-</div>
-
-<div id="lightbox"><button id="lightbox-close" onclick="cerrarLightbox()">✕</button><img alt="" id="lightbox-img" src="" /></div>
-
 <div id="toast">&nbsp;</div>
+
 <script>
-  const SUPABASE_URL = 'https://tcbbugjtzqrdrmimnpwb.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_ZHqiBPBIiSJDVfOTPrwyww_hjgKkn5x';
-  const BUCKET = 'fotos-etapas';
-  const ETAPAS = ['Desarmado','Carrocería','Alistamiento','Cabina','Armado','Lavado','Control Calidad'];
+const SUPABASE_URL = 'https://tcbbugjtzqrdrmimnpwb.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ZHqiBPBIiSJDVfOTPrwyww_hjgKkn5x';
+const BUCKET = 'fotos-etapas';
 
-  let ordenActual = null;
-  let filtroEstado = 'Activa';
-
-  // API
-  async function api(path, method = 'GET', body = null, extra = {}) {
-    const opts = { method, headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, ...extra } };
-    if (body) opts.body = JSON.stringify(body);
-    const res = await fetch(SUPABASE_URL + '/rest/v1' + path, opts);
-    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || res.statusText); }
-    const text = await res.text();
-    return text ? JSON.parse(text) : null;
+// ─── CATÁLOGO DE SERVICIOS Y ETAPAS ───────────────────────────────────────────
+const CATALOGO = {
+  latoneria: {
+    nombre: 'Latonería', clase: 'latoneria',
+    etapas: [
+      { key: 'lat_desarmado', nombre: 'Desarmado / Armado' },
+      { key: 'lat_tapiceria', nombre: 'Tapicería' },
+      { key: 'lat_latoneria', nombre: 'Latonería' },
+      { key: 'lat_blindaje',  nombre: 'Blindaje' },
+      { key: 'lat_vidrieria', nombre: 'Vidriería' },
+      { key: 'lat_alistador', nombre: 'Alistador' },
+      { key: 'lat_tot',       nombre: 'T.O.T', tot: true },
+    ]
+  },
+  pintura: {
+    nombre: 'Pintura', clase: 'pintura',
+    etapas: [
+      { key: 'pin_alistador', nombre: 'Alistador' },
+      { key: 'pin_pintor',    nombre: 'Pintor' },
+      { key: 'pin_tot',       nombre: 'T.O.T', tot: true },
+    ]
+  },
+  mecanica: {
+    nombre: 'Mecánica', clase: 'mecanica',
+    etapas: [
+      { key: 'mec_mecanica',  nombre: 'Mecánica' },
+      { key: 'mec_electrica', nombre: 'Eléctrica' },
+      { key: 'mec_tot',       nombre: 'T.O.T', tot: true },
+    ]
+  },
+  adicionales: {
+    nombre: 'Adicionales', clase: 'adicionales',
+    etapas: [
+      { key: 'adi_polarizados', nombre: 'Polarizados' },
+      { key: 'adi_radio',       nombre: 'Radio' },
+      { key: 'adi_lavado',      nombre: 'Lavado' },
+      { key: 'adi_tot',         nombre: 'T.O.T', tot: true },
+      { key: 'adi_otro',        nombre: 'Otro', otro: true },
+    ]
   }
+};
 
-  async function storageUpload(file, path) {
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': file.type, 'x-upsert': 'true' },
-      body: file
-    });
-    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Error subiendo foto'); }
-    return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
-  }
+let ordenActual      = null;
+let filtroEstado     = 'Activa';
+let modalOrdenId     = null;
+let srvSeleccionados = [];
+let modalPaso        = 1;
+let mecanicos        = [];
 
-  function toast(msg, tipo = 'ok') {
-    const t = document.getElementById('toast');
-    t.textContent = msg; t.className = 'show ' + tipo;
-    setTimeout(() => t.className = '', 3000);
-  }
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+async function api(path, method = 'GET', body = null, extra = {}) {
+  const opts = { method, headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, ...extra } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(SUPABASE_URL + '/rest/v1' + path, opts);
+  if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || res.statusText); }
+  const text = await res.text(); return text ? JSON.parse(text) : null;
+}
+async function storageUpload(file, path) {
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
+    method: 'POST', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': file.type, 'x-upsert': 'true' }, body: file
+  });
+  if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Error subiendo foto'); }
+  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+}
+function toast(msg, tipo = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show ' + tipo;
+  setTimeout(() => t.className = '', 3000);
+}
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  const btn = [...document.querySelectorAll('.tab')].find(b => b.getAttribute('onclick')?.includes("'" + tab + "'"));
+  if (btn) btn.classList.add('active');
+}
+function formatFecha(f) { return f ? new Date(f).toLocaleDateString('es-CO') : '—'; }
+function formatTS(ts) { return ts ? new Date(ts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '—'; }
+function kid(id) { return 'e' + String(id).replace(/\D/g, ''); }
 
-  function showTab(tab) {
-    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.getElementById('panel-' + tab).classList.add('active');
-    const btn = Array.from(document.querySelectorAll('.tab')).find(b => b.getAttribute('onclick')?.includes("'" + tab + "'"));
-    if (btn) btn.classList.add('active');
-  }
+// ─── FILTRO Y LISTA ───────────────────────────────────────────────────────────
+function setFiltro(estado) {
+  filtroEstado = estado;
+  ['Activa','Entregada','Archivada'].forEach(e => {
+    const b = document.getElementById('filtro-' + e.toLowerCase());
+    if (b) b.className = e === estado ? 'btn btn-rojo btn-sm' : 'btn btn-gris btn-sm';
+  });
+  cargarOrdenes();
+}
 
-  function formatFecha(f) { return f ? new Date(f).toLocaleDateString('es-CO') : '—'; }
-  function formatTS(ts) { return ts ? new Date(ts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '—'; }
-  function key(nombre) { return nombre.replace(/ /g, '_'); }
-
-  // FILTRO
-  function setFiltro(estado) {
-    filtroEstado = estado;
-    ['Activa','Entregada','Archivada'].forEach(e => {
-      const btn = document.getElementById('filtro-' + e.toLowerCase());
-      btn.className = e === estado ? 'btn btn-rojo btn-sm' : 'btn btn-gris btn-sm';
-    });
-    cargarOrdenes();
-  }
-
-  // ÓRDENES
-  async function cargarOrdenes() {
-    const lista = document.getElementById('lista-ordenes');
-    lista.innerHTML = '<div class="loading">Cargando...</div>';
-    try {
-      const data = await api(`/ordenes?estado=eq.${filtroEstado}&order=creado_en.desc&limit=50`);
-      if (!data || !data.length) { lista.innerHTML = `<div class="empty">No hay órdenes ${filtroEstado.toLowerCase()}s.</div>`; return; }
-      lista.innerHTML = data.map(o => `
+async function cargarOrdenes() {
+  const lista = document.getElementById('lista-ordenes');
+  lista.innerHTML = '<div class="loading">Cargando...</div>';
+  try {
+    const data = await api(`/ordenes?estado=eq.${filtroEstado}&order=creado_en.desc&limit=50`);
+    if (!data?.length) { lista.innerHTML = `<div class="empty">No hay órdenes ${filtroEstado.toLowerCase()}s.</div>`; return; }
+    const ids = data.map(o => o.id).join(',');
+    const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio`).catch(() => []) || [];
+    lista.innerHTML = data.map(o => {
+      const srvs = [...new Set(etapas.filter(e => e.orden_id === o.id).map(e => e.servicio).filter(Boolean))];
+      const badges = srvs.map(s => `<span class="srv-badge ${s}">${CATALOGO[s]?.nombre || s}</span>`).join('');
+      return `
         <div class="orden-item" onclick="abrirOrden(${o.id})">
           <div>
             <div class="orden-placa">${o.placa}</div>
-            <div class="orden-info">${o.marca || ''} ${o.linea || ''} · ${o.propietario || ''}</div>
+            <div class="orden-info">${[o.marca, o.linea, o.propietario].filter(Boolean).join(' · ')}</div>
+            ${srvs.length ? `<div class="servicios-badges">${badges}</div>` : ''}
           </div>
           <div style="text-align:right">
-            <div class="orden-estado">${o.aseguradora || 'Sin aseg.'}</div>
+            <div style="font-size:12px;font-family:'IBM Plex Mono',monospace;padding:4px 10px;border-radius:20px;background:var(--gris)">${o.aseguradora || 'Sin aseg.'}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:4px">Entrega: ${formatFecha(o.fecha_entrega_1)}</div>
-          </div>
-        </div>`).join('');
-    } catch(e) { lista.innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
-  }
-
-  async function crearOrden() {
-    const placa = document.getElementById('n-placa').value.trim().toUpperCase();
-    if (!placa) { toast('La placa es obligatoria', 'err'); return; }
-    const body = {
-      placa,
-      aseguradora: document.getElementById('n-aseguradora').value || null,
-      marca: document.getElementById('n-marca').value || null,
-      linea: document.getElementById('n-linea').value || null,
-      propietario: document.getElementById('n-propietario').value || null,
-      telefono: document.getElementById('n-telefono').value || null,
-      nivel_dano: document.getElementById('n-dano').value || null,
-      fecha_entrega_1: document.getElementById('n-fecha1').value || null,
-      fecha_entrega_2: document.getElementById('n-fecha2').value || null,
-    };
-    try {
-      const res = await api('/ordenes?select=id', 'POST', body, { 'Prefer': 'return=representation' });
-      toast('Orden creada ✓');
-      ['n-placa','n-aseguradora','n-marca','n-linea','n-propietario','n-telefono','n-dano','n-fecha1','n-fecha2'].forEach(id => document.getElementById(id).value = '');
-      await cargarOrdenes();
-      if (res?.[0]) abrirOrden(res[0].id);
-    } catch(e) { toast('Error: ' + e.message, 'err'); }
-  }
-
-  async function abrirOrden(id) {
-    try {
-      const data = await api(`/ordenes?id=eq.${id}`);
-      if (!data?.[0]) { toast('Orden no encontrada', 'err'); return; }
-      ordenActual = data[0];
-      document.getElementById('d-propietario').textContent = ordenActual.propietario || '—';
-      document.getElementById('d-vehiculo').textContent = `${ordenActual.marca || ''} ${ordenActual.linea || ''}`.trim() || '—';
-      document.getElementById('d-aseguradora').textContent = ordenActual.aseguradora || '—';
-      document.getElementById('d-dano').textContent = ordenActual.nivel_dano || '—';
-      document.getElementById('d-fecha1').textContent = formatFecha(ordenActual.fecha_entrega_1);
-      document.getElementById('d-fecha2').textContent = formatFecha(ordenActual.fecha_entrega_2);
-      const estado = ordenActual.estado || 'Activa';
-      document.getElementById('d-estado-select').value = estado;
-      document.getElementById('tab-detalle').style.display = '';
-      showTab('detalle');
-      await cargarEtapas();
-    } catch(e) { toast('Error: ' + e.message, 'err'); }
-  }
-
-  async function cambiarEstado() {
-    const nuevoEstado = document.getElementById('d-estado-select').value;
-    try {
-      await api(`/ordenes?id=eq.${ordenActual.id}`, 'PATCH', { estado: nuevoEstado });
-      ordenActual.estado = nuevoEstado;
-      const badge = document.getElementById('d-estado-badge');
-      badge.textContent = nuevoEstado;
-      badge.style.background = nuevoEstado === 'Activa' ? '#D1FAE5' : nuevoEstado === 'Entregada' ? '#DBEAFE' : '#F3F4F6';
-      badge.style.color = nuevoEstado === 'Activa' ? '#065F46' : nuevoEstado === 'Entregada' ? '#1E40AF' : '#6B7280';
-      toast(`Estado: ${nuevoEstado} ✓`);
-      cargarOrdenes();
-    } catch(e) { toast('Error: ' + e.message, 'err'); }
-  }
-
-  // ETAPAS
-  async function cargarEtapas() {
-    const container = document.getElementById('etapas-container');
-    const existentes = await api(`/etapas?orden_id=eq.${ordenActual.id}`).catch(() => []) || [];
-    const todasFotos = await api(`/fotos_etapas?orden_id=eq.${ordenActual.id}`).catch(() => []) || [];
-    const hayActiva = existentes.some(x => x.inicio && !x.fin);
-
-    container.innerHTML = ETAPAS.map(nombre => {
-      const e = existentes.find(x => x.etapa === nombre);
-      const eId = e?.id || '';
-      const badge = !e ? 'Pendiente' : (e.fin ? 'Completada' : 'En proceso');
-      const badgeClass = !e ? '' : (e.fin ? 'completada' : 'iniciada');
-      const fotos = todasFotos.filter(f => f.etapa_nombre === nombre);
-
-      let acciones = '';
-      if (!e && !hayActiva) {
-        acciones = `<button class="btn btn-verde btn-sm" onclick="iniciarEtapa('${nombre}')">▶ Iniciar</button>`;
-      } else if (e && e.inicio && !e.fin) {
-        acciones = `<button class="btn btn-rojo btn-sm" onclick="finalizarEtapa('${nombre}', ${e.id})">■ Finalizar</button>`;
-      } else if (e && e.fin) {
-        acciones = `<span style="font-size:12px;color:var(--muted);font-style:italic">Etapa completada</span>`;
-      } else {
-        acciones = `<span style="font-size:12px;color:var(--muted);font-style:italic">Esperando etapa anterior</span>`;
-      }
-
-      const fotosHtml = fotos.map(f => `
-        <div class="foto-thumb" onclick="abrirLightbox('${f.url}')">
-          <img src="${f.url}" alt="">
-          <button class="foto-delete" onclick="event.stopPropagation();eliminarFoto(${f.id},'${f.url}','${nombre}')">✕</button>
-        </div>`).join('');
-
-      return `
-        <div class="etapa-card">
-          <div class="etapa-header" onclick="toggleEtapa('et-${key(nombre)}')">
-            <span class="etapa-nombre">${nombre}</span>
-            <span class="etapa-badge ${badgeClass}">${badge}</span>
-          </div>
-          <div class="etapa-body" id="et-${key(nombre)}">
-            <div class="etapa-actions">${acciones}</div>
-            <div class="timestamps">
-              <div class="timestamp-info">Inicio: <strong>${e?.inicio ? formatTS(e.inicio) : '—'}</strong></div>
-              <div class="timestamp-info">Fin: <strong>${e?.fin ? formatTS(e.fin) : '—'}</strong></div>
-            </div>
-            ${e ? `
-            <div class="grid-2" style="margin-bottom:4px">
-              <div>
-                <label>Técnico</label>
-                <input id="tec-${nombre}" type="text" value="${e.tecnico || ''}" placeholder="Nombre técnico" onblur="actualizarCampo(${e.id},'tecnico','tec-${nombre}')">
-              </div>
-              <div style="display:flex;gap:8px">
-                <div style="flex:1"><label>H. Facturadas</label><input id="hf-${nombre}" type="number" step="0.5" value="${e.horas_facturadas || ''}" placeholder="0" onblur="actualizarHoras(${e.id},'${nombre}')"></div>
-                <div style="flex:1"><label>H. Adicionales</label><input id="ha-${nombre}" type="number" step="0.5" value="${e.horas_adicionales || ''}" placeholder="0" onblur="actualizarHoras(${e.id},'${nombre}')"></div>
-              </div>
-            </div>` : ''}
-            <div class="fotos-section">
-              <label>Fotos (${fotos.length})</label>
-              <div class="fotos-grid" id="fotos-grid-${key(nombre)}">${fotosHtml}</div>
-              <div class="upload-area" onclick="document.getElementById('input-foto-${key(nombre)}').click()">
-                <input type="file" id="input-foto-${key(nombre)}" accept="image/*" multiple onchange="subirFotos(this,'${nombre}','${eId}')">
-                <div style="font-size:20px">📷</div>
-                <p>Clic para subir fotos</p>
-                <div class="upload-progreso" id="prog-${key(nombre)}"></div>
-              </div>
-            </div>
           </div>
         </div>`;
     }).join('');
-  }
+  } catch(e) { lista.innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+}
 
-  function toggleEtapa(id) { document.getElementById(id)?.classList.toggle('open'); }
+// ─── INVENTARIO ITEMS ─────────────────────────────────────────────────────────
+const INV_LABELS = {
+  llantas: '4 Llantas', llanta_repuesto: 'Llanta repuesto', gato: 'Gato',
+  radio: 'Radio/Pantalla', documentos: 'Documentos', tapetes: 'Tapetes',
+  herramientas: 'Herramientas', extintor: 'Extintor'
+};
 
-  async function iniciarEtapa(nombre) {
-    try {
-      await api('/etapas', 'POST', { orden_id: ordenActual.id, etapa: nombre, inicio: new Date().toISOString() }, { 'Prefer': 'return=minimal' });
-      toast(`${nombre} iniciada ✓`);
-      await cargarEtapas();
-      document.getElementById('et-' + key(nombre))?.classList.add('open');
-    } catch(e) { toast('Error: ' + e.message, 'err'); }
-  }
+function toggleInv(el, key) {
+  const chk = el.querySelector('input[type=checkbox]');
+  chk.checked = !chk.checked;
+  el.classList.toggle('checked', chk.checked);
+}
 
-  async function finalizarEtapa(nombre, etapaId) {
-    try {
-      await api(`/etapas?id=eq.${etapaId}`, 'PATCH', { fin: new Date().toISOString() });
-      toast(`${nombre} finalizada ✓`);
-      await cargarEtapas();
-    } catch(e) { toast('Error: ' + e.message, 'err'); }
-  }
+// Fotos de ingreso pendientes (se suben después de crear la orden)
+let fotosIngresoPendientes = [];
 
-  async function actualizarCampo(etapaId, campo, inputId) {
-    const val = document.getElementById(inputId)?.value || null;
-    await api(`/etapas?id=eq.${etapaId}`, 'PATCH', { [campo]: val }).catch(() => {});
-  }
+function previewFotosIngreso(input) {
+  const files = Array.from(input.files);
+  fotosIngresoPendientes = [...fotosIngresoPendientes, ...files];
+  renderPreviewIngreso();
+}
 
-  async function actualizarHoras(etapaId, nombre) {
-    const hf = parseFloat(document.getElementById(`hf-${nombre}`)?.value) || null;
-    const ha = parseFloat(document.getElementById(`ha-${nombre}`)?.value) || null;
-    await api(`/etapas?id=eq.${etapaId}`, 'PATCH', { horas_facturadas: hf, horas_adicionales: ha }).catch(() => {});
-  }
+function renderPreviewIngreso() {
+  const grid = document.getElementById('fotos-ingreso-preview');
+  if (!grid) return;
+  grid.innerHTML = fotosIngresoPendientes.map((f, i) => `
+    <div class="foto-thumb" style="position:relative">
+      <img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover">
+      <button class="foto-delete" style="opacity:1" onclick="quitarFotoIngreso(${i})">✕</button>
+    </div>`).join('');
+}
 
-  // FOTOS
-  async function subirFotos(input, etapaNombre, etapaId) {
-    const files = Array.from(input.files);
-    if (!files.length) return;
-    const progEl = document.getElementById('prog-' + key(etapaNombre));
-    let subidas = 0;
-    progEl.textContent = `Subiendo 0 / ${files.length}...`;
-    for (const file of files) {
-      try {
-        const ext = file.name.split('.').pop();
-        const path = `${ordenActual.id}/${etapaNombre}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-        const url = await storageUpload(file, path);
-        await api('/fotos_etapas', 'POST', {
-          etapa_id: etapaId ? parseInt(etapaId) : null,
-          orden_id: ordenActual.id,
-          etapa_nombre: etapaNombre,
-          url, nombre: file.name
-        }, { 'Prefer': 'return=minimal' });
-        subidas++;
-        progEl.textContent = `Subiendo ${subidas} / ${files.length}...`;
-      } catch(e) { toast(`Error: ${file.name} — ${e.message}`, 'err'); }
+function quitarFotoIngreso(i) {
+  fotosIngresoPendientes.splice(i, 1);
+  renderPreviewIngreso();
+}
+
+// ─── BUSCAR POR PLACA ─────────────────────────────────────────────────────────
+async function buscarPorPlaca() {
+  const placa = document.getElementById('n-placa').value.trim().toUpperCase();
+  const resultDiv  = document.getElementById('placa-resultado');
+  const histDiv    = document.getElementById('historial-previo');
+  const histLista  = document.getElementById('historial-lista');
+  if (!placa || placa.length < 3) { resultDiv.style.display = 'none'; histDiv.style.display = 'none'; return; }
+
+  try {
+    const ordenes = await api(`/ordenes?placa=eq.${placa}&order=creado_en.desc&limit=5`);
+    if (ordenes?.length) {
+      const ultima = ordenes[0];
+      // Autocompletar con datos de la orden más reciente
+      document.getElementById('n-marca').value       = ultima.marca || '';
+      document.getElementById('n-linea').value       = ultima.linea || '';
+      document.getElementById('n-propietario').value = ultima.propietario || '';
+      document.getElementById('n-telefono').value    = ultima.telefono || '';
+      if (ultima.modelo) document.getElementById('n-modelo').value = ultima.modelo;
+
+      resultDiv.className = 'placa-resultado encontrado';
+      resultDiv.innerHTML = `✔ Vehículo encontrado — datos autocompletados. Verifica y corrige si algo cambió.`;
+      resultDiv.style.display = 'block';
+
+      // Historial
+      histLista.innerHTML = ordenes.map(o => `
+        <div class="historial-item" onclick="abrirOrden(${o.id})">
+          <div>
+            <span class="historial-item-placa">${o.placa}</span>
+            <span style="color:var(--muted);margin-left:8px">${o.aseguradora || '—'} · ${o.nivel_dano || '—'}</span>
+          </div>
+          <div style="text-align:right;font-size:11px;color:var(--muted)">
+            ${formatFecha(o.creado_en)}<br>
+            <span style="font-family:'IBM Plex Mono',monospace">${o.estado}</span>
+          </div>
+        </div>`).join('');
+      histDiv.style.display = 'block';
+    } else {
+      resultDiv.className = 'placa-resultado nuevo';
+      resultDiv.innerHTML = `ℹ Placa nueva — no hay registros anteriores.`;
+      resultDiv.style.display = 'block';
+      histDiv.style.display = 'none';
     }
-    progEl.textContent = '';
-    input.value = '';
-    toast(`${subidas} foto(s) subida(s) ✓`);
+  } catch(e) { resultDiv.style.display = 'none'; }
+}
+
+function cancelarNuevaOrden() {
+  // Limpiar todo el formulario
+  ['n-placa','n-marca','n-linea','n-modelo','n-color','n-propietario','n-telefono','n-km','n-fecha1','n-fecha2','n-inv-obs']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('n-aseguradora').value = '';
+  document.getElementById('n-dano').value = '';
+  document.querySelectorAll('.inv-item').forEach(el => {
+    el.classList.remove('checked');
+    el.querySelector('input[type=checkbox]').checked = false;
+  });
+  fotosIngresoPendientes = [];
+  renderPreviewIngreso();
+  document.getElementById('placa-resultado').style.display = 'none';
+  document.getElementById('historial-previo').style.display = 'none';
+  showTab('ordenes');
+}
+
+// ─── CREAR ORDEN ──────────────────────────────────────────────────────────────
+async function crearOrden() {
+  const placa = document.getElementById('n-placa').value.trim().toUpperCase();
+  if (!placa) { toast('La placa es obligatoria', 'err'); return; }
+
+  // Recoger inventario
+  const invItems = {};
+  document.querySelectorAll('.inv-item input[type=checkbox]').forEach(chk => {
+    invItems[chk.value] = chk.checked;
+  });
+
+  const body = {
+    placa,
+    aseguradora:    document.getElementById('n-aseguradora').value || null,
+    marca:          document.getElementById('n-marca').value || null,
+    linea:          document.getElementById('n-linea').value || null,
+    modelo:         document.getElementById('n-modelo').value || null,
+    color:          document.getElementById('n-color').value || null,
+    propietario:    document.getElementById('n-propietario').value || null,
+    telefono:       document.getElementById('n-telefono').value || null,
+    nivel_dano:     document.getElementById('n-dano').value || null,
+    kilometraje:    parseInt(document.getElementById('n-km').value) || null,
+    fecha_entrega_1:document.getElementById('n-fecha1').value || null,
+    fecha_entrega_2:document.getElementById('n-fecha2').value || null,
+    inventario:     JSON.stringify({ items: invItems, observaciones: document.getElementById('n-inv-obs').value.trim() || null }),
+    estado: 'Activa'
+  };
+
+  try {
+    const res = await api('/ordenes?select=id', 'POST', body, { Prefer: 'return=representation' });
+    const ordenId = res[0].id;
+
+    // Subir fotos de ingreso si las hay
+    if (fotosIngresoPendientes.length) {
+      const prog = document.getElementById('prog-ingreso');
+      prog.textContent = `Subiendo fotos 0/${fotosIngresoPendientes.length}...`;
+      let sub = 0;
+      for (const file of fotosIngresoPendientes) {
+        try {
+          const ext = file.name.split('.').pop();
+          const path = `${ordenId}/ingreso/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+          const url = await storageUpload(file, path);
+          await api('/fotos_ingreso', 'POST', { orden_id: ordenId, url, nombre: file.name }, { Prefer: 'return=minimal' });
+          sub++;
+          prog.textContent = `Subiendo fotos ${sub}/${fotosIngresoPendientes.length}...`;
+        } catch(e) { console.error('Error subiendo foto ingreso:', e); }
+      }
+      prog.textContent = '';
+    }
+
+    // Limpiar formulario
+    cancelarNuevaOrden();
+    fotosIngresoPendientes = [];
+    modalOrdenId = ordenId;
+    toast('Orden creada ✓');
+    abrirModalServicios();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ─── MODAL SERVICIOS (nueva orden) ───────────────────────────────────────────
+function abrirModalServicios() {
+  srvSeleccionados = []; modalPaso = 1;
+  document.querySelectorAll('.srv-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('srv-error').style.display = 'none';
+  document.getElementById('modal-titulo').textContent = 'Paso 1 — ¿Qué servicios necesita?';
+  document.getElementById('btn-back').style.display = 'none';
+  document.getElementById('btn-next').textContent = 'Continuar →';
+  document.getElementById('paso-1').classList.add('active');
+  document.getElementById('paso-2').classList.remove('active');
+  document.getElementById('modal-servicios').classList.add('show');
+}
+function cerrarModalServicios() {
+  document.getElementById('modal-servicios').classList.remove('show');
+  if (modalOrdenId) { cargarOrdenes(); abrirOrden(modalOrdenId); modalOrdenId = null; }
+}
+function toggleServicio(srv) {
+  const card = document.getElementById('srv-' + srv);
+  if (card.classList.toggle('selected')) srvSeleccionados.push(srv);
+  else srvSeleccionados = srvSeleccionados.filter(s => s !== srv);
+}
+function modalNext() {
+  if (modalPaso === 1) {
+    if (!srvSeleccionados.length) { document.getElementById('srv-error').style.display = 'block'; return; }
+    document.getElementById('srv-error').style.display = 'none';
+    buildChecklist('checklist-nuevo', srvSeleccionados, []);
+    document.getElementById('paso-1').classList.remove('active');
+    document.getElementById('paso-2').classList.add('active');
+    document.getElementById('btn-back').style.display = '';
+    document.getElementById('btn-next').textContent = 'Guardar etapas ✓';
+    document.getElementById('modal-titulo').textContent = 'Paso 2 — ¿Qué etapas aplican?';
+    modalPaso = 2;
+  } else {
+    guardarEtapasNueva();
+  }
+}
+function modalBack() {
+  document.getElementById('paso-2').classList.remove('active');
+  document.getElementById('paso-1').classList.add('active');
+  document.getElementById('btn-back').style.display = 'none';
+  document.getElementById('btn-next').textContent = 'Continuar →';
+  document.getElementById('modal-titulo').textContent = 'Paso 1 — ¿Qué servicios necesita?';
+  modalPaso = 1;
+}
+
+// ─── CHECKLIST BUILDER ────────────────────────────────────────────────────────
+// existentes: array de { etapa_key, inicio } para marcar/deshabilitar
+function buildChecklist(containerId, servicios, existentes) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = servicios.map(srvKey => {
+    const srv = CATALOGO[srvKey]; if (!srv) return '';
+    const mecOpts = mecanicos.map(m =>
+      `<option value="${m.id}">${m.nombre}${m.rol ? ` (${m.rol})` : ''}</option>`
+    ).join('');
+    const items = srv.etapas.map(et => {
+      const ex = existentes.find(e => e.etapa_key === et.key);
+      const iniciada = !!ex?.inicio;
+      const checked  = !!ex;
+      const dis      = iniciada ? 'disabled' : '';
+      const mecSelected = ex?.mecanico_id ?? '';
+      const extraHtml = (et.tot || et.otro)
+        ? `<div class="extra-input${checked ? ' show' : ''}" id="extra-${et.key}">
+             <input type="text" placeholder="${et.tot ? '¿Quién es el tercero?' : 'Especifica cuál...'}" style="font-size:13px;margin-top:4px">
+           </div>`
+        : '';
+      // Dropdown de mecánico — aparece al marcar la etapa
+      const mecHtml = !iniciada ? `
+        <div class="extra-input${checked ? ' show' : ''}" id="mec-${et.key}" style="margin-top:6px">
+          <select id="mec-sel-${et.key}" style="font-size:13px">
+            <option value="">— Asignar mecánico * —</option>
+            ${mecanicos.map(m => `<option value="${m.id}"${m.id == mecSelected ? ' selected' : ''}>${m.nombre}${m.rol ? ` (${m.rol})` : ''}</option>`).join('')}
+          </select>
+        </div>` : `<div style="font-size:11px;color:var(--muted);margin-top:4px">Mecánico ya asignado</div>`;
+      return `
+        <div class="check-item">
+          <input type="checkbox" id="chk-${et.key}" value="${et.key}" ${checked ? 'checked' : ''} ${dis}
+            onchange="onChkChange('${et.key}',this.checked)">
+          <div style="flex:1">
+            <div class="check-item-label">${et.nombre}${iniciada ? ' <span style="font-size:10px;color:var(--muted)">(ya iniciada)</span>' : ''}</div>
+            ${extraHtml}
+            ${mecHtml}
+          </div>
+        </div>`;
+    }).join('');
+    return `<div class="etapas-grupo"><span class="etapas-grupo-titulo ${srv.clase}">${srv.nombre}</span>${items}</div>`;
+  }).join('');
+}
+function onChkChange(key, checked) {
+  const extraDiv = document.getElementById('extra-' + key);
+  if (extraDiv) extraDiv.classList.toggle('show', checked);
+  const mecDiv = document.getElementById('mec-' + key);
+  if (mecDiv) mecDiv.classList.toggle('show', checked);
+}
+
+function recogerChecklist(containerId) {
+  const result = [];
+  document.querySelectorAll(`#${containerId} input[type=checkbox]:checked:not(:disabled)`).forEach(chk => {
+    const key = chk.value;
+    let srvKey = null, etDef = null;
+    for (const [sk, sv] of Object.entries(CATALOGO)) {
+      const et = sv.etapas.find(e => e.key === key);
+      if (et) { srvKey = sk; etDef = et; break; }
+    }
+    if (!etDef) return;
+    const inp    = document.querySelector(`#extra-${key} input`);
+    const mecSel = document.getElementById(`mec-sel-${key}`);
+    result.push({
+      key,
+      servicio:    srvKey,
+      nombre:      etDef.nombre,
+      tercero:     inp?.value?.trim() || null,
+      mecanico_id: mecSel?.value ? parseInt(mecSel.value) : null
+    });
+  });
+  return result;
+}
+
+async function guardarEtapasNueva() {
+  const etapas = recogerChecklist('checklist-nuevo');
+  if (!etapas.length) { toast('Selecciona al menos una etapa', 'err'); return; }
+
+  // Validar que todas tengan mecánico asignado
+  const sinMecanico = etapas.filter(et => !et.mecanico_id && !et.tercero);
+  if (sinMecanico.length) {
+    toast(`Asigna un mecánico a: ${sinMecanico.map(e => e.nombre).join(', ')}`, 'err');
+    return;
+  }
+
+  try {
+    for (const et of etapas) {
+      const mec = mecanicos.find(m => m.id === et.mecanico_id);
+      await api('/etapas', 'POST', {
+        orden_id:    modalOrdenId,
+        servicio:    et.servicio,
+        etapa_key:   et.key,
+        etapa:       et.nombre,
+        tercero:     et.tercero || null,
+        mecanico_id: et.mecanico_id || null,
+        tecnico:     mec?.nombre || null
+      }, { Prefer: 'return=minimal' });
+    }
+    toast('Etapas guardadas ✓');
+    document.getElementById('modal-servicios').classList.remove('show');
+    await cargarOrdenes();
+    await abrirOrden(modalOrdenId);
+    modalOrdenId = null;
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ─── ABRIR ORDEN ──────────────────────────────────────────────────────────────
+async function abrirOrden(id) {
+  try {
+    const data = await api(`/ordenes?id=eq.${id}`);
+    if (!data?.[0]) { toast('Orden no encontrada', 'err'); return; }
+    ordenActual = data[0];
+    document.getElementById('d-placa').textContent       = ordenActual.placa;
+    document.getElementById('d-meta').textContent        = [ordenActual.marca, ordenActual.linea, ordenActual.modelo ? `(${ordenActual.modelo})` : '', ordenActual.propietario].filter(Boolean).join(' · ');
+    document.getElementById('d-propietario').textContent = ordenActual.propietario || '—';
+    document.getElementById('d-vehiculo').textContent    = [ordenActual.marca, ordenActual.linea, ordenActual.color].filter(Boolean).join(' ') || '—';
+    document.getElementById('d-aseguradora').textContent = ordenActual.aseguradora || '—';
+    document.getElementById('d-dano').textContent        = ordenActual.nivel_dano || '—';
+    document.getElementById('d-km').textContent          = ordenActual.kilometraje ? `${ordenActual.kilometraje.toLocaleString()} km` : '—';
+    document.getElementById('d-fecha1').textContent      = formatFecha(ordenActual.fecha_entrega_1);
+    document.getElementById('d-fecha2').textContent      = formatFecha(ordenActual.fecha_entrega_2);
+    document.getElementById('d-estado-select').value    = ordenActual.estado || 'Activa';
+
+    // Inventario
+    try {
+      const inv = ordenActual.inventario ? JSON.parse(ordenActual.inventario) : null;
+      if (inv?.items) {
+        const activos = Object.entries(inv.items).filter(([,v]) => v).map(([k]) => INV_LABELS[k] || k);
+        document.getElementById('d-inventario').innerHTML = activos.length
+          ? activos.map(a => `<span style="display:inline-block;background:#D1FAE5;color:#065F46;font-size:11px;padding:2px 7px;border-radius:20px;margin:2px">${a}</span>`).join('')
+          : '<span style="color:var(--muted)">Sin ítems marcados</span>';
+        document.getElementById('d-inv-obs').textContent = inv.observaciones || '—';
+      } else {
+        document.getElementById('d-inventario').textContent = '—';
+        document.getElementById('d-inv-obs').textContent = '—';
+      }
+    } catch { document.getElementById('d-inventario').textContent = '—'; }
+
+    // Fotos de ingreso
+    const fotosIng = await api(`/fotos_ingreso?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || [];
+    const gridIng = document.getElementById('d-fotos-ingreso');
+    gridIng.innerHTML = fotosIng.length
+      ? fotosIng.map(f => `<div class="foto-thumb" onclick="abrirLightbox('${f.url}')"><img src="${f.url}" alt=""></div>`).join('')
+      : '<span style="font-size:12px;color:var(--muted)">Sin fotos de ingreso.</span>';
+
+    document.getElementById('tab-detalle').style.display = '';
+    showTab('detalle');
     await cargarEtapas();
-    document.getElementById('et-' + key(etapaNombre))?.classList.add('open');
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+async function cambiarEstado() {
+  const v = document.getElementById('d-estado-select').value;
+  try { await api(`/ordenes?id=eq.${ordenActual.id}`, 'PATCH', { estado: v }); ordenActual.estado = v; toast(`Estado: ${v} ✓`); cargarOrdenes(); }
+  catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ─── CARGAR Y RENDERIZAR ETAPAS ───────────────────────────────────────────────
+async function cargarEtapas() {
+  const container = document.getElementById('servicios-container');
+  container.innerHTML = '<div class="loading">Cargando...</div>';
+  const [existentes, fotos, novedades] = await Promise.all([
+    api(`/etapas?orden_id=eq.${ordenActual.id}&order=creado_en.asc`).catch(() => []) || [],
+    api(`/fotos_etapas?orden_id=eq.${ordenActual.id}`).catch(() => []) || [],
+    api(`/novedades?orden_id=eq.${ordenActual.id}&order=creado_en.desc`).catch(() => []) || []
+  ]);
+  if (!existentes.length) {
+    container.innerHTML = `<div class="empty"><p>No hay etapas registradas aún.</p>
+      <button class="btn btn-rojo" style="margin-top:12px" onclick="abrirModalAgregar()">+ Asignar servicios y etapas</button></div>`;
+    return;
+  }
+  const hayActiva = existentes.some(x => x.inicio && !x.fin);
+  const porServicio = {};
+  existentes.forEach(e => { const s = e.servicio || 'sin_servicio'; if (!porServicio[s]) porServicio[s] = []; porServicio[s].push(e); });
+
+  container.innerHTML = Object.entries(porServicio).map(([srvKey, ets]) => {
+    const srv = CATALOGO[srvKey];
+    const srvNombre = srv?.nombre || srvKey;
+    const srvClase  = srv?.clase  || 'latoneria';
+    const comp = ets.filter(e => e.fin).length;
+    const etapsHtml = ets.map(e => renderEtapa(e, fotos, novedades, hayActiva)).join('');
+    return `
+      <div class="srv-panel">
+        <div class="srv-panel-header ${srvClase}" onclick="togglePanel('sp-${srvKey}')">
+          <span class="srv-panel-titulo ${srvClase}">${srvNombre}</span>
+          <span style="font-size:11px;font-family:'IBM Plex Mono',monospace;opacity:0.7">${comp}/${ets.length} ▾</span>
+        </div>
+        <div class="srv-panel-body open" id="sp-${srvKey}">${etapsHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderEtapa(e, fotos, novedades, hayActiva) {
+  const eid   = e.id;
+  const k     = kid(eid);
+  const nombre = e.etapa || '—';
+  const badge = !e.inicio ? 'Pendiente' : (e.fin ? 'Completada' : 'En proceso');
+  const bCls  = !e.inicio ? '' : (e.fin ? 'completada' : 'iniciada');
+  const eFotos = fotos.filter(f => f.etapa_id === eid);
+  const eNovs  = novedades.filter(n => n.etapa_id === eid);
+
+  let dur = '';
+  if (e.inicio && e.fin) {
+    const m = Math.round((new Date(e.fin) - new Date(e.inicio)) / 60000);
+    dur = `<div class="timestamp-info">Duración: <strong>${Math.floor(m/60)}h ${m%60}m</strong></div>`;
   }
 
-  async function eliminarFoto(fotoId, url, etapaNombre) {
-    if (!confirm('¿Eliminar esta foto?')) return;
+  let acc = '';
+  if (!e.inicio && !hayActiva)     acc = `<button class="btn btn-verde btn-sm" onclick="iniciarEtapa(${eid},'${nombre}')">▶ Iniciar</button>`;
+  else if (e.inicio && !e.fin)     acc = `<button class="btn btn-rojo btn-sm"  onclick="finalizarEtapa(${eid},'${nombre}')">■ Finalizar</button>`;
+  else if (e.fin)                  acc = `<span style="font-size:12px;color:var(--muted);font-style:italic">Completada</span>`;
+  else                             acc = `<span style="font-size:12px;color:var(--muted);font-style:italic">Esperando turno</span>`;
+
+  const fotosHtml = eFotos.map(f => `
+    <div class="foto-thumb" onclick="abrirLightbox('${f.url}')">
+      <img src="${f.url}" alt="">
+      <button class="foto-delete" onclick="event.stopPropagation();eliminarFoto(${f.id},'${f.url}')">✕</button>
+    </div>`).join('');
+
+  const novsHtml = eNovs.length ? eNovs.map(n => `
+    <div class="novedad-item">
+      <div class="novedad-item-header">
+        <span class="novedad-item-tipo ${(n.tipo||'').toLowerCase()}">${n.tipo}</span>
+        <span class="novedad-item-fecha">${formatTS(n.creado_en)}</span>
+      </div>
+      <div class="novedad-item-motivo">${n.motivo || '—'}</div>
+      <div class="novedad-item-resp">Resp: ${n.responsable || '—'}</div>
+    </div>`).join('')
+    : '<div style="font-size:12px;color:var(--muted);padding:4px 0">Sin novedades.</div>';
+
+  return `
+    <div class="etapa-card">
+      <div class="etapa-header" onclick="toggleEtapa('eb-${k}')">
+        <span class="etapa-nombre">${nombre}${e.tercero ? ` <span style="font-size:11px;color:var(--muted);font-weight:400">(${e.tercero})</span>` : ''}</span>
+        <span class="etapa-badge ${bCls}">${badge}</span>
+      </div>
+      <div class="etapa-body" id="eb-${k}">
+        <div class="etapa-actions">${acc}</div>
+        <div class="timestamps">
+          <div class="timestamp-info">Inicio: <strong>${e.inicio ? formatTS(e.inicio) : '—'}</strong></div>
+          <div class="timestamp-info">Fin:    <strong>${e.fin    ? formatTS(e.fin)    : '—'}</strong></div>
+          ${dur}
+        </div>
+        <div class="grid-2" style="margin-bottom:8px">
+          <div><label>Técnico asignado</label>
+            <select id="tec-${k}" onchange="asignarMecanico(${eid},'${k}')">
+              <option value="">— Sin asignar —</option>
+              ${mecanicos.map(m => `<option value="${m.id}" ${e.mecanico_id === m.id ? 'selected' : ''}>${m.nombre}${m.rol ? ` (${m.rol})` : ''}</option>`).join('')}
+            </select>
+          </div>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1"><label>H. Facturadas</label>
+              <input id="hf-${k}" type="number" step="0.5" value="${e.horas_facturadas||''}" placeholder="0"
+                onblur="patchHoras(${eid},'${k}')">
+            </div>
+            <div style="flex:1"><label>H. Adicionales</label>
+              <input id="ha-${k}" type="number" step="0.5" value="${e.horas_adicionales||''}" placeholder="0"
+                onblur="patchHoras(${eid},'${k}')">
+            </div>
+          </div>
+        </div>
+        <div class="fotos-section">
+          <label>Fotos (${eFotos.length})</label>
+          <div class="fotos-grid">${fotosHtml}</div>
+          <div class="upload-area" onclick="document.getElementById('fi-${k}').click()">
+            <input type="file" id="fi-${k}" accept="image/*" multiple onchange="subirFotos(this,'${nombre}',${eid},'${k}')">
+            <div style="font-size:18px">📷</div>
+            <p>Clic para subir fotos</p>
+            <div class="upload-progreso" id="prog-${k}"></div>
+          </div>
+        </div>
+        <div class="novedad-etapa">
+          <div class="novedad-etapa-titulo">Novedades</div>
+          <div id="nlist-${eid}">${novsHtml}</div>
+          <div class="grid-2" style="margin-top:10px">
+            <div><label>Tipo</label>
+              <select id="ntype-${eid}">
+                <option value="Detenido">Detenido</option>
+                <option value="Reproceso">Reproceso</option>
+                <option value="Garantia">Garantía</option>
+              </select>
+            </div>
+            <div><label>Responsable</label>
+              <select id="nresp-${eid}">
+                <option value="S.C.">Servicio al Cliente</option>
+                <option value="A.S.">Asesor de Servicio</option>
+                <option value="C.P.">Control de Producción</option>
+                <option value="A">Almacén</option>
+              </select>
+            </div>
+            <div class="full"><label>Motivo</label>
+              <textarea id="nmot-${eid}" placeholder="Describe la novedad..." style="min-height:52px;font-size:13px"></textarea>
+            </div>
+          </div>
+          <div class="btn-row" style="margin-top:8px">
+            <button class="btn btn-rojo btn-sm" onclick="guardarNovedad(${eid})">Guardar Novedad</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function togglePanel(id) { document.getElementById(id)?.classList.toggle('open'); }
+function toggleEtapa(id) { document.getElementById(id)?.classList.toggle('open'); }
+
+// ─── INICIAR / FINALIZAR ──────────────────────────────────────────────────────
+async function iniciarEtapa(eid, nombre) {
+  try { await api(`/etapas?id=eq.${eid}`, 'PATCH', { inicio: new Date().toISOString() }); toast(`${nombre} iniciada ✓`); await cargarEtapas(); document.getElementById('eb-'+kid(eid))?.classList.add('open'); }
+  catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+async function finalizarEtapa(eid, nombre) {
+  try {
+    await api(`/etapas?id=eq.${eid}`, 'PATCH', { fin: new Date().toISOString() });
+    toast(`${nombre} finalizada ✓`);
+
+    // Notificar a n8n
+    const etapasOrden = await api(`/etapas?orden_id=eq.${ordenActual.id}&order=creado_en.asc`);
+    const idx = etapasOrden.findIndex(e => e.id === eid);
+    const siguiente = etapasOrden[idx + 1] || null;
+
+    fetch('https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orden: {
+          id:          ordenActual.id,
+          placa:       ordenActual.placa,
+          propietario: ordenActual.propietario,
+          marca:       ordenActual.marca,
+          linea:       ordenActual.linea,
+          aseguradora: ordenActual.aseguradora,
+        },
+        etapa_finalizada: {
+          id:     eid,
+          nombre: nombre,
+        },
+        siguiente_etapa: siguiente ? {
+          id:          siguiente.id,
+          nombre:      siguiente.etapa,
+          mecanico_id: siguiente.mecanico_id,
+          tecnico:     siguiente.tecnico,
+        } : null,
+        todas_completadas: etapasOrden.every(e => e.fin || e.id === eid)
+      })
+    }).catch(() => {}); // silencioso — no bloquea si n8n falla
+
+    await cargarEtapas();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+async function patchEtapa(eid, campo, inputId) {
+  const val = document.getElementById(inputId)?.value || null;
+  await api(`/etapas?id=eq.${eid}`, 'PATCH', { [campo]: val }).catch(() => {});
+}
+async function asignarMecanico(eid, k) {
+  const sel = document.getElementById(`tec-${k}`);
+  const mecId = sel?.value ? parseInt(sel.value) : null;
+  const mec = mecanicos.find(m => m.id === mecId);
+  await api(`/etapas?id=eq.${eid}`, 'PATCH', {
+    mecanico_id: mecId,
+    tecnico: mec?.nombre || null
+  }).catch(() => {});
+  if (mec) toast(`Asignado: ${mec.nombre} ✓`);
+}
+async function patchHoras(eid, k) {
+  const hf = parseFloat(document.getElementById(`hf-${k}`)?.value) || null;
+  const ha = parseFloat(document.getElementById(`ha-${k}`)?.value) || null;
+  await api(`/etapas?id=eq.${eid}`, 'PATCH', { horas_facturadas: hf, horas_adicionales: ha }).catch(() => {});
+}
+
+// ─── MODAL AGREGAR ETAPAS (desde detalle) ─────────────────────────────────────
+async function abrirModalAgregar() {
+  if (!ordenActual) return;
+  const existentes = await api(`/etapas?orden_id=eq.${ordenActual.id}&select=etapa_key,inicio,mecanico_id`).catch(() => []) || [];
+  // Mostrar todos los servicios del catálogo para permitir agregar servicios nuevos también
+  // pero pre-marcar y bloquear los que ya existen
+  buildChecklist('checklist-agregar', Object.keys(CATALOGO), existentes);
+  document.getElementById('modal-agregar').classList.add('show');
+}
+function cerrarModalAgregar() { document.getElementById('modal-agregar').classList.remove('show'); }
+
+async function confirmarAgregarEtapas() {
+  const nuevas = recogerChecklist('checklist-agregar');
+  if (!nuevas.length) { toast('No hay etapas nuevas seleccionadas', 'err'); return; }
+
+  const sinMecanico = nuevas.filter(et => !et.mecanico_id && !et.tercero);
+  if (sinMecanico.length) {
+    toast(`Asigna un mecánico a: ${sinMecanico.map(e => e.nombre).join(', ')}`, 'err');
+    return;
+  }
+
+  const existentes = await api(`/etapas?orden_id=eq.${ordenActual.id}&select=etapa_key`).catch(() => []) || [];
+  const yaExisten  = new Set(existentes.map(e => e.etapa_key));
+  const aInsertar  = nuevas.filter(et => !yaExisten.has(et.key));
+  if (!aInsertar.length) { toast('Todas ya existen en la orden', 'err'); return; }
+
+  try {
+    for (const et of aInsertar) {
+      const mec = mecanicos.find(m => m.id === et.mecanico_id);
+      await api('/etapas', 'POST', {
+        orden_id:    ordenActual.id,
+        servicio:    et.servicio,
+        etapa_key:   et.key,
+        etapa:       et.nombre,
+        tercero:     et.tercero || null,
+        mecanico_id: et.mecanico_id || null,
+        tecnico:     mec?.nombre || null
+      }, { Prefer: 'return=minimal' });
+    }
+    toast(`${aInsertar.length} etapa(s) agregada(s) ✓`);
+    cerrarModalAgregar();
+    await cargarEtapas();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ─── FOTOS ────────────────────────────────────────────────────────────────────
+async function subirFotos(input, nombre, eid, k) {
+  const files = Array.from(input.files); if (!files.length) return;
+  const prog = document.getElementById('prog-' + k);
+  let sub = 0; if (prog) prog.textContent = `Subiendo 0/${files.length}...`;
+  for (const file of files) {
     try {
-      await api(`/fotos_etapas?id=eq.${fotoId}`, 'DELETE');
-      const path = url.split(`/object/public/${BUCKET}/`)[1];
-      if (path) await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } });
-      toast('Foto eliminada ✓');
-      await cargarEtapas();
-      document.getElementById('et-' + key(etapaNombre))?.classList.add('open');
-    } catch(e) { toast('Error: ' + e.message, 'err'); }
+      const ext = file.name.split('.').pop();
+      const path = `${ordenActual.id}/${nombre}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const url = await storageUpload(file, path);
+      await api('/fotos_etapas', 'POST', { etapa_id: eid, orden_id: ordenActual.id, etapa_nombre: nombre, url, nombre: file.name }, { Prefer: 'return=minimal' });
+      sub++; if (prog) prog.textContent = `Subiendo ${sub}/${files.length}...`;
+    } catch(e) { toast(`Error: ${file.name}`, 'err'); }
   }
+  if (prog) prog.textContent = ''; input.value = '';
+  toast(`${sub} foto(s) subida(s) ✓`); await cargarEtapas();
+}
+async function eliminarFoto(fotoId, url) {
+  if (!confirm('¿Eliminar esta foto?')) return;
+  try {
+    await api(`/fotos_etapas?id=eq.${fotoId}`, 'DELETE');
+    const path = url.split(`/object/public/${BUCKET}/`)[1];
+    if (path) await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, { method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
+    toast('Foto eliminada ✓'); await cargarEtapas();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+function abrirLightbox(url) { document.getElementById('lightbox-img').src = url; document.getElementById('lightbox').classList.add('show'); }
+function cerrarLightbox() { document.getElementById('lightbox').classList.remove('show'); document.getElementById('lightbox-img').src = ''; }
+document.getElementById('lightbox').addEventListener('click', function(e) { if (e.target === this) cerrarLightbox(); });
 
-  function abrirLightbox(url) { document.getElementById('lightbox-img').src = url; document.getElementById('lightbox').classList.add('show'); }
-  function cerrarLightbox() { document.getElementById('lightbox').classList.remove('show'); document.getElementById('lightbox-img').src = ''; }
-  document.getElementById('lightbox').addEventListener('click', function(e) { if (e.target === this) cerrarLightbox(); });
+// ─── NOVEDADES ────────────────────────────────────────────────────────────────
+async function guardarNovedad(eid) {
+  const motivo = document.getElementById(`nmot-${eid}`)?.value?.trim();
+  if (!motivo) { toast('El motivo es obligatorio', 'err'); return; }
+  try {
+    await api('/novedades', 'POST', {
+      orden_id: ordenActual.id, etapa_id: eid,
+      tipo:        document.getElementById(`ntype-${eid}`).value,
+      responsable: document.getElementById(`nresp-${eid}`).value,
+      motivo, desde: new Date().toISOString()
+    }, { Prefer: 'return=minimal' });
+    toast('Novedad registrada ✓');
+    document.getElementById(`nmot-${eid}`).value = '';
+    await cargarEtapas();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
 
-  // NOVEDADES
-  async function guardarNovedad() {
-    const body = { orden_id: ordenActual.id, tipo: document.getElementById('nov-tipo').value, responsable: document.getElementById('nov-resp').value, motivo: document.getElementById('nov-motivo').value, desde: new Date().toISOString() };
-    try {
-      await api('/novedades', 'POST', body, { 'Prefer': 'return=minimal' });
-      toast('Novedad registrada ✓');
-      document.getElementById('nov-motivo').value = '';
-    } catch(e) { toast('Error: ' + e.message, 'err'); }
-  }
+async function cargarMecanicos() {
+  try { mecanicos = await api('/mecanicos?activo=eq.true&order=nombre.asc') || []; }
+  catch(e) { mecanicos = []; }
+}
 
-  cargarOrdenes();
-</script></body>
+cargarMecanicos().finally(() => cargarOrdenes());
+</script>
+</body>
 </html>
