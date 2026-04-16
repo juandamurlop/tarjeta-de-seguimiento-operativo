@@ -888,6 +888,10 @@ async function guardarEtapasNueva() {
         const mec = mecanicos.find(m => m.id === et.mecanico_id);
         return { servicio: et.servicio, etapa: et.nombre, tecnico: mec?.nombre || et.tercero || 'Sin asignar' };
       });
+      // Primera foto de ingreso si existe
+      const fotosIng = await api(`/fotos_ingreso?orden_id=eq.${modalOrdenId}&order=creado_en.asc&limit=1`).catch(() => []) || [];
+      const fotoUrl = fotosIng[0]?.url || null;
+
       fetch('https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -904,6 +908,7 @@ async function guardarEtapasNueva() {
             fecha_entrega_2: ord.fecha_entrega_2,
           },
           servicios: serviciosResumen,
+          foto_ingreso: fotoUrl,
           link: `${window.location.origin}${window.location.pathname}`
         })
       }).catch(() => {});
@@ -1138,6 +1143,18 @@ async function finalizarEtapa(eid, nombre, servicio) {
     // Orden completa: todas las etapas de todos los servicios tienen fin
     const todasCompletadas = etapasOrden.every(e => e.fin || e.id === eid);
 
+    // Tiempos por etapa para resumen final
+    const tiemposEtapas = etapasOrden.map(e => {
+      const inicio = e.inicio ? new Date(e.inicio) : null;
+      const fin    = (e.id === eid) ? new Date() : (e.fin ? new Date(e.fin) : null);
+      let duracion = null;
+      if (inicio && fin) {
+        const m = Math.round((fin - inicio) / 60000);
+        duracion = `${Math.floor(m/60)}h ${m%60}m`;
+      }
+      return { etapa: e.etapa, servicio: e.servicio, tecnico: e.tecnico, duracion };
+    });
+
     fetch('https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1165,6 +1182,7 @@ async function finalizarEtapa(eid, nombre, servicio) {
           tecnico:     siguiente.tecnico,
         } : null,
         todas_completadas: todasCompletadas,
+        tiempos_etapas: todasCompletadas ? tiemposEtapas : null,
         link: `${window.location.origin}${window.location.pathname}`
       })
     }).catch(() => {}); // silencioso — no bloquea si n8n falla
