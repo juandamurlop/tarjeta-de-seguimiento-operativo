@@ -888,6 +888,40 @@ async function guardarEtapasNueva() {
         const mec = mecanicos.find(m => m.id === et.mecanico_id);
         return { servicio: et.servicio, etapa: et.nombre, tecnico: mec?.nombre || et.tercero || 'Sin asignar' };
       });
+      // Notificar al primer mecánico de cada servicio
+      const primerasPorServicio = {};
+      etapas.forEach(et => {
+        if (!primerasPorServicio[et.servicio]) primerasPorServicio[et.servicio] = et;
+      });
+      for (const et of Object.values(primerasPorServicio)) {
+        if (!et.mecanico_id) continue;
+        fetch('https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            evento: 'etapa_finalizada',
+            orden: {
+              id:          ord.id,
+              placa:       ord.placa,
+              propietario: ord.propietario,
+              marca:       ord.marca,
+              linea:       ord.linea,
+              aseguradora: ord.aseguradora,
+            },
+            etapa_finalizada: null,
+            siguiente_etapa: {
+              id:          null,
+              nombre:      et.nombre,
+              servicio:    et.servicio,
+              mecanico_id: et.mecanico_id,
+              tecnico:     mecanicos.find(m => m.id === et.mecanico_id)?.nombre || null,
+            },
+            todas_completadas: false,
+            link: `${window.location.origin}${window.location.pathname}`
+          })
+        }).catch(() => {});
+      }
+
       // Primera foto de ingreso si existe
       const fotosIng = await api(`/fotos_ingreso?orden_id=eq.${modalOrdenId}&order=creado_en.asc&limit=1`).catch(() => []) || [];
       const fotoUrl = fotosIng[0]?.url || null;
