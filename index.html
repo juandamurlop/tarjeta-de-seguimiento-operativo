@@ -255,6 +255,14 @@ textarea { resize: vertical; min-height: 72px; }
     <div class="seccion">
       <div class="seccion-titulo">Datos de la orden</div>
       <div class="grid-2">
+        <div><label>Tipo de cliente *</label>
+          <select id="n-tipo-cliente">
+            <option value="">— Seleccionar —</option>
+            <option value="aseguradora">Aseguradora</option>
+            <option value="flotilla">Flotilla</option>
+            <option value="particular">Particular</option>
+          </select>
+        </div>
         <div><label>Aseguradora</label>
           <select id="n-aseguradora">
             <option value="">— Seleccionar —</option>
@@ -346,11 +354,38 @@ textarea { resize: vertical; min-height: 72px; }
     <div class="detalle-info-grid">
       <div class="info-box"><label>Propietario</label><span id="d-propietario">—</span></div>
       <div class="info-box"><label>Vehículo</label><span id="d-vehiculo">—</span></div>
+      <div class="info-box"><label>Tipo de cliente</label><span id="d-tipo-cliente">—</span></div>
       <div class="info-box"><label>Aseguradora</label><span id="d-aseguradora">—</span></div>
       <div class="info-box"><label>Nivel de Daño</label><span id="d-dano">—</span></div>
       <div class="info-box"><label>Kilometraje</label><span id="d-km">—</span></div>
       <div class="info-box"><label>Entrega 1</label><span id="d-fecha1">—</span></div>
       <div class="info-box"><label>Entrega 2</label><span id="d-fecha2">—</span></div>
+    </div>
+
+    <!-- PULMÓN Y COTIZACIÓN -->
+    <div id="panel-aseguradora" style="display:none;margin-bottom:16px">
+      <div class="srv-panel">
+        <div class="srv-panel-header" style="background:#EFF6FF" onclick="togglePanel('body-aseguradora')">
+          <span style="font-weight:700;font-size:13px;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:#1E3A5F">Aseguradora</span>
+          <span style="font-size:11px;font-family:'IBM Plex Mono',monospace;opacity:0.6">▾</span>
+        </div>
+        <div class="srv-panel-body open" id="body-aseguradora" style="padding:16px">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+            <div id="d-pulmon-badge" style="font-size:12px;font-family:'IBM Plex Mono',monospace;padding:5px 12px;border-radius:20px;background:#E0E0E0;color:#666">Sin pulmón</div>
+            <button id="btn-pulmon" class="btn btn-sm" onclick="togglePulmon()" style="background:#1E3A5F;color:white">Activar Pulmón</button>
+          </div>
+          <div style="margin-bottom:14px">
+            <label>Cotización PDF</label>
+            <div id="d-cotizacion-link" style="font-size:13px;margin-bottom:8px;color:var(--muted)">Sin cotización subida</div>
+            <div class="upload-area" onclick="document.getElementById('input-cotizacion').click()">
+              <input type="file" id="input-cotizacion" accept="application/pdf" onchange="subirCotizacion(this)">
+              <div style="font-size:18px">📄</div>
+              <p>Clic para subir PDF de cotización</p>
+              <div class="upload-progreso" id="prog-cotizacion"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- RECEPCIÓN: inventario y fotos de ingreso (colapsable) -->
@@ -666,6 +701,7 @@ function cancelarNuevaOrden() {
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('n-aseguradora').value = '';
   document.getElementById('n-dano').value = '';
+  document.getElementById('n-tipo-cliente').value = '';
   document.querySelectorAll('.inv-item').forEach(el => {
     el.classList.remove('checked');
     el.querySelector('input[type=checkbox]').checked = false;
@@ -697,6 +733,7 @@ async function crearOrden() {
     color:          document.getElementById('n-color').value || null,
     propietario:    document.getElementById('n-propietario').value || null,
     telefono:       document.getElementById('n-telefono').value || null,
+    tipo_cliente:   document.getElementById('n-tipo-cliente').value || null,
     nivel_dano:     document.getElementById('n-dano').value || null,
     kilometraje:    parseInt(document.getElementById('n-km').value) || null,
     fecha_entrega_1:document.getElementById('n-fecha1').value || null,
@@ -964,7 +1001,30 @@ async function abrirOrden(id) {
     document.getElementById('d-meta').textContent        = [ordenActual.marca, ordenActual.linea, ordenActual.modelo ? `(${ordenActual.modelo})` : '', ordenActual.propietario].filter(Boolean).join(' · ');
     document.getElementById('d-propietario').textContent = ordenActual.propietario || '—';
     document.getElementById('d-vehiculo').textContent    = [ordenActual.marca, ordenActual.linea, ordenActual.color].filter(Boolean).join(' ') || '—';
+    document.getElementById('d-tipo-cliente').textContent = ordenActual.tipo_cliente || '—';
     document.getElementById('d-aseguradora').textContent = ordenActual.aseguradora || '—';
+
+    // Panel aseguradora
+    const esAseguradora = ordenActual.tipo_cliente === 'aseguradora';
+    document.getElementById('panel-aseguradora').style.display = esAseguradora ? 'block' : 'none';
+    if (esAseguradora) {
+      const enPulmon = ordenActual.pulmon;
+      const badge = document.getElementById('d-pulmon-badge');
+      const btn   = document.getElementById('btn-pulmon');
+      if (enPulmon) {
+        badge.textContent = `En pulmón desde ${formatFecha(ordenActual.pulmon_desde)}`;
+        badge.style.background = '#FEF3C7'; badge.style.color = '#92400E';
+        btn.textContent = 'Sacar de pulmón';
+      } else {
+        badge.textContent = 'Sin pulmón';
+        badge.style.background = '#E0E0E0'; badge.style.color = '#666';
+        btn.textContent = 'Activar Pulmón';
+      }
+      const cotUrl = ordenActual.cotizacion_url;
+      document.getElementById('d-cotizacion-link').innerHTML = cotUrl
+        ? `<a href="${cotUrl}" target="_blank" style="color:var(--azul);text-decoration:underline">Ver PDF de cotización →</a>`
+        : 'Sin cotización subida';
+    }
     document.getElementById('d-dano').textContent        = ordenActual.nivel_dano || '—';
     document.getElementById('d-km').textContent          = ordenActual.kilometraje ? `${ordenActual.kilometraje.toLocaleString()} km` : '—';
     document.getElementById('d-fecha1').textContent      = formatFecha(ordenActual.fecha_entrega_1);
@@ -1334,6 +1394,71 @@ async function guardarNovedad(eid) {
     document.getElementById(`nmot-${eid}`).value = '';
     await cargarEtapas();
   } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ─── PULMÓN ───────────────────────────────────────────────────────────────────
+async function togglePulmon() {
+  const enPulmon = ordenActual.pulmon;
+  const ahora = new Date().toISOString();
+  const patch = enPulmon
+    ? { pulmon: false, pulmon_desde: null }
+    : { pulmon: true,  pulmon_desde: ahora };
+  try {
+    await api(`/ordenes?id=eq.${ordenActual.id}`, 'PATCH', patch);
+    ordenActual.pulmon       = patch.pulmon;
+    ordenActual.pulmon_desde = patch.pulmon_desde;
+    const badge = document.getElementById('d-pulmon-badge');
+    const btn   = document.getElementById('btn-pulmon');
+    if (patch.pulmon) {
+      badge.textContent = `En pulmón desde ${formatFecha(ahora)}`;
+      badge.style.background = '#FEF3C7'; badge.style.color = '#92400E';
+      btn.textContent = 'Sacar de pulmón';
+      toast('Orden en pulmón ✓');
+    } else {
+      badge.textContent = 'Sin pulmón';
+      badge.style.background = '#E0E0E0'; badge.style.color = '#666';
+      btn.textContent = 'Activar Pulmón';
+      toast('Pulmón desactivado ✓');
+    }
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ─── COTIZACIÓN PDF ───────────────────────────────────────────────────────────
+async function subirCotizacion(input) {
+  const file = input.files[0]; if (!file) return;
+  const prog = document.getElementById('prog-cotizacion');
+  prog.textContent = 'Subiendo...';
+  try {
+    const ext  = file.name.split('.').pop();
+    const path = `${ordenActual.id}/cotizacion/cotizacion_${Date.now()}.${ext}`;
+    const url  = await storageUpload(file, path);
+    await api(`/ordenes?id=eq.${ordenActual.id}`, 'PATCH', { cotizacion_url: url });
+    ordenActual.cotizacion_url = url;
+    document.getElementById('d-cotizacion-link').innerHTML =
+      `<a href="${url}" target="_blank" style="color:var(--azul);text-decoration:underline">Ver PDF de cotización →</a>`;
+    prog.textContent = '';
+    input.value = '';
+    toast('Cotización subida ✓');
+
+    // Notificar al jefe por Telegram con link al PDF
+    fetch('https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        evento: 'cotizacion_subida',
+        orden: {
+          id:          ordenActual.id,
+          placa:       ordenActual.placa,
+          propietario: ordenActual.propietario,
+          marca:       ordenActual.marca,
+          linea:       ordenActual.linea,
+          aseguradora: ordenActual.aseguradora,
+        },
+        cotizacion_url: url,
+        link: `${window.location.origin}${window.location.pathname}`
+      })
+    }).catch(() => {});
+  } catch(e) { prog.textContent = ''; toast('Error subiendo PDF: ' + e.message, 'err'); }
 }
 
 async function cargarMecanicos() {
