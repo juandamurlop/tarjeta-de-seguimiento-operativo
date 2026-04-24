@@ -1238,11 +1238,12 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 
     <div class="content">
       <!-- ── JEFE: LISTA ÓRDENES ── -->
-<div class="filtros-bar" id="filtros-bar">
-  <button class="filtro-btn active" onclick="setFiltro('Activa',this)">Activas</button>
-  <button class="filtro-btn" onclick="setFiltro('Entregada',this)">Entregadas</button>
-  <button class="filtro-btn" onclick="setFiltro('Pulmon',this)">En Pulmón</button>
-</div>
+      <div class="pagina" id="pag-ordenes">
+        <div class="filtros-bar" id="filtros-bar">
+          <button class="filtro-btn active" onclick="setFiltro('Activa',this)">Activas</button>
+          <button class="filtro-btn" onclick="setFiltro('Entregada',this)">Entregadas</button>
+          <button class="filtro-btn" onclick="setFiltro('Archivada',this)">Archivadas</button>
+        </div>
         <div class="ordenes-grid" id="lista-ordenes">
           <div class="loading-state">Cargando órdenes...</div>
         </div>
@@ -1722,6 +1723,7 @@ function montarJefe() {
 }
 
 function navJefe(pag) {
+  // Actualizar nav
   ['ordenes','nueva'].forEach(p => {
     document.getElementById('nav-' + p)?.classList.remove('active');
     document.getElementById('bnav-' + p)?.classList.remove('active');
@@ -1729,6 +1731,7 @@ function navJefe(pag) {
   document.getElementById('nav-' + pag)?.classList.add('active');
   document.getElementById('bnav-' + pag)?.classList.add('active');
 
+  // Ocultar detalle nav si volvemos
   const navDetalle = document.getElementById('nav-detalle');
   if (navDetalle && pag !== 'detalle') navDetalle.style.display = 'none';
 
@@ -1737,11 +1740,6 @@ function navJefe(pag) {
     pag === 'ordenes' ? 'Órdenes' :
     pag === 'nueva'   ? 'Nueva Orden' : 'Detalle de Orden';
   document.getElementById('topbar-actions').innerHTML = '';
-
-  // Limpiar lista al salir de órdenes
-  if (pag !== 'ordenes') {
-    document.getElementById('lista-ordenes').innerHTML = '';
-  }
 
   if (pag === 'ordenes') cargarOrdenes();
   if (pag === 'nueva')   resetNuevaOrden();
@@ -1825,9 +1823,7 @@ async function cargarOrdenes() {
   const lista = document.getElementById('lista-ordenes');
   lista.innerHTML = '<div class="loading-state">Cargando órdenes...</div>';
   try {
-   const data = filtroEstado === 'Pulmon'
-  ? await api(`/ordenes?pulmon=eq.true&order=creado_en.desc&limit=60`)
-  : await api(`/ordenes?estado=eq.${filtroEstado}&order=creado_en.desc&limit=60`);
+    const data = await api(`/ordenes?estado=eq.${filtroEstado}&order=creado_en.desc&limit=60`);
     if (!data?.length) {
       lista.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div>No hay órdenes ${filtroEstado.toLowerCase()}s.</div>`;
       return;
