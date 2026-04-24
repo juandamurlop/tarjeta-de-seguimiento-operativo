@@ -1722,7 +1722,6 @@ function montarJefe() {
 }
 
 function navJefe(pag) {
-  // Actualizar nav
   ['ordenes','nueva'].forEach(p => {
     document.getElementById('nav-' + p)?.classList.remove('active');
     document.getElementById('bnav-' + p)?.classList.remove('active');
@@ -1730,7 +1729,6 @@ function navJefe(pag) {
   document.getElementById('nav-' + pag)?.classList.add('active');
   document.getElementById('bnav-' + pag)?.classList.add('active');
 
-  // Ocultar detalle nav si volvemos
   const navDetalle = document.getElementById('nav-detalle');
   if (navDetalle && pag !== 'detalle') navDetalle.style.display = 'none';
 
@@ -1740,8 +1738,13 @@ function navJefe(pag) {
     pag === 'nueva'   ? 'Nueva Orden' : 'Detalle de Orden';
   document.getElementById('topbar-actions').innerHTML = '';
 
-if (pag === 'ordenes') cargarOrdenes();
-if (pag === 'nueva')   { resetNuevaOrden(); document.getElementById('lista-ordenes').innerHTML = ''; }
+  // Limpiar lista al salir de órdenes
+  if (pag !== 'ordenes') {
+    document.getElementById('lista-ordenes').innerHTML = '';
+  }
+
+  if (pag === 'ordenes') cargarOrdenes();
+  if (pag === 'nueva')   resetNuevaOrden();
   closeSidebar();
 }
 
