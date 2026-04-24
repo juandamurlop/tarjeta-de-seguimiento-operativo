@@ -2583,8 +2583,6 @@ async function cargarOrdenesCliente() {
 /* ═══════════════════════════════════════════════════════════
    NUEVA ORDEN
 ═══════════════════════════════════════════════════════════ */
-let fotosIngresoPendientes = [];
-
 function resetNuevaOrden() {
   ['n-placa','n-marca','n-linea','n-modelo','n-color','n-propietario','n-telefono','n-km','n-fecha1','n-fecha2','n-inv-obs','n-cedula-cliente']
     .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
