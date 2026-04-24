@@ -1740,8 +1740,8 @@ function navJefe(pag) {
     pag === 'nueva'   ? 'Nueva Orden' : 'Detalle de Orden';
   document.getElementById('topbar-actions').innerHTML = '';
 
-  if (pag === 'ordenes') cargarOrdenes();
-  if (pag === 'nueva')   resetNuevaOrden();
+if (pag === 'ordenes') cargarOrdenes();
+if (pag === 'nueva')   { resetNuevaOrden(); document.getElementById('lista-ordenes').innerHTML = ''; }
   closeSidebar();
 }
 
