@@ -434,8 +434,8 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
   border-radius: 20px;
   font-size: 10px;
   font-weight: 700;
-  font-family: 'DM Mono', monospace;
-  letter-spacing: 0.5px;
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: 0.3px;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -1879,7 +1879,7 @@ async function abrirOrden(id) {
     const [orden, etapas, fotosEt, fotosIng, novedades, aprobaciones] = await Promise.all([
       api(`/ordenes?id=eq.${id}`).then(d => d[0]),
       api(`/etapas?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || [],
-      api(`/fotos_etapas?orden_id=eq.${id}&order=creado_en.desc&limit=6`).catch(() => []) || [],
+      api(`/fotos_etapas?orden_id=eq.${id}&order=creado_en.desc`).catch(() => []) || [],
       api(`/fotos_ingreso?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || [],
       api(`/novedades?orden_id=eq.${id}&order=creado_en.desc`).catch(() => []) || [],
       api(`/aprobaciones_etapa?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || []
@@ -1903,16 +1903,11 @@ async function abrirOrden(id) {
       }
     } catch{}
 
-    // Fotos recientes
-    const todasFotos = [...fotosEt, ...fotosIng].slice(0, 6);
+    // Fotos Orden — todas (etapas + ingreso), sin límite
+    const todasFotos = [...fotosEt, ...fotosIng];
     const fotosRecHtml = todasFotos.length
       ? todasFotos.map(f=>`<div class="foto-thumb" onclick="abrirLightbox('${f.url}')"><img src="${f.url}" alt="" loading="lazy"></div>`).join('')
       : '<span style="font-size:12px;color:var(--gris-mid)">Sin fotos.</span>';
-
-    // Fotos ingreso
-    const fotosIngHtml = fotosIng.length
-      ? fotosIng.map(f=>`<div class="foto-thumb" onclick="abrirLightbox('${f.url}')"><img src="${f.url}" alt=""></div>`).join('')
-      : '<span style="font-size:12px;color:var(--gris-mid)">Sin fotos de ingreso.</span>';
 
     // Timeline
     const tlHtml = etapas.length ? etapas.map((e,i) => {
@@ -2025,7 +2020,7 @@ async function abrirOrden(id) {
 
         <!-- SIDEBAR LATERAL -->
         <div class="detalle-sidebar">
-          <!-- Fotos recientes -->
+          <!-- Fotos de la orden -->
           <div class="sidebar-card">
             <div class="sidebar-card-header">Fotos recientes</div>
             <div class="sidebar-card-body">
@@ -2042,16 +2037,8 @@ async function abrirOrden(id) {
             </div>
           </div>
 
-          <!-- Fotos de ingreso -->
-          <div class="sidebar-card">
-            <div class="sidebar-card-header">Fotos de ingreso</div>
-            <div class="sidebar-card-body">
-              <div class="fotos-grid">${fotosIngHtml}</div>
-            </div>
-          </div>
-
-          <!-- Pulmón -->
-          <div id="pulmon-card" class="pulmon-card ${orden.pulmon?'':'inactivo'}">
+          <!-- Pulmón (solo aseguradora) -->
+          ${orden.tipo_cliente === 'aseguradora' ? `<div id="pulmon-card" class="pulmon-card ${orden.pulmon?'':'inactivo'}">` : `<div id="pulmon-card" style="display:none">`}
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
               <div style="font-size:12px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:${orden.pulmon?'var(--amarillo)':'var(--gris-mid)'}">Pulmón</div>
               <button class="btn btn-sm ${orden.pulmon?'btn-ghost':'btn-ghost'}" id="btn-pulmon" onclick="togglePulmon()">
@@ -2086,14 +2073,15 @@ async function abrirOrden(id) {
           <div class="sidebar-card">
             <div class="sidebar-card-header">Estado de la orden</div>
             <div class="sidebar-card-body">
-              <div class="field">
-                <label>Cambiar estado</label>
-                <select id="d-estado-select" onchange="cambiarEstado()">
-                  <option value="Activa" ${orden.estado==='Activa'?'selected':''}>Activa</option>
-                  <option value="Entregada" ${orden.estado==='Entregada'?'selected':''}>Entregada</option>
-                  <option value="Archivada" ${orden.estado==='Archivada'?'selected':''}>Archivada</option>
-                </select>
-              </div>
+              ${(comp === total && total > 0 && orden.estado !== 'Entregada' && orden.estado !== 'Archivada')
+                ? `<button class="btn btn-success" style="width:100%" onclick="cambiarEstado('Entregada')">✓ Marcar como Finalizada</button>
+                   <div style="font-size:11px;color:var(--gris-mid);margin-top:8px;text-align:center">Todas las etapas completadas</div>`
+                : `<div style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:var(--azul-light);border-radius:20px">
+                     <span style="width:8px;height:8px;border-radius:50%;background:var(--azul-mid);display:inline-block"></span>
+                     <span style="font-size:13px;font-weight:700;color:var(--azul)">${orden.estado === 'Entregada' ? 'Finalizada' : orden.estado === 'Archivada' ? 'Archivada' : 'Activa'}</span>
+                   </div>
+                   ${(orden.estado !== 'Entregada' && orden.estado !== 'Archivada') ? `<div style="font-size:11px;color:var(--gris-mid);margin-top:8px">${total > 0 ? `${comp} de ${total} etapas completadas` : 'Sin etapas registradas'}</div>` : ''}`
+              }
             </div>
           </div>` : ''}
         </div>
@@ -3068,9 +3056,8 @@ async function subirCotizacion(input) {
 /* ═══════════════════════════════════════════════════════════
    ESTADO ORDEN (JEFE)
 ═══════════════════════════════════════════════════════════ */
-async function cambiarEstado() {
-  const v=document.getElementById('d-estado-select').value;
-  try{ await api(`/ordenes?id=eq.${ordenActual.id}`,'PATCH',{ estado:v }); ordenActual.estado=v; toast(`Estado: ${v} ✓`); cargarOrdenes(); }
+async function cambiarEstado(v) {
+  try{ await api(`/ordenes?id=eq.${ordenActual.id}`,'PATCH',{ estado:v }); ordenActual.estado=v; toast(`Estado: ${v} ✓`); cargarOrdenes(); abrirOrden(ordenActual.id); }
   catch(e){ toast('Error: '+e.message,'err'); }
 }
 
