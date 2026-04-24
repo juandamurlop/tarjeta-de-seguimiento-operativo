@@ -1238,12 +1238,11 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 
     <div class="content">
       <!-- ── JEFE: LISTA ÓRDENES ── -->
-      <div class="pagina" id="pag-ordenes">
-        <div class="filtros-bar" id="filtros-bar">
-          <button class="filtro-btn active" onclick="setFiltro('Activa',this)">Activas</button>
-          <button class="filtro-btn" onclick="setFiltro('Entregada',this)">Entregadas</button>
-          <button class="filtro-btn" onclick="setFiltro('Archivada',this)">Archivadas</button>
-        </div>
+<div class="filtros-bar" id="filtros-bar">
+  <button class="filtro-btn active" onclick="setFiltro('Activa',this)">Activas</button>
+  <button class="filtro-btn" onclick="setFiltro('Entregada',this)">Entregadas</button>
+  <button class="filtro-btn" onclick="setFiltro('Pulmon',this)">En Pulmón</button>
+</div>
         <div class="ordenes-grid" id="lista-ordenes">
           <div class="loading-state">Cargando órdenes...</div>
         </div>
