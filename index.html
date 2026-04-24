@@ -1682,7 +1682,7 @@ function montarApp() {
 
   // Avatar y nombre en sidebar
   document.getElementById('sb-nombre').textContent = sesion.nombre;
-  document.getElementById('sb-avatar').textContent = sesion.nombre.charAt(0).toUpperCase();
+document.getElementById('sb-avatar').innerHTML = '<img src="logoFreimanpfp.png" style="width:100%;height:100%;object-fit:contain;border-radius:50%">';
   document.getElementById('sb-rol').textContent =
     sesion.perfil === 'jefe' ? 'Jefe de Taller' :
     sesion.perfil === 'mecanico' ? 'Mecánico' : 'Cliente';
