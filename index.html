@@ -340,6 +340,41 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 }
 .bnav-item.active { color: var(--azul); }
 .bnav-item span { font-size: 10px; font-weight: 500; }
+
+/* DASHBOARD */
+.dash-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; margin-bottom: 20px; }
+@media(min-width:600px){ .dash-grid { grid-template-columns: repeat(4,1fr); } }
+.dash-card { background: white; border: 1px solid var(--gris-borde); border-radius: 10px; padding: 16px; }
+/* DRAG & DROP */
+.orden-card[draggable] { cursor: grab; }
+.orden-card[draggable]:active { cursor: grabbing; }
+.orden-card.drag-over { outline: 2px dashed var(--azul); outline-offset: 2px; background: #F0F7FF; }
+.orden-card.dragging { opacity: 0.4; }
+
+.dash-card-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 10px; }
+.dash-card-val { font-size: 28px; font-weight: 700; font-family: 'DM Mono', monospace; line-height: 1; }
+.dash-card-label { font-size: 12px; color: var(--gris-mid); margin-top: 4px; }
+.dash-card-sub { font-size: 11px; color: var(--gris-mid); margin-top: 6px; font-family: 'DM Mono', monospace; }
+.dash-section-title { font-size: 13px; font-weight: 700; color: var(--texto); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
+.dash-procesos-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 20px; }
+@media(min-width:700px){ .dash-procesos-grid { grid-template-columns: repeat(3,1fr); } }
+@media(min-width:1000px){ .dash-procesos-grid { grid-template-columns: repeat(4,1fr); } }
+.proceso-col { background: white; border: 1px solid var(--gris-borde); border-radius: 10px; overflow: hidden; }
+.proceso-col-header { padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--gris-borde); }
+.proceso-col-nombre { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+.proceso-col-count { font-size: 12px; font-weight: 700; font-family: 'DM Mono', monospace; }
+.proceso-orden-row { padding: 8px 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--gris-borde); cursor: pointer; transition: background 0.1s; }
+.proceso-orden-row:last-child { border-bottom: none; }
+.proceso-orden-row:hover { background: var(--gris-bg); }
+.proceso-orden-placa { font-size: 12px; font-weight: 700; font-family: 'DM Mono', monospace; }
+.proceso-orden-vehiculo { font-size: 11px; color: var(--gris-mid); }
+.proceso-vacio { padding: 16px 12px; font-size: 12px; color: var(--gris-mid); text-align: center; }
+
+/* DONUT CAPACIDAD EN SIDEBAR */
+.sidebar-capacidad { padding: 14px 16px; }
+.capacidad-title { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; text-align: center; }
+.capacidad-donut-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.capacidad-sub { font-size: 11px; color: rgba(255,255,255,0.5); text-align: center; }
 .sidebar-overlay {
   display: none;
   position: fixed;
@@ -1218,6 +1253,19 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
       <!-- se genera por perfil -->
     </nav>
     <div class="sidebar-footer">
+      <div class="sidebar-capacidad" id="sidebar-capacidad">
+        <div class="capacidad-title">Capacidad del taller</div>
+        <div class="capacidad-donut-wrap">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="30" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="8"/>
+            <circle id="cap-fill" cx="40" cy="40" r="30" fill="none" stroke="#EAB308" stroke-width="8"
+              stroke-linecap="round" stroke-dasharray="0 188.5"
+              transform="rotate(-90 40 40)" style="transition:stroke-dasharray 0.5s,stroke 0.5s"/>
+            <text id="cap-pct" x="40" y="45" text-anchor="middle" font-size="14" font-weight="700" fill="white">0%</text>
+          </svg>
+          <div class="capacidad-sub" id="cap-sub">0 de 34 cupos</div>
+        </div>
+      </div>
       <button class="btn-logout" onclick="logout()">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
         Cerrar sesión
@@ -1237,12 +1285,17 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
     </div>
 
     <div class="content">
+      <!-- ── ESTADO DEL TALLER (DASHBOARD) ── -->
+      <div class="pagina" id="pag-dashboard">
+        <div id="dash-contenido"><div class="loading-state">Cargando...</div></div>
+      </div>
+
       <!-- ── JEFE: LISTA ÓRDENES ── -->
       <div class="pagina" id="pag-ordenes">
         <div class="filtros-bar" id="filtros-bar">
           <button class="filtro-btn active" onclick="setFiltro('Activa',this)">Activas</button>
           <button class="filtro-btn" onclick="setFiltro('Entregada',this)">Entregadas</button>
-          <button class="filtro-btn" onclick="setFiltro('Archivada',this)">Archivadas</button>
+<button class="filtro-btn" onclick="setFiltroPulmon(this)">En Pulmón</button>
         </div>
         <div class="ordenes-grid" id="lista-ordenes">
           <div class="loading-state">Cargando órdenes...</div>
@@ -1417,6 +1470,28 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
             <div class="srv-card-desc">Polarizados, radio, lavado</div>
           </div>
         </div>
+        <!-- Descripciones por servicio -->
+        <div id="srv-descripciones" style="display:none;margin-top:18px;border-top:1px solid var(--gris-borde);padding-top:16px">
+          <div style="font-size:11px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px">Descripción del trabajo (opcional)</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div id="srv-desc-latoneria" style="display:none;display:grid;grid-template-columns:90px 1fr;align-items:center;gap:10px">
+              <label style="font-size:12px;font-weight:600;color:var(--texto);text-align:right">Latonería</label>
+              <textarea id="desc-latoneria" style="height:34px;min-height:34px;font-size:13px;resize:vertical;padding:6px 10px;line-height:1.4"></textarea>
+            </div>
+            <div id="srv-desc-pintura" style="display:none;display:grid;grid-template-columns:90px 1fr;align-items:center;gap:10px">
+              <label style="font-size:12px;font-weight:600;color:var(--texto);text-align:right">Pintura</label>
+              <textarea id="desc-pintura" style="height:34px;min-height:34px;font-size:13px;resize:vertical;padding:6px 10px;line-height:1.4"></textarea>
+            </div>
+            <div id="srv-desc-mecanica" style="display:none;display:grid;grid-template-columns:90px 1fr;align-items:center;gap:10px">
+              <label style="font-size:12px;font-weight:600;color:var(--texto);text-align:right">Mecánica</label>
+              <textarea id="desc-mecanica" style="height:34px;min-height:34px;font-size:13px;resize:vertical;padding:6px 10px;line-height:1.4"></textarea>
+            </div>
+            <div id="srv-desc-adicionales" style="display:none;display:grid;grid-template-columns:90px 1fr;align-items:center;gap:10px">
+              <label style="font-size:12px;font-weight:600;color:var(--texto);text-align:right">Adicionales</label>
+              <textarea id="desc-adicionales" style="height:34px;min-height:34px;font-size:13px;resize:vertical;padding:6px 10px;line-height:1.4"></textarea>
+            </div>
+          </div>
+        </div>
         <div id="srv-error" style="display:none;margin-top:12px;font-size:13px;color:var(--rojo)">Selecciona al menos un servicio.</div>
       </div>
       <div class="modal-step" id="paso-2">
@@ -1498,8 +1573,8 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 /* ═══════════════════════════════════════════════════════════
    CONSTANTES Y ESTADO GLOBAL
 ═══════════════════════════════════════════════════════════ */
-const SUPABASE_URL = 'https://tcbbugjtzqrdrmimnpwb.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_ZHqiBPBIiSJDVfOTPrwyww_hjgKkn5x';
+const SUPABASE_URL = 'https://xjavnpwuhpmvpjdbjdeg.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqYXZucHd1aHBtdnBqZGJqZGVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4Njc5MDcsImV4cCI6MjA5MjQ0MzkwN30.07f6cGVrFhtm-B-I7iBLaHnPSuozFDpEf9vOHrliGRs';
 const BUCKET      = 'fotos-etapas';
 const N8N_WEBHOOK = 'https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa';
 
@@ -1631,7 +1706,7 @@ async function doLogin() {
     }
 
     // 3. ¿Es cliente?
-    const clientes = await api(`/clientes?cedula=eq.${cedula}`);
+    const clientes = await api(`/clientes?cedula_nit=eq.${cedula}`);
     if (clientes?.length) {
       iniciarSesion({ perfil: 'cliente', nombre: clientes[0].nombre || 'Cliente', cedula, id: clientes[0].id, datos: clientes[0] });
       return;
@@ -1654,6 +1729,7 @@ function mostrarErrorLogin(msg) {
 function iniciarSesion(datos) {
   sesion = datos;
   sessionStorage.setItem('sesion_freiman', JSON.stringify(datos));
+document.getElementById('sidebar-capacidad').style.display = 'none';
   montarApp();
 }
 
@@ -1695,7 +1771,10 @@ document.getElementById('sb-avatar').innerHTML = '<img src="logoFreimanpfp.png" 
 /* ── JEFE ── */
 function montarJefe() {
   document.getElementById('sidebar-nav').innerHTML = `
-    <div class="nav-section-label">Órdenes</div>
+    <button class="nav-item" id="nav-dashboard" onclick="navJefe('dashboard')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Estado del taller
+    </button>
     <button class="nav-item active" id="nav-ordenes" onclick="navJefe('ordenes')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
       Todas las órdenes
@@ -1707,6 +1786,10 @@ function montarJefe() {
   `;
 
   document.getElementById('bottom-nav-inner').innerHTML = `
+    <button class="bnav-item" id="bnav-dashboard" onclick="navJefe('dashboard')">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Taller</span>
+    </button>
     <button class="bnav-item active" id="bnav-ordenes" onclick="navJefe('ordenes')">
       <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
       <span>Órdenes</span>
@@ -1720,29 +1803,38 @@ function montarJefe() {
   cargarMecanicos().finally(() => {
     navJefe('ordenes');
   });
+  // Cargar capacidad al inicio
+  api('/ordenes?estado=eq.Activa&select=id,pulmon').then(data => {
+    actualizarCapacidad((data||[]).length);
+  }).catch(()=>{});
 }
 
 function navJefe(pag) {
-  // Actualizar nav
-  ['ordenes','nueva'].forEach(p => {
+  ['ordenes','nueva','dashboard'].forEach(p => {
     document.getElementById('nav-' + p)?.classList.remove('active');
     document.getElementById('bnav-' + p)?.classList.remove('active');
   });
   document.getElementById('nav-' + pag)?.classList.add('active');
   document.getElementById('bnav-' + pag)?.classList.add('active');
 
-  // Ocultar detalle nav si volvemos
   const navDetalle = document.getElementById('nav-detalle');
   if (navDetalle && pag !== 'detalle') navDetalle.style.display = 'none';
 
-  mostrarPagina('pag-' + (pag === 'ordenes' ? 'ordenes' : pag === 'nueva' ? 'nueva' : 'detalle'));
+  const pagId = pag === 'ordenes' ? 'pag-ordenes'
+    : pag === 'nueva'      ? 'pag-nueva'
+    : pag === 'dashboard'  ? 'pag-dashboard'
+    : 'pag-detalle';
+  mostrarPagina(pagId);
+
   document.getElementById('topbar-title').textContent =
-    pag === 'ordenes' ? 'Órdenes' :
-    pag === 'nueva'   ? 'Nueva Orden' : 'Detalle de Orden';
+    pag === 'ordenes'   ? 'Órdenes' :
+    pag === 'nueva'     ? 'Nueva Orden' :
+    pag === 'dashboard' ? 'Estado del Taller' : 'Detalle de Orden';
   document.getElementById('topbar-actions').innerHTML = '';
 
-  if (pag === 'ordenes') cargarOrdenes();
-  if (pag === 'nueva')   resetNuevaOrden();
+  if (pag === 'ordenes')   cargarOrdenes();
+  if (pag === 'nueva')     resetNuevaOrden();
+  if (pag === 'dashboard') cargarDashboard();
   closeSidebar();
 }
 
@@ -1777,7 +1869,7 @@ function montarCliente() {
   document.getElementById('sidebar-nav').innerHTML = `
     <div class="nav-section-label">Mi vehículo</div>
     <button class="nav-item active">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 17l2-7h14l2 7H3zM5 17v2a1 1 0 002 0v-2M17 17v2a1 1 0 002 0v-2"/><path d="M5 10V7a7 7 0 0114 0v3"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-car-icon lucide-car"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
       Estado de mi orden
     </button>
   `;
@@ -1819,6 +1911,300 @@ function setFiltro(estado, btn) {
   cargarOrdenes();
 }
 
+function setFiltroPulmon(btn) {
+  filtroEstado = null;
+  document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  cargarOrdenesPulmon();
+}
+
+async function cargarOrdenesPulmon() {
+  const lista = document.getElementById('lista-ordenes');
+  lista.innerHTML = '<div class="loading-state">Cargando órdenes...</div>';
+  try {
+    const data = await api(`/ordenes?pulmon=eq.true&order=pulmon_desde.asc&limit=60`);
+    if (!data?.length) {
+      lista.innerHTML = `<div class="empty-state"><div class="empty-state-icon"></div>No hay órdenes en pulmón.</div>`;
+      return;
+    }
+    const ids = data.map(o => o.id).join(',');
+    const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,fin`).catch(() => []) || [];
+
+    lista.innerHTML = data.map(o => {
+      const etapasO  = etapas.filter(e => e.orden_id === o.id);
+      const total    = etapasO.length;
+      const comp     = etapasO.filter(e => e.fin).length;
+      const pct      = total ? Math.round((comp / total) * 100) : 0;
+      const completa = total > 0 && comp === total;
+      const srvs     = [...new Set(etapasO.map(e => e.servicio).filter(Boolean))];
+      const chips    = srvs.map(s => `<span class="badge badge-${s}">${CATALOGO[s]?.nombre || s}</span>`).join('');
+      const diasPulmon = o.pulmon_desde
+        ? Math.floor((new Date() - new Date(o.pulmon_desde)) / 86400000)
+        : null;
+      return `<div class="orden-card" draggable="true" id="card-${o.id}"
+        ondragstart="dragStart(event,'${o.id}')"
+        ondragover="dragOver(event)"
+        ondragleave="dragLeave(event)"
+        ondrop="dragDrop(event,'${o.id}')"
+        ondragend="dragEnd(event)"
+        onclick="abrirOrden(${o.id})">
+        <div class="orden-card-top">
+          <div>
+            <div class="orden-placa">${o.placa}</div>
+            <div class="orden-vehiculo">${[o.marca,o.linea,o.modelo].filter(Boolean).join(' · ')} ${o.propietario ? '— '+o.propietario : ''}</div>
+          </div>
+          <div class="orden-badges">
+            <span class="badge badge-pulmon">En Pulmón${diasPulmon !== null ? ` · ${diasPulmon}d` : ''}</span>
+            ${o.tipo_cliente ? `<span class="badge badge-${o.tipo_cliente}">${o.tipo_cliente}</span>` : ''}
+          </div>
+        </div>
+        ${total > 0 ? `<div class="progreso-bar-wrap">
+          <div class="progreso-labels"><span>${comp} / ${total} etapas</span><span>${pct}%</span></div>
+          <div class="progreso-track"><div class="progreso-fill ${completa?'completa':''}" style="width:${pct}%"></div></div>
+        </div>` : ''}
+        <div class="orden-card-bottom">
+          <div class="srv-chips">${chips || '<span style="font-size:12px;color:var(--gris-mid)">Sin etapas</span>'}</div>
+          <div class="orden-fecha">${diasPulmon !== null ? `${diasPulmon} días en pulmón` : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    lista.innerHTML = `<div class="empty-state">Error cargando órdenes: ${e.message}</div>`;
+  }
+}
+// ═══════════════════════════════════════════════════════════
+//   DRAG & DROP — LISTA DE ÓRDENES
+// ═══════════════════════════════════════════════════════════
+let dragSrcId = null;
+
+function dragStart(e, id) {
+  dragSrcId = id;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function dragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+
+function dragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function dragDrop(e, targetId) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (dragSrcId === targetId) return;
+  const lista = document.getElementById('lista-ordenes');
+  const src  = document.getElementById('card-' + dragSrcId);
+  const tgt  = document.getElementById('card-' + targetId);
+  if (!src || !tgt) return;
+  // Insertar src antes o después del target según posición
+  const srcRect = src.getBoundingClientRect();
+  const tgtRect = tgt.getBoundingClientRect();
+  if (srcRect.top < tgtRect.top) {
+    tgt.parentNode.insertBefore(src, tgt.nextSibling);
+  } else {
+    tgt.parentNode.insertBefore(src, tgt);
+  }
+}
+
+function dragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.orden-card').forEach(c => c.classList.remove('drag-over'));
+  dragSrcId = null;
+}
+
+// ═══════════════════════════════════════════════════════════
+//   DASHBOARD — ESTADO DEL TALLER
+// ═══════════════════════════════════════════════════════════
+const CAPACIDAD_TALLER = 34;
+
+function actualizarCapacidad(activas) {
+  const cap = document.getElementById('sidebar-capacidad');
+  const fill = document.getElementById('cap-fill');
+  const pctEl = document.getElementById('cap-pct');
+  const subEl = document.getElementById('cap-sub');
+  if (!cap) return;
+  cap.style.display = 'block';
+  const pct = Math.min(Math.round((activas / CAPACIDAD_TALLER) * 100), 100);
+  const circ = 2 * Math.PI * 30; // r=30
+  const color = pct <= 65 ? '#EAB308' : pct <= 80 ? '#F97316' : '#EF4444';
+  if (fill) { fill.style.strokeDasharray = `${(pct/100)*circ} ${circ}`; fill.style.stroke = color; }
+  if (pctEl) pctEl.textContent = pct + '%';
+  if (subEl) subEl.textContent = `${activas} de ${CAPACIDAD_TALLER} cupos`;
+}
+
+async function cargarDashboard() {
+  const cont = document.getElementById('dash-contenido');
+  cont.innerHTML = '<div class="loading-state">Cargando...</div>';
+  try {
+    const [ordenes, etapas] = await Promise.all([
+      api(`/ordenes?select=id,placa,marca,linea,modelo,propietario,estado,pulmon,creado_en`).catch(() => []) || [],
+      api(`/etapas?select=id,orden_id,servicio,etapa,etapa_key,inicio,fin,mecanico_id,tecnico&fin=is.null&inicio=not.is.null`).catch(() => []) || []
+    ]);
+
+    const activas    = ordenes.filter(o => o.estado === 'Activa' && !o.pulmon).length;
+    const pulmon     = ordenes.filter(o => o.pulmon).length;
+    const entregadas = ordenes.filter(o => o.estado === 'Entregada').length;
+    const total      = ordenes.length;
+
+    actualizarCapacidad(activas + pulmon);
+
+    // Agrupar etapas activas por nombre de etapa
+    const porEtapa = {};
+    etapas.forEach(e => {
+      const k = e.etapa || e.etapa_key || 'Sin nombre';
+      if (!porEtapa[k]) porEtapa[k] = [];
+      porEtapa[k].push(e);
+    });
+
+    // Colores por servicio
+    const srvColor = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
+
+    const procesosHtml = Object.entries(porEtapa).length
+      ? Object.entries(porEtapa).sort((a,b) => b[1].length - a[1].length).map(([etapaNombre, ets]) => {
+          const srv = ets[0]?.servicio || '';
+          const color = srvColor[srv] || '#6B7280';
+          const filasHtml = ets.slice(0,5).map(e => {
+            const o = ordenes.find(ord => ord.id === e.orden_id);
+            return `<div class="proceso-orden-row" onclick="abrirOrden(${e.orden_id})">
+              <div>
+                <div class="proceso-orden-placa">${o?.placa || '—'}</div>
+                <div class="proceso-orden-vehiculo">${[o?.marca, o?.linea].filter(Boolean).join(' ') || '—'}</div>
+              </div>
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-left:auto;opacity:0.4"><path d="M9 18l6-6-6-6"/></svg>
+            </div>`;
+          }).join('');
+          const masHtml = ets.length > 5
+            ? `<div class="proceso-vacio" style="color:var(--azul-mid);cursor:pointer">Ver ${ets.length - 5} más...</div>`
+            : '';
+          return `<div class="proceso-col">
+            <div class="proceso-col-header">
+              <span class="proceso-col-nombre" style="color:${color}">${etapaNombre}</span>
+              <span class="proceso-col-count" style="color:${color}">${ets.length}</span>
+            </div>
+            ${ets.length ? filasHtml + masHtml : '<div class="proceso-vacio">Sin carros</div>'}
+          </div>`;
+        }).join('')
+      : '<div class="empty-state"><div class="empty-state-icon">🔧</div><p>No hay etapas activas ahora.</p></div>';
+
+    cont.innerHTML = `
+      <div class="dash-grid">
+        <div class="dash-card">
+<div class="dash-card-icon" style="background:#c5dbf0; color:#01459E;">
+  <svg xmlns="http://www.w3.org/2000/svg"
+       width="22"
+       height="22"
+       viewBox="0 0 24 24"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round">
+    <rect x="2" y="3" width="20" height="18" rx="2"/>
+    <line x1="2" y1="9" x2="22" y2="9"/>
+    <line x1="7" y1="3" x2="7" y2="9"/>
+    <line x1="12" y1="3" x2="12" y2="9"/>
+  </svg>
+</div>
+          <div class="dash-card-val" style="color:var(--azul)">${activas}</div>
+          <div class="dash-card-label">Órdenes activas</div>
+          <div class="dash-card-sub">${total > 0 ? Math.round((activas/total)*100) : 0}% del total</div>
+        </div>
+
+
+       <div class="dash-card">
+  <div class="dash-card-icon" style="background:#f0d7bd; color:#D97706;">
+    <svg xmlns="http://www.w3.org/2000/svg"
+         width="22"
+         height="22"
+         viewBox="0 0 24 24"
+         fill="none"
+         stroke="currentColor"
+         stroke-width="2"
+         stroke-linecap="round"
+         stroke-linejoin="round">
+      <line x1="10" x2="14" y1="2" y2="2"/>
+      <line x1="12" x2="15" y1="14" y2="11"/>
+      <circle cx="12" cy="14" r="8"/>
+    </svg>
+  </div>
+
+  <div class="dash-card-val" style="color:#D97706">${pulmon}</div>
+  <div class="dash-card-label">En pulmón</div>
+  <div class="dash-card-sub">Esperando aprobación</div>
+</div>
+
+
+
+
+        <div class="dash-card">
+  <div class="dash-card-icon" style="background:#ccedc0; color:#16A34A;">
+    <svg xmlns="http://www.w3.org/2000/svg"
+         width="22"
+         height="22"
+         viewBox="0 0 24 24"
+         fill="none"
+         stroke="currentColor"
+         stroke-width="2"
+         stroke-linecap="round"
+         stroke-linejoin="round">
+      <path d="M18 6 7 17l-5-5"/>
+      <path d="m22 10-7.5 7.5L13 16"/>
+    </svg>
+  </div>
+
+
+
+
+  <div class="dash-card-val" style="color:#16A34A">${entregadas}</div>
+  <div class="dash-card-label">Entregadas</div>
+  <div class="dash-card-sub">Historial total</div>
+</div>
+
+
+
+
+
+      <div class="dash-card">
+  <div class="dash-card-icon" style="background:#d7beeb; color:#7C3AED;">
+    <svg xmlns="http://www.w3.org/2000/svg"
+         width="22"
+         height="22"
+         viewBox="0 0 24 24"
+         fill="none"
+         stroke="currentColor"
+         stroke-width="2"
+         stroke-linecap="round"
+         stroke-linejoin="round">
+      <path d="M3 6h18"/>
+      <path d="M7 12h10"/>
+      <path d="M10 18h4"/>
+    </svg>
+  </div>
+
+  <div class="dash-card-val" style="color:#7C3AED">${total}</div>
+  <div class="dash-card-label">Total órdenes</div>
+  <div class="dash-card-sub">Todas las registradas</div>
+</div>
+
+
+
+
+
+
+      </div>
+      <div class="dash-section-title">Procesos activos en el taller</div>
+      <div class="dash-procesos-grid">${procesosHtml}</div>
+    `;
+  } catch(e) {
+    cont.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+  }
+}
+
 async function cargarOrdenes() {
   const lista = document.getElementById('lista-ordenes');
   lista.innerHTML = '<div class="loading-state">Cargando órdenes...</div>';
@@ -1844,7 +2230,13 @@ async function cargarOrdenes() {
         : `<span class="badge badge-${o.estado?.toLowerCase() || 'activa'}">${o.estado || 'Activa'}</span>`;
       const tcBadge = o.tipo_cliente ? `<span class="badge badge-${o.tipo_cliente}">${o.tipo_cliente}</span>` : '';
 
-      return `<div class="orden-card" onclick="abrirOrden(${o.id})">
+      return `<div class="orden-card" draggable="true" id="card-${o.id}"
+        ondragstart="dragStart(event,'${o.id}')"
+        ondragover="dragOver(event)"
+        ondragleave="dragLeave(event)"
+        ondrop="dragDrop(event,'${o.id}')"
+        ondragend="dragEnd(event)"
+        onclick="abrirOrden(${o.id})">
         <div class="orden-card-top">
           <div>
             <div class="orden-placa">${o.placa}</div>
@@ -2078,7 +2470,9 @@ async function abrirOrden(id) {
             <div class="sidebar-card-header">Estado de la orden</div>
             <div class="sidebar-card-body">
               ${(comp === total && total > 0 && orden.estado !== 'Entregada' && orden.estado !== 'Archivada')
+
                 ? `<button class="btn btn-success" style="width:100%" onclick="cambiarEstado('Entregada')">✓ Marcar como Finalizada</button>
+
                    <div style="font-size:11px;color:var(--gris-mid);margin-top:8px;text-align:center">Todas las etapas completadas</div>`
                 : `<div style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:var(--azul-light);border-radius:20px">
                      <span style="width:8px;height:8px;border-radius:50%;background:var(--azul-mid);display:inline-block"></span>
@@ -2562,6 +2956,14 @@ async function cargarOrdenesCliente() {
             ${orden.aseguradora?`<div class="info-chip"><div class="info-chip-label">Aseguradora</div><div class="info-chip-val">${orden.aseguradora}</div></div>`:''}
             <div class="info-chip"><div class="info-chip-label">Estado</div><div class="info-chip-val">${orden.estado||'Activa'}</div></div>
           </div>
+          ${orden.cotizacion_url ? `
+          <div style="margin-bottom:16px;padding:12px 14px;background:var(--gris-bg);border-radius:8px;border:1px solid var(--gris-borde);display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--texto)">📄 Cotización</div>
+              <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">Documento de tu vehículo</div>
+            </div>
+            <a href="${orden.cotizacion_url}" target="_blank" class="btn btn-outline btn-sm" style="font-size:12px">Ver PDF →</a>
+          </div>` : ''}
           <div class="seccion-titulo">Avance del proceso</div>
           ${etapasHtml}
           ${novsHtml}
@@ -2736,8 +3138,18 @@ function cerrarModalServicios() {
 }
 function toggleServicio(srv) {
   document.getElementById('srv-'+srv).classList.toggle('selected');
-  if (srvSeleccionados.includes(srv)) srvSeleccionados=srvSeleccionados.filter(s=>s!==srv);
-  else srvSeleccionados.push(srv);
+  if (srvSeleccionados.includes(srv)) {
+    srvSeleccionados = srvSeleccionados.filter(s => s !== srv);
+  } else {
+    srvSeleccionados.push(srv);
+  }
+  // Mostrar/ocultar descripciones
+  const cont = document.getElementById('srv-descripciones');
+  if (cont) cont.style.display = srvSeleccionados.length ? 'block' : 'none';
+  ['latoneria','pintura','mecanica','adicionales'].forEach(s => {
+    const el = document.getElementById('srv-desc-' + s);
+    if (el) el.style.display = srvSeleccionados.includes(s) ? 'grid' : 'none';
+  });
 }
 function modalNext() {
   if (modalPaso===1) {
@@ -2800,7 +3212,24 @@ function buildChecklist(containerId, servicios, existentes) {
 
 function onChkChange(key,checked) {
   document.getElementById('extra-'+key)?.classList.toggle('show',checked);
-  document.getElementById('mec-'+key)?.classList.toggle('show',checked);
+  const mecDiv = document.getElementById('mec-'+key);
+  if (mecDiv) {
+    mecDiv.classList.toggle('show', checked);
+    // Asegurar que el select sea visible si está dentro de extra-input sin clase show
+    mecDiv.style.display = checked ? 'block' : 'none';
+  }
+  if (document.getElementById('modal-agregar')?.classList.contains('show')) {
+    actualizarDescripcionesAgregar();
+  }
+}
+
+function actualizarDescripcionesAgregar() {
+  const etapas = recogerChecklist('checklist-agregar');
+  const srvActivos = [...new Set(etapas.map(e => e.servicio).filter(Boolean))];
+  ['latoneria','pintura','mecanica','adicionales'].forEach(s => {
+    const div = document.getElementById('agregar-desc-'+s);
+    if (div) div.style.display = srvActivos.includes(s) ? 'grid' : 'none';
+  });
 }
 
 function recogerChecklist(containerId) {
@@ -2826,9 +3255,15 @@ async function guardarEtapasNueva() {
   const sinMec=etapas.filter(et=>!et.mecanico_id&&!et.tercero);
   if(sinMec.length){toast(`Asigna un mecánico a: ${sinMec.map(e=>e.nombre).join(', ')}`,'err');return;}
   try {
+    const descripciones = {
+      latoneria:   document.getElementById('desc-latoneria')?.value?.trim() || null,
+      pintura:     document.getElementById('desc-pintura')?.value?.trim() || null,
+      mecanica:    document.getElementById('desc-mecanica')?.value?.trim() || null,
+      adicionales: document.getElementById('desc-adicionales')?.value?.trim() || null,
+    };
     for(const et of etapas){
       const mec=mecanicos.find(m=>m.id===et.mecanico_id);
-      await api('/etapas','POST',{ orden_id:modalOrdenId, servicio:et.servicio, etapa_key:et.key, etapa:et.nombre, tercero:et.tercero||null, mecanico_id:et.mecanico_id||null, tecnico:mec?.nombre||null },{ Prefer:'return=minimal' });
+      await api('/etapas','POST',{ orden_id:modalOrdenId, servicio:et.servicio, etapa_key:et.key, etapa:et.nombre, tercero:et.tercero||null, mecanico_id:et.mecanico_id||null, tecnico:mec?.nombre||null, descripcion:descripciones[et.servicio]||null },{ Prefer:'return=minimal' });
     }
     toast('Etapas guardadas ✓');
     document.getElementById('modal-servicios').classList.remove('show');
