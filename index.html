@@ -1209,6 +1209,21 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 @media (min-width: 769px) {
   .bottom-nav { display: none !important; }
 }
+
+/* COTIZACIONES */
+.cot-card { background:white; border:1px solid var(--gris-borde); border-radius:var(--radio); padding:16px 20px; margin-bottom:12px; transition:box-shadow 0.15s; }
+.cot-card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.08); }
+.cot-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.cot-placa { font-family:'DM Mono',monospace; font-size:18px; font-weight:500; color:var(--azul); letter-spacing:1px; }
+.cot-codigo { font-family:'DM Mono',monospace; font-size:11px; color:var(--gris-mid); margin-top:2px; }
+.cot-cliente { font-size:13px; color:var(--gris-texto); margin-top:4px; }
+.cot-card-mid { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
+.cot-chip { font-size:12px; color:var(--gris-mid); }
+.cot-chip strong { color:var(--texto); }
+.cot-card-bot { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.badge-cot-pendiente { background:var(--amarillo-bg); color:var(--amarillo); padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+.badge-cot-aprobada  { background:var(--verde-bg); color:var(--verde); padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+.badge-cot-rechazada { background:var(--rojo-bg); color:var(--rojo); padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
 </style>
 </head>
 <body>
@@ -1408,7 +1423,16 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
         </div>
       </div>
 
-      <!-- ── MECÁNICO: MIS ETAPAS ── -->
+      <!-- ── COTIZACIONES ── -->
+      <div class="pagina" id="pag-cotizaciones">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+          <input type="text" id="cot-buscar" placeholder="Buscar por placa, cliente o c digo..." style="flex:1;min-width:200px;padding:9px 14px;border:1px solid var(--gris-borde);border-radius:8px;font-size:14px" oninput="filtrarCotizaciones()">
+          <select id="cot-filtro-estado" onchange="filtrarCotizaciones()" style="padding:9px 14px;border:1px solid var(--gris-borde);border-radius:8px;font-size:14px;background:white"><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="aprobada">Aprobada</option><option value="rechazada">Rechazada</option></select>
+        </div>
+        <div id="cot-lista"><div class="loading-state">Cargando cotizaciones...</div></div>
+      </div>
+
+      <!-- ── MEC NICO: MIS ETAPAS ── -->
       <div class="pagina" id="pag-mecanico">
         <div id="mec-contenido">
           <div class="loading-state">Cargando...</div>
@@ -1698,10 +1722,10 @@ async function doLogin() {
       return;
     }
 
-    // 2. ¿Es mecánico?
-    const mecs = await api(`/mecanicos?cedula=eq.${cedula}&activo=eq.true`);
+    // 2. ¿Es mecánico/ejecutivo?
+    const mecs = await api(`/%22Ejecutivos_Admitidos%22?telefono=eq.${cedula}&activo=eq.true`);
     if (mecs?.length) {
-      iniciarSesion({ perfil: 'mecanico', nombre: mecs[0].nombre, cedula, id: mecs[0].id, datos: mecs[0] });
+      iniciarSesion({ perfil: 'mecanico', nombre: mecs[0].nombre_tecnico, cedula, id: mecs[0].id, datos: mecs[0] });
       return;
     }
 
@@ -1783,6 +1807,10 @@ function montarJefe() {
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
       Nueva orden
     </button>
+    <button class="nav-item" id="nav-cotizaciones" onclick="navJefe('cotizaciones')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+      Cotizaciones
+    </button>
   `;
 
   document.getElementById('bottom-nav-inner').innerHTML = `
@@ -1798,6 +1826,10 @@ function montarJefe() {
       <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
       <span>Nueva</span>
     </button>
+    <button class="bnav-item" id="bnav-cotizaciones" onclick="navJefe('cotizaciones')">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+      <span>Cotizaciones</span>
+    </button>
   `;
 
   cargarMecanicos().finally(() => {
@@ -1810,7 +1842,7 @@ function montarJefe() {
 }
 
 function navJefe(pag) {
-  ['ordenes','nueva','dashboard'].forEach(p => {
+  ['ordenes','nueva','dashboard','cotizaciones'].forEach(p => {
     document.getElementById('nav-' + p)?.classList.remove('active');
     document.getElementById('bnav-' + p)?.classList.remove('active');
   });
@@ -1820,21 +1852,24 @@ function navJefe(pag) {
   const navDetalle = document.getElementById('nav-detalle');
   if (navDetalle && pag !== 'detalle') navDetalle.style.display = 'none';
 
-  const pagId = pag === 'ordenes' ? 'pag-ordenes'
-    : pag === 'nueva'      ? 'pag-nueva'
-    : pag === 'dashboard'  ? 'pag-dashboard'
+  const pagId = pag === 'ordenes'      ? 'pag-ordenes'
+    : pag === 'nueva'       ? 'pag-nueva'
+    : pag === 'dashboard'   ? 'pag-dashboard'
+    : pag === 'cotizaciones'? 'pag-cotizaciones'
     : 'pag-detalle';
   mostrarPagina(pagId);
 
   document.getElementById('topbar-title').textContent =
-    pag === 'ordenes'   ? 'Órdenes' :
-    pag === 'nueva'     ? 'Nueva Orden' :
-    pag === 'dashboard' ? 'Estado del Taller' : 'Detalle de Orden';
+    pag === 'ordenes'      ? 'Órdenes' :
+    pag === 'nueva'        ? 'Nueva Orden' :
+    pag === 'dashboard'    ? 'Estado del Taller' :
+    pag === 'cotizaciones' ? 'Cotizaciones' : 'Detalle de Orden';
   document.getElementById('topbar-actions').innerHTML = '';
 
-  if (pag === 'ordenes')   cargarOrdenes();
-  if (pag === 'nueva')     resetNuevaOrden();
-  if (pag === 'dashboard') cargarDashboard();
+  if (pag === 'ordenes')      cargarOrdenes();
+  if (pag === 'nueva')        resetNuevaOrden();
+  if (pag === 'dashboard')    cargarDashboard();
+  if (pag === 'cotizaciones') cargarCotizaciones();
   closeSidebar();
 }
 
@@ -3059,13 +3094,13 @@ async function crearOrden() {
   let clienteId = null;
   if (cedulaCliente) {
     try {
-      let cl = await api(`/clientes?cedula=eq.${cedulaCliente}`);
+      let cl = await api(`/clientes?cedula_nit=eq.${cedulaCliente}`);
       if (cl?.length) {
         clienteId = cl[0].id;
       } else {
         const nombre = document.getElementById('n-propietario').value||null;
         const telefono = document.getElementById('n-telefono').value||null;
-        const nuevo = await api('/clientes?select=id','POST',{ cedula:cedulaCliente, nombre, telefono },{ Prefer:'return=representation' });
+        const nuevo = await api('/clientes?select=id','POST',{ cedula_nit:cedulaCliente, nombre, celular:telefono },{ Prefer:'return=representation' });
         clienteId = nuevo[0].id;
       }
     } catch(e) { console.warn('Error creando cliente:', e); }
@@ -3504,13 +3539,165 @@ async function cambiarEstado(v) {
    MECÁNICOS
 ═══════════════════════════════════════════════════════════ */
 async function cargarMecanicos() {
-  try{ mecanicos=await api('/mecanicos?activo=eq.true&order=nombre.asc')||[]; }
+  try{
+    const raw = await api('/%22Ejecutivos_Admitidos%22?activo=eq.true&order=nombre_tecnico.asc') || [];
+    // Normalizar para que el resto del código use .nombre y .id uniformemente
+    mecanicos = raw.map(m => ({ ...m, nombre: m.nombre_tecnico }));
+  }
   catch(e){ mecanicos=[]; }
 }
 
 /* ═══════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   COTIZACIONES
+═══════════════════════════════════════════════════════════ */
+let todasCotizaciones = [];
+
+async function cargarCotizaciones() {
+  const lista = document.getElementById('cot-lista');
+  lista.innerHTML = '<div class="loading-state">Cargando cotizaciones...</div>';
+  try {
+    const data = await api('/cotizaciones?order=created_at.desc&limit=100') || [];
+    todasCotizaciones = data;
+    renderCotizaciones(data);
+  } catch(e) {
+    lista.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+  }
+}
+
+function filtrarCotizaciones() {
+  const q     = (document.getElementById('cot-buscar')?.value || '').toLowerCase().trim();
+  const est   = document.getElementById('cot-filtro-estado')?.value || '';
+  const filt  = todasCotizaciones.filter(c => {
+    const matchQ   = !q || [c.placa,c.nombre_cliente,c.codigo_cotizacion,c.cedula_cliente].some(f => (f||'').toLowerCase().includes(q));
+    const matchEst = !est || (c.estado || 'pendiente') === est;
+    return matchQ && matchEst;
+  });
+  renderCotizaciones(filt);
+}
+
+function renderCotizaciones(data) {
+  const lista = document.getElementById('cot-lista');
+  if (!data.length) {
+    lista.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📄</div><p>No hay cotizaciones.</p></div>';
+    return;
+  }
+  const fmt = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
+  lista.innerHTML = data.map(c => {
+    const estado  = c.estado || 'pendiente';
+    const badgeCls= `badge-cot-${estado}`;
+   const badgeTxt =
+  estado === 'pendiente'
+    ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+         <path d="M12 6v6l4 2"/>
+         <path d="M20 12v5"/>
+         <path d="M20 21h.01"/>
+         <path d="M21.25 8.2A10 10 0 1 0 16 21.16"/>
+       </svg> Pendiente`
+
+    : estado === 'aprobada'
+    ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+         <path d="M20 6 9 17l-5-5"/>
+       </svg> Aprobada`
+
+    : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+         <path d="M18 6 6 18"/>
+         <path d="m6 6 12 12"/>
+       </svg> Rechazada`;
+    const tienOrden = c.orden_id != null;
+    return `<div class="cot-card">
+      <div class="cot-card-top">
+        <div>
+          <div class="cot-placa">${c.placa || '—'}</div>
+          <div class="cot-codigo">${c.codigo_cotizacion || '—'}</div>
+          <div class="cot-cliente"> ${c.nombre_cliente || '—'} · ${c.cedula_cliente || '—'}</div>
+        </div>
+        <span class="${badgeCls}">${badgeTxt}</span>
+      </div>
+      <div class="cot-card-mid">
+        <div class="cot-chip"><strong>${c.fecha || formatFecha(c.created_at)}</strong></div>
+        <div class="cot-chip"> Tecnico: <strong>${c.tecnico || '—'}</strong></div>
+        <div class="cot-chip">   <strong>${[c.marca, c.modelo, c.año].filter(Boolean).join(' ') || '—'}</strong></div>
+        <div class="cot-chip">Valor: <strong>${fmt(c.total_general)}</strong></div>
+      </div>
+      <div class="cot-card-bot">
+        ${c.url_pdf ? `<a href="${c.url_pdf}" target="_blank" class="btn btn-outline btn-sm" style="font-size:12px"> Ver PDF</a>` : ''}
+        ${estado === 'pendiente' ? `
+          <button class="btn btn-success btn-sm" onclick="aprobarCotizacion(${c.id})"> Aprobar → Crear Orden</button>
+          <button class="btn btn-danger btn-sm" onclick="rechazarCotizacion(${c.id})"> Rechazar</button>
+        ` : ''}
+        ${estado === 'aprobada' && !tienOrden ? `
+          <button class="btn btn-primary btn-sm" onclick="convertirEnOrden(${c.id})">+ Crear orden desde esta</button>
+        ` : ''}
+        ${tienOrden ? `<span style="font-size:12px;color:var(--verde);font-weight:600">✓ Orden creada</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function aprobarCotizacion(id) {
+  if (!confirm('¿Aprobar esta cotización y crear la orden de trabajo?')) return;
+  try {
+    await api(`/cotizaciones?id=eq.${id}`, 'PATCH', { estado: 'aprobada' });
+    const cot = todasCotizaciones.find(c => c.id === id);
+    if (cot) await crearOrdenDesdeCotizacion(cot);
+    toast('Cotización aprobada y orden creada ✓');
+    cargarCotizaciones();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+async function rechazarCotizacion(id) {
+  if (!confirm('¿Rechazar esta cotización?')) return;
+  try {
+    await api(`/cotizaciones?id=eq.${id}`, 'PATCH', { estado: 'rechazada' });
+    toast('Cotización rechazada ✓');
+    cargarCotizaciones();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+async function convertirEnOrden(cotId) {
+  const cot = todasCotizaciones.find(c => c.id === cotId);
+  if (!cot) return;
+  try {
+    await crearOrdenDesdeCotizacion(cot);
+    toast('Orden creada ✓');
+    cargarCotizaciones();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+async function crearOrdenDesdeCotizacion(cot) {
+  // Buscar cliente
+  let clienteId = null;
+  if (cot.cedula_cliente) {
+    const cl = await api(`/clientes?cedula_nit=eq.${cot.cedula_cliente}`).catch(() => []) || [];
+    clienteId = cl[0]?.id || null;
+  }
+  // Buscar vehículo
+  let vehiculoId = null;
+  if (cot.placa) {
+    const vh = await api(`/vehiculos?placa=eq.${cot.placa}`).catch(() => []) || [];
+    vehiculoId = vh[0]?.id || null;
+  }
+  // Crear orden
+  const res = await api('/ordenes?select=id', 'POST', {
+    placa:          cot.placa,
+    marca:          cot.marca,
+    modelo:         cot.modelo,
+    propietario:    cot.nombre_cliente,
+    cotizacion_url: cot.url_pdf,
+    cotizacion_id:  cot.id,
+    cliente_id:     clienteId,
+    vehiculo_id:    vehiculoId,
+    estado:         'Activa'
+  }, { Prefer: 'return=representation' });
+  const ordenId = res[0].id;
+  // Actualizar cotización con orden_id
+  await api(`/cotizaciones?id=eq.${cot.id}`, 'PATCH', { orden_id: ordenId }).catch(() => {});
+  return ordenId;
+}
+
 checkSesionGuardada();
 </script>
 </body>
