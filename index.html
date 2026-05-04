@@ -1723,9 +1723,9 @@ async function doLogin() {
     }
 
     // 2. ¿Es mecánico/ejecutivo?
-    const mecs = await api(`/%22Ejecutivos_Admitidos%22?telefono=eq.${cedula}&activo=eq.true`);
+    const mecs = await api(`/mecanicos?cedula=eq.${cedula}&activo=eq.true`);
     if (mecs?.length) {
-      iniciarSesion({ perfil: 'mecanico', nombre: mecs[0].nombre_tecnico, cedula, id: mecs[0].id, datos: mecs[0] });
+      iniciarSesion({ perfil: 'mecanico', nombre: mecs[0].nombre, cedula, id: mecs[0].id, datos: mecs[0] });
       return;
     }
 
@@ -1753,7 +1753,6 @@ function mostrarErrorLogin(msg) {
 function iniciarSesion(datos) {
   sesion = datos;
   sessionStorage.setItem('sesion_freiman', JSON.stringify(datos));
-document.getElementById('sidebar-capacidad').style.display = 'none';
   montarApp();
 }
 
@@ -1786,6 +1785,9 @@ document.getElementById('sb-avatar').innerHTML = '<img src="logoFreimanpfp.png" 
   document.getElementById('sb-rol').textContent =
     sesion.perfil === 'jefe' ? 'Jefe de Taller' :
     sesion.perfil === 'mecanico' ? 'Mecánico' : 'Cliente';
+
+  const capEl = document.getElementById('sidebar-capacidad');
+  if (capEl) capEl.style.display = sesion.perfil === 'jefe' ? 'block' : 'none';
 
   if (sesion.perfil === 'jefe')     montarJefe();
   else if (sesion.perfil === 'mecanico') montarMecanico();
@@ -3222,7 +3224,7 @@ function buildChecklist(containerId, servicios, existentes) {
       const extraHtml=(et.tot||et.otro)?`<div class="extra-input${checked?' show':''}" id="extra-${et.key}">
         <input type="text" placeholder="${et.tot?'¿Quién es el tercero?':'Especifica cuál...'}" style="font-size:13px;margin-top:4px">
       </div>`:'';
-      const mecHtml=!iniciada?`<div class="extra-input${checked?' show':''}" id="mec-${et.key}" style="margin-top:6px">
+      const mecHtml=!iniciada?`<div class="mec-select-wrap" id="mec-${et.key}" style="margin-top:6px;display:${checked?'block':'none'}">
         <select id="mec-sel-${et.key}" style="font-size:13px">
           <option value="">— Asignar mecánico * —</option>
           ${mecanicos.map(m=>`<option value="${m.id}"${m.id==mecSelected?' selected':''}>${m.nombre}${m.rol?` (${m.rol})`:''}</option>`).join('')}
@@ -3540,9 +3542,7 @@ async function cambiarEstado(v) {
 ═══════════════════════════════════════════════════════════ */
 async function cargarMecanicos() {
   try{
-    const raw = await api('/%22Ejecutivos_Admitidos%22?activo=eq.true&order=nombre_tecnico.asc') || [];
-    // Normalizar para que el resto del código use .nombre y .id uniformemente
-    mecanicos = raw.map(m => ({ ...m, nombre: m.nombre_tecnico }));
+    mecanicos = await api('/mecanicos?activo=eq.true&order=nombre.asc') || [];
   }
   catch(e){ mecanicos=[]; }
 }
@@ -3585,7 +3585,7 @@ function renderCotizaciones(data) {
     return;
   }
   const fmt = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
-  lista.innerHTML = data.map(c => {
+lista.innerHTML = data.map(c => {
     const estado  = c.estado || 'pendiente';
     const badgeCls= `badge-cot-${estado}`;
    const badgeTxt =
@@ -3636,6 +3636,7 @@ function renderCotizaciones(data) {
     </div>`;
   }).join('');
 }
+
 
 async function aprobarCotizacion(id) {
   if (!confirm('¿Aprobar esta cotización y crear la orden de trabajo?')) return;
