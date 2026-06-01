@@ -4379,8 +4379,7 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
     </svg>`;
 
     const _baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
-    const _bocetoUrl = _baseUrl + 'icons/boceto-vehiculo.jpg';
-    const _logoUrl   = _baseUrl + 'icons/Logo_Fondo_Taller.png';
+    const _logoUrl  = _baseUrl + 'icons/Logo_Fondo_Taller.png';
 
     const html = `<!DOCTYPE html>
 <html lang="es">
@@ -4439,8 +4438,8 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
   </div>
 </div>
 
-<!-- FILA INFO: 1.Cliente | 2.Vehículo | 3.Estado | Elementos/Fechas -->
-<div style="display:grid;grid-template-columns:155px 190px 1fr 165px;gap:0;border:0.8px solid #999;margin-bottom:5px">
+<!-- FILA INFO: 1.Cliente | 2.Vehículo | 3.Fechas/Daños -->
+<div style="display:grid;grid-template-columns:200px 280px 1fr;gap:0;border:0.8px solid #999;margin-bottom:5px">
 
   <!-- 1. CLIENTE -->
   <div style="border-right:0.8px solid #999">
@@ -4469,62 +4468,31 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
     </div>
   </div>
 
-  <!-- 3. ESTADO DEL VEHÍCULO -->
-  <div style="border-right:0.8px solid #999">
-    <div class="sh">3. Estado del vehículo &mdash; Mapa de daños</div>
-    ${(() => {
-      const danos = (() => { try { return JSON.parse(orden.danos_vehiculo||'null')||{}; } catch{return{};} })();
-      const hasDanos = Object.values(danos).some(a=>a?.length>0);
-      const tipoLabels = {rayon:'Rayón',golpe:'Golpe',abolladura:'Abolladura',pieza_faltante:'Pieza faltante'};
-      const tipoColores = {rayon:'#F59E0B',golpe:'#EF4444',abolladura:'#F97316',pieza_faltante:'#111'};
-      // Dots sobre la imagen
-      const dots = (zona, top='50%', left='50%') => hasDanos
-        ? (danos[zona]||[]).map((t,i,a)=>`<span style="position:absolute;left:calc(${left} + ${(i-(a.length-1)/2)*12}px);top:${top};width:9px;height:9px;margin-left:-4.5px;margin-top:-4.5px;border-radius:50%;background:${tipoColores[t]||'#999'};border:1px solid #fff;box-shadow:0 0 0 .5px rgba(0,0,0,.25);display:block"></span>`).join('')
-        : '';
-      const vista = (label, bSize, bPos, h, gridStyle, zona, dotTop, dotLeft) =>
-        `<div style="${gridStyle};padding:3px;text-align:center;background:#fff">
-          <div style="font-size:7px;color:#555;margin-bottom:2px;text-transform:uppercase">${label}</div>
-          <div style="position:relative;overflow:hidden;width:100%;height:${h}px;background:#fff url('${_bocetoUrl}') no-repeat;background-size:${bSize};background-position:${bPos}">
-            ${dots(zona, dotTop, dotLeft)}
-          </div>
-        </div>`;
-      const danosList = hasDanos
-        ? ['frontal','trasera','lateral_izq','lateral_der'].filter(z=>(danos[z]||[]).length>0).map(z=>
-            '<div style="font-size:7.5px;margin-bottom:2px"><b style="text-transform:uppercase">'+{frontal:'Frontal',trasera:'Trasera',lateral_izq:'Lat. Izq.',lateral_der:'Lat. Der.'}[z]+':</b> '+
-            (danos[z]||[]).map(t=>'<span style="display:inline-flex;align-items:center;gap:2px;margin-right:4px"><span style="width:6px;height:6px;border-radius:50%;background:'+(tipoColores[t]||'#999')+';display:inline-block"></span>'+(tipoLabels[t]||t)+'</span>').join('')+'</div>'
-          ).join('')
-        : '<div style="font-size:8px;color:#aaa;font-style:italic">Sin daños registrados</div>';
-      return `
-      <div style="display:grid;grid-template-columns:1fr 1.08fr 1fr;grid-template-rows:78px 78px;border-bottom:1px solid #ddd">
-        ${vista('Trasera','150px auto','center top',54,'border-right:1px solid #ddd;border-bottom:1px solid #ddd','trasera','60%','50%')}
-        ${vista('Superior','178px auto','center 48%',132,'grid-row:span 2;border-right:1px solid #ddd','superior','50%','50%')}
-        ${vista('Frontal','150px auto','center bottom',54,'border-bottom:1px solid #ddd','frontal','60%','50%')}
-        ${vista('Lateral izquierda','245px auto','left center',54,'border-right:1px solid #ddd','lateral_izq','50%','30%')}
-        ${vista('Lateral derecha','245px auto','right center',54,'','lateral_der','50%','70%')}
-      </div>
-      <div style="padding:4px 7px;border-top:0.8px solid #999">
-        <div style="font-size:7px;font-weight:700;text-transform:uppercase;margin-bottom:3px">Daños registrados</div>
-        ${danosList}
-      </div>`;
-    })()}
-  </div>
-
-  <!-- TIPO DE DAÑO + FECHAS -->
+  <!-- 3. FECHAS Y DAÑOS -->
   <div>
-    <div class="sh">Tipo de daño / Fechas</div>
+    <div class="sh">3. Fechas / Estado del vehículo</div>
     <div style="padding:5px 7px">
-      <div style="margin-bottom:6px">
-        <div class="lbl" style="margin-bottom:3px">Tipo de daño</div>
-        <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px"><span style="width:9px;height:9px;border-radius:50%;background:#F59E0B;display:inline-block"></span><span>Rayón</span></div>
-        <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px"><span style="width:9px;height:9px;border-radius:50%;background:#EF4444;display:inline-block"></span><span>Golpe</span></div>
-        <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px"><span style="width:9px;height:9px;border-radius:50%;background:#F97316;display:inline-block"></span><span>Abolladura</span></div>
-        <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px"><span style="width:9px;height:9px;border-radius:50%;background:#111;display:inline-block"></span><span>Pieza faltante</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-bottom:6px">
+        <div><div class="lbl">Ingreso</div><div class="val">${fmtFecha(orden.creado_en)}</div></div>
+        <div><div class="lbl">Entrega prometida</div><div class="val" style="color:#D97706">${fmtFecha(orden.fecha_entrega_1)}</div></div>
+        <div><div class="lbl">Estado</div><div class="val" style="color:#059669">${escapeHtml(orden.estado||'Activa')}</div></div>
+        <div><div class="lbl">Nivel de daño</div><div class="val">${escapeHtml(orden.nivel_dano||'—')}</div></div>
+        ${orden.aseguradora ? `<div style="grid-column:span 2"><div class="lbl">Aseguradora</div><div class="val">${escapeHtml(orden.aseguradora)}</div></div>` : ''}
       </div>
       <div style="border-top:0.5px solid #ddd;padding-top:5px">
-        <div style="margin-bottom:3px"><div class="lbl">Ingreso</div><div class="val">${fmtFecha(orden.creado_en)}</div></div>
-        <div style="margin-bottom:3px"><div class="lbl">Entrega prometida</div><div class="val" style="color:#D97706">${fmtFecha(orden.fecha_entrega_1)}</div></div>
-        <div style="margin-bottom:3px"><div class="lbl">Estado</div><div class="val" style="color:#059669">${orden.estado||'—'}</div></div>
-        <div><div class="lbl">Nivel de daño</div><div class="val">${escapeHtml(orden.nivel_dano||'—')}</div></div>
+        <div class="lbl" style="margin-bottom:3px">Daños registrados</div>
+        ${(() => {
+          const danos = (() => { try { return JSON.parse(orden.danos_vehiculo||'null')||{}; } catch{return{};} })();
+          const hasDanos = Object.values(danos).some(a=>a?.length>0);
+          const tipoLabels = {rayon:'Rayón',golpe:'Golpe',abolladura:'Abolladura',pieza_faltante:'Pieza faltante'};
+          const tipoColores = {rayon:'#F59E0B',golpe:'#EF4444',abolladura:'#F97316',pieza_faltante:'#111'};
+          if (!hasDanos) return '<div style="font-size:8px;color:#aaa;font-style:italic">Sin daños registrados</div>';
+          return ['frontal','trasera','lateral_izq','lateral_der']
+            .filter(z=>(danos[z]||[]).length>0)
+            .map(z=>'<div style="font-size:8px;margin-bottom:3px"><b>'+{frontal:'Frontal',trasera:'Trasera',lateral_izq:'Lat. Izq.',lateral_der:'Lat. Der.'}[z]+':</b> '+
+              (danos[z]||[]).map(t=>'<span style="display:inline-flex;align-items:center;gap:2px;margin-right:4px"><span style="width:7px;height:7px;border-radius:50%;background:'+(tipoColores[t]||'#999')+';display:inline-block"></span>'+(tipoLabels[t]||t)+'</span>').join('')+'</div>'
+            ).join('');
+        })()}
       </div>
     </div>
   </div>
