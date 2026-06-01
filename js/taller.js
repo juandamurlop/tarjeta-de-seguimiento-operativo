@@ -193,17 +193,18 @@ function montarTaller() {
       .tv-col-estado  { width:14%; }
 
       /* ── FRANJA PULMÓN ── */
-      .tv-pulmon-strip{flex-shrink:0;background:linear-gradient(90deg,#FEF3C7 0%,#FFFBEB 100%);border-top:2px solid #F59E0B;padding:.4vh 1.5vw;display:flex;align-items:center;gap:1vw;min-height:5.5vh;max-height:7vh;overflow:hidden}
-      .tv-pulmon-strip-label{font-family:'DM Mono',monospace;font-size:.55vw;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:#92400E;white-space:nowrap;flex-shrink:0}
+      .tv-pulmon-strip{flex-shrink:0;background:#F8FAFC;border-top:2px solid #D1D5DB;padding:.4vh 1.5vw;display:flex;align-items:center;gap:1vw;min-height:5.5vh;max-height:7vh;overflow:hidden}
+      .tv-pulmon-strip-label{font-family:'DM Mono',monospace;font-size:.55vw;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:#4B5563;white-space:nowrap;flex-shrink:0}
       .tv-pulmon-cards{display:flex;align-items:center;gap:.6vw;overflow:hidden;flex:1}
-      .tv-pulmon-card{display:flex;align-items:center;gap:.4vw;background:rgba(251,191,36,.18);border:1px solid #F59E0B;border-radius:.4vw;padding:.3vh .7vw;cursor:pointer;transition:background .15s;flex-shrink:0}
-      .tv-pulmon-card:hover{background:rgba(251,191,36,.32)}
+      .tv-pulmon-cards-inner{display:flex;align-items:center;gap:.6vw;flex-shrink:0}
+      .tv-pulmon-card{display:flex;align-items:center;gap:.4vw;background:#fff;border:1px solid #D1D5DB;border-radius:.4vw;padding:.3vh .7vw;cursor:pointer;transition:background .15s;flex-shrink:0}
+      .tv-pulmon-card:hover{background:#F1F5F9}
       .tv-pulmon-info{display:flex;flex-direction:column;gap:.05vh}
-      .tv-pulmon-placa{font-family:'DM Mono',monospace;font-size:.85vw;font-weight:700;color:#92400E;letter-spacing:.04em;line-height:1}
-      .tv-pulmon-veh{font-size:.5vw;color:#B45309;line-height:1}
+      .tv-pulmon-placa{font-family:'DM Mono',monospace;font-size:.85vw;font-weight:700;color:#111827;letter-spacing:.04em;line-height:1}
+      .tv-pulmon-veh{font-size:.5vw;color:#6B7280;line-height:1}
       .tv-pulmon-meta{display:flex;flex-direction:column;align-items:flex-end;gap:.05vh;margin-left:.3vw}
-      .tv-pulmon-tipo{font-size:.48vw;color:#92400E;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-      .tv-pulmon-dias{font-family:'DM Mono',monospace;font-size:.7vw;font-weight:700;color:#D97706}
+      .tv-pulmon-tipo{font-size:.48vw;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+      .tv-pulmon-dias{font-family:'DM Mono',monospace;font-size:.7vw;font-weight:700;color:#374151}
 
       .tv-placa {
         font-family:'DM Mono',monospace;font-size:1.35vw;font-weight:700;
@@ -709,6 +710,26 @@ function _scrollPanel(id, state, pxPerSec, pauseMs) {
   }
 }
 
+// ── Scroll bounce automático para la franja pulmón ──────────
+function _iniciarScrollPulmon() {
+  if (window._pulmonScrollRunning) return;
+  window._pulmonScrollRunning = true;
+  const SPEED = 0.4; // px por frame — lento
+  let dir = 1;
+  function tick() {
+    const wrap  = document.getElementById('tv-pulmon-cards');
+    const inner = document.getElementById('tv-pulmon-cards-inner');
+    if (!wrap || !inner) { window._pulmonScrollRunning = false; return; }
+    const maxScroll = inner.scrollWidth - wrap.clientWidth;
+    if (maxScroll <= 0) { wrap.scrollLeft = 0; requestAnimationFrame(tick); return; }
+    wrap.scrollLeft += SPEED * dir;
+    if (wrap.scrollLeft >= maxScroll - 1) dir = -1;
+    if (wrap.scrollLeft <= 0) dir = 1;
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
 function _iniciarScrollTaller() {
   if (window._tvScrollRunning) return;
   window._tvScrollRunning = true;
@@ -1105,9 +1126,9 @@ async function cargarPantallaTaller() {
               <div class="tv-kpi-num" id="tv-kpi-programadas" style="color:#4338CA">${ordenesProgramadas.length}</div>
               <div class="tv-kpi-label">Programadas</div>
             </div>
-            <div class="tv-kpi" style="background:#FFFBEB">
-              <div class="tv-kpi-num" id="tv-kpi-pulmon" style="color:#D97706">${ordenesPulmon.length}</div>
-              <div class="tv-kpi-label" style="color:#92400E">En<br>pulmón</div>
+            <div class="tv-kpi" style="background:#F8FAFC">
+              <div class="tv-kpi-num" id="tv-kpi-pulmon" style="color:#374151">${ordenesPulmon.length}</div>
+              <div class="tv-kpi-label">En<br>pulmón</div>
             </div>
           </div>
 
@@ -1131,9 +1152,11 @@ async function cargarPantallaTaller() {
                 </table>
               </div>
               <div class="tv-pulmon-strip">
-                <div class="tv-pulmon-strip-label">⏸ EN PULMÓN · ${ordenesPulmon.length}</div>
-                <div style="width:1px;height:3vh;background:#F59E0B;opacity:.4;flex-shrink:0"></div>
-                <div class="tv-pulmon-cards" id="tv-pulmon-cards">${pulmonFranjaHtml}</div>
+                <div class="tv-pulmon-strip-label">EN PULMÓN · ${ordenesPulmon.length}</div>
+                <div style="width:1px;height:3vh;background:#D1D5DB;flex-shrink:0"></div>
+                <div class="tv-pulmon-cards" id="tv-pulmon-cards">
+                  <div class="tv-pulmon-cards-inner" id="tv-pulmon-cards-inner">${pulmonFranjaHtml}</div>
+                </div>
               </div>
             </div>
 
@@ -1159,6 +1182,7 @@ async function cargarPantallaTaller() {
 
       iniciarRelojTaller();
       _iniciarScrollTaller();
+      _iniciarScrollPulmon();
 
     } else {
       // ── Actualización incremental: solo tocar lo que cambió ──
@@ -1225,7 +1249,8 @@ async function cargarPantallaTaller() {
         const sigPulmon = ordenesPulmon.map(o => o.id).join(',');
         if (pulmonCards.dataset.sig !== sigPulmon) {
           pulmonCards.dataset.sig = sigPulmon;
-          pulmonCards.innerHTML = pulmonFranjaHtml;
+          pulmonCards.innerHTML = `<div class="tv-pulmon-cards-inner" id="tv-pulmon-cards-inner">${pulmonFranjaHtml}</div>`;
+          pulmonCards.scrollLeft = 0;
         }
       }
     }
