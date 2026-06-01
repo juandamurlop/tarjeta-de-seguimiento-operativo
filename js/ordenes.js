@@ -4386,7 +4386,6 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
 <head>
 <meta charset="UTF-8">
 <base href="${_baseUrl}">
-<link rel="preload" as="image" href="${_bocetoUrl}">
 <title>Preliquidación ${escapeHtml(orden.placa)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
