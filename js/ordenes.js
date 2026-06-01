@@ -4430,7 +4430,7 @@ tr:nth-child(even) td{background:#F9FAFB}
     </div>
   </div>
   <div style="text-align:center">
-    <div style="font-size:26px;font-weight:900;color:#1a1a1a;letter-spacing:2px">PRELIQUIDACIÓN</div>
+    <div style="font-size:26px;font-weight:900;color:#1a1a1a;letter-spacing:2px">ORDEN DE TRABAJO</div>
     <div style="font-size:8.5px;color:#6B7280;margin-top:3px">Documento preliminar — no constituye factura</div>
   </div>
   <div style="border:2px solid #1a1a1a;border-radius:4px;padding:8px 14px;text-align:center;min-width:150px">
