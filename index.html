@@ -363,61 +363,6 @@
               </div>
             </div>
 
-            <!-- Estado del vehículo — Daños -->
-            <div class="no-seccion">
-              <div class="no-sec-titulo">
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                Estado del vehículo
-                <span style="font-size:10px;font-weight:400;color:var(--gris-mid);margin-left:4px">— marcar daños visibles al ingreso</span>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-
-                <div style="border:1.5px solid var(--gris-borde);border-radius:7px;padding:10px 12px">
-                  <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;display:flex;align-items:center;gap:5px">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
-                    Frontal
-                  </div>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;margin-bottom:5px"><input type="checkbox" class="dano-cb" value="frontal:rayon"><span style="width:10px;height:10px;border-radius:50%;background:#FCD34D;flex-shrink:0;display:inline-block"></span>Rayón</label>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;margin-bottom:5px"><input type="checkbox" class="dano-cb" value="frontal:golpe"><span style="width:10px;height:10px;border-radius:50%;background:#EF4444;flex-shrink:0;display:inline-block"></span>Golpe</label>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;margin-bottom:5px"><input type="checkbox" class="dano-cb" value="frontal:abolladura"><span style="width:10px;height:10px;border-radius:50%;background:#F97316;flex-shrink:0;display:inline-block"></span>Abolladura</label>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer"><input type="checkbox" class="dano-cb" value="frontal:pieza_faltante"><span style="width:10px;height:10px;border-radius:50%;background:#1F2937;flex-shrink:0;display:inline-block"></span>Pieza faltante</label>
-                </div>
-
-                <div style="border:1.5px solid var(--gris-borde);border-radius:7px;padding:10px 12px">
-                  <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;display:flex;align-items:center;gap:5px">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                    Trasera
-                  </div>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;margin-bottom:5px"><input type="checkbox" class="dano-cb" value="trasera:rayon"><span style="width:10px;height:10px;border-radius:50%;background:#FCD34D;flex-shrink:0;display:inline-block"></span>Rayón</label>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;margin-bottom:5px"><input type="checkbox" class="dano-cb" value="trasera:golpe"><span style="width:10px;height:10px;border-radius:50%;background:#EF4444;flex-shrink:0;display:inline-block"></span>Golpe</label>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;margin-bottom:5px"><input type="checkbox" class="dano-cb" value="trasera:abolladura"><span style="width:10px;height:10px;border-radius:50%;background:#F97316;flex-shrink:0;display:inline-block"></span>Abolladura</label>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer"><input type="checkbox" class="dano-cb" value="trasera:pieza_faltante"><span style="width:10px;height:10px;border-radius:50%;background:#1F2937;flex-shrink:0;display:inline-block"></span>Pieza faltante</label>
-                </div>
-
-                <div style="border:1.5px solid var(--gris-borde);border-radius:7px;padding:10px 12px">
-                  <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;display:flex;align-items:center;gap:5px">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-                    Lateral izquierda
-                  </div>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;margin-bottom:5px"><input type="checkbox" class="dano-cb" value="lateral_izq:rayon"><span style="width:10px;height:10px;border-radius:50%;background:#FCD34D;flex-shrink:0;display:inline-block"></span>Rayón</label>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;margin-bottom:5px"><input type="checkbox" class="dano-cb" value="lateral_izq:golpe"><span style="width:10px;height:10px;border-radius:50%;background:#EF4444;flex-shrink:0;display:inline-block"></span>Golpe</label>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;margin-bottom:5px"><input type="checkbox" class="dano-cb" value="lateral_izq:abolladura"><span style="width:10px;height:10px;border-radius:50%;background:#F97316;flex-shrink:0;display:inline-block"></span>Abolladura</label>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer"><input type="checkbox" class="dano-cb" value="lateral_izq:pieza_faltante"><span style="width:10px;height:10px;border-radius:50%;background:#1F2937;flex-shrink:0;display:inline-block"></span>Pieza faltante</label>
-                </div>
-
-                <div style="border:1.5px solid var(--gris-borde);border-radius:7px;padding:10px 12px">
-                  <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;display:flex;align-items:center;gap:5px">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-                    Lateral derecha
-                  </div>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;margin-bottom:5px"><input type="checkbox" class="dano-cb" value="lateral_der:rayon"><span style="width:10px;height:10px;border-radius:50%;background:#FCD34D;flex-shrink:0;display:inline-block"></span>Rayón</label>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;margin-bottom:5px"><input type="checkbox" class="dano-cb" value="lateral_der:golpe"><span style="width:10px;height:10px;border-radius:50%;background:#EF4444;flex-shrink:0;display:inline-block"></span>Golpe</label>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;margin-bottom:5px"><input type="checkbox" class="dano-cb" value="lateral_der:abolladura"><span style="width:10px;height:10px;border-radius:50%;background:#F97316;flex-shrink:0;display:inline-block"></span>Abolladura</label>
-                  <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer"><input type="checkbox" class="dano-cb" value="lateral_der:pieza_faltante"><span style="width:10px;height:10px;border-radius:50%;background:#1F2937;flex-shrink:0;display:inline-block"></span>Pieza faltante</label>
-                </div>
-
-              </div>
-            </div>
 
             <!-- Descripción general — visible en paso 1 -->
             <div class="no-seccion">
