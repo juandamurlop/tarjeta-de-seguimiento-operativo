@@ -4379,6 +4379,31 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
     </svg>`;
 
     const _baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
+
+    // Convertir boceto-vehiculo.jpg a base64 para embeber en la ventana nueva
+    let _bocetoB64 = '';
+    try {
+      const _resp = await fetch(_baseUrl + 'icons/boceto-vehiculo.jpg');
+      const _blob = await _resp.blob();
+      _bocetoB64 = await new Promise(r => {
+        const rd = new FileReader();
+        rd.onload = () => r(rd.result);
+        rd.readAsDataURL(_blob);
+      });
+    } catch(e) { console.warn('boceto no cargó:', e); }
+
+    // Convertir logo a base64
+    let _logoB64 = '';
+    try {
+      const _resp2 = await fetch(_baseUrl + 'icons/Logo_Fondo_Taller.png');
+      const _blob2 = await _resp2.blob();
+      _logoB64 = await new Promise(r => {
+        const rd = new FileReader();
+        rd.onload = () => r(rd.result);
+        rd.readAsDataURL(_blob2);
+      });
+    } catch(e) { console.warn('logo no cargó:', e); }
+
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -4405,7 +4430,7 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
 <!-- ENCABEZADO -->
 <div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;border-bottom:3px solid #111;padding-bottom:5px;margin-bottom:6px">
   <div style="display:flex;align-items:center;gap:10px">
-    <img src="../icons/Logo_Fondo_Taller.png" alt="Logo" style="height:52px;width:52px;object-fit:contain">
+    ${_logoB64 ? `<img src="${_logoB64}" alt="Logo" style="height:52px;width:52px;object-fit:contain">` : ''}
     <div>
       <div style="font-weight:900;font-size:14px;color:#111;letter-spacing:.3px">FREIMANAUTOS S.A.</div>
       <div style="font-size:7.5px;color:#555;margin-top:2px">NIT 860.012.186-5</div>
@@ -4480,7 +4505,7 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
       const vista = (label, bSize, bPos, h, gridStyle, zona, dotTop, dotLeft) =>
         `<div style="${gridStyle};padding:3px;text-align:center;background:#fff">
           <div style="font-size:7px;color:#555;margin-bottom:2px;text-transform:uppercase">${label}</div>
-          <div style="position:relative;overflow:hidden;margin:0 auto;height:${h}px;background:#fff url('icons/boceto-vehiculo.jpg') no-repeat;background-size:${bSize};background-position:${bPos}">
+          <div style="position:relative;overflow:hidden;margin:0 auto;height:${h}px;background:#fff url('${_bocetoB64 || 'icons/boceto-vehiculo.jpg'}') no-repeat;background-size:${bSize};background-position:${bPos}">
             ${dots(zona, dotTop, dotLeft)}
           </div>
         </div>`;
