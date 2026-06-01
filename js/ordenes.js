@@ -4378,10 +4378,12 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
       <rect ${S} stroke-width="0.8" x="44" y="54" width="42" height="16" rx="1"/>
     </svg>`;
 
+    const _baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<base href="${_baseUrl}">
 <title>Preliquidación ${escapeHtml(orden.placa)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}

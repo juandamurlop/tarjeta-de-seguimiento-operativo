@@ -192,6 +192,19 @@ function montarTaller() {
       .tv-col-entrega { width:8%; }
       .tv-col-estado  { width:14%; }
 
+      /* ── FRANJA PULMÓN ── */
+      .tv-pulmon-strip{flex-shrink:0;background:linear-gradient(90deg,#FEF3C7 0%,#FFFBEB 100%);border-top:2px solid #F59E0B;padding:.4vh 1.5vw;display:flex;align-items:center;gap:1vw;min-height:5.5vh;max-height:7vh;overflow:hidden}
+      .tv-pulmon-strip-label{font-family:'DM Mono',monospace;font-size:.55vw;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:#92400E;white-space:nowrap;flex-shrink:0}
+      .tv-pulmon-cards{display:flex;align-items:center;gap:.6vw;overflow:hidden;flex:1}
+      .tv-pulmon-card{display:flex;align-items:center;gap:.4vw;background:rgba(251,191,36,.18);border:1px solid #F59E0B;border-radius:.4vw;padding:.3vh .7vw;cursor:pointer;transition:background .15s;flex-shrink:0}
+      .tv-pulmon-card:hover{background:rgba(251,191,36,.32)}
+      .tv-pulmon-info{display:flex;flex-direction:column;gap:.05vh}
+      .tv-pulmon-placa{font-family:'DM Mono',monospace;font-size:.85vw;font-weight:700;color:#92400E;letter-spacing:.04em;line-height:1}
+      .tv-pulmon-veh{font-size:.5vw;color:#B45309;line-height:1}
+      .tv-pulmon-meta{display:flex;flex-direction:column;align-items:flex-end;gap:.05vh;margin-left:.3vw}
+      .tv-pulmon-tipo{font-size:.48vw;color:#92400E;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+      .tv-pulmon-dias{font-family:'DM Mono',monospace;font-size:.7vw;font-weight:700;color:#D97706}
+
       .tv-placa {
         font-family:'DM Mono',monospace;font-size:1.35vw;font-weight:700;
         color:#111827;letter-spacing:.04em;line-height:1;
@@ -758,13 +771,14 @@ async function cargarPantallaTaller() {
     const manana = new Date(hoy); manana.setDate(manana.getDate()+1);
     const hoyISO = hoy.toISOString().split('T')[0];
 
-    const [ordenesActivas, entregadasHoy, etapasActivas, etapasTodas, aprobacionesTodas, ordenesProgramadas] = await Promise.all([
+    const [ordenesActivas, entregadasHoy, etapasActivas, etapasTodas, aprobacionesTodas, ordenesProgramadas, ordenesPulmon] = await Promise.all([
       api(`/ordenes?estado=eq.Activa&estado=neq.Programada&or=(pulmon.is.null,pulmon.eq.false)&order=fecha_entrega_1.asc`).catch(()=>[]) || [],
       api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${hoy.toISOString()}&order=entregada_en.desc`).catch(()=>[]) || [],
       api(`/etapas?fin=is.null&inicio=not.is.null&select=id,orden_id,etapa,servicio,mecanico_id,tecnico,inicio,pausado,pausa_inicio,tiempo_pausado_min`).catch(()=>[]) || [],
       api(`/etapas?select=id,orden_id,etapa,servicio,inicio,fin,tecnico&order=creado_en.asc`).catch(()=>[]) || [],
       api(`/aprobaciones_etapa?select=etapa_id,estado&order=creado_en.desc`).catch(()=>[]) || [],
-      api(`/ordenes?estado=eq.Programada&order=fecha_programada.asc&select=id,placa,marca,linea,fecha_programada`).catch(()=>[]) || []
+      api(`/ordenes?estado=eq.Programada&order=fecha_programada.asc&select=id,placa,marca,linea,fecha_programada`).catch(()=>[]) || [],
+      api(`/ordenes?pulmon=eq.true&order=pulmon_desde.asc&select=id,placa,marca,linea,propietario,pulmon_desde,pulmon_tipo`).catch(()=>[]) || []
     ]);
 
     // Tomar el estado MÁS RECIENTE por etapa (orden desc ya viene del query)
@@ -955,6 +969,25 @@ async function cargarPantallaTaller() {
       </tr>`;
     }
 
+    // ── Franja pulmón ────────────────────────────────────────
+    function _pulmonCardHtml(o) {
+      const dias = o.pulmon_desde ? Math.floor((Date.now()-new Date(o.pulmon_desde))/86400000) : null;
+      const tipo = o.pulmon_tipo ? o.pulmon_tipo.charAt(0).toUpperCase()+o.pulmon_tipo.slice(1) : 'Pulmón';
+      return `<div class="tv-pulmon-card" onclick="_tvVerDetalle(${o.id})">
+        <div class="tv-pulmon-info">
+          <div class="tv-pulmon-placa">⏸ ${o.placa}</div>
+          <div class="tv-pulmon-veh">${[o.marca,o.linea].filter(Boolean).join(' ')||'—'}</div>
+        </div>
+        <div class="tv-pulmon-meta">
+          <div class="tv-pulmon-tipo">${tipo}</div>
+          ${dias!==null?`<div class="tv-pulmon-dias">${dias}d</div>`:''}
+        </div>
+      </div>`;
+    }
+    const pulmonFranjaHtml = ordenesPulmon.length
+      ? ordenesPulmon.map(_pulmonCardHtml).join('')
+      : `<div style="font-size:.65vw;color:#92400E;opacity:.6;font-style:italic">Sin vehículos en pulmón</div>`;
+
     // ── Panel derecho: Listos hoy ────────────────────────────
     // Deduplicar por id (una orden no puede aparecer dos veces)
     const _panelSeen = new Set();
@@ -1051,7 +1084,7 @@ async function cargarPantallaTaller() {
             <div id="taller-fecha" class="tv-date"></div>
           </div>
 
-          <div class="tv-kpi-strip" style="grid-template-columns:repeat(5,1fr)">
+          <div class="tv-kpi-strip" style="grid-template-columns:repeat(6,1fr)">
             <div class="tv-kpi">
               <div class="tv-kpi-num" id="tv-kpi-activas" style="color:#1E40AF">${ordenesActivas.length}</div>
               <div class="tv-kpi-label">Órdenes<br>activas</div>
@@ -1071,6 +1104,10 @@ async function cargarPantallaTaller() {
             <div class="tv-kpi">
               <div class="tv-kpi-num" id="tv-kpi-programadas" style="color:#4338CA">${ordenesProgramadas.length}</div>
               <div class="tv-kpi-label">Programadas</div>
+            </div>
+            <div class="tv-kpi" style="background:#FFFBEB">
+              <div class="tv-kpi-num" id="tv-kpi-pulmon" style="color:#D97706">${ordenesPulmon.length}</div>
+              <div class="tv-kpi-label" style="color:#92400E">En<br>pulmón</div>
             </div>
           </div>
 
@@ -1092,6 +1129,11 @@ async function cargarPantallaTaller() {
                     ${filasHtml || `<tr><td colspan="6" style="text-align:center;padding:3vh;color:#D1D5DB;font-size:.8vw;letter-spacing:.1em">SIN ÓRDENES ACTIVAS</td></tr>`}
                   </tbody>
                 </table>
+              </div>
+              <div class="tv-pulmon-strip">
+                <div class="tv-pulmon-strip-label">⏸ EN PULMÓN · ${ordenesPulmon.length}</div>
+                <div style="width:1px;height:3vh;background:#F59E0B;opacity:.4;flex-shrink:0"></div>
+                <div class="tv-pulmon-cards" id="tv-pulmon-cards">${pulmonFranjaHtml}</div>
               </div>
             </div>
 
@@ -1128,6 +1170,7 @@ async function cargarPantallaTaller() {
       upd('tv-kpi-creadas',    creadasHoy.length);
       upd('tv-kpi-proceso',    enProceso.length);
       upd('tv-kpi-programadas',ordenesProgramadas.length);
+      upd('tv-kpi-pulmon',     ordenesPulmon.length);
       upd('tv-prog-title',     `Programadas · ${ordenesProgramadas.length}`);
 
       // Actualizar tabla: re-render completo del tbody, animando solo filas nuevas
@@ -1175,6 +1218,16 @@ async function cargarPantallaTaller() {
       // Panel programadas: reemplazar completo (pequeño, cambia poco)
       const panelProg = document.getElementById('tv-panel-programadas');
       if (panelProg) panelProg.innerHTML = progHtml;
+
+      // Franja pulmón: actualizar si cambió
+      const pulmonCards = document.getElementById('tv-pulmon-cards');
+      if (pulmonCards) {
+        const sigPulmon = ordenesPulmon.map(o => o.id).join(',');
+        if (pulmonCards.dataset.sig !== sigPulmon) {
+          pulmonCards.dataset.sig = sigPulmon;
+          pulmonCards.innerHTML = pulmonFranjaHtml;
+        }
+      }
     }
 
     // ── Referencias globales ─────────────────────────────────
