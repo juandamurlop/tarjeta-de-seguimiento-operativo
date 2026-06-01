@@ -783,9 +783,9 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
             </select>
           </div>
 
-          ${/* Horas y valor — bloqueados una vez guardados */''}
+          ${/* Horas y valor — bloqueados para técnicos, siempre editables para jefe/gerente */''}
           ${(() => {
-            const yaGuardado = e.horas_facturadas || e.horas_adicionales || e.valor;
+            const yaGuardado = (e.horas_facturadas || e.horas_adicionales || e.valor) && !esJefe();
             const fmt = n => n != null && n !== '' ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
             const lbl1 = e.servicio==='pintura'?'Piezas a pintar':'H. Facturadas';
             const lbl2 = e.servicio==='pintura'?'Piezas adic.':'H. Adicionales';
@@ -818,7 +818,10 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
                 <input id="val-${k}" type="number" step="1000" value="${e.valor||''}" placeholder="0" style="font-weight:600;color:var(--verde)">
               </div>
               <div class="field etapa-campo-sm" style="display:flex;align-items:flex-end;padding-bottom:4px">
-                <button class="btn btn-primary btn-sm" onclick="guardarCamposEtapa(${eid},'${k}')">Guardar ✓</button>
+                ${esJefe()
+                  ? `<button class="btn btn-primary btn-sm" onclick="guardarCamposEtapaJefe(${eid},'${k}')">Guardar</button>`
+                  : `<button class="btn btn-primary btn-sm" onclick="guardarCamposEtapa(${eid},'${k}')">Guardar ✓</button>`
+                }
               </div>`;
             }
           })()}
@@ -968,7 +971,19 @@ async function finalizarEtapa(eid, nombre, servicio) {
   } catch(e) { toast('Error: '+e.message, 'err'); }
 }
 
-// ── Guardar horas+valor de una sola vez y bloquear ──────────
+// ── Guardar para jefe/gerente — siempre editable, sin bloquear ──
+async function guardarCamposEtapaJefe(eid, k) {
+  const hf  = parseFloat(document.getElementById(`hf-${k}`)?.value) || null;
+  const ha  = parseFloat(document.getElementById(`ha-${k}`)?.value) || null;
+  const val = parseFloat(document.getElementById(`val-${k}`)?.value) || null;
+  try {
+    await api(`/etapas?id=eq.${eid}`, 'PATCH', { horas_facturadas: hf, horas_adicionales: ha, valor: val });
+    toast('Guardado ✓');
+    if (ordenActual) abrirOrden(ordenActual.id);
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ── Guardar horas+valor de una sola vez y bloquear (técnico) ─
 async function guardarCamposEtapa(eid, k) {
   const hf  = parseFloat(document.getElementById(`hf-${k}`)?.value) || null;
   const ha  = parseFloat(document.getElementById(`ha-${k}`)?.value) || null;
