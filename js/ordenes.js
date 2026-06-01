@@ -4380,29 +4380,26 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
 
     const _baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
 
-    // Convertir boceto-vehiculo.jpg a base64 para embeber en la ventana nueva
-    let _bocetoB64 = '';
-    try {
-      const _resp = await fetch(_baseUrl + 'icons/boceto-vehiculo.jpg');
-      const _blob = await _resp.blob();
-      _bocetoB64 = await new Promise(r => {
-        const rd = new FileReader();
-        rd.onload = () => r(rd.result);
-        rd.readAsDataURL(_blob);
-      });
-    } catch(e) { console.warn('boceto no cargó:', e); }
+    // Convertir imagen a base64 via canvas (más fiable que fetch en ventana nueva)
+    const _imgToB64 = (src, type='image/jpeg') => new Promise(resolve => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth; c.height = img.naturalHeight;
+          c.getContext('2d').drawImage(img, 0, 0);
+          resolve(c.toDataURL(type, 0.92));
+        } catch(e) { resolve(''); }
+      };
+      img.onerror = () => resolve('');
+      img.src = src + '?_t=' + Date.now(); // cache-bust
+    });
 
-    // Convertir logo a base64
-    let _logoB64 = '';
-    try {
-      const _resp2 = await fetch(_baseUrl + 'icons/Logo_Fondo_Taller.png');
-      const _blob2 = await _resp2.blob();
-      _logoB64 = await new Promise(r => {
-        const rd = new FileReader();
-        rd.onload = () => r(rd.result);
-        rd.readAsDataURL(_blob2);
-      });
-    } catch(e) { console.warn('logo no cargó:', e); }
+    const [_bocetoB64, _logoB64] = await Promise.all([
+      _imgToB64(_baseUrl + 'icons/boceto-vehiculo.jpg', 'image/jpeg'),
+      _imgToB64(_baseUrl + 'icons/Logo_Fondo_Taller.png', 'image/png')
+    ]);
 
     const html = `<!DOCTYPE html>
 <html lang="es">
