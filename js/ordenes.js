@@ -4484,7 +4484,7 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
       const vista = (label, bSize, bPos, h, gridStyle, zona, dotTop, dotLeft) =>
         `<div style="${gridStyle};padding:3px;text-align:center;background:#fff">
           <div style="font-size:7px;color:#555;margin-bottom:2px;text-transform:uppercase">${label}</div>
-          <div style="position:relative;overflow:hidden;margin:0 auto;height:${h}px;background:#fff url('${_bocetoUrl}') no-repeat;background-size:${bSize};background-position:${bPos}">
+          <div style="position:relative;overflow:hidden;width:100%;height:${h}px;background:#fff url('${_bocetoUrl}') no-repeat;background-size:${bSize};background-position:${bPos}">
             ${dots(zona, dotTop, dotLeft)}
           </div>
         </div>`;
@@ -4631,6 +4631,19 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
 </div>
 
 </div>
+<script>
+// Esperar a que todas las imágenes carguen antes de imprimir
+window.addEventListener('load', function() {
+  var imgs = document.images;
+  var loaded = 0;
+  if (imgs.length === 0) { setTimeout(function(){ window.print(); }, 300); return; }
+  for (var i = 0; i < imgs.length; i++) {
+    if (imgs[i].complete) { loaded++; }
+    else { imgs[i].addEventListener('load', function(){ loaded++; if(loaded>=imgs.length) setTimeout(function(){ window.print(); },300); }); }
+  }
+  if (loaded >= imgs.length) setTimeout(function(){ window.print(); }, 300);
+});
+</script>
 </body>
 </html>`;
 
@@ -4639,8 +4652,8 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
     const blobUrl = URL.createObjectURL(blob);
     const win = window.open(blobUrl, '_blank');
     if (win) {
-      setTimeout(() => { URL.revokeObjectURL(blobUrl); }, 120000); // liberar en 2 min
-      setTimeout(() => win.print(), 1200); // esperar a que carguen las imágenes
+      setTimeout(() => { URL.revokeObjectURL(blobUrl); }, 120000);
+      // El print lo dispara el propio onload de la ventana (ver script en el HTML)
       toast('Preliquidación generada ✓');
     } else {
       URL.revokeObjectURL(blobUrl);
