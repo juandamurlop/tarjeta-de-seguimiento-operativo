@@ -4634,13 +4634,16 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
 </body>
 </html>`;
 
-    const win = window.open('', '_blank');
+    // Usar Blob URL para que la ventana tenga origen real y pueda cargar imágenes
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    const win = window.open(blobUrl, '_blank');
     if (win) {
-      win.document.write(html);
-      win.document.close();
-      setTimeout(() => win.print(), 700);
+      setTimeout(() => { URL.revokeObjectURL(blobUrl); }, 120000); // liberar en 2 min
+      setTimeout(() => win.print(), 1200); // esperar a que carguen las imágenes
       toast('Preliquidación generada ✓');
     } else {
+      URL.revokeObjectURL(blobUrl);
       toast('El navegador bloqueó la ventana emergente. Permite ventanas emergentes para este sitio.', 'err');
     }
   } catch(e) {
