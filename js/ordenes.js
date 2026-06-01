@@ -4389,97 +4389,104 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
 <title>Preliquidación ${escapeHtml(orden.placa)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:9px;line-height:1.3}
-@page{size:A4 landscape;margin:7mm 8mm}
-table{width:100%;border-collapse:collapse}
-th{font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:3px 5px;background:#F0F0F0;text-align:left;border:0.5px solid #ccc}
-td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
-.lbl{font-size:7px;color:#777;text-transform:uppercase;letter-spacing:.2px;margin-bottom:1px}
-.val{font-weight:600;font-size:9px}
-.sh{font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;background:#111;color:#fff;padding:2.5px 7px}
-.money{font-family:monospace;font-weight:700}
-@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}
+body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;font-size:9.5px;line-height:1.45;background:#fff}
+@page{size:A4 portrait;margin:10mm 12mm}
+
+/* Tablas */
+table{width:100%;border-collapse:collapse;font-size:9px}
+th{font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:6px 8px;background:#1a1a1a;color:#fff;text-align:left;border:none}
+td{padding:6px 8px;border-bottom:1px solid #E5E7EB;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:nth-child(even) td{background:#F9FAFB}
+
+/* Etiquetas y valores */
+.lbl{font-size:7.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;font-weight:600}
+.val{font-weight:700;font-size:10px;color:#111}
+.sh{font-size:7.5px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;background:#1a1a1a;color:#fff;padding:4px 10px}
+.money{font-family:'Courier New',monospace;font-weight:700}
+
+/* Totales */
+.total-row{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;font-size:9.5px;border-bottom:1px solid #E5E7EB}
+.total-final{background:#1a1a1a;color:#fff;font-weight:900;font-size:12px;padding:8px 10px;display:flex;justify-content:space-between;margin-top:4px}
+
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  body{margin:0}
+}
 </style>
 </head>
 <body>
-<div style="padding:0 6px 6px">
+<div style="padding:2px 0 8px">
 
 <!-- ENCABEZADO -->
-<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;border-bottom:3px solid #111;padding-bottom:5px;margin-bottom:6px">
-  <div style="display:flex;align-items:center;gap:10px">
-    <img src="${_logoUrl}" alt="Logo" style="height:52px;width:52px;object-fit:contain">
+<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1a1a1a;padding-bottom:10px;margin-bottom:12px">
+  <div style="display:flex;align-items:center;gap:12px">
+    <img src="${_logoUrl}" alt="Logo" style="height:58px;width:58px;object-fit:contain">
     <div>
-      <div style="font-weight:900;font-size:14px;color:#111;letter-spacing:.3px">FREIMANAUTOS S.A.</div>
-      <div style="font-size:7.5px;color:#555;margin-top:2px">NIT 860.012.186-5</div>
-      <div style="font-size:7.5px;color:#555">Calle 98A #68D-15 Bogotá D.C.</div>
-      <div style="font-size:7.5px;color:#555">Tel: (601) 742 6450</div>
+      <div style="font-weight:900;font-size:16px;color:#1a1a1a;letter-spacing:.3px;line-height:1.2">FREIMANAUTOS S.A.</div>
+      <div style="font-size:8px;color:#6B7280;margin-top:3px">NIT 860.012.186-5</div>
+      <div style="font-size:8px;color:#6B7280">Calle 98A #68D-15 Bogotá D.C.</div>
+      <div style="font-size:8px;color:#6B7280">Tel: (601) 742 6450</div>
     </div>
   </div>
   <div style="text-align:center">
-    <div style="font-size:20px;font-weight:900;color:#111;letter-spacing:1px">PRELIQUIDACIÓN</div>
+    <div style="font-size:26px;font-weight:900;color:#1a1a1a;letter-spacing:2px">PRELIQUIDACIÓN</div>
+    <div style="font-size:8.5px;color:#6B7280;margin-top:3px">Documento preliminar — no constituye factura</div>
   </div>
-  <div style="border:1.5px solid #111;padding:4px 10px;text-align:center;min-width:160px">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid #ccc;padding-bottom:3px;margin-bottom:3px">
-      <div style="text-align:left;border-right:1px solid #ccc;padding-right:8px">
-        <div style="font-size:7px;color:#777;text-transform:uppercase">Fecha</div>
-        <div style="font-size:8.5px;font-weight:700">${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'})}</div>
-        <div style="font-size:7.5px;color:#555">${new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',hour12:true})}</div>
-      </div>
-      <div style="padding-left:8px">
-        <div style="font-size:7px;color:#777;text-transform:uppercase">Placa</div>
-        <div style="font-size:13px;font-weight:900;letter-spacing:2px;color:#111">${escapeHtml(orden.placa)}</div>
-      </div>
-    </div>
-    <div>
-      <div style="font-size:7px;color:#777;text-transform:uppercase">N° Orden</div>
-      <div style="font-size:18px;font-weight:900;font-family:monospace;color:#111;letter-spacing:2px">${formatOT(orden.id)}</div>
-    </div>
+  <div style="border:2px solid #1a1a1a;border-radius:4px;padding:8px 14px;text-align:center;min-width:150px">
+    <div style="font-size:7.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px">Placa</div>
+    <div style="font-size:20px;font-weight:900;letter-spacing:3px;color:#1a1a1a;line-height:1.2">${escapeHtml(orden.placa)}</div>
+    <div style="border-top:1px solid #E5E7EB;margin:6px 0 4px"></div>
+    <div style="font-size:7.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px">N° Orden</div>
+    <div style="font-size:14px;font-weight:900;font-family:'Courier New',monospace;color:#1a1a1a">${formatOT(orden.id)}</div>
+    <div style="font-size:7.5px;color:#6B7280;margin-top:3px">${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})} · ${new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',hour12:true})}</div>
   </div>
 </div>
 
 <!-- FILA INFO: 1.Cliente | 2.Vehículo | 3.Fechas/Daños -->
-<div style="display:grid;grid-template-columns:200px 280px 1fr;gap:0;border:0.8px solid #999;margin-bottom:5px">
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;margin-bottom:12px">
 
   <!-- 1. CLIENTE -->
-  <div style="border-right:0.8px solid #999">
+  <div style="border-right:1px solid #E5E7EB">
     <div class="sh">1. Cliente</div>
-    <div style="padding:5px 7px">
-      <div style="margin-bottom:4px"><div class="lbl">Nombre</div><div class="val" style="font-size:9.5px">${escapeHtml(orden.propietario)||'—'}</div></div>
-      <div style="margin-bottom:4px"><div class="lbl">Teléfono</div><div>${escapeHtml(orden.telefono)||'—'}</div></div>
-      <div style="margin-bottom:4px"><div class="lbl">Email</div><div style="font-size:8px">${escapeHtml(orden.correo_cliente||orden.email||'—')}</div></div>
-      <div${orden.aseguradora?' style="margin-bottom:4px"':''}><div class="lbl">Tipo</div><div>${escapeHtml(orden.tipo_cliente)||'Particular'}</div></div>
-      ${orden.aseguradora ? `<div><div class="lbl">Aseguradora</div><div class="val" style="color:#111">${escapeHtml(orden.aseguradora)}</div></div>` : ''}
+    <div style="padding:10px 12px">
+      <div style="margin-bottom:6px"><div class="lbl">Nombre</div><div class="val" style="font-size:10px">${escapeHtml(orden.propietario)||'—'}</div></div>
+      <div style="margin-bottom:6px"><div class="lbl">Teléfono</div><div class="val" style="font-size:9.5px">${escapeHtml(orden.telefono)||'—'}</div></div>
+      <div style="margin-bottom:6px"><div class="lbl">Email</div><div style="font-size:8.5px;color:#374151;word-break:break-all">${escapeHtml(orden.correo_cliente||orden.email||'—')}</div></div>
+      <div${orden.aseguradora?' style="margin-bottom:6px"':''}><div class="lbl">Tipo de cliente</div><div style="font-weight:600;color:#374151">${escapeHtml(orden.tipo_cliente)||'Particular'}</div></div>
+      ${orden.aseguradora ? `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #E5E7EB"><div class="lbl">Aseguradora</div><div class="val" style="color:#1a1a1a;font-size:9.5px">${escapeHtml(orden.aseguradora)}</div></div>` : ''}
     </div>
   </div>
 
   <!-- 2. VEHÍCULO -->
-  <div style="border-right:0.8px solid #999">
+  <div style="border-right:1px solid #E5E7EB">
     <div class="sh">2. Vehículo</div>
-    <div style="padding:5px 7px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 6px">
-        <div><div class="lbl">Marca / Línea</div><div class="val">${escapeHtml(orden.marca)||'—'} ${escapeHtml(orden.linea)||''}</div></div>
-        <div><div class="lbl">Modelo / Color</div><div>${escapeHtml(orden.modelo)||'—'} / ${escapeHtml(orden.color)||'—'}</div></div>
-        <div><div class="lbl">KM</div><div>${orden.kilometraje ? orden.kilometraje.toLocaleString('es-CO') : '—'}</div></div>
-        <div><div class="lbl">Carrocería</div><div>${escapeHtml(orden.tipo_carroceria||'—')}</div></div>
-        ${orden.vin ? `<div style="grid-column:span 2"><div class="lbl">VIN / No. Chasis</div><div style="font-family:monospace;font-size:8px">${escapeHtml(orden.vin)}</div></div>` : ''}
+    <div style="padding:10px 12px">
+      <div style="margin-bottom:6px"><div class="lbl">Marca / Línea</div><div class="val" style="font-size:10px">${escapeHtml(orden.marca)||'—'} ${escapeHtml(orden.linea)||''}</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;margin-bottom:6px">
+        <div><div class="lbl">Año / Modelo</div><div style="font-weight:600;color:#374151">${escapeHtml(orden.modelo)||'—'}</div></div>
+        <div><div class="lbl">Color</div><div style="font-weight:600;color:#374151">${escapeHtml(orden.color)||'—'}</div></div>
+        <div><div class="lbl">Kilometraje</div><div style="font-weight:600;color:#374151">${orden.kilometraje ? orden.kilometraje.toLocaleString('es-CO')+' km' : '—'}</div></div>
+        <div><div class="lbl">Carrocería</div><div style="font-weight:600;color:#374151">${escapeHtml(orden.tipo_carroceria||'—')}</div></div>
       </div>
-      ${orden.descripcion_general ? `<div style="margin-top:5px;padding-top:4px;border-top:0.5px solid #ddd"><div class="lbl">Descripción</div><div style="font-size:8.5px;line-height:1.4">${escapeHtml(orden.descripcion_general)}</div></div>` : ''}
+      ${orden.vin ? `<div style="padding-top:6px;border-top:1px solid #E5E7EB"><div class="lbl">VIN / No. Chasis</div><div style="font-family:monospace;font-size:8.5px;color:#374151;letter-spacing:.5px">${escapeHtml(orden.vin)}</div></div>` : ''}
+      ${orden.descripcion_general ? `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #E5E7EB"><div class="lbl">Descripción</div><div style="font-size:8.5px;line-height:1.5;color:#374151">${escapeHtml(orden.descripcion_general)}</div></div>` : ''}
     </div>
   </div>
 
   <!-- 3. FECHAS Y DAÑOS -->
   <div>
-    <div class="sh">3. Fechas / Estado del vehículo</div>
-    <div style="padding:5px 7px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-bottom:6px">
-        <div><div class="lbl">Ingreso</div><div class="val">${fmtFecha(orden.creado_en)}</div></div>
-        <div><div class="lbl">Entrega prometida</div><div class="val" style="color:#D97706">${fmtFecha(orden.fecha_entrega_1)}</div></div>
-        <div><div class="lbl">Estado</div><div class="val" style="color:#059669">${escapeHtml(orden.estado||'Activa')}</div></div>
-        <div><div class="lbl">Nivel de daño</div><div class="val">${escapeHtml(orden.nivel_dano||'—')}</div></div>
-        ${orden.aseguradora ? `<div style="grid-column:span 2"><div class="lbl">Aseguradora</div><div class="val">${escapeHtml(orden.aseguradora)}</div></div>` : ''}
+    <div class="sh">3. Fechas / Estado</div>
+    <div style="padding:10px 12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;margin-bottom:8px">
+        <div><div class="lbl">Fecha de ingreso</div><div class="val" style="font-size:9px">${fmtFecha(orden.creado_en)}</div></div>
+        <div><div class="lbl">Entrega prometida</div><div class="val" style="color:#D97706;font-size:9px">${fmtFecha(orden.fecha_entrega_1)}</div></div>
+        <div><div class="lbl">Estado</div><div style="font-weight:700;color:#059669;font-size:9.5px">${escapeHtml(orden.estado||'Activa')}</div></div>
+        <div><div class="lbl">Nivel de daño</div><div style="font-weight:700;font-size:9.5px">${escapeHtml(orden.nivel_dano||'—')}</div></div>
+        ${orden.aseguradora ? `<div style="grid-column:span 2;padding-top:4px;border-top:1px solid #E5E7EB"><div class="lbl">Aseguradora</div><div class="val" style="font-size:9px">${escapeHtml(orden.aseguradora)}</div></div>` : ''}
       </div>
-      <div style="border-top:0.5px solid #ddd;padding-top:5px">
-        <div class="lbl" style="margin-bottom:3px">Daños registrados</div>
+      <div style="border-top:1px solid #E5E7EB;padding-top:7px">
+        <div class="lbl" style="margin-bottom:4px">Daños registrados</div>
         ${(() => {
           const danos = (() => { try { return JSON.parse(orden.danos_vehiculo||'null')||{}; } catch{return{};} })();
           const hasDanos = Object.values(danos).some(a=>a?.length>0);
@@ -4488,8 +4495,8 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
           if (!hasDanos) return '<div style="font-size:8px;color:#aaa;font-style:italic">Sin daños registrados</div>';
           return ['frontal','trasera','lateral_izq','lateral_der']
             .filter(z=>(danos[z]||[]).length>0)
-            .map(z=>'<div style="font-size:8px;margin-bottom:3px"><b>'+{frontal:'Frontal',trasera:'Trasera',lateral_izq:'Lat. Izq.',lateral_der:'Lat. Der.'}[z]+':</b> '+
-              (danos[z]||[]).map(t=>'<span style="display:inline-flex;align-items:center;gap:2px;margin-right:4px"><span style="width:7px;height:7px;border-radius:50%;background:'+(tipoColores[t]||'#999')+';display:inline-block"></span>'+(tipoLabels[t]||t)+'</span>').join('')+'</div>'
+            .map(z=>'<div style="font-size:8px;margin-bottom:4px;line-height:1.5"><b style="color:#374151">'+{frontal:'Frontal',trasera:'Trasera',lateral_izq:'Lat. Izq.',lateral_der:'Lat. Der.'}[z]+':</b> '+
+              (danos[z]||[]).map(t=>'<span style="display:inline-flex;align-items:center;gap:2px;margin-right:5px"><span style="width:7px;height:7px;border-radius:50%;background:'+(tipoColores[t]||'#999')+';display:inline-block"></span>'+(tipoLabels[t]||t)+'</span>').join('')+'</div>'
             ).join('');
         })()}
       </div>
@@ -4499,8 +4506,8 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
 </div>
 
 <!-- 4. TRABAJOS (tabla) + TOTALES (derecha) -->
-<div style="display:grid;grid-template-columns:1fr 175px;gap:0;border:0.8px solid #999;margin-bottom:5px">
-  <div style="border-right:0.8px solid #999">
+<div style="display:grid;grid-template-columns:1fr 175px;gap:0;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;margin-bottom:8px">
+  <div style="border-right:1px solid #E5E7EB">
     <div class="sh">4. Descripción de trabajos</div>
     <table>
       <thead><tr>
@@ -4549,8 +4556,8 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
 </div>
 
 <!-- 5. REPUESTOS + FIRMAS -->
-<div style="display:grid;grid-template-columns:1fr 175px;gap:0;border:0.8px solid #999">
-  <div style="border-right:0.8px solid #999">
+<div style="display:grid;grid-template-columns:1fr 175px;gap:0;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden">
+  <div style="border-right:1px solid #E5E7EB">
     <div class="sh">5. Repuestos / Materiales</div>
     <table>
       <thead><tr>
