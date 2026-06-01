@@ -1,6 +1,33 @@
 // ═══════════════════════════════════════════════════════════
-// MÓDULO DE REPUESTOS — v2
+// MÓDULO DE REPUESTOS — v3
 // ═══════════════════════════════════════════════════════════
+
+// ── Helpers universales de tiempo y estado ───────────────
+function _tiempoDesde(isoStr, sufijo = '') {
+  if (!isoStr) return '—';
+  const mins = Math.floor((Date.now() - new Date(isoStr)) / 60000);
+  const h = Math.floor(mins / 60), m = mins % 60;
+  const txt = h > 0 ? `${h}h ${m}m` : `${m}m`;
+  const color = mins < 120 ? '#059669' : mins < 480 ? '#D97706' : '#DC2626';
+  return `<span style="color:${color};font-weight:700;font-size:11px">⏱ ${txt}${sufijo}</span>`;
+}
+
+function _barraEstado(estadoActual) {
+  const pasos  = ['pendiente_jefe','enviado_repuestos','cotizado','pedido','recibido_taller','entregado'];
+  const labels = ['Solicitado','Repuestos','Cotizado','Pedido','En taller','Entregado'];
+  const idx = pasos.indexOf(estadoActual);
+  return `<div style="display:flex;align-items:center;gap:0;margin:8px 0;overflow-x:auto">
+    ${pasos.map((p, i) => {
+      const done = i < idx, active = i === idx;
+      const col = done ? '#059669' : active ? '#2563EB' : '#D1D5DB';
+      return `<div style="display:flex;align-items:center;flex-shrink:0">
+        <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></div>
+        <div style="font-size:9px;color:${col};margin:0 4px;white-space:nowrap;font-weight:${active?'700':'400'}">${labels[i]}</div>
+        ${i < pasos.length-1 ? `<div style="width:20px;height:1px;background:${done?'#059669':'#E5E7EB'}"></div>` : ''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
 
 const N8N_REPUESTO = 'https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa';
 
@@ -53,91 +80,78 @@ function _pvCerrarModal() {
 }
 
 // ─────────────────────────────────────────────────────────
-// SOLICITAR REPUESTO — formulario multi-ítem
+// SOLICITAR REPUESTO — tabla compacta tipo Excel
 // ─────────────────────────────────────────────────────────
 let _solItems = [{ idx: 0, fotoUrl: null }];
+let _solModalAbierto = null; // timestamp cuando se abrió el modal
 
-function _renderSolItem(item) {
-  const isFirst = _solItems[0].idx === item.idx;
-  return `<div id="si-row-${item.idx}" style="background:var(--gris-bg);border:1px solid var(--gris-borde);border-radius:10px;padding:14px;margin-bottom:10px;position:relative">
-    ${!isFirst ? `<button type="button" style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;color:var(--gris-mid);font-size:16px;line-height:1;padding:2px 6px" onclick="_quitarSolItem(${item.idx})">✕</button>` : ''}
-    <div style="display:grid;grid-template-columns:1fr 80px;gap:10px;margin-bottom:10px">
-      <div class="field">
-        <label>Repuesto / pieza *</label>
-        <input id="si-rep-${item.idx}" type="text" placeholder="Ej: Disco de freno delantero izq.">
-      </div>
-      <div class="field">
-        <label>Cantidad</label>
-        <input id="si-cant-${item.idx}" type="number" min="1" value="1">
-      </div>
-    </div>
-    <div class="field" style="margin-bottom:10px">
-      <label>Observaciones <span style="color:var(--gris-mid);font-weight:400">(opcional)</span></label>
-      <input id="si-obs-${item.idx}" type="text" placeholder="Referencia, marca, urgencia...">
-    </div>
-    <div>
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-mid);margin-bottom:6px">Foto del repuesto a cambiar</div>
-      <div id="si-foto-wrap-${item.idx}">
-        ${item.fotoUrl
-          ? `<div style="position:relative;display:inline-block">
-               <img src="${escapeHtml(item.fotoUrl)}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--gris-borde)">
-               <button type="button" style="position:absolute;top:-6px;right:-6px;background:#DC2626;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0" onclick="_quitarFotoSolItem(${item.idx})">✕</button>
-             </div>`
-          : `<label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px dashed var(--gris-borde);border-radius:8px;cursor:pointer;font-size:12px;color:var(--gris-mid)">
-               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-               Subir foto
-               <input type="file" accept="image/*" style="display:none" onchange="_subirFotoSolItem(this,${item.idx})">
-             </label>`
-        }
-      </div>
-      <div id="si-foto-prog-${item.idx}" style="font-size:11px;color:var(--gris-mid);margin-top:4px"></div>
-    </div>
-  </div>`;
+function _renderTablaItems() {
+  return `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead>
+      <tr style="background:var(--gris-bg)">
+        <th style="padding:6px 8px;text-align:center;width:28px;font-size:11px;color:var(--gris-mid);font-weight:600">#</th>
+        <th style="padding:6px 8px;text-align:left;font-size:11px;color:var(--gris-mid);font-weight:600">Repuesto / Pieza</th>
+        <th style="padding:6px 8px;text-align:center;width:60px;font-size:11px;color:var(--gris-mid);font-weight:600">Cant</th>
+        <th style="padding:6px 8px;text-align:left;font-size:11px;color:var(--gris-mid);font-weight:600">Observaciones</th>
+        <th style="width:28px"></th>
+      </tr>
+    </thead>
+    <tbody id="sol-items-tbody">
+      ${_solItems.map((item, i) => _renderFilaItem(item, i + 1)).join('')}
+    </tbody>
+  </table>`;
+}
+
+function _renderFilaItem(item, num) {
+  return `<tr id="si-row-${item.idx}" style="border-bottom:1px solid var(--gris-borde)">
+    <td style="padding:6px 8px;text-align:center;color:var(--gris-mid);font-size:11px">${num}</td>
+    <td style="padding:4px 6px">
+      <input id="si-rep-${item.idx}" type="text" placeholder="Ej: Disco de freno delantero" value=""
+        style="width:100%;border:none;background:transparent;font-size:13px;outline:none;padding:4px 0">
+    </td>
+    <td style="padding:4px 6px">
+      <input id="si-cant-${item.idx}" type="number" min="1" value="1"
+        style="width:52px;border:1px solid var(--gris-borde);border-radius:4px;text-align:center;font-size:13px;padding:4px">
+    </td>
+    <td style="padding:4px 6px">
+      <input id="si-obs-${item.idx}" type="text" placeholder="Referencia, marca..."
+        style="width:100%;border:none;background:transparent;font-size:12px;outline:none;padding:4px 0;color:var(--gris-mid)">
+    </td>
+    <td style="padding:4px 6px;text-align:center">
+      ${num > 1
+        ? `<button type="button" onclick="_quitarSolItem(${item.idx})"
+            style="background:none;border:none;cursor:pointer;color:#DC2626;font-size:14px;line-height:1;padding:2px 4px">✕</button>`
+        : '<span style="color:var(--gris-borde);font-size:14px">✕</span>'}
+    </td>
+  </tr>`;
 }
 
 function _agregarSolItem() {
   const idx = Date.now();
   _solItems.push({ idx, fotoUrl: null });
-  const cont = document.getElementById('sol-items-cont');
-  if (cont) cont.innerHTML = _solItems.map(i => _renderSolItem(i)).join('');
+  const tbody = document.getElementById('sol-items-tbody');
+  if (tbody) tbody.innerHTML = _solItems.map((item, i) => _renderFilaItem(item, i + 1)).join('');
   setTimeout(() => document.getElementById(`si-rep-${idx}`)?.focus(), 60);
 }
 
 function _quitarSolItem(idx) {
   _solItems = _solItems.filter(i => i.idx !== idx);
-  const cont = document.getElementById('sol-items-cont');
-  if (cont) cont.innerHTML = _solItems.map(i => _renderSolItem(i)).join('');
+  const tbody = document.getElementById('sol-items-tbody');
+  if (tbody) tbody.innerHTML = _solItems.map((item, i) => _renderFilaItem(item, i + 1)).join('');
 }
 
-async function _subirFotoSolItem(input, idx) {
-  const file = input.files[0];
-  if (!file) return;
-  const prog = document.getElementById(`si-foto-prog-${idx}`);
-  if (prog) prog.textContent = 'Subiendo...';
-  try {
-    const ext = file.name.split('.').pop();
-    const path = `solicitudes/items/${Date.now()}_${idx}.${ext}`;
-    const url = await storageUpload(file, path);
-    const item = _solItems.find(i => i.idx === idx);
-    if (item) item.fotoUrl = url;
-    const cont = document.getElementById('sol-items-cont');
-    if (cont) cont.innerHTML = _solItems.map(i => _renderSolItem(i)).join('');
-  } catch(e) {
-    if (prog) prog.textContent = 'Error al subir';
-    toast('Error al subir foto', 'err');
-  }
-}
-
-function _quitarFotoSolItem(idx) {
-  const item = _solItems.find(i => i.idx === idx);
-  if (item) item.fotoUrl = null;
-  const cont = document.getElementById('sol-items-cont');
-  if (cont) cont.innerHTML = _solItems.map(i => _renderSolItem(i)).join('');
+function _tickTimerSol() {
+  const el = document.getElementById('sol-timer-live');
+  if (!el || !_solModalAbierto) return;
+  const mins = Math.floor((Date.now() - _solModalAbierto) / 60000);
+  const h = Math.floor(mins / 60), m = mins % 60;
+  el.textContent = h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
 // Punto de entrada unificado (compatible con llamadas antiguas)
 async function abrirModalSolicitudRepuesto(ordenId, etapaId, placa) {
   _solItems = [{ idx: 0, fotoUrl: null }];
+  _solModalAbierto = Date.now();
   const existing = document.getElementById('modal-sol-multi');
   if (existing) existing.remove();
 
@@ -145,39 +159,106 @@ async function abrirModalSolicitudRepuesto(ordenId, etapaId, placa) {
   div.id = 'modal-sol-multi';
   div.className = 'modal-overlay show';
   div.innerHTML = `
-    <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto">
-      <div class="modal-header">
-        <div class="modal-titulo">Solicitar repuesto — ${escapeHtml(placa)}</div>
+    <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
+      <div class="modal-header" style="padding-bottom:10px">
+        <div class="modal-titulo" style="font-size:15px">Solicitar repuesto — ${escapeHtml(placa)}</div>
         <button class="modal-close" onclick="document.getElementById('modal-sol-multi').remove()">✕</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="padding-top:10px">
+
+        <!-- Tipo -->
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;font-size:13px">
+          <span style="font-weight:600;color:var(--gris-mid);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Tipo:</span>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="radio" name="sol-tipo" id="sol-tipo-taller" value="taller" checked> Taller
+          </label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="radio" name="sol-tipo" id="sol-tipo-venta" value="venta_directa"> Venta directa
+          </label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="radio" name="sol-tipo" id="sol-tipo-corp" value="corporativo"> Corporativo
+          </label>
+        </div>
+
         ${esJefe()
-          ? `<div style="font-size:12px;color:#1E40AF;margin-bottom:14px;padding:8px 12px;background:#EFF6FF;border-radius:6px;border:1px solid #BFDBFE">
-              📦 Se registrará la solicitud. La etapa <strong>no se pausará</strong> — el mecánico continúa trabajando.
+          ? `<div style="font-size:12px;color:#1E40AF;margin-bottom:10px;padding:7px 10px;background:#EFF6FF;border-radius:6px;border:1px solid #BFDBFE">
+              La etapa <strong>no se pausará</strong> — el mecánico continúa trabajando.
             </div>`
-          : `<div style="font-size:12px;color:#92400E;margin-bottom:14px;padding:8px 12px;background:#FEF3C7;border-radius:6px;border:1px solid #FDE68A">
+          : `<div style="font-size:12px;color:#92400E;margin-bottom:10px;padding:7px 10px;background:#FEF3C7;border-radius:6px;border:1px solid #FDE68A">
               ⏸ La etapa se pausará hasta que el jefe entregue los repuestos.
             </div>`
         }
-        <div id="sol-items-cont">${_solItems.map(i => _renderSolItem(i)).join('')}</div>
-        <button type="button" class="btn btn-ghost btn-sm" onclick="_agregarSolItem()" style="width:100%;margin-top:2px;margin-bottom:4px">
-          + Agregar otro repuesto
+
+        <!-- Tabla compacta -->
+        <div style="border:1px solid var(--gris-borde);border-radius:8px;overflow:hidden;margin-bottom:10px">
+          ${_renderTablaItems()}
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="_agregarSolItem()" style="margin-bottom:12px">
+          + Agregar ítem
         </button>
+
+        <!-- Urgencia -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px">
+          <span style="font-weight:600;color:var(--gris-mid);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Urgencia:</span>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="radio" name="sol-urgencia" value="normal" checked> Normal
+          </label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="radio" name="sol-urgencia" value="urgente"> Urgente
+          </label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="radio" name="sol-urgencia" value="muy_urgente"> Muy urgente
+          </label>
+        </div>
+
+        <!-- Timer en vivo -->
+        <div style="font-size:11px;color:var(--gris-mid)">
+          ⏱ Solicitado hace: <span id="sol-timer-live" style="font-weight:700;color:var(--texto)">0m</span>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="document.getElementById('modal-sol-multi').remove()">Cancelar</button>
         <button class="btn btn-primary" id="sol-multi-submit"
           data-oid="${ordenId}" data-eid="${etapaId||''}"
           onclick="enviarSolicitudRepuesto(+this.dataset.oid,this.dataset.eid?+this.dataset.eid:null)">
-          Enviar solicitud
+          Enviar solicitud →
         </button>
       </div>
     </div>`;
   document.body.appendChild(div);
   setTimeout(() => document.getElementById('si-rep-0')?.focus(), 80);
+
+  // Iniciar ticker del timer en vivo
+  if (window._solTimerTick) clearInterval(window._solTimerTick);
+  window._solTimerTick = setInterval(() => {
+    if (!document.getElementById('modal-sol-multi')) { clearInterval(window._solTimerTick); return; }
+    _tickTimerSol();
+  }, 10000);
+}
+
+async function _subirFotoSolItem(input, idx) {
+  const file = input.files[0];
+  if (!file) return;
+  try {
+    const ext = file.name.split('.').pop();
+    const path = `solicitudes/items/${Date.now()}_${idx}.${ext}`;
+    const url = await storageUpload(file, path);
+    const item = _solItems.find(i => i.idx === idx);
+    if (item) item.fotoUrl = url;
+    toast('Foto adjuntada ✓');
+  } catch(e) {
+    toast('Error al subir foto', 'err');
+  }
+}
+
+function _quitarFotoSolItem(idx) {
+  const item = _solItems.find(i => i.idx === idx);
+  if (item) item.fotoUrl = null;
 }
 
 async function enviarSolicitudRepuesto(ordenId, etapaId) {
+  const tipo     = document.querySelector('input[name="sol-tipo"]:checked')?.value || 'taller';
+  const urgencia = document.querySelector('input[name="sol-urgencia"]:checked')?.value || 'normal';
   const items = _solItems.map(item => ({
     repuesto:      (document.getElementById(`si-rep-${item.idx}`)?.value || '').trim(),
     unidades:      parseFloat(document.getElementById(`si-cant-${item.idx}`)?.value) || 1,
@@ -205,7 +286,9 @@ async function enviarSolicitudRepuesto(ordenId, etapaId) {
       repuesto:           items[0].repuesto,
       unidades:           items[0].unidades,
       observaciones:      items[0].observaciones,
-      estado:             'pendiente_jefe'
+      estado:             'pendiente_jefe',
+      tipo_solicitud:     tipo,
+      urgencia:           urgencia
     }, { Prefer: 'return=representation' });
 
     const solicitudId = solicitudRes?.[0]?.id;
@@ -360,7 +443,12 @@ async function cargarRepuestosJefe() {
               </div>`
             : `<div style="font-size:13px;color:var(--gris-mid);margin-bottom:8px">${escapeHtml(s.repuesto)} · x${s.unidades||1}${s.observaciones?` · ${escapeHtml(s.observaciones)}`:''}</div>`;
 
+          // Timers universales
+          const timerSolicitud  = _tiempoDesde(s.creado_en, ' desde solicitud');
+          const timerEstado     = _tiempoDesde(s.actualizado_en || s.creado_en, ' en estado');
+
           return `<div class="card" style="padding:16px">
+            ${_barraEstado(s.estado)}
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px">
               <div>
                 <div style="font-weight:700;font-size:15px;margin-bottom:2px">
@@ -371,6 +459,11 @@ async function cargarRepuestosJefe() {
                   ${escapeHtml(o.placa)} · ${formatOT(s.orden_id)}
                   ${o.vin ? `· <span style="color:var(--gris-mid)">VIN: ${escapeHtml(o.vin)}</span>` : ''}
                 </div>` : ''}
+                <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
+                  ${timerSolicitud}
+                  <span style="color:var(--gris-mid);font-size:11px">|</span>
+                  ${timerEstado}
+                </div>
                 ${timerProv}
               </div>
               <span class="badge ${est.cls}">${est.txt}</span>
@@ -823,7 +916,12 @@ async function cargarSolicitudesRepuestos() {
               </div>`
             : `<div style="font-size:13px;color:var(--gris-mid);margin-bottom:4px">${escapeHtml(s.repuesto)} · x${s.unidades||1}</div>`;
 
+          // Timers universales
+          const timerSolicitud2 = _tiempoDesde(s.creado_en, ' desde solicitud');
+          const timerEstado2    = _tiempoDesde(s.actualizado_en || s.creado_en, ' en estado');
+
           return `<div class="card" style="padding:16px">
+            ${_barraEstado(s.estado)}
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px">
               <div style="flex:1;min-width:0">
                 <div style="font-weight:700;font-size:14px;margin-bottom:2px">${items.length > 1 ? `${items.length} repuestos` : escapeHtml(s.repuesto)}</div>
@@ -831,6 +929,11 @@ async function cargarSolicitudesRepuestos() {
                   ${escapeHtml(o.placa||'—')} · ${formatOT(s.orden_id)}
                 </div>
                 <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(s.solicitado_por||'')} · ${formatTS(s.creado_en)}</div>
+                <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
+                  ${timerSolicitud2}
+                  <span style="color:var(--gris-mid);font-size:11px">|</span>
+                  ${timerEstado2}
+                </div>
                 ${timerProv}
               </div>
               <span class="badge ${eb.cls}">${eb.txt}</span>
@@ -905,11 +1008,76 @@ async function marcarRepuestoSolicitadoProveedor(solicitudId) {
   } catch(e) { toast('Error: ' + e.message, 'err'); }
 }
 
+// ── Filas de la tabla de cotización ─────────────────────
+let _cotFilas = []; // [{id, seleccionado, proveedorId, referencia, precio, dias, esOriginal}]
+
+function _renderFilaCot(fila, idx, provOpts) {
+  return `<tr id="cot-fila-${fila.id}" style="border-bottom:1px solid var(--gris-borde)">
+    <td style="padding:5px 8px;text-align:center;width:28px">
+      <input type="checkbox" id="cot-sel-${fila.id}" ${fila.seleccionado ? 'checked' : ''}
+        style="width:15px;height:15px;cursor:pointer">
+    </td>
+    <td style="padding:4px 6px;min-width:160px">
+      <select id="cot-prov-${fila.id}" style="width:100%;font-size:12px;border:1px solid var(--gris-borde);border-radius:4px;padding:4px 6px">${provOpts}</select>
+    </td>
+    <td style="padding:4px 6px;min-width:100px">
+      <input id="cot-ref-${fila.id}" type="text" value="${escapeHtml(fila.referencia||'')}"
+        placeholder="Ref..." style="width:100%;font-size:12px;border:1px solid var(--gris-borde);border-radius:4px;padding:4px 6px">
+    </td>
+    <td style="padding:4px 6px;min-width:100px">
+      <input id="cot-precio-${fila.id}" type="number" value="${fila.precio||''}"
+        placeholder="$0" min="0" style="width:100%;font-size:12px;border:1px solid var(--gris-borde);border-radius:4px;padding:4px 6px;font-family:'DM Mono',monospace">
+    </td>
+    <td style="padding:4px 6px;width:50px">
+      <input id="cot-dias-${fila.id}" type="number" value="${fila.dias||''}"
+        placeholder="—" min="0" style="width:44px;font-size:12px;border:1px solid var(--gris-borde);border-radius:4px;padding:4px 5px;text-align:center">
+    </td>
+    <td style="padding:4px 8px;white-space:nowrap">
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
+        <input type="radio" name="cot-orig-${fila.id}" id="cot-orig-si-${fila.id}" value="si" ${fila.esOriginal!==false ? 'checked' : ''}> Sí
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
+        <input type="radio" name="cot-orig-${fila.id}" id="cot-orig-no-${fila.id}" value="no" ${fila.esOriginal===false ? 'checked' : ''}> No
+      </label>
+    </td>
+    <td style="padding:4px 6px;text-align:center">
+      ${idx > 0
+        ? `<button type="button" onclick="_quitarFilaCot(${fila.id})"
+            style="background:none;border:none;cursor:pointer;color:#DC2626;font-size:14px;line-height:1;padding:2px 4px">✕</button>`
+        : ''}
+    </td>
+  </tr>`;
+}
+
+function _quitarFilaCot(id) {
+  _cotFilas = _cotFilas.filter(f => f.id !== id);
+  _reRenderFilasCot();
+}
+
+function _agregarFilaCot() {
+  _cotFilas.push({ id: Date.now(), seleccionado: false, proveedorId: '', referencia: '', precio: '', dias: '', esOriginal: true });
+  _reRenderFilasCot();
+}
+
+function _reRenderFilasCot() {
+  const tbody = document.getElementById('cot-tabla-tbody');
+  if (!tbody) return;
+  const sel = document.getElementById('_cot-prov-opts');
+  const provOpts = sel ? sel.value : '';
+  tbody.innerHTML = _cotFilas.map((f, i) => _renderFilaCot(f, i, provOpts)).join('');
+  // Re-restaurar valores de los selects
+  _cotFilas.forEach(f => {
+    const s = document.getElementById(`cot-prov-${f.id}`);
+    if (s && f.proveedorId) s.value = f.proveedorId;
+  });
+}
+
 async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, modelo, anio, vin) {
-  const [proveedores, cots, solItems] = await Promise.all([
+  const [proveedores, cots, solItems, sol] = await Promise.all([
     api('/proveedores?activo=eq.true&order=nombre.asc').catch(()=>[]) || [],
     api(`/cotizaciones_repuesto?solicitud_id=eq.${solicitudId}&order=opcion.asc`).catch(()=>[]) || [],
-    api(`/solicitud_items?solicitud_id=eq.${solicitudId}&order=creado_en.asc`).catch(()=>[]) || []
+    api(`/solicitud_items?solicitud_id=eq.${solicitudId}&order=creado_en.asc`).catch(()=>[]) || [],
+    api(`/solicitudes_repuesto?id=eq.${solicitudId}`).then(r=>r?.[0]).catch(()=>null)
   ]);
   const existing = document.getElementById('modal-cotizar');
   if (existing) existing.remove();
@@ -917,127 +1085,113 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
   // Usar ítems de solicitud_items si existen; si no, usar los campos legacy
   const itemsList = solItems.length ? solItems : [{ repuesto, unidades, observaciones: null, foto_url: null }];
 
-  const provOpts = '<option value="">— Seleccionar proveedor —</option>' +
-    proveedores.map(p => `<option value="${p.id}" data-wa="${escapeHtml(p.whatsapp||p.telefono||'')}">${escapeHtml(p.nombre)}</option>`).join('');
-  const opLbl = { 1:'Opción 1', 2:'Opción 2', 3:'Opción 3' };
+  // Score de proveedores — favorito = el de menor tiempo_respuesta_promedio_min
+  const provConScore = proveedores.map(p => ({
+    ...p,
+    score: p.tiempo_respuesta_promedio_min != null ? p.tiempo_respuesta_promedio_min : Infinity
+  })).sort((a, b) => a.score - b.score);
+  const favoritoId = provConScore[0]?.score < Infinity ? provConScore[0].id : null;
 
-  // Mensaje base con lista de todos los ítems
-  const listaItems = itemsList.map(i => `- ${i.repuesto} (x${i.unidades||1})`).join('\n');
-  const msgBase = `Buenos días. Solicito cotización para los siguientes repuestos:\n${listaItems}\nVehículo: *${[marca,modelo,anio].filter(Boolean).join(' ')}*${vin ? ', VIN: *' + vin + '*' : ''}. Quedo atento, gracias.`;
+  const provOpts = '<option value="">— Proveedor —</option>' +
+    provConScore.map(p => {
+      const star = p.id === favoritoId ? '★ ' : '';
+      const tiempo = p.tiempo_respuesta_promedio_min != null
+        ? ` · ${Math.round(p.tiempo_respuesta_promedio_min/60)}h prom`
+        : '';
+      return `<option value="${p.id}">${star}${escapeHtml(p.nombre)}${tiempo}</option>`;
+    }).join('');
 
-  function renderOp(num) {
-    const c = cots.find(x => x.opcion === num) || {};
-    return `<div style="background:var(--gris-bg);border-radius:10px;padding:14px;margin-bottom:12px;border:1px solid var(--gris-borde)">
-      <div style="font-weight:700;font-size:13px;margin-bottom:12px;color:var(--azul)">${opLbl[num]}</div>
-
-      <!-- Proveedor + nuevo -->
-      <div style="display:flex;gap:6px;align-items:flex-end;margin-bottom:10px">
-        <div class="field" style="flex:1;margin:0">
-          <label>Proveedor</label>
-          <select id="cot-prov-${num}-${solicitudId}" style="width:100%">${provOpts}</select>
-        </div>
-        <button type="button" class="btn btn-ghost btn-sm" onclick="_toggleNuevoProv(${num},${solicitudId})"
-          style="padding:7px 10px;flex-shrink:0;margin-bottom:1px" title="Registrar nuevo proveedor">
-          + Nuevo
-        </button>
-      </div>
-
-      <!-- Formulario nuevo proveedor (oculto) -->
-      <div id="np-form-${num}-${solicitudId}" style="display:none;background:white;border:1.5px solid var(--azul);border-radius:8px;padding:12px;margin-bottom:12px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--azul);margin-bottom:10px">Nuevo proveedor</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <div class="field"><label>Nombre *</label><input id="np-nom-${num}-${solicitudId}" type="text" placeholder="Nombre del proveedor"></div>
-          <div class="field"><label>Teléfono / WhatsApp</label><input id="np-tel-${num}-${solicitudId}" type="tel" placeholder="3001234567"></div>
-        </div>
-        <div class="field" style="margin-bottom:10px">
-          <label>Especialidad <span style="font-weight:400;color:var(--gris-mid)">(frenos, luces, motor, eléctrico...)</span></label>
-          <input id="np-esp-${num}-${solicitudId}" type="text" placeholder="¿En qué se especializa?">
-        </div>
-        <div style="display:flex;gap:6px;justify-content:flex-end">
-          <button type="button" class="btn btn-ghost btn-xs" onclick="_cancelarNuevoProv(${num},${solicitudId})">Cancelar</button>
-          <button type="button" class="btn btn-primary btn-xs" onclick="_guardarNuevoProvInline(${num},${solicitudId})">Guardar proveedor</button>
-        </div>
-      </div>
-
-      <!-- Precio + Original/Genérico -->
-      <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;margin-bottom:12px">
-        <div class="field" style="margin:0">
-          <label>Precio costo total (COP)</label>
-          <input type="number" id="cot-precio-${num}-${solicitudId}" value="${c.precio_costo||''}" placeholder="0" min="0"
-            style="font-family:'DM Mono',monospace">
-        </div>
-        <div style="padding-bottom:6px">
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;white-space:nowrap">
-            <input type="checkbox" id="cot-orig-${num}-${solicitudId}" ${c.es_original!==false?'checked':''}>
-            Original
-          </label>
-          <div style="font-size:11px;color:var(--gris-mid);margin-top:2px;padding-left:20px">/ Genérico</div>
-        </div>
-      </div>
-
-      <!-- Mensaje para copiar -->
-      <div style="background:white;border-radius:6px;padding:10px 12px;border:1px solid var(--gris-borde)">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-mid);margin-bottom:6px">Mensaje para el proveedor</div>
-        <textarea id="wa-msg-${num}-${solicitudId}" rows="4"
-          style="width:100%;font-size:12px;border:none;background:transparent;resize:vertical;outline:none;line-height:1.5">${escapeHtml(msgBase)}</textarea>
-        <div style="display:flex;justify-content:flex-end;margin-top:6px">
-          <button type="button" class="btn btn-ghost btn-sm" onclick="_copiarMensajeProv(${num},${solicitudId})"
-            style="display:flex;align-items:center;gap:5px">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-            </svg>
-            Copiar mensaje
-          </button>
-        </div>
-      </div>
-    </div>`;
+  // Inicializar filas desde cotizaciones existentes o una fila vacía
+  if (cots.length) {
+    _cotFilas = cots.map(c => ({
+      id:          c.id,
+      seleccionado: true,
+      proveedorId: c.proveedor_id || '',
+      referencia:  c.referencia || '',
+      precio:      c.precio_costo || '',
+      dias:        c.dias_entrega || '',
+      esOriginal:  c.es_original !== false
+    }));
+  } else {
+    _cotFilas = [{ id: Date.now(), seleccionado: false, proveedorId: favoritoId || '', referencia: '', precio: '', dias: '', esOriginal: true }];
   }
 
-  // Lista de repuestos solicitados
-  const itemsHtml = `<div style="background:var(--gris-bg);border-radius:8px;padding:12px 14px;margin-bottom:16px">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gris-mid);margin-bottom:8px">Repuestos solicitados</div>
-    ${itemsList.map((item, i) => `
-      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;${i < itemsList.length-1 ? 'border-bottom:1px solid var(--gris-borde)' : ''}">
-        ${item.foto_url
-          ? `<img src="${escapeHtml(item.foto_url)}" style="width:42px;height:42px;object-fit:cover;border-radius:5px;flex-shrink:0">`
-          : `<div style="width:42px;height:42px;background:#E5E7EB;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px">📦</div>`}
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:13px">${escapeHtml(item.repuesto)}</div>
-          <div style="font-size:11px;color:var(--gris-mid)">x${item.unidades||1}${item.observaciones ? ' · ' + escapeHtml(item.observaciones) : ''}</div>
-        </div>
-      </div>`).join('')}
-  </div>`;
+  // Timer desde creado_en de la solicitud
+  const timerSolicitud = sol?.creado_en ? _tiempoDesde(sol.creado_en, ' desde solicitud') : '';
+
+  // Resumen encabezado
+  const titulo = `${escapeHtml(repuesto)} (x${unidades})${placa ? ' · ' + escapeHtml(placa) : ''}${sol ? ' · ' + formatOT(solicitudId) : ''}`;
+
+  // Info del favorito
+  const favInfo = favoritoId
+    ? (() => {
+        const fp = provConScore[0];
+        const h = Math.round((fp.tiempo_respuesta_promedio_min||0)/60);
+        return `<div style="font-size:11px;color:#D97706;margin-bottom:10px">★ Favorito: <strong>${escapeHtml(fp.nombre)}</strong> · Prom: ${h}h</div>`;
+      })()
+    : '';
 
   const div = document.createElement('div');
   div.id = 'modal-cotizar';
   div.className = 'modal-overlay show';
   div.innerHTML = `
-    <div class="modal" style="max-width:580px;max-height:90vh;overflow-y:auto">
-      <div class="modal-header">
-        <div class="modal-titulo">Cotizar — ${escapeHtml(repuesto)}</div>
+    <!-- oculto: provOpts para re-render -->
+    <input type="hidden" id="_cot-prov-opts" value="">
+    <div class="modal" style="max-width:680px;max-height:90vh;overflow-y:auto">
+      <div class="modal-header" style="padding-bottom:8px">
+        <div>
+          <div class="modal-titulo" style="font-size:14px">Cotización · ${titulo}</div>
+          <div style="font-size:11px;color:var(--gris-mid);margin-top:3px">${timerSolicitud}</div>
+        </div>
         <button class="modal-close" onclick="document.getElementById('modal-cotizar').remove()">✕</button>
       </div>
-      <div class="modal-body">
-        ${placa ? `<div style="font-size:12px;color:var(--azul);font-family:'DM Mono',monospace;margin-bottom:14px;background:var(--gris-bg);padding:8px 12px;border-radius:6px">
-          ${escapeHtml(placa)} · ${[marca,modelo,anio].filter(Boolean).map(escapeHtml).join(' ')}${vin ? `<br>VIN: ${escapeHtml(vin)}` : ''}
-        </div>` : ''}
-        ${itemsHtml}
-        <div style="font-size:12px;color:var(--gris-mid);margin-bottom:12px">
-          Ingresa hasta 3 opciones de proveedores. Deja en blanco las que no uses.
+      <div class="modal-body" style="padding-top:10px">
+        ${favInfo}
+
+        <!-- Tabla compacta -->
+        <div style="border:1px solid var(--gris-borde);border-radius:8px;overflow-x:auto;margin-bottom:10px">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:560px">
+            <thead>
+              <tr style="background:var(--gris-bg)">
+                <th style="padding:7px 8px;width:28px"></th>
+                <th style="padding:7px 8px;text-align:left;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Proveedor</th>
+                <th style="padding:7px 8px;text-align:left;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Referencia</th>
+                <th style="padding:7px 8px;text-align:left;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Vr.Unit</th>
+                <th style="padding:7px 8px;text-align:center;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Días</th>
+                <th style="padding:7px 8px;text-align:left;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Original</th>
+                <th style="width:28px"></th>
+              </tr>
+            </thead>
+            <tbody id="cot-tabla-tbody">
+              ${_cotFilas.map((f, i) => _renderFilaCot(f, i, provOpts)).join('')}
+            </tbody>
+          </table>
         </div>
-        ${renderOp(1)}${renderOp(2)}${renderOp(3)}
+        <button type="button" class="btn btn-ghost btn-sm" onclick="_agregarFilaCot()" style="margin-bottom:12px">
+          + Agregar proveedor
+        </button>
+
+        <!-- Notas -->
+        <div class="field" style="margin-bottom:0">
+          <label style="font-size:11px">Notas</label>
+          <input id="cot-notas" type="text" placeholder="Observaciones generales..." value="${escapeHtml(sol?.nota_repuestos||'')}"
+            style="font-size:13px">
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="document.getElementById('modal-cotizar').remove()">Cancelar</button>
-        <button class="btn btn-primary" onclick="guardarCotizaciones(${solicitudId})">Guardar cotizaciones</button>
+        <button class="btn btn-primary" onclick="guardarCotizaciones(${solicitudId})">Guardar cotización →</button>
       </div>
     </div>`;
   document.body.appendChild(div);
 
+  // Guardar provOpts en input oculto para re-renders
+  document.getElementById('_cot-prov-opts').value = provOpts;
+
   // Pre-seleccionar proveedores de cotizaciones existentes
-  cots.forEach(c => {
-    const sel = document.getElementById(`cot-prov-${c.opcion}-${solicitudId}`);
-    if (sel) sel.value = c.proveedor_id || '';
+  _cotFilas.forEach(f => {
+    const s = document.getElementById(`cot-prov-${f.id}`);
+    if (s && f.proveedorId) s.value = f.proveedorId;
   });
 }
 
@@ -1098,14 +1252,35 @@ function actualizarWaLink() {}
 
 async function guardarCotizaciones(solicitudId) {
   try {
-    let guardadas = 0;
-    for (let op = 1; op <= 3; op++) {
-      const provId    = document.getElementById(`cot-prov-${op}-${solicitudId}`)?.value || null;
-      const precio    = parseFloat(document.getElementById(`cot-precio-${op}-${solicitudId}`)?.value) || 0;
-      const esOrig    = document.getElementById(`cot-orig-${op}-${solicitudId}`)?.checked ?? true;
-      if (!provId && !precio) continue;
-      guardadas++;
-      const body = { proveedor_id: provId || null, precio_costo: precio, es_original: esOrig, estado_opcion: 'cotizado' };
+    // Leer los valores actuales de los inputs
+    const filas = _cotFilas.map(f => ({
+      id:          f.id,
+      seleccionado: document.getElementById(`cot-sel-${f.id}`)?.checked ?? f.seleccionado,
+      proveedorId: document.getElementById(`cot-prov-${f.id}`)?.value || null,
+      referencia:  document.getElementById(`cot-ref-${f.id}`)?.value?.trim() || null,
+      precio:      parseFloat(document.getElementById(`cot-precio-${f.id}`)?.value) || 0,
+      dias:        parseInt(document.getElementById(`cot-dias-${f.id}`)?.value) || null,
+      esOriginal:  document.querySelector(`input[name="cot-orig-${f.id}"]:checked`)?.value !== 'no'
+    }));
+
+    const filasSeleccionadas = filas.filter(f => f.seleccionado && (f.proveedorId || f.precio));
+    if (!filasSeleccionadas.length) { toast('Selecciona al menos una fila con proveedor o precio', 'err'); return; }
+
+    const notas = document.getElementById('cot-notas')?.value?.trim() || null;
+
+    // Guardar solo las filas seleccionadas
+    for (let i = 0; i < filasSeleccionadas.length; i++) {
+      const f   = filasSeleccionadas[i];
+      const op  = i + 1;
+      const body = {
+        proveedor_id:  f.proveedorId || null,
+        precio_costo:  f.precio,
+        referencia:    f.referencia,
+        dias_entrega:  f.dias,
+        es_original:   f.esOriginal,
+        estado_opcion: 'cotizado'
+      };
+      // Si f.id parece un id de DB (número pequeño), intentar PATCH primero
       const ex = await api(`/cotizaciones_repuesto?solicitud_id=eq.${solicitudId}&opcion=eq.${op}`).catch(()=>[]) || [];
       if (ex.length) {
         await api(`/cotizaciones_repuesto?id=eq.${ex[0].id}`, 'PATCH', body);
@@ -1113,8 +1288,11 @@ async function guardarCotizaciones(solicitudId) {
         await api('/cotizaciones_repuesto', 'POST', { solicitud_id: solicitudId, opcion: op, ...body }, { Prefer: 'return=minimal' });
       }
     }
-    if (!guardadas) { toast('Ingresa al menos una cotización', 'err'); return; }
-    await api(`/solicitudes_repuesto?id=eq.${solicitudId}`, 'PATCH', { estado: 'cotizado' });
+
+    await api(`/solicitudes_repuesto?id=eq.${solicitudId}`, 'PATCH', {
+      estado: 'cotizado',
+      nota_repuestos: notas
+    });
     toast('Cotizaciones guardadas ✓');
     document.getElementById('modal-cotizar')?.remove();
     cargarSolicitudesRepuestos();
