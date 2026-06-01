@@ -4390,7 +4390,7 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;font-size:9.5px;line-height:1.45;background:#fff}
-@page{size:A4 portrait;margin:10mm 12mm}
+@page{size:A4 landscape;margin:7mm 10mm}
 
 /* Tablas */
 table{width:100%;border-collapse:collapse;font-size:9px}
