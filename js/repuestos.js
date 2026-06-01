@@ -1011,6 +1011,22 @@ async function marcarRepuestoSolicitadoProveedor(solicitudId) {
 // ── Filas de la tabla de cotización ─────────────────────
 let _cotFilas = []; // [{id, seleccionado, proveedorId, referencia, precio, dias, esOriginal}]
 
+// Datos del vehículo disponibles para el mensaje WA (se setean en abrirModalCotizar)
+let _cotDatosVehiculo = { repuesto:'', unidades:1, placa:'', marca:'', modelo:'', anio:'', vin:'' };
+
+function _generarMensajeWA() {
+  const d = _cotDatosVehiculo;
+  const vehiculo = [d.marca, d.modelo, d.anio].filter(Boolean).join(' ') || d.placa || '—';
+  const vinStr   = d.vin ? `, VIN: *${d.vin}*` : '';
+  return `Buenos días. Solicito cotización para el siguiente vehículo:\nVehículo: *${vehiculo}*${vinStr}.\n\nLos repuestos son:\n- ${d.repuesto} / unidades: (${d.unidades})\n\nQuedo atento, gracias.`;
+}
+
+function _copiarMensajeWA(filaId) {
+  const msg = _generarMensajeWA();
+  navigator.clipboard?.writeText(msg).then(() => toast('Mensaje copiado ✓'))
+    .catch(() => { const ta = document.createElement('textarea'); ta.value = msg; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('Mensaje copiado ✓'); });
+}
+
 function _renderFilaCot(fila, idx, provOpts) {
   return `<tr id="cot-fila-${fila.id}" style="border-bottom:1px solid var(--gris-borde)">
     <td style="padding:5px 8px;text-align:center;width:28px">
@@ -1020,25 +1036,32 @@ function _renderFilaCot(fila, idx, provOpts) {
     <td style="padding:4px 6px;min-width:160px">
       <select id="cot-prov-${fila.id}" style="width:100%;font-size:12px;border:1px solid var(--gris-borde);border-radius:4px;padding:4px 6px">${provOpts}</select>
     </td>
-    <td style="padding:4px 6px;min-width:100px">
+    <td style="padding:4px 6px;min-width:90px">
       <input id="cot-ref-${fila.id}" type="text" value="${escapeHtml(fila.referencia||'')}"
         placeholder="Ref..." style="width:100%;font-size:12px;border:1px solid var(--gris-borde);border-radius:4px;padding:4px 6px">
     </td>
-    <td style="padding:4px 6px;min-width:100px">
+    <td style="padding:4px 6px;min-width:90px">
       <input id="cot-precio-${fila.id}" type="number" value="${fila.precio||''}"
         placeholder="$0" min="0" style="width:100%;font-size:12px;border:1px solid var(--gris-borde);border-radius:4px;padding:4px 6px;font-family:'DM Mono',monospace">
     </td>
-    <td style="padding:4px 6px;width:50px">
+    <td style="padding:4px 6px;width:46px">
       <input id="cot-dias-${fila.id}" type="number" value="${fila.dias||''}"
-        placeholder="—" min="0" style="width:44px;font-size:12px;border:1px solid var(--gris-borde);border-radius:4px;padding:4px 5px;text-align:center">
+        placeholder="—" min="0" style="width:40px;font-size:12px;border:1px solid var(--gris-borde);border-radius:4px;padding:4px 4px;text-align:center">
     </td>
     <td style="padding:4px 8px;white-space:nowrap">
       <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
-        <input type="radio" name="cot-orig-${fila.id}" id="cot-orig-si-${fila.id}" value="si" ${fila.esOriginal!==false ? 'checked' : ''}> Sí
+        <input type="radio" name="cot-orig-${fila.id}" value="si" ${fila.esOriginal!==false ? 'checked' : ''}> Sí
       </label>
       <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
-        <input type="radio" name="cot-orig-${fila.id}" id="cot-orig-no-${fila.id}" value="no" ${fila.esOriginal===false ? 'checked' : ''}> No
+        <input type="radio" name="cot-orig-${fila.id}" value="no" ${fila.esOriginal===false ? 'checked' : ''}> No
       </label>
+    </td>
+    <td style="padding:4px 6px;text-align:center;white-space:nowrap">
+      <button type="button" title="Copiar mensaje WhatsApp para este proveedor"
+        onclick="_copiarMensajeWA(${fila.id})"
+        style="background:#25D366;color:#fff;border:none;border-radius:4px;padding:3px 7px;font-size:11px;cursor:pointer;font-weight:600">
+        📋 WA
+      </button>
     </td>
     <td style="padding:4px 6px;text-align:center">
       ${idx > 0
@@ -1073,6 +1096,7 @@ function _reRenderFilasCot() {
 }
 
 async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, modelo, anio, vin) {
+  _cotDatosVehiculo = { repuesto: repuesto||'', unidades: unidades||1, placa: placa||'', marca: marca||'', modelo: modelo||'', anio: anio||'', vin: vin||'' };
   const [proveedores, cots, solItems, sol] = await Promise.all([
     api('/proveedores?activo=eq.true&order=nombre.asc').catch(()=>[]) || [],
     api(`/cotizaciones_repuesto?solicitud_id=eq.${solicitudId}&order=opcion.asc`).catch(()=>[]) || [],
@@ -1159,6 +1183,7 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
                 <th style="padding:7px 8px;text-align:left;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Vr.Unit</th>
                 <th style="padding:7px 8px;text-align:center;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Días</th>
                 <th style="padding:7px 8px;text-align:left;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Original</th>
+                <th style="padding:7px 8px;text-align:center;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Msg WA</th>
                 <th style="width:28px"></th>
               </tr>
             </thead>
