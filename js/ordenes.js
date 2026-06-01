@@ -4379,33 +4379,15 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
     </svg>`;
 
     const _baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
-
-    // Convertir imagen a base64 via canvas (más fiable que fetch en ventana nueva)
-    const _imgToB64 = (src, type='image/jpeg') => new Promise(resolve => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        try {
-          const c = document.createElement('canvas');
-          c.width = img.naturalWidth; c.height = img.naturalHeight;
-          c.getContext('2d').drawImage(img, 0, 0);
-          resolve(c.toDataURL(type, 0.92));
-        } catch(e) { resolve(''); }
-      };
-      img.onerror = () => resolve('');
-      img.src = src + '?_t=' + Date.now(); // cache-bust
-    });
-
-    const [_bocetoB64, _logoB64] = await Promise.all([
-      _imgToB64(_baseUrl + 'icons/boceto-vehiculo.jpg', 'image/jpeg'),
-      _imgToB64(_baseUrl + 'icons/Logo_Fondo_Taller.png', 'image/png')
-    ]);
+    const _bocetoUrl = _baseUrl + 'icons/boceto-vehiculo.jpg';
+    const _logoUrl   = _baseUrl + 'icons/Logo_Fondo_Taller.png';
 
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <base href="${_baseUrl}">
+<link rel="preload" as="image" href="${_bocetoUrl}">
 <title>Preliquidación ${escapeHtml(orden.placa)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -4427,7 +4409,7 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
 <!-- ENCABEZADO -->
 <div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;border-bottom:3px solid #111;padding-bottom:5px;margin-bottom:6px">
   <div style="display:flex;align-items:center;gap:10px">
-    ${_logoB64 ? `<img src="${_logoB64}" alt="Logo" style="height:52px;width:52px;object-fit:contain">` : ''}
+    <img src="${_logoUrl}" alt="Logo" style="height:52px;width:52px;object-fit:contain">
     <div>
       <div style="font-weight:900;font-size:14px;color:#111;letter-spacing:.3px">FREIMANAUTOS S.A.</div>
       <div style="font-size:7.5px;color:#555;margin-top:2px">NIT 860.012.186-5</div>
@@ -4502,7 +4484,7 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
       const vista = (label, bSize, bPos, h, gridStyle, zona, dotTop, dotLeft) =>
         `<div style="${gridStyle};padding:3px;text-align:center;background:#fff">
           <div style="font-size:7px;color:#555;margin-bottom:2px;text-transform:uppercase">${label}</div>
-          <div style="position:relative;overflow:hidden;margin:0 auto;height:${h}px;background:#fff url('${_bocetoB64 || 'icons/boceto-vehiculo.jpg'}') no-repeat;background-size:${bSize};background-position:${bPos}">
+          <div style="position:relative;overflow:hidden;margin:0 auto;height:${h}px;background:#fff url('${_bocetoUrl}') no-repeat;background-size:${bSize};background-position:${bPos}">
             ${dots(zona, dotTop, dotLeft)}
           </div>
         </div>`;
