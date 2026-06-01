@@ -772,7 +772,6 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
                 const _rolesValidos = _srvRoles[e.servicio] || null;
                 return mecanicos
                   .filter(m => {
-                    // Si ya está asignado, siempre mostrarlo aunque el rol no coincida
                     if (e.mecanico_id && Number(e.mecanico_id) === Number(m.id)) return true;
                     if (['taller','repuestos','Asesor Previsora'].includes(m.rol)) return false;
                     if (_rolesValidos && !_rolesValidos.map(r=>r.toLowerCase()).includes((m.rol||'').toLowerCase())) return false;
@@ -783,19 +782,47 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
               })()}
             </select>
           </div>
-          <div class="field etapa-campo-sm"><label>${e.servicio==='pintura'?'Piezas a pintar':'H. Facturadas'}</label>
-            <input id="hf-${k}" type="number" step="${e.servicio==='pintura'?'1':'0.5'}" value="${e.horas_facturadas||''}" placeholder="0" onblur="patchHoras(${eid},'${k}')">
-          </div>
-          <div class="field etapa-campo-sm"><label>${e.servicio==='pintura'?'Piezas adic.':'H. Adicionales'}</label>
-            <input id="ha-${k}" type="number" step="${e.servicio==='pintura'?'1':'0.5'}" value="${e.horas_adicionales||''}" placeholder="0" onblur="patchHoras(${eid},'${k}')">
-          </div>
-          <div class="field etapa-campo-sm"><label>Valor COP</label>
-            <input id="val-${k}" type="number" step="1000" value="${e.valor||''}" placeholder="0"
-              style="font-weight:600;color:var(--verde)"
-              onblur="patchValor(${eid},'${k}')">
-          </div>
+
+          ${/* Horas y valor — bloqueados una vez guardados */''}
+          ${(() => {
+            const yaGuardado = e.horas_facturadas || e.horas_adicionales || e.valor;
+            const fmt = n => n != null && n !== '' ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
+            const lbl1 = e.servicio==='pintura'?'Piezas a pintar':'H. Facturadas';
+            const lbl2 = e.servicio==='pintura'?'Piezas adic.':'H. Adicionales';
+            if (yaGuardado) {
+              return `
+              <div class="field etapa-campo-sm">
+                <label style="display:flex;align-items:center;gap:4px">${lbl1} <span style="color:var(--gris-mid);font-size:10px">🔒</span></label>
+                <div style="font-size:14px;font-weight:700;padding:6px 0;color:var(--texto)">${e.horas_facturadas||'—'}</div>
+              </div>
+              <div class="field etapa-campo-sm">
+                <label style="display:flex;align-items:center;gap:4px">${lbl2} <span style="color:var(--gris-mid);font-size:10px">🔒</span></label>
+                <div style="font-size:14px;font-weight:700;padding:6px 0;color:var(--texto)">${e.horas_adicionales||'—'}</div>
+              </div>
+              <div class="field etapa-campo-sm">
+                <label style="display:flex;align-items:center;gap:4px">Valor COP <span style="color:var(--gris-mid);font-size:10px">🔒</span></label>
+                <div style="font-size:13px;font-weight:700;padding:6px 0;color:var(--verde)">${fmt(e.valor)}</div>
+              </div>
+              ${esJefe() ? `<div class="field etapa-campo-sm" style="display:flex;align-items:flex-end;padding-bottom:4px">
+                <button class="btn btn-ghost btn-xs" style="font-size:11px" onclick="_desbloquearCamposEtapa(${eid},'${k}')">✏ Editar</button>
+              </div>` : ''}`;
+            } else {
+              return `
+              <div class="field etapa-campo-sm"><label>${lbl1}</label>
+                <input id="hf-${k}" type="number" step="${e.servicio==='pintura'?'1':'0.5'}" value="${e.horas_facturadas||''}" placeholder="0">
+              </div>
+              <div class="field etapa-campo-sm"><label>${lbl2}</label>
+                <input id="ha-${k}" type="number" step="${e.servicio==='pintura'?'1':'0.5'}" value="${e.horas_adicionales||''}" placeholder="0">
+              </div>
+              <div class="field etapa-campo-sm"><label>Valor COP</label>
+                <input id="val-${k}" type="number" step="1000" value="${e.valor||''}" placeholder="0" style="font-weight:600;color:var(--verde)">
+              </div>
+              <div class="field etapa-campo-sm" style="display:flex;align-items:flex-end;padding-bottom:4px">
+                <button class="btn btn-primary btn-sm" onclick="guardarCamposEtapa(${eid},'${k}')">Guardar ✓</button>
+              </div>`;
+            }
+          })()}
         </div>
-        ${e.valor ? `<div style="font-size:11px;color:var(--gris-mid);margin-bottom:10px">${new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(e.valor)}</div>` : ''}
 
         <div class="fotos-section" style="margin-top:0">
           <label style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gris-mid)">Fotos (${eFotos.length})</label>
@@ -939,6 +966,35 @@ async function finalizarEtapa(eid, nombre, servicio) {
     }).catch(() => {});
     if (ordenActual) abrirOrden(ordenActual.id);
   } catch(e) { toast('Error: '+e.message, 'err'); }
+}
+
+// ── Guardar horas+valor de una sola vez y bloquear ──────────
+async function guardarCamposEtapa(eid, k) {
+  const hf  = parseFloat(document.getElementById(`hf-${k}`)?.value) || null;
+  const ha  = parseFloat(document.getElementById(`ha-${k}`)?.value) || null;
+  const val = parseFloat(document.getElementById(`val-${k}`)?.value) || null;
+  if (hf == null && ha == null && val == null) {
+    toast('Ingresa al menos un valor antes de guardar', 'err'); return;
+  }
+  try {
+    await api(`/etapas?id=eq.${eid}`, 'PATCH', { horas_facturadas: hf, horas_adicionales: ha, valor: val });
+    toast('Datos guardados y bloqueados ✓');
+    if (ordenActual) abrirOrden(ordenActual.id);
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ── Desbloquear para editar (solo jefe) ─────────────────────
+async function _desbloquearCamposEtapa(eid, k) {
+  if (!esJefe()) return;
+  const etapa = window._tvEtapasTodas?.find?.(e=>e.id===eid) ||
+    (await api(`/etapas?id=eq.${eid}&select=horas_facturadas,horas_adicionales,valor`).then(r=>r?.[0]).catch(()=>null));
+  // Reemplazar los spans por inputs temporalmente
+  const campos = document.querySelectorAll(`#etapa-campos-${eid} .etapa-campo-sm`);
+  if (ordenActual) {
+    await api(`/etapas?id=eq.${eid}`, 'PATCH', { horas_facturadas: null, horas_adicionales: null, valor: null });
+    toast('Campos desbloqueados — vuelve a guardar cuando termines');
+    abrirOrden(ordenActual.id);
+  }
 }
 
 async function patchHoras(eid, k) {
