@@ -759,7 +759,7 @@ async function cargarPantallaTaller() {
     const hoyISO = hoy.toISOString().split('T')[0];
 
     const [ordenesActivas, entregadasHoy, etapasActivas, etapasTodas, aprobacionesTodas, ordenesProgramadas] = await Promise.all([
-      api(`/ordenes?estado=eq.Activa&estado=neq.Programada&order=fecha_entrega_1.asc`).catch(()=>[]) || [],
+      api(`/ordenes?estado=eq.Activa&estado=neq.Programada&or=(pulmon.is.null,pulmon.eq.false)&order=fecha_entrega_1.asc`).catch(()=>[]) || [],
       api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${hoy.toISOString()}&order=entregada_en.desc`).catch(()=>[]) || [],
       api(`/etapas?fin=is.null&inicio=not.is.null&select=id,orden_id,etapa,servicio,mecanico_id,tecnico,inicio,pausado,pausa_inicio,tiempo_pausado_min`).catch(()=>[]) || [],
       api(`/etapas?select=id,orden_id,etapa,servicio,inicio,fin,tecnico&order=creado_en.asc`).catch(()=>[]) || [],

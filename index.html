@@ -240,7 +240,13 @@
                 </div>
                 <!-- KM -->
                 <div class="field" style="margin:0">
-                  <label>KM <span style="color:#DC2626">*</span></label>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+                    <label style="margin:0">KM</label>
+                    <label style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:var(--gris-mid);cursor:pointer;margin:0">
+                      <input type="checkbox" id="n-km-omitir" onchange="_toggleKmOmitir(this)" style="width:14px;height:14px;accent-color:var(--azul);cursor:pointer">
+                      Sin odómetro
+                    </label>
+                  </div>
                   <div style="position:relative">
                     <input id="n-km" placeholder="0" type="number" min="0" style="font-family:'DM Mono',monospace;padding-right:38px">
                     <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:var(--gris-mid);pointer-events:none">km</span>

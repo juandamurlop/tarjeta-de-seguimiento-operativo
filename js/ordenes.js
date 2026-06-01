@@ -490,11 +490,21 @@ async function abrirOrden(id) {
           </div>
           <!-- Descripción general del trabajo -->
           <div style="background:#F0F7FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:14px 16px;margin-bottom:16px">
-            <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
-              <svg width="14" height="14" fill="none" stroke="#2563EB" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-              <span style="font-size:12px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:.05em">Descripción del trabajo</span>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:7px;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:7px">
+                <svg width="14" height="14" fill="none" stroke="#2563EB" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                <span style="font-size:12px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:.05em">Descripción del trabajo</span>
+              </div>
+              ${esJefe() ? `<button class="btn btn-ghost btn-xs" style="font-size:11px;color:var(--azul)" onclick="abrirEditDescripcion(${orden.id}, ${JSON.stringify(orden.descripcion_general||'')})">✏ Editar</button>` : ''}
             </div>
             <div style="font-size:13.5px;color:#1E293B;line-height:1.6;white-space:pre-wrap">${orden.descripcion_general ? escapeHtml(orden.descripcion_general) : '<span style="color:#94A3B8;font-style:italic">Sin descripción registrada</span>'}</div>
+            <div id="desc-edit-box-${orden.id}" style="display:none;margin-top:10px">
+              <textarea id="desc-edit-ta-${orden.id}" rows="4" style="width:100%;font-size:13px;border:1.5px solid #BFDBFE;border-radius:8px;padding:8px;resize:vertical;font-family:inherit"></textarea>
+              <div style="display:flex;gap:6px;margin-top:6px">
+                <button class="btn btn-ghost btn-xs" onclick="document.getElementById('desc-edit-box-${orden.id}').style.display='none'">Cancelar</button>
+                <button class="btn btn-primary btn-xs" onclick="guardarDescripcion(${orden.id})">Guardar</button>
+              </div>
+            </div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
             <div class="seccion-titulo" style="margin-bottom:0">Servicios y Etapas</div>
@@ -947,6 +957,34 @@ async function asignarMecanico(eid, k) {
   } catch(e) { toast('Error: '+e.message, 'err'); }
 }
 
+// ── Toggle KM omitir ────────────────────────────────────────
+function _toggleKmOmitir(chk) {
+  const kmInput = document.getElementById('n-km');
+  if (!kmInput) return;
+  kmInput.disabled  = chk.checked;
+  kmInput.value     = chk.checked ? '' : kmInput.value;
+  kmInput.style.opacity = chk.checked ? '0.4' : '1';
+}
+
+// ── Editar descripción general desde el detalle de orden ────
+function abrirEditDescripcion(ordenId, textoActual) {
+  const box = document.getElementById('desc-edit-box-' + ordenId);
+  if (!box) return;
+  box.style.display = 'block';
+  const ta = document.getElementById('desc-edit-ta-' + ordenId);
+  if (ta) { ta.value = textoActual || ''; ta.focus(); }
+}
+
+async function guardarDescripcion(ordenId) {
+  const ta = document.getElementById('desc-edit-ta-' + ordenId);
+  const texto = ta?.value?.trim() ?? null;
+  try {
+    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { descripcion_general: texto || null });
+    toast('Descripción actualizada ✓');
+    if (ordenActual) { ordenActual.descripcion_general = texto || null; abrirOrden(ordenId); }
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
 // ============================================================
 // NUEVA ORDEN
 // ============================================================
@@ -961,6 +999,10 @@ function resetNuevaOrden() {
   if (dano) dano.value = '';
   if (tipoCliente) tipoCliente.value = '';
   if (tipoCarroceria) tipoCarroceria.value = '';
+  const _kmChk = document.getElementById('n-km-omitir');
+  if (_kmChk) { _kmChk.checked = false; }
+  const _kmInp = document.getElementById('n-km');
+  if (_kmInp) { _kmInp.disabled = false; _kmInp.style.opacity = '1'; }
   document.querySelectorAll('.dano-cb').forEach(cb => { cb.checked = false; });
   document.querySelectorAll('.inv-item').forEach(el => {
     el.classList.remove('checked');
@@ -1526,9 +1568,10 @@ async function crearOrden() {
   const errElTc = document.getElementById('n-tipo-cliente-error');
   if (errElTc) errElTc.style.display = 'none';
 
-  // KM OBLIGATORIO
+  // KM (opcional si se marcó "Sin odómetro")
+  const kmOmitir = document.getElementById('n-km-omitir')?.checked || false;
   const kmVal = document.getElementById('n-km')?.value;
-  if (!kmVal || parseInt(kmVal) < 0) { toast('El kilometraje es obligatorio', 'err'); document.getElementById('n-km')?.focus(); return; }
+  if (!kmOmitir && (!kmVal || parseInt(kmVal) < 0)) { toast('El kilometraje es obligatorio (o marca "Sin odómetro")', 'err'); document.getElementById('n-km')?.focus(); return; }
 
   const cedulaCliente = document.getElementById('n-cedula-cliente')?.value.trim() || '';
   const vin = document.getElementById('n-vin')?.value.trim().toUpperCase() || null;
@@ -1577,7 +1620,7 @@ async function crearOrden() {
       return document.getElementById('n-tipo-cliente')?.value || null;
     })(),
     nivel_dano: document.getElementById('n-dano')?.value || null,
-    kilometraje: parseInt(document.getElementById('n-km')?.value) || null,
+    kilometraje: kmOmitir ? null : (parseInt(document.getElementById('n-km')?.value) || null),
     fecha_entrega_1: document.getElementById('n-fecha1')?.value || null,
     fecha_entrega_2: document.getElementById('n-fecha2')?.value || null,
     fecha_programada: document.getElementById('n-fecha-programada')?.value || null,
@@ -2037,7 +2080,7 @@ async function guardarNovedad(eid) {
     }
 
     const payload = { orden_id: ordenActual.id, etapa_id: eid, tipo, responsable, motivo, desde: new Date().toISOString() };
-    if (valor !== null) payload.valor = valor;
+    if (valor !== null) payload.valor_adicional = valor;
 
     await api('/novedades', 'POST', payload, { Prefer: 'return=minimal' });
     toast(tipo === 'Detenido' ? 'Etapa pausada y novedad registrada ✓' : 'Novedad registrada ✓');
@@ -3702,7 +3745,7 @@ async function mecGuardarNovedadDetalle(eid, oid) {
       tipo: document.getElementById(`mec2-ntype-${eid}`).value,
       responsable: sesion.nombre,
       motivo, desde: new Date().toISOString(),
-      valor: parseFloat(document.getElementById(`mec2-nvalor-${eid}`)?.value) || null
+      valor_adicional: parseFloat(document.getElementById(`mec2-nvalor-${eid}`)?.value) || null
     }, { Prefer: 'return=minimal' });
     toast('Novedad registrada ✓');
     abrirOrdenMecanico(oid);
@@ -4032,6 +4075,10 @@ function resetNuevaOrden() {
    'n-emp-nombre','n-emp-nit','n-empresa-tel','n-combustible-val'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  const _kmChk2 = document.getElementById('n-km-omitir');
+  if (_kmChk2) { _kmChk2.checked = false; }
+  const _kmInp2 = document.getElementById('n-km');
+  if (_kmInp2) { _kmInp2.disabled = false; _kmInp2.style.opacity = '1'; }
   document.querySelectorAll('.inv-item.checked').forEach(el => el.classList.remove('checked'));
   const _ci = document.getElementById('inv-combustible-item');
   const _cl = document.getElementById('inv-combustible-label');
@@ -4345,7 +4392,7 @@ th{font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;pa
 td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
 .lbl{font-size:7px;color:#777;text-transform:uppercase;letter-spacing:.2px;margin-bottom:1px}
 .val{font-weight:600;font-size:9px}
-.sh{font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;background:#1E3A5F;color:#fff;padding:2.5px 7px}
+.sh{font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;background:#111;color:#fff;padding:2.5px 7px}
 .money{font-family:monospace;font-weight:700}
 @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}
 </style>
@@ -4354,15 +4401,18 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
 <div style="padding:0 6px 6px">
 
 <!-- ENCABEZADO -->
-<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;border-bottom:2.5px solid #1E3A5F;padding-bottom:5px;margin-bottom:6px">
-  <div>
-    <div style="font-weight:900;font-size:14px;color:#1E3A5F;letter-spacing:.3px">FREIMANAUTOS S.A.</div>
-    <div style="font-size:7.5px;color:#555;margin-top:2px">NIT 860.012.186-5</div>
-    <div style="font-size:7.5px;color:#555">Calle 98A #68D-15 Bogotá D.C.</div>
-    <div style="font-size:7.5px;color:#555">Tel: (601) 742 6450</div>
+<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;border-bottom:3px solid #111;padding-bottom:5px;margin-bottom:6px">
+  <div style="display:flex;align-items:center;gap:10px">
+    <img src="../icons/Logo_Fondo_Taller.png" alt="Logo" style="height:52px;width:52px;object-fit:contain">
+    <div>
+      <div style="font-weight:900;font-size:14px;color:#111;letter-spacing:.3px">FREIMANAUTOS S.A.</div>
+      <div style="font-size:7.5px;color:#555;margin-top:2px">NIT 860.012.186-5</div>
+      <div style="font-size:7.5px;color:#555">Calle 98A #68D-15 Bogotá D.C.</div>
+      <div style="font-size:7.5px;color:#555">Tel: (601) 742 6450</div>
+    </div>
   </div>
   <div style="text-align:center">
-    <div style="font-size:20px;font-weight:900;color:#1E3A5F;letter-spacing:1px">PRELIQUIDACIÓN</div>
+    <div style="font-size:20px;font-weight:900;color:#111;letter-spacing:1px">PRELIQUIDACIÓN</div>
   </div>
   <div style="border:1.5px solid #111;padding:4px 10px;text-align:center;min-width:160px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid #ccc;padding-bottom:3px;margin-bottom:3px">
@@ -4373,12 +4423,12 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
       </div>
       <div style="padding-left:8px">
         <div style="font-size:7px;color:#777;text-transform:uppercase">Placa</div>
-        <div style="font-size:13px;font-weight:900;letter-spacing:2px;color:#1E3A5F">${escapeHtml(orden.placa)}</div>
+        <div style="font-size:13px;font-weight:900;letter-spacing:2px;color:#111">${escapeHtml(orden.placa)}</div>
       </div>
     </div>
     <div>
       <div style="font-size:7px;color:#777;text-transform:uppercase">N° Orden</div>
-      <div style="font-size:18px;font-weight:900;font-family:monospace;color:#1E3A5F;letter-spacing:2px">${formatOT(orden.id)}</div>
+      <div style="font-size:18px;font-weight:900;font-family:monospace;color:#111;letter-spacing:2px">${formatOT(orden.id)}</div>
     </div>
   </div>
 </div>
@@ -4394,7 +4444,7 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
       <div style="margin-bottom:4px"><div class="lbl">Teléfono</div><div>${escapeHtml(orden.telefono)||'—'}</div></div>
       <div style="margin-bottom:4px"><div class="lbl">Email</div><div style="font-size:8px">${escapeHtml(orden.correo_cliente||orden.email||'—')}</div></div>
       <div${orden.aseguradora?' style="margin-bottom:4px"':''}><div class="lbl">Tipo</div><div>${escapeHtml(orden.tipo_cliente)||'Particular'}</div></div>
-      ${orden.aseguradora ? `<div><div class="lbl">Aseguradora</div><div class="val" style="color:#1D4ED8">${escapeHtml(orden.aseguradora)}</div></div>` : ''}
+      ${orden.aseguradora ? `<div><div class="lbl">Aseguradora</div><div class="val" style="color:#111">${escapeHtml(orden.aseguradora)}</div></div>` : ''}
     </div>
   </div>
 
@@ -4515,11 +4565,11 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
       <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid #ddd;font-size:8.5px">
         <span>IVA (19%)</span><span class="money">$</span>
       </div>
-      <div style="display:flex;justify-content:space-between;padding:6px 5px;font-size:10px;font-weight:800;background:#1E3A5F;color:#fff;margin-top:5px">
+      <div style="display:flex;justify-content:space-between;padding:6px 5px;font-size:10px;font-weight:800;background:#111;color:#fff;margin-top:5px">
         <span>TOTAL A PAGAR</span>
         <span class="money">${conPrecios ? (() => { const s=totalManoObra+totalRepuestos; return '$ '+new Intl.NumberFormat('es-CO',{minimumFractionDigits:0}).format(s+Math.round(s*.19)); })() : '$'}</span>
       </div>
-      ${!conPrecios ? `<div style="margin-top:6px;padding:4px 5px;border:0.8px solid #1E3A5F;font-size:8.5px;font-weight:700;display:flex;justify-content:space-between"><span>M.O. sin IVA</span><span class="money">${fmt(totalManoObra)}</span></div>` : ''}
+      ${!conPrecios ? `<div style="margin-top:6px;padding:4px 5px;border:0.8px solid #111;font-size:8.5px;font-weight:700;display:flex;justify-content:space-between"><span>M.O. sin IVA</span><span class="money">${fmt(totalManoObra)}</span></div>` : ''}
     </div>
   </div>
 </div>
