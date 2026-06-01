@@ -4471,31 +4471,32 @@ td{padding:3px 5px;border:0.5px solid #ddd;vertical-align:middle}
     ${(() => {
       const danos = (() => { try { return JSON.parse(orden.danos_vehiculo||'null')||{}; } catch{return{};} })();
       const hasDanos = Object.values(danos).some(a=>a?.length>0);
-      const esCamioneta = ['camioneta','van'].includes(orden.tipo_carroceria);
       const tipoLabels = {rayon:'Rayón',golpe:'Golpe',abolladura:'Abolladura',pieza_faltante:'Pieza faltante'};
       const tipoColores = {rayon:'#F59E0B',golpe:'#EF4444',abolladura:'#F97316',pieza_faltante:'#111'};
-      // Marcadores para vistas frontales (viewBox 116×80 → frontal pos approx center)
-      const mFrontal = hasDanos ? (danos.frontal||[]).map((t,i,a)=>'<circle cx="'+(58+(i-(a.length-1)/2)*16)+'" cy="65" r="6" fill="'+(tipoColores[t]||'#999')+'" stroke="white" stroke-width="1.3" opacity="0.9"/>').join('') : '';
-      const mTrasera = hasDanos ? (danos.trasera||[]).map((t,i,a)=>'<circle cx="'+(58+(i-(a.length-1)/2)*16)+'" cy="65" r="6" fill="'+(tipoColores[t]||'#999')+'" stroke="white" stroke-width="1.3" opacity="0.9"/>').join('') : '';
-      const mLatIzq  = hasDanos ? (danos.lateral_izq||[]).map((t,i,a)=>'<circle cx="'+(90+(i-(a.length-1)/2)*16)+'" cy="52" r="6" fill="'+(tipoColores[t]||'#999')+'" stroke="white" stroke-width="1.3" opacity="0.9"/>').join('') : '';
-      const mLatDer  = hasDanos ? (danos.lateral_der||[]).map((t,i,a)=>'<circle cx="'+(90+(i-(a.length-1)/2)*16)+'" cy="52" r="6" fill="'+(tipoColores[t]||'#999')+'" stroke="white" stroke-width="1.3" opacity="0.9"/>').join('') : '';
-      const addMarkers = (svg,m) => m ? svg.replace('</svg>',m+'</svg>') : svg;
-      const [sF,sT,sLI,sLD] = esCamioneta
-        ? [addMarkers(_svgCF,mFrontal), addMarkers(_svgCT,mTrasera), addMarkers(_svgCL,mLatIzq), addMarkers(_svgCD,mLatDer)]
-        : [addMarkers(_svgSF,mFrontal), addMarkers(_svgST,mTrasera), addMarkers(_svgSL,mLatIzq), addMarkers(_svgSD,mLatDer)];
-      const danosList = hasDanos ? ['frontal','trasera','lateral_izq','lateral_der'].filter(z=>(danos[z]||[]).length>0).map(z=>
-        '<div style="font-size:7.5px;margin-bottom:2px"><b style="text-transform:uppercase">'+{frontal:'Frontal',trasera:'Trasera',lateral_izq:'Lat. Izq.',lateral_der:'Lat. Der.'}[z]+':</b> '+
-        (danos[z]||[]).map(t=>'<span style="display:inline-flex;align-items:center;gap:2px;margin-right:4px"><span style="width:6px;height:6px;border-radius:50%;background:'+(tipoColores[t]||'#999')+';display:inline-block"></span>'+(tipoLabels[t]||t)+'</span>').join('')+'</div>'
-      ).join('') : '<div style="font-size:8px;color:#aaa;font-style:italic">Sin daños registrados</div>';
-      return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
-        <div style="border-right:0.5px solid #ddd;border-bottom:0.5px solid #ddd;padding:3px;text-align:center">
-          <div style="font-size:7px;color:#555;margin-bottom:2px;text-transform:uppercase">Frontal</div>${sF}</div>
-        <div style="border-bottom:0.5px solid #ddd;padding:3px;text-align:center">
-          <div style="font-size:7px;color:#555;margin-bottom:2px;text-transform:uppercase">Trasera</div>${sT}</div>
-        <div style="border-right:0.5px solid #ddd;padding:3px;text-align:center">
-          <div style="font-size:7px;color:#555;margin-bottom:2px;text-transform:uppercase">Lateral izquierda</div>${sLI}</div>
-        <div style="padding:3px;text-align:center">
-          <div style="font-size:7px;color:#555;margin-bottom:2px;text-transform:uppercase">Lateral derecha</div>${sLD}</div>
+      // Dots sobre la imagen
+      const dots = (zona, top='50%', left='50%') => hasDanos
+        ? (danos[zona]||[]).map((t,i,a)=>`<span style="position:absolute;left:calc(${left} + ${(i-(a.length-1)/2)*12}px);top:${top};width:9px;height:9px;margin-left:-4.5px;margin-top:-4.5px;border-radius:50%;background:${tipoColores[t]||'#999'};border:1px solid #fff;box-shadow:0 0 0 .5px rgba(0,0,0,.25);display:block"></span>`).join('')
+        : '';
+      const vista = (label, bSize, bPos, h, gridStyle, zona, dotTop, dotLeft) =>
+        `<div style="${gridStyle};padding:3px;text-align:center;background:#fff">
+          <div style="font-size:7px;color:#555;margin-bottom:2px;text-transform:uppercase">${label}</div>
+          <div style="position:relative;overflow:hidden;margin:0 auto;height:${h}px;background:#fff url('icons/boceto-vehiculo.jpg') no-repeat;background-size:${bSize};background-position:${bPos}">
+            ${dots(zona, dotTop, dotLeft)}
+          </div>
+        </div>`;
+      const danosList = hasDanos
+        ? ['frontal','trasera','lateral_izq','lateral_der'].filter(z=>(danos[z]||[]).length>0).map(z=>
+            '<div style="font-size:7.5px;margin-bottom:2px"><b style="text-transform:uppercase">'+{frontal:'Frontal',trasera:'Trasera',lateral_izq:'Lat. Izq.',lateral_der:'Lat. Der.'}[z]+':</b> '+
+            (danos[z]||[]).map(t=>'<span style="display:inline-flex;align-items:center;gap:2px;margin-right:4px"><span style="width:6px;height:6px;border-radius:50%;background:'+(tipoColores[t]||'#999')+';display:inline-block"></span>'+(tipoLabels[t]||t)+'</span>').join('')+'</div>'
+          ).join('')
+        : '<div style="font-size:8px;color:#aaa;font-style:italic">Sin daños registrados</div>';
+      return `
+      <div style="display:grid;grid-template-columns:1fr 1.08fr 1fr;grid-template-rows:78px 78px;border-bottom:1px solid #ddd">
+        ${vista('Trasera','150px auto','center top',54,'border-right:1px solid #ddd;border-bottom:1px solid #ddd','trasera','60%','50%')}
+        ${vista('Superior','178px auto','center 48%',132,'grid-row:span 2;border-right:1px solid #ddd','superior','50%','50%')}
+        ${vista('Frontal','150px auto','center bottom',54,'border-bottom:1px solid #ddd','frontal','60%','50%')}
+        ${vista('Lateral izquierda','245px auto','left center',54,'border-right:1px solid #ddd','lateral_izq','50%','30%')}
+        ${vista('Lateral derecha','245px auto','right center',54,'','lateral_der','50%','70%')}
       </div>
       <div style="padding:4px 7px;border-top:0.8px solid #999">
         <div style="font-size:7px;font-weight:700;text-transform:uppercase;margin-bottom:3px">Daños registrados</div>
