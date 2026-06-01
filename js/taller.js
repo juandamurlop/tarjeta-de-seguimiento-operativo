@@ -714,17 +714,23 @@ function _scrollPanel(id, state, pxPerSec, pauseMs) {
 function _iniciarScrollPulmon() {
   if (window._pulmonScrollRunning) return;
   window._pulmonScrollRunning = true;
-  const SPEED = 0.4; // px por frame — lento
+  const SPEED = 0.5; // px por frame — lento
+  let pos = 0;
   let dir = 1;
   function tick() {
     const wrap  = document.getElementById('tv-pulmon-cards');
     const inner = document.getElementById('tv-pulmon-cards-inner');
     if (!wrap || !inner) { window._pulmonScrollRunning = false; return; }
-    const maxScroll = inner.scrollWidth - wrap.clientWidth;
-    if (maxScroll <= 0) { wrap.scrollLeft = 0; requestAnimationFrame(tick); return; }
-    wrap.scrollLeft += SPEED * dir;
-    if (wrap.scrollLeft >= maxScroll - 1) dir = -1;
-    if (wrap.scrollLeft <= 0) dir = 1;
+    const maxMove = Math.max(0, inner.offsetWidth - wrap.offsetWidth);
+    if (maxMove <= 0) {
+      inner.style.transform = 'translateX(0)';
+      requestAnimationFrame(tick);
+      return;
+    }
+    pos += SPEED * dir;
+    if (pos >= maxMove) { pos = maxMove; dir = -1; }
+    if (pos <= 0)       { pos = 0;       dir =  1; }
+    inner.style.transform = `translateX(${-pos}px)`;
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
