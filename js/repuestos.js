@@ -1027,47 +1027,48 @@ function _copiarMensajeWA(filaId) {
     .catch(() => { const ta = document.createElement('textarea'); ta.value = msg; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('Mensaje copiado ✓'); });
 }
 
+const _CELL = 'border:none;border-right:1px solid #E2E8F0;background:transparent;width:100%;font-size:12.5px;padding:7px 8px;outline:none;font-family:inherit';
+
 function _renderFilaCot(fila, idx, provOpts) {
-  return `<tr id="cot-fila-${fila.id}" style="border-bottom:1px solid var(--gris-borde)">
-    <td style="padding:5px 8px;text-align:center;width:28px">
-      <input type="checkbox" id="cot-sel-${fila.id}" ${fila.seleccionado ? 'checked' : ''}
-        style="width:15px;height:15px;cursor:pointer">
+  const bg = idx % 2 === 0 ? '#fff' : '#F8FAFC';
+  return `<tr id="cot-fila-${fila.id}" style="background:${bg};border-bottom:1px solid #E2E8F0"
+    onmouseover="this.style.background='#EFF6FF'" onmouseout="this.style.background='${bg}'">
+    <td style="padding:6px 8px;text-align:center;color:#94A3B8;font-size:11px;font-weight:600;border-right:1px solid #E2E8F0;width:32px">${idx+1}</td>
+    <td style="padding:0;border-right:1px solid #E2E8F0">
+      <select id="cot-prov-${fila.id}" style="${_CELL}cursor:pointer">
+        ${provOpts}
+      </select>
     </td>
-    <td style="padding:4px 6px;min-width:160px">
-      <select id="cot-prov-${fila.id}" style="width:100%;font-size:12px;border:1px solid var(--gris-borde);border-radius:4px;padding:4px 6px">${provOpts}</select>
-    </td>
-    <td style="padding:4px 6px;min-width:90px">
+    <td style="padding:0;border-right:1px solid #E2E8F0">
       <input id="cot-ref-${fila.id}" type="text" value="${escapeHtml(fila.referencia||'')}"
-        placeholder="Ref..." style="width:100%;font-size:12px;border:1px solid var(--gris-borde);border-radius:4px;padding:4px 6px">
+        placeholder="Referencia..." style="${_CELL}">
     </td>
-    <td style="padding:4px 6px;min-width:90px">
+    <td style="padding:0;border-right:1px solid #E2E8F0">
       <input id="cot-precio-${fila.id}" type="number" value="${fila.precio||''}"
-        placeholder="$0" min="0" style="width:100%;font-size:12px;border:1px solid var(--gris-borde);border-radius:4px;padding:4px 6px;font-family:'DM Mono',monospace">
+        placeholder="0" min="0" style="${_CELL}text-align:right;font-family:'DM Mono',monospace;font-weight:600">
     </td>
-    <td style="padding:4px 6px;width:46px">
+    <td style="padding:0;border-right:1px solid #E2E8F0;width:54px">
       <input id="cot-dias-${fila.id}" type="number" value="${fila.dias||''}"
-        placeholder="—" min="0" style="width:40px;font-size:12px;border:1px solid var(--gris-borde);border-radius:4px;padding:4px 4px;text-align:center">
+        placeholder="—" min="0" style="${_CELL}text-align:center;width:54px">
     </td>
-    <td style="padding:4px 8px;white-space:nowrap">
-      <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
-        <input type="radio" name="cot-orig-${fila.id}" value="si" ${fila.esOriginal!==false ? 'checked' : ''}> Sí
+    <td style="padding:0;text-align:center;border-right:1px solid #E2E8F0;width:80px">
+      <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;padding:7px 4px">
+        <input type="radio" name="cot-orig-${fila.id}" value="si" ${fila.esOriginal!==false?'checked':''}
+          style="accent-color:var(--azul)"> Sí
       </label>
-      <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
-        <input type="radio" name="cot-orig-${fila.id}" value="no" ${fila.esOriginal===false ? 'checked' : ''}> No
+      <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;padding:7px 4px">
+        <input type="radio" name="cot-orig-${fila.id}" value="no" ${fila.esOriginal===false?'checked':''}
+          style="accent-color:var(--azul)"> No
       </label>
     </td>
-    <td style="padding:4px 6px;text-align:center;white-space:nowrap">
-      <button type="button" title="Copiar mensaje WhatsApp para este proveedor"
-        onclick="_copiarMensajeWA(${fila.id})"
-        style="background:#25D366;color:#fff;border:none;border-radius:4px;padding:3px 7px;font-size:11px;cursor:pointer;font-weight:600">
-        📋 WA
-      </button>
+    <td style="padding:4px 6px;text-align:center;border-right:1px solid #E2E8F0;width:50px">
+      <button type="button" title="Copiar mensaje WhatsApp" onclick="_copiarMensajeWA(${fila.id})"
+        style="background:#25D366;color:#fff;border:none;border-radius:4px;padding:3px 7px;font-size:11px;cursor:pointer;font-weight:700">WA</button>
     </td>
-    <td style="padding:4px 6px;text-align:center">
-      ${idx > 0
-        ? `<button type="button" onclick="_quitarFilaCot(${fila.id})"
-            style="background:none;border:none;cursor:pointer;color:#DC2626;font-size:14px;line-height:1;padding:2px 4px">✕</button>`
-        : ''}
+    <td style="padding:4px 6px;text-align:center;width:28px">
+      <button type="button" onclick="_quitarFilaCot(${fila.id})"
+        style="background:none;border:none;cursor:pointer;color:#CBD5E1;font-size:15px;line-height:1;padding:2px 4px"
+        onmouseover="this.style.color='#DC2626'" onmouseout="this.style.color='#CBD5E1'">✕</button>
     </td>
   </tr>`;
 }
@@ -1097,123 +1098,102 @@ function _reRenderFilasCot() {
 
 async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, modelo, anio, vin) {
   _cotDatosVehiculo = { repuesto: repuesto||'', unidades: unidades||1, placa: placa||'', marca: marca||'', modelo: modelo||'', anio: anio||'', vin: vin||'' };
+
   const [proveedores, cots, solItems, sol] = await Promise.all([
     api('/proveedores?activo=eq.true&order=nombre.asc').catch(()=>[]) || [],
     api(`/cotizaciones_repuesto?solicitud_id=eq.${solicitudId}&order=opcion.asc`).catch(()=>[]) || [],
     api(`/solicitud_items?solicitud_id=eq.${solicitudId}&order=creado_en.asc`).catch(()=>[]) || [],
     api(`/solicitudes_repuesto?id=eq.${solicitudId}`).then(r=>r?.[0]).catch(()=>null)
   ]);
-  const existing = document.getElementById('modal-cotizar');
-  if (existing) existing.remove();
+  document.getElementById('modal-cotizar')?.remove();
 
-  // Usar ítems de solicitud_items si existen; si no, usar los campos legacy
-  const itemsList = solItems.length ? solItems : [{ repuesto, unidades, observaciones: null, foto_url: null }];
-
-  // Score de proveedores — favorito = el de menor tiempo_respuesta_promedio_min
+  // Score / favorito
   const provConScore = proveedores.map(p => ({
-    ...p,
-    score: p.tiempo_respuesta_promedio_min != null ? p.tiempo_respuesta_promedio_min : Infinity
-  })).sort((a, b) => a.score - b.score);
+    ...p, score: p.tiempo_respuesta_promedio_min ?? Infinity
+  })).sort((a,b) => a.score - b.score);
   const favoritoId = provConScore[0]?.score < Infinity ? provConScore[0].id : null;
 
-  const provOpts = '<option value="">— Proveedor —</option>' +
+  // Opciones del select con favorito ★
+  const provOpts = '<option value="">— Seleccionar proveedor —</option>' +
     provConScore.map(p => {
-      const star = p.id === favoritoId ? '★ ' : '';
-      const tiempo = p.tiempo_respuesta_promedio_min != null
-        ? ` · ${Math.round(p.tiempo_respuesta_promedio_min/60)}h prom`
-        : '';
-      return `<option value="${p.id}">${star}${escapeHtml(p.nombre)}${tiempo}</option>`;
+      const star  = p.id === favoritoId ? '★ ' : '';
+      const prom  = p.tiempo_respuesta_promedio_min != null ? ` (${Math.round(p.tiempo_respuesta_promedio_min/60)}h prom.)` : '';
+      return `<option value="${p.id}">${star}${escapeHtml(p.nombre)}${prom}</option>`;
     }).join('');
 
-  // Inicializar filas desde cotizaciones existentes o una fila vacía
-  if (cots.length) {
-    _cotFilas = cots.map(c => ({
-      id:          c.id,
-      seleccionado: true,
-      proveedorId: c.proveedor_id || '',
-      referencia:  c.referencia || '',
-      precio:      c.precio_costo || '',
-      dias:        c.dias_entrega || '',
-      esOriginal:  c.es_original !== false
-    }));
-  } else {
-    _cotFilas = [{ id: Date.now(), seleccionado: false, proveedorId: favoritoId || '', referencia: '', precio: '', dias: '', esOriginal: true }];
-  }
+  // Filas iniciales
+  _cotFilas = cots.length
+    ? cots.map(c => ({ id: c.id, proveedorId: c.proveedor_id||'', referencia: c.referencia||'', precio: c.precio_costo||'', dias: c.dias_entrega||'', esOriginal: c.es_original !== false }))
+    : [{ id: Date.now(), proveedorId: favoritoId||'', referencia:'', precio:'', dias:'', esOriginal:true },
+       { id: Date.now()+1, proveedorId:'', referencia:'', precio:'', dias:'', esOriginal:true },
+       { id: Date.now()+2, proveedorId:'', referencia:'', precio:'', dias:'', esOriginal:true }];
 
-  // Timer desde creado_en de la solicitud
-  const timerSolicitud = sol?.creado_en ? _tiempoDesde(sol.creado_en, ' desde solicitud') : '';
-
-  // Resumen encabezado
-  const titulo = `${escapeHtml(repuesto)} (x${unidades})${placa ? ' · ' + escapeHtml(placa) : ''}${sol ? ' · ' + formatOT(solicitudId) : ''}`;
-
-  // Info del favorito
-  const favInfo = favoritoId
-    ? (() => {
-        const fp = provConScore[0];
-        const h = Math.round((fp.tiempo_respuesta_promedio_min||0)/60);
-        return `<div style="font-size:11px;color:#D97706;margin-bottom:10px">★ Favorito: <strong>${escapeHtml(fp.nombre)}</strong> · Prom: ${h}h</div>`;
-      })()
-    : '';
+  // Info header
+  const vehiculoStr = [marca, modelo, anio].filter(Boolean).join(' ') || placa || '';
+  const timerStr    = sol?.creado_en ? _tiempoDesde(sol.creado_en, ' desde solicitud') : '';
+  const favNom      = favoritoId ? provConScore[0].nombre : null;
 
   const div = document.createElement('div');
   div.id = 'modal-cotizar';
   div.className = 'modal-overlay show';
   div.innerHTML = `
-    <!-- oculto: provOpts para re-render -->
     <input type="hidden" id="_cot-prov-opts" value="">
-    <div class="modal" style="max-width:680px;max-height:90vh;overflow-y:auto">
-      <div class="modal-header" style="padding-bottom:8px">
-        <div>
-          <div class="modal-titulo" style="font-size:14px">Cotización · ${titulo}</div>
-          <div style="font-size:11px;color:var(--gris-mid);margin-top:3px">${timerSolicitud}</div>
-        </div>
-        <button class="modal-close" onclick="document.getElementById('modal-cotizar').remove()">✕</button>
-      </div>
-      <div class="modal-body" style="padding-top:10px">
-        ${favInfo}
+    <div class="modal" style="max-width:780px;width:95vw;padding:0;overflow:hidden;border-radius:10px">
 
-        <!-- Tabla compacta -->
-        <div style="border:1px solid var(--gris-borde);border-radius:8px;overflow-x:auto;margin-bottom:10px">
-          <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:560px">
-            <thead>
-              <tr style="background:var(--gris-bg)">
-                <th style="padding:7px 8px;width:28px"></th>
-                <th style="padding:7px 8px;text-align:left;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Proveedor</th>
-                <th style="padding:7px 8px;text-align:left;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Referencia</th>
-                <th style="padding:7px 8px;text-align:left;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Vr.Unit</th>
-                <th style="padding:7px 8px;text-align:center;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Días</th>
-                <th style="padding:7px 8px;text-align:left;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Original</th>
-                <th style="padding:7px 8px;text-align:center;font-size:10px;color:var(--gris-mid);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Msg WA</th>
-                <th style="width:28px"></th>
-              </tr>
-            </thead>
-            <tbody id="cot-tabla-tbody">
-              ${_cotFilas.map((f, i) => _renderFilaCot(f, i, provOpts)).join('')}
-            </tbody>
-          </table>
+      <!-- CABECERA -->
+      <div style="padding:14px 18px 10px;border-bottom:1px solid var(--gris-borde)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--texto)">${escapeHtml(repuesto)} <span style="font-size:13px;font-weight:500;color:var(--gris-mid)">(x${unidades})</span></div>
+            <div style="font-size:12px;color:var(--gris-mid);margin-top:2px">
+              ${vehiculoStr ? `🚗 ${escapeHtml(vehiculoStr)}` : ''} ${placa ? `· <b>${escapeHtml(placa)}</b>` : ''} ${sol ? `· ${formatOT(solicitudId)}` : ''}
+            </div>
+            <div style="margin-top:4px;display:flex;align-items:center;gap:12px;font-size:11px">
+              ${timerStr ? `<span>${timerStr}</span>` : ''}
+              ${favNom ? `<span style="color:#D97706;font-weight:600">★ Favorito: ${escapeHtml(favNom)}</span>` : ''}
+            </div>
+          </div>
+          <button onclick="document.getElementById('modal-cotizar').remove()"
+            style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--gris-mid);padding:0 4px;line-height:1">✕</button>
         </div>
-        <button type="button" class="btn btn-ghost btn-sm" onclick="_agregarFilaCot()" style="margin-bottom:12px">
-          + Agregar proveedor
+      </div>
+
+      <!-- TABLA TIPO EXCEL -->
+      <div style="overflow-x:auto">
+        <table id="cot-tabla" style="width:100%;border-collapse:collapse;font-size:12.5px">
+          <thead>
+            <tr style="background:#F1F5F9;border-bottom:2px solid #CBD5E1">
+              <th style="width:32px;padding:8px 6px;text-align:center;color:#64748B;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">#</th>
+              <th style="padding:8px 8px;text-align:left;color:#64748B;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;min-width:180px">Proveedor</th>
+              <th style="padding:8px 8px;text-align:left;color:#64748B;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;min-width:100px">Referencia</th>
+              <th style="padding:8px 8px;text-align:right;color:#64748B;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;min-width:110px">Valor unit. COP</th>
+              <th style="padding:8px 6px;text-align:center;color:#64748B;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;width:54px">Días</th>
+              <th style="padding:8px 8px;text-align:center;color:#64748B;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;width:80px">Original</th>
+              <th style="padding:8px 6px;text-align:center;color:#64748B;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;width:50px">WA</th>
+              <th style="width:28px"></th>
+            </tr>
+          </thead>
+          <tbody id="cot-tabla-tbody">
+            ${_cotFilas.map((f,i) => _renderFilaCot(f, i, provOpts)).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ACCIONES INFERIORES -->
+      <div style="padding:10px 16px;border-top:1px solid var(--gris-borde);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <button type="button" onclick="_agregarFilaCot()"
+          style="background:none;border:1px dashed var(--gris-borde);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;color:var(--azul);font-weight:600">
+          + Agregar fila
         </button>
-
-        <!-- Notas -->
-        <div class="field" style="margin-bottom:0">
-          <label style="font-size:11px">Notas</label>
-          <input id="cot-notas" type="text" placeholder="Observaciones generales..." value="${escapeHtml(sol?.nota_repuestos||'')}"
-            style="font-size:13px">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="document.getElementById('modal-cotizar').remove()">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarCotizaciones(${solicitudId})">Guardar cotización →</button>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="document.getElementById('modal-cotizar').remove()">Cancelar</button>
-        <button class="btn btn-primary" onclick="guardarCotizaciones(${solicitudId})">Guardar cotización →</button>
       </div>
     </div>`;
   document.body.appendChild(div);
 
-  // Guardar provOpts en input oculto para re-renders
   document.getElementById('_cot-prov-opts').value = provOpts;
-
-  // Pre-seleccionar proveedores de cotizaciones existentes
   _cotFilas.forEach(f => {
     const s = document.getElementById(`cot-prov-${f.id}`);
     if (s && f.proveedorId) s.value = f.proveedorId;
