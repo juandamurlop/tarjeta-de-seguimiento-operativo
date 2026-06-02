@@ -10,74 +10,42 @@ let _vehiculoEditar  = null;
 let _vehiculoFotoFile = null;
 
 // ═══════════════════════════════════════════════════════════
-// VISTA PRINCIPAL — Landing "Ingresar vehículo nuevo"
+// INGRESO PARTICULAR — registro de vehículos de clientes independientes
+// (pestaña "Ingreso Particular" del menú Registro → pag-vehiculos)
 // ═══════════════════════════════════════════════════════════
-async function montarFlotillas() {
-  const pag = document.getElementById('pag-flotillas');
+async function montarIngresoParticular() {
+  const pag = document.getElementById('pag-vehiculos');
   if (!pag) return;
-  _flotillaActual = null;
-
-  // Pre-cargar flotillas en segundo plano
-  api('/flotillas?order=nombre.asc').catch(() => []).then(r => { if (r) _flotillas = r; });
 
   pag.innerHTML = `
-    <div style="margin-bottom:24px">
-      <div style="font-size:18px;font-weight:700;color:var(--texto);margin-bottom:4px">Ingresar vehículo nuevo</div>
-      <div style="font-size:13px;color:var(--gris-mid)">¿Es un cliente particular o pertenece a una flotilla / empresa?</div>
+    <div style="margin-bottom:20px">
+      <div style="font-size:18px;font-weight:700;color:var(--texto);margin-bottom:4px">Ingreso particular</div>
+      <div style="font-size:13px;color:var(--gris-mid)">Registra un vehículo de un cliente independiente (no pertenece a flotilla ni empresa).</div>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:30px">
-
-      <!-- CARD: VEHÍCULO PARTICULAR -->
-      <div class="dash-panel" style="border:1.5px solid var(--gris-borde);transition:border-color .15s"
-           onmouseover="this.style.borderColor='var(--azul)'" onmouseout="this.style.borderColor='var(--gris-borde)'">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-          <div style="width:44px;height:44px;background:var(--azul-bg,#EBF2FF);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <svg width="22" height="22" fill="none" stroke="var(--azul)" stroke-width="1.8" viewBox="0 0 24 24">
-              <path d="M19 17H5v-5l2.5-5h9L19 12v5z"/>
-              <circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/>
-              <path d="M5 12h14"/>
-            </svg>
-          </div>
-          <div>
-            <div style="font-size:15px;font-weight:700;color:var(--texto)">Vehículo particular</div>
-            <div style="font-size:12px;color:var(--gris-mid)">Cliente independiente</div>
-          </div>
+    <!-- CARD: VEHÍCULO PARTICULAR -->
+    <div class="dash-panel" style="border:1.5px solid var(--gris-borde);transition:border-color .15s;max-width:420px;margin-bottom:30px"
+         onmouseover="this.style.borderColor='var(--azul)'" onmouseout="this.style.borderColor='var(--gris-borde)'">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div style="width:44px;height:44px;background:var(--azul-bg,#EBF2FF);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" fill="none" stroke="var(--azul)" stroke-width="1.8" viewBox="0 0 24 24">
+            <path d="M19 17H5v-5l2.5-5h9L19 12v5z"/>
+            <circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/>
+            <path d="M5 12h14"/>
+          </svg>
         </div>
-        <div style="font-size:12px;color:var(--gris-mid);line-height:1.65;margin-bottom:18px">
-          Vehículo de un cliente que no pertenece a ninguna empresa ni grupo. Se guarda para agilizar ingresos futuros.
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--texto)">Vehículo particular</div>
+          <div style="font-size:12px;color:var(--gris-mid)">Cliente independiente</div>
         </div>
-        <button class="btn btn-primary" style="width:100%" onclick="abrirModalRegistrarVehiculo(null)">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-          Registrar vehículo particular
-        </button>
       </div>
-
-      <!-- CARD: FLOTILLA / EMPRESA -->
-      <div class="dash-panel" style="border:1.5px solid var(--gris-borde);transition:border-color .15s"
-           onmouseover="this.style.borderColor='#7C3AED'" onmouseout="this.style.borderColor='var(--gris-borde)'">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-          <div style="width:44px;height:44px;background:#F3E8FF;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <svg width="22" height="22" fill="none" stroke="#7C3AED" stroke-width="1.8" viewBox="0 0 24 24">
-              <rect x="1" y="3" width="15" height="13" rx="1"/>
-              <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
-              <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
-            </svg>
-          </div>
-          <div>
-            <div style="font-size:15px;font-weight:700;color:var(--texto)">Flotilla / Empresa</div>
-            <div style="font-size:12px;color:var(--gris-mid)">Empresa con varios vehículos</div>
-          </div>
-        </div>
-        <div style="font-size:12px;color:var(--gris-mid);line-height:1.65;margin-bottom:18px">
-          Empresa, aseguradora u organización con múltiples vehículos. Organiza todos sus carros en un mismo grupo.
-        </div>
-        <button class="btn btn-primary" style="width:100%;background:#7C3AED;border-color:#7C3AED" onclick="_mostrarVistaFlotillas()">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-          Ver flotillas y empresas
-        </button>
+      <div style="font-size:12px;color:var(--gris-mid);line-height:1.65;margin-bottom:18px">
+        Vehículo de un cliente que no pertenece a ninguna empresa ni grupo. Se guarda para agilizar ingresos futuros.
       </div>
-
+      <button class="btn btn-primary" style="width:100%" onclick="abrirModalRegistrarVehiculo(null)">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Registrar vehículo particular
+      </button>
     </div>
 
     <!-- Lista de vehículos particulares registrados -->
@@ -93,6 +61,38 @@ async function montarFlotillas() {
   `;
 
   await cargarVehiculosFlotilla(null);
+}
+
+// ═══════════════════════════════════════════════════════════
+// INGRESO FLOTILLA — gestión de flotas / empresas
+// (pestaña "Ingreso Flotilla" del menú Registro → pag-flotillas)
+// ═══════════════════════════════════════════════════════════
+async function montarFlotillas() {
+  const pag = document.getElementById('pag-flotillas');
+  if (!pag) return;
+  _flotillaActual = null;
+
+  // Pre-cargar flotillas en segundo plano
+  api('/flotillas?order=nombre.asc').catch(() => []).then(r => { if (r) _flotillas = r; });
+
+  pag.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--texto);margin-bottom:4px">Ingreso flotilla / empresa</div>
+        <div style="font-size:13px;color:var(--gris-mid)">Empresas, aseguradoras u organizaciones con varios vehículos.</div>
+      </div>
+      <button class="btn btn-primary" style="background:#7C3AED;border-color:#7C3AED" onclick="abrirModalNuevaFlotilla()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Nueva flotilla
+      </button>
+    </div>
+
+    <div id="flotillas-grid" class="ordenes-grid">
+      <div class="loading-state">Cargando flotillas...</div>
+    </div>
+  `;
+
+  await cargarFlotillas();
 }
 
 // ═══════════════════════════════════════════════════════════

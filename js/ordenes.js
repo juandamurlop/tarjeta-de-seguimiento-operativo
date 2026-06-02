@@ -2656,7 +2656,7 @@ function navJefe(pag) {
       break;
     case 'flotillas':
       pagId = 'pag-flotillas';
-      titulo = 'Flotillas';
+      titulo = 'Ingreso Flotilla';
       setTimeout(() => { if (typeof montarFlotillas === 'function') montarFlotillas(); }, 50);
       break;
     case 'aseguradoras':
@@ -2669,8 +2669,11 @@ function navJefe(pag) {
       break;
     case 'vehiculos':
       pagId = 'pag-vehiculos';
-      titulo = 'Ingresos';
-      cargarVehiculos();
+      titulo = 'Ingreso Particular';
+      setTimeout(() => {
+        if (typeof montarIngresoParticular === 'function') montarIngresoParticular();
+        else if (typeof cargarVehiculos === 'function') cargarVehiculos();
+      }, 50);
       break;
     default:
       pagId = 'pag-ordenes';
