@@ -5,6 +5,9 @@
 let _metasData = [];
 
 async function cargarDashboardMetas() {
+  // Reemplazado por el módulo de Ventas (cuadro del contador).
+  if (typeof cargarVistaVentas === 'function') return cargarVistaVentas();
+  // Fallback al render anterior si ventas.js no cargó:
   const cont = document.getElementById('dash-metas-contenido');
   if (!cont) return;
   mostrarCargandoSiVacio(cont, '<div class="loading-state">Cargando metas...</div>');
