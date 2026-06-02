@@ -344,7 +344,7 @@ async function _cargarConsumiblesSidebar(placa, kmActual) {
       body.innerHTML = alertas.map(a =>
         `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--gris-borde);font-size:12px">
           <span>${a.icon} ${a.label}</span>
-          <span style="font-weight:700">${a.est.color} ${a.est.texto}</span>
+          <span style="font-weight:700">${a.est.dot} ${a.est.label}</span>
         </div>`
       ).join('') + `<button class="btn btn-ghost btn-xs" style="margin-top:6px;font-size:11px;width:100%" onclick="abrirPopupConsumibles('${escapeHtml(placa)}',${kmActual})">Ver todo →</button>`;
     }

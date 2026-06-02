@@ -199,7 +199,6 @@ async function abrirModalSolicitudRepuesto(ordenId, etapaId, placa) {
             <span style="color:#D97706;font-weight:500">⏸ No — pausar el contador hasta que llegue el repuesto</span>
           </label>
         </div>
-        }
 
         <!-- Tabla compacta -->
         <div style="border:1px solid var(--gris-borde);border-radius:8px;overflow:hidden;margin-bottom:10px">
@@ -1274,7 +1273,7 @@ async function guardarCotizaciones(solicitudId) {
     // Leer los valores actuales de los inputs
     const filas = _cotFilas.map(f => ({
       id:          f.id,
-      seleccionado: document.getElementById(`cot-sel-${f.id}`)?.checked ?? f.seleccionado,
+      seleccionado: true,
       proveedorId: document.getElementById(`cot-prov-${f.id}`)?.value || null,
       referencia:  document.getElementById(`cot-ref-${f.id}`)?.value?.trim() || null,
       precio:      parseFloat(document.getElementById(`cot-precio-${f.id}`)?.value) || 0,
