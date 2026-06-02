@@ -19,7 +19,7 @@ let _ventasVista = 'general'; // 'general' | 'detalle'
 const _fmtV  = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(Math.round(n)) : '—';
 const _fmtVc = n => n != null ? new Intl.NumberFormat('es-CO',{notation:'compact',maximumFractionDigits:1}).format(n) : '—';
 const _pctV  = (real, meta) => meta > 0 ? Math.round((real/meta)*100) : 0;
-const _colPct = p => p >= 100 ? '#059669' : p >= 70 ? '#D97706' : '#DC2626';
+const _colPct = p => p >= 100 ? 'var(--verde)' : p >= 70 ? 'var(--amarillo)' : 'var(--rojo)';
 
 // ── Carga de datos ───────────────────────────────────────────
 async function _cargarDatosVentas() {
