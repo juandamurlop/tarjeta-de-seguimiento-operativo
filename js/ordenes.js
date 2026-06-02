@@ -545,6 +545,16 @@ async function abrirOrden(id) {
               <div>${invHtml}</div>
             </div>
           </div>
+          ${orden.placa ? `
+          <div class="sidebar-card" id="consumibles-sidebar-card">
+            <div class="sidebar-card-header" style="display:flex;align-items:center;justify-content:space-between">
+              <span>🔧 Consumibles</span>
+              <button class="btn btn-ghost btn-xs" onclick="abrirPopupConsumibles('${escapeHtml(orden.placa)}',${orden.kilometraje||0})">Ver todo</button>
+            </div>
+            <div class="sidebar-card-body" id="consumibles-sidebar-body">
+              <div style="font-size:12px;color:var(--gris-mid)">Cargando...</div>
+            </div>
+          </div>` : ''}
           <div id="pulmon-card" class="pulmon-card ${orden.pulmon?'':'inactivo'}">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
               <div style="font-size:12px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:${orden.pulmon?'var(--amarillo)':'var(--gris-mid)'}">Pulmón</div>
@@ -635,6 +645,11 @@ async function abrirOrden(id) {
         const el = document.getElementById(bodyId);
         if (el) el.classList.add('open');
       });
+    }
+
+    // Cargar mini-panel consumibles en sidebar
+    if (orden.placa && typeof _cargarConsumiblesSidebar === 'function') {
+      _cargarConsumiblesSidebar(orden.placa, orden.kilometraje || 0);
     }
 
   } catch(e) {
@@ -967,12 +982,24 @@ async function finalizarEtapa(eid, nombre, servicio) {
         link: `${window.location.origin}${window.location.pathname}` 
       }) 
     }).catch(() => {});
-    // Toast para actualizar consumible si el nombre de la etapa coincide
+    // Auto-actualizar consumible si el nombre de la etapa coincide — sin confirmación
     const _kwConsumibles = { aceite: 'aceite', llantas: 'llanta', frenos: 'freno', filtro_aire: 'filtro aire', filtro_combustible: 'filtro combust', distribucion: 'distribuci', bateria: 'bater' };
     const _nombreLower = nombre.toLowerCase();
     for (const [_tipo, _kw] of Object.entries(_kwConsumibles)) {
-      if (_nombreLower.includes(_kw)) {
-        _toastConsumible(_tipo, ordenActual?.placa, ordenActual?.kilometraje);
+      if (_nombreLower.includes(_kw) && ordenActual?.placa) {
+        const _km = ordenActual?.kilometraje || 0;
+        const _cfg = typeof CONSUMIBLES_CONFIG !== 'undefined' ? CONSUMIBLES_CONFIG[_tipo] : null;
+        api('/vehiculo_consumibles', 'POST', {
+          placa:          ordenActual.placa,
+          tipo:           _tipo,
+          km_instalacion: _km,
+          km_vida_util:   _cfg?.kmDefault || null,
+          fecha_cambio:   new Date().toISOString().split('T')[0],
+          orden_id:       ordenActual.id,
+          tecnico:        e?.tecnico || sesion?.nombre || null,
+          notas:          `Auto-registrado al finalizar etapa: ${nombre}`
+        }, { Prefer: 'return=minimal' }).catch(() => {});
+        toast(`✓ Consumible actualizado: ${_cfg?.label || _tipo}`);
         break;
       }
     }
@@ -3289,15 +3316,20 @@ async function cargarVehiculos() {
           const ultimaOT = ots[0];
           const badgeCol = activo ? '#2563EB' : '#6B7280';
 
-          return `<div onclick="abrirOrden(${ultimaOT?.id});navJefe('detalle')"
-            style="background:white;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 11px;cursor:pointer;transition:box-shadow .15s,border-color .15s;min-width:0"
+          return `<div style="background:white;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 11px;transition:box-shadow .15s,border-color .15s;min-width:0"
             onmouseover="this.style.borderColor='#9AA3B0';this.style.boxShadow='0 3px 10px rgba(0,0,0,0.07)'" onmouseout="this.style.borderColor='';this.style.boxShadow=''">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:4px">
-              <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:800;color:var(--texto);letter-spacing:.05em">${escapeHtml(info.placa||'—')}</span>
+              <span onclick="abrirOrden(${ultimaOT?.id});navJefe('detalle')" style="font-family:'DM Mono',monospace;font-size:13px;font-weight:800;color:var(--texto);letter-spacing:.05em;cursor:pointer">${escapeHtml(info.placa||'—')}</span>
               <span style="font-size:9px;font-weight:700;color:${badgeCol};background:${badgeCol}18;padding:1px 6px;border-radius:3px">${ots.length} OT${ots.length!==1?'s':''}</span>
             </div>
-            <div style="font-size:10.5px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${vehiculo || '—'}</div>
-            ${info.propietario ? `<div style="font-size:10.5px;font-weight:600;color:var(--gris-texto);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(info.propietario)}</div>` : ''}
+            <div style="font-size:10.5px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="abrirOrden(${ultimaOT?.id});navJefe('detalle')">${vehiculo || '—'}</div>
+            ${info.propietario ? `<div style="font-size:10.5px;font-weight:600;color:var(--gris-texto);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="abrirOrden(${ultimaOT?.id});navJefe('detalle')">${escapeHtml(info.propietario)}</div>` : ''}
+            <div style="margin-top:6px;padding-top:5px;border-top:1px solid var(--gris-borde);display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;color:var(--gris-mid)">${ots.length} OT${ots.length!==1?'s':''}</span>
+              <button onclick="event.stopPropagation();abrirPopupConsumibles('${escapeHtml(info.placa||'')}',${info.kilometraje||0})"
+                style="background:none;border:1px solid var(--gris-borde);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;color:var(--gris-mid);display:flex;align-items:center;gap:3px"
+                title="Ver consumibles y documentos">🔧 Consumibles</button>
+            </div>
           </div>`;
         }).join('');
 

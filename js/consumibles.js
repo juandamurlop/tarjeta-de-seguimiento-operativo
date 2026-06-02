@@ -305,6 +305,54 @@ async function _guardarDocumento(placa, tipo, existingId) {
   } catch(e) { toast('Error: ' + e.message, 'err'); }
 }
 
+// ── Mini-panel de consumibles en el sidebar de la orden ───────
+async function _cargarConsumiblesSidebar(placa, kmActual) {
+  const body = document.getElementById('consumibles-sidebar-body');
+  if (!body) return;
+  try {
+    const [consumibles, docs] = await Promise.all([
+      api(`/vehiculo_consumibles?placa=eq.${placa}&order=creado_en.desc`).catch(()=>[]) || [],
+      api(`/vehiculo_documentos?placa=eq.${placa}`).catch(()=>[]) || []
+    ]);
+
+    // Último por tipo
+    const ultimos = {};
+    consumibles.forEach(c => { if (!ultimos[c.tipo]) ultimos[c.tipo] = c; });
+
+    const alertas = [];
+
+    // Consumibles con km
+    Object.entries(CONSUMIBLES_CONFIG).forEach(([tipo, cfg]) => {
+      if (cfg.porFecha) return;
+      const c = ultimos[tipo];
+      if (!c) return;
+      const est = calcularEstadoConsumible(kmActual, c.km_instalacion, c.km_vida_util || cfg.kmDefault);
+      if (est.color !== '🟢') alertas.push({ icon: cfg.icon, label: cfg.label, est });
+    });
+
+    // Documentos por fecha
+    docs.forEach(d => {
+      const cfg = DOCUMENTOS_CONFIG[d.tipo];
+      if (!cfg) return;
+      const est = calcularEstadoFecha(d.fecha_venc);
+      if (est.color !== '🟢') alertas.push({ icon: cfg.icon, label: cfg.label, est });
+    });
+
+    if (!alertas.length) {
+      body.innerHTML = `<div style="font-size:12px;color:var(--verde);display:flex;align-items:center;gap:5px">🟢 Todo en buen estado</div>`;
+    } else {
+      body.innerHTML = alertas.map(a =>
+        `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--gris-borde);font-size:12px">
+          <span>${a.icon} ${a.label}</span>
+          <span style="font-weight:700">${a.est.color} ${a.est.texto}</span>
+        </div>`
+      ).join('') + `<button class="btn btn-ghost btn-xs" style="margin-top:6px;font-size:11px;width:100%" onclick="abrirPopupConsumibles('${escapeHtml(placa)}',${kmActual})">Ver todo →</button>`;
+    }
+  } catch(e) {
+    if (body) body.innerHTML = `<div style="font-size:11px;color:var(--gris-mid)">—</div>`;
+  }
+}
+
 // ── Toast especial para actualizar consumible desde etapa ─────
 function _toastConsumible(tipo, placa, km) {
   const cfg = CONSUMIBLES_CONFIG[tipo];
