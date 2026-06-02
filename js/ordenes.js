@@ -2432,7 +2432,7 @@ function montarJefe() {
   const sidebarNav = document.getElementById('sidebar-nav');
   if (sidebarNav) {
     // Estado guardado de grupos abiertos/cerrados
-    const _grupAbiertos = JSON.parse(localStorage.getItem('nav_grupos') || '{"operaciones":true,"comercial":true,"clientes":false,"analisis":false}');
+    const _grupAbiertos = JSON.parse(localStorage.getItem('nav_grupos') || '{"operaciones":true,"comercial":true,"registro":false,"informes":false,"aseguradoras":false}');
 
     const _toggleGrupo = (id) => {
       _grupAbiertos[id] = !_grupAbiertos[id];
@@ -2452,11 +2452,7 @@ function montarJefe() {
       <div id="nav-grupo-${id}" style="display:${_grupAbiertos[id]?'block':'none'};overflow:hidden">`;
 
     sidebarNav.innerHTML = `
-      ${_grupoHeader('operaciones','Operaciones')}
-        <button class="nav-item" id="nav-dashboard" onclick="navJefe('dashboard')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-          <span class="nav-label">Estado del taller</span>
-        </button>
+      ${_grupoHeader('operaciones','Gestión Operativa')}
         <button class="nav-item" id="nav-taller-kpi" onclick="navJefe('taller-kpi')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           <span class="nav-label">Gestión Operativa</span>
@@ -2489,27 +2485,38 @@ function montarJefe() {
           <span class="nav-label">Repuestos</span>
           <span id="badge-repuestos" style="display:none;position:absolute;top:6px;right:8px;background:var(--rojo);color:white;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;line-height:16px;text-align:center">0</span>
         </button>
+      </div>
+
+      ${_grupoHeader('registro','Registro')}
         <button class="nav-item" id="nav-vehiculos" onclick="navJefe('vehiculos')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="14" height="10" rx="2"/><circle cx="12" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg>
-          <span class="nav-label">Ingresos</span>
+          <span class="nav-label">Ingreso Particular</span>
         </button>
-      </div>
-
-      ${_grupoHeader('clientes','Clientes')}
         <button class="nav-item" id="nav-flotillas" onclick="navJefe('flotillas')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-          <span class="nav-label">Flotillas</span>
-        </button>
-        <button class="nav-item" id="nav-aseguradoras" onclick="navJefe('aseguradoras')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span class="nav-label">Aseguradoras</span>
+          <span class="nav-label">Ingreso Flotilla</span>
         </button>
       </div>
 
-      ${_grupoHeader('analisis','Análisis')}
+      ${_grupoHeader('informes','Informes')}
+        <button class="nav-item" id="nav-dashboard" onclick="navJefe('dashboard')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span class="nav-label">Dashboard mes actual</span>
+        </button>
+        <button class="nav-item" id="nav-metas" onclick="navJefe('metas')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span class="nav-label">Metas</span>
+        </button>
         <button class="nav-item" id="nav-reportes" onclick="navJefe('reportes')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           <span class="nav-label">Reportes</span>
+        </button>
+      </div>
+
+      ${_grupoHeader('aseguradoras','Aseguradoras')}
+        <button class="nav-item" id="nav-aseguradoras" onclick="navJefe('aseguradoras')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span class="nav-label">Aseguradoras</span>
         </button>
       </div>
     `;
@@ -2554,13 +2561,16 @@ function montarJefe() {
 
   // Activar Realtime (pendiente de implementar)
   if (typeof iniciarRealtime === 'function') iniciarRealtime();
+
+  // Sistema de alertas de etapas sin movimiento
+  iniciarSistemaAlertas();
 }
 
 function navJefe(pag) {
   // Actualizar clases active en sidebar y bottom nav
   // Detener polling KPI al salir de esa pantalla
   if (pag !== 'taller-kpi' && window._kpiInterval) { clearInterval(window._kpiInterval); window._kpiInterval = null; }
-  const pages = ['ordenes', 'nueva', 'dashboard', 'taller-kpi', 'cotizaciones', 'calendario', 'mecanicos', 'repuestos', 'reportes', 'flotillas', 'aseguradoras', 'vehiculos'];
+  const pages = ['ordenes', 'nueva', 'dashboard', 'taller-kpi', 'cotizaciones', 'calendario', 'mecanicos', 'repuestos', 'reportes', 'flotillas', 'aseguradoras', 'vehiculos', 'metas'];
   pages.forEach(p => {
     const navBtn = document.getElementById('nav-' + p);
     const bnavBtn = document.getElementById('bnav-' + p);
@@ -2594,8 +2604,13 @@ function navJefe(pag) {
       break;
     case 'dashboard':
       pagId = 'pag-dashboard';
-      titulo = 'Estado del Taller';
+      titulo = 'Dashboard – Mes actual';
       setTimeout(() => { if (typeof switchDashTab === 'function') switchDashTab('mes'); }, 50);
+      break;
+    case 'metas':
+      pagId = 'pag-dashboard';
+      titulo = 'Metas';
+      setTimeout(() => { if (typeof switchDashTab === 'function') switchDashTab('metas'); }, 50);
       break;
     case 'cotizaciones':
       pagId = 'pag-cotizaciones';
@@ -4819,4 +4834,184 @@ function detenerRealtime() {
     _realtimeVisibilityHandler = null;
   }
   window.removeEventListener('online', _tickRefresh);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SISTEMA DE ALERTAS — ETAPAS SIN MOVIMIENTO
+// ═══════════════════════════════════════════════════════════
+
+const _alertasYaMostradas = new Set();   // ids de etapas cuyo popup ya se mostró
+const _alertasRevisadas   = new Set();   // ids marcados "revisado" por el usuario
+let   _alertasInterval    = null;
+
+function iniciarSistemaAlertas() {
+  if (!esJefe()) return;
+  if (_alertasInterval) return; // ya está corriendo
+  _chequearAlertas();
+  _alertasInterval = setInterval(_chequearAlertas, 5 * 60 * 1000); // cada 5 min
+}
+
+async function _chequearAlertas() {
+  try {
+    // Traer etapas activas (iniciadas, no terminadas, no pausadas)
+    const etapas = await api(
+      '/etapas?select=id,orden_id,etapa,servicio,tecnico,inicio,tiempo_pausado_min' +
+      '&inicio=not.is.null&fin=is.null&pausado=eq.false'
+    ).catch(() => []) || [];
+
+    if (!etapas.length) {
+      _actualizarListaCritica([]);
+      return;
+    }
+
+    // Necesitamos placa de la orden — traer ordenes referenciadas
+    const ordenIds = [...new Set(etapas.map(e => e.orden_id))];
+    const ordenes  = await api(
+      '/ordenes?select=id,placa,marca,linea&id=in.(' + ordenIds.join(',') + ')'
+    ).catch(() => []) || [];
+    const ordenMap = {};
+    ordenes.forEach(o => { ordenMap[o.id] = o; });
+
+    const ahora = Date.now();
+    const amarillas = [];
+    const naranjas  = [];
+    const criticas  = [];
+
+    etapas.forEach(e => {
+      const inicioMs       = new Date(e.inicio).getTime();
+      const pausadoMs      = (e.tiempo_pausado_min || 0) * 60 * 1000;
+      const tiempoNetoMs   = (ahora - inicioMs) - pausadoMs;
+      const minutos        = Math.floor(tiempoNetoMs / 60000);
+      const orden          = ordenMap[e.orden_id] || {};
+
+      if (minutos >= 300) {
+        criticas.push({ etapa: e, orden, minutos });
+      } else if (minutos >= 180) {
+        naranjas.push({ etapa: e, orden, minutos });
+      } else if (minutos >= 60) {
+        amarillas.push({ etapa: e, orden, minutos });
+      }
+    });
+
+    // Mostrar popup para amarillas y naranjas (una vez por sesión, si no revisada)
+    [...amarillas, ...naranjas].forEach(({ etapa, orden, minutos }) => {
+      const key = etapa.id + ':' + Math.floor(minutos / 60); // clave por hora entera
+      if (_alertasYaMostradas.has(key)) return;
+      if (_alertasRevisadas.has(etapa.id)) return;
+      _alertasYaMostradas.add(key);
+      const color = minutos >= 180 ? 'naranja' : 'amarillo';
+      _mostrarPopupAlerta(etapa, orden, minutos, color);
+    });
+
+    _actualizarListaCritica(criticas);
+  } catch (err) {
+    console.warn('[Alertas] Error al chequear:', err);
+  }
+}
+
+function _fmtMin(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function _mostrarPopupAlerta(etapa, orden, minutos, nivel) {
+  // Límite de popups simultáneos: máx 3
+  const existentes = document.querySelectorAll('.alerta-popup-etapa');
+  if (existentes.length >= 3) return;
+
+  const colores = {
+    amarillo: { bg: '#FFF8E1', border: '#F59E0B', icon: '#F59E0B', texto: '#78350F' },
+    naranja:  { bg: '#FFF3E0', border: '#EA580C', icon: '#EA580C', texto: '#7C2D12' }
+  };
+  const c      = colores[nivel] || colores.amarillo;
+  const placa  = orden.placa || '—';
+  const etNom  = etapa.etapa || etapa.servicio || 'Etapa';
+  const tec    = etapa.tecnico || 'Sin técnico';
+
+  const div = document.createElement('div');
+  div.className = 'alerta-popup-etapa';
+  div.dataset.etapaId = etapa.id;
+  div.style.cssText = `
+    position:fixed;top:16px;right:16px;z-index:10000;
+    background:${c.bg};border:1.5px solid ${c.border};border-radius:12px;
+    padding:12px 14px;min-width:240px;max-width:300px;
+    box-shadow:0 4px 20px rgba(0,0,0,.15);
+    font-family:'DM Sans',sans-serif;font-size:13px;color:${c.texto};
+    animation:slideInRight .25s ease-out;
+    transition:top .2s;
+  `;
+
+  // Desplazar hacia abajo si ya hay otros popups
+  const prevPopups = document.querySelectorAll('.alerta-popup-etapa');
+  let topOffset = 16;
+  prevPopups.forEach(p => { topOffset += p.offsetHeight + 8; });
+  div.style.top = topOffset + 'px';
+
+  div.innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+      <div style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px">
+        <svg width="15" height="15" fill="none" stroke="${c.icon}" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Etapa sin movimiento ${_fmtMin(minutos)}
+      </div>
+      <button onclick="this.closest('.alerta-popup-etapa').remove()" style="background:none;border:none;cursor:pointer;color:${c.texto};opacity:.6;font-size:16px;line-height:1;padding:0;flex-shrink:0">×</button>
+    </div>
+    <div style="margin-top:6px;font-size:12px;opacity:.85">
+      <strong>${placa}</strong> · ${etNom} · ${tec}
+    </div>
+    <div style="margin-top:8px;display:flex;gap:8px">
+      <button onclick="_alertaVerOrden(${etapa.orden_id})" style="flex:1;background:${c.border};color:white;border:none;border-radius:7px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Ver orden</button>
+      <button onclick="_alertaMarcarRevisado(${etapa.id},this)" style="flex:1;background:none;border:1.5px solid ${c.border};color:${c.texto};border-radius:7px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Marcar revisado</button>
+    </div>
+  `;
+
+  document.body.appendChild(div);
+
+  // Auto-cerrar tras 30 segundos
+  setTimeout(() => { if (div.parentNode) div.remove(); }, 30000);
+}
+
+function _alertaVerOrden(ordenId) {
+  // Cerrar popup y navegar al detalle
+  document.querySelectorAll('.alerta-popup-etapa').forEach(p => p.remove());
+  if (typeof verDetalleOrden === 'function') verDetalleOrden(ordenId);
+  else if (typeof navJefe === 'function') navJefe('ordenes');
+}
+
+function _alertaMarcarRevisado(etapaId, btn) {
+  _alertasRevisadas.add(etapaId);
+  const popup = btn.closest('.alerta-popup-etapa');
+  if (popup) popup.remove();
+}
+
+function _actualizarListaCritica(criticas) {
+  const cont = document.getElementById('alertas-criticas-container');
+  if (!cont) return;
+
+  if (!criticas.length) {
+    cont.style.display = 'none';
+    return;
+  }
+
+  cont.style.display = 'block';
+  cont.innerHTML = `
+    <div style="background:#FEF2F2;border:1.5px solid #DC2626;border-radius:12px;padding:12px 14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;color:#7F1D1D;margin-bottom:8px">
+        <svg width="15" height="15" fill="none" stroke="#DC2626" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Alertas críticas — etapas +5h sin movimiento (${criticas.length})
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${criticas.map(({ etapa, orden, minutos }) => `
+          <div onclick="_alertaVerOrden(${etapa.orden_id})" style="display:flex;align-items:center;justify-content:space-between;background:white;border-radius:8px;padding:7px 10px;cursor:pointer;border:1px solid #FECACA">
+            <div>
+              <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:12px;color:#7F1D1D">${orden.placa || '—'}</span>
+              <span style="font-size:11px;color:#991B1B;margin-left:6px">${etapa.etapa || etapa.servicio || 'Etapa'}</span>
+              <span style="font-size:11px;color:#B91C1C;margin-left:4px">· ${etapa.tecnico || 'Sin técnico'}</span>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:#DC2626;flex-shrink:0">${_fmtMin(minutos)}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
 }
