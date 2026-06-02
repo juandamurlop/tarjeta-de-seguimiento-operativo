@@ -967,6 +967,15 @@ async function finalizarEtapa(eid, nombre, servicio) {
         link: `${window.location.origin}${window.location.pathname}` 
       }) 
     }).catch(() => {});
+    // Toast para actualizar consumible si el nombre de la etapa coincide
+    const _kwConsumibles = { aceite: 'aceite', llantas: 'llanta', frenos: 'freno', filtro_aire: 'filtro aire', filtro_combustible: 'filtro combust', distribucion: 'distribuci', bateria: 'bater' };
+    const _nombreLower = nombre.toLowerCase();
+    for (const [_tipo, _kw] of Object.entries(_kwConsumibles)) {
+      if (_nombreLower.includes(_kw)) {
+        _toastConsumible(_tipo, ordenActual?.placa, ordenActual?.kilometraje);
+        break;
+      }
+    }
     if (ordenActual) abrirOrden(ordenActual.id);
   } catch(e) { toast('Error: '+e.message, 'err'); }
 }
