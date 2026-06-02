@@ -3888,20 +3888,6 @@ async function abrirEditarOrden(ordenId) {
 
   body.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:12px">
-      <!-- TIPO DE PERSONA -->
-      <div class="field">
-        <label>Tipo de persona</label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1.5px solid var(--gris-borde);border-radius:7px;cursor:pointer;font-size:13px;font-weight:500" id="lbl-pnatural">
-            <input type="radio" name="ed-tipo-persona" value="natural" ${!esEmpresa?'checked':''} onchange="toggleTipoPersonaEdit('natural')">
-            Persona natural
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1.5px solid var(--gris-borde);border-radius:7px;cursor:pointer;font-size:13px;font-weight:500" id="lbl-empresa">
-            <input type="radio" name="ed-tipo-persona" value="empresa" ${esEmpresa?'checked':''} onchange="toggleTipoPersonaEdit('empresa')">
-            Empresa
-          </label>
-        </div>
-      </div>
 
       <!-- VEHÍCULO -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -3931,7 +3917,7 @@ async function abrirEditarOrden(ordenId) {
       <!-- ORDEN -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="field"><label>Tipo de cliente</label>
-          <select id="ed-tipo-cliente" onchange="toggleTipoClienteEdit(this.value)">
+          <select id="ed-tipo-cliente" onchange="toggleTipoClienteEdit(this.value);toggleTipoPersonaEdit(this.value==='empresa'?'empresa':'natural')">
             <option value="">— Seleccionar —</option>
             <option value="particular" ${tipoActual==='particular'||!tipoActual?'selected':''}>Particular</option>
             <option value="aseguradora" ${tipoActual==='aseguradora'?'selected':''}>Aseguradora</option>
@@ -3961,14 +3947,14 @@ async function abrirEditarOrden(ordenId) {
         </div>
 
         <div class="field"><label>Fecha estimada de entrega</label><input id="ed-fecha1" type="datetime-local" value="${orden.fecha_entrega_1 ? orden.fecha_entrega_1.slice(0,16) : ''}"></div>
-        <div class="field"><label>Fecha entrega 2</label><input id="ed-fecha2" type="date" value="${orden.fecha_entrega_2?.split('T')[0]||''}"></div>
+        <div class="field"><label>Fecha entrega alternativa</label><input id="ed-fecha2" type="datetime-local" value="${orden.fecha_entrega_2 ? orden.fecha_entrega_2.slice(0,16) : ''}"></div>
       </div>
     </div>
   `;
 
   // Establecer estado visual inicial
   toggleTipoClienteEdit(tipoActual);
-  if (esEmpresa) toggleTipoPersonaEdit('empresa');
+  toggleTipoPersonaEdit(esEmpresa ? 'empresa' : 'natural');
 
   // Banner + campos resaltados si hay datos faltantes
   const _datosFaltantesEdit = [];
