@@ -60,11 +60,15 @@ async function _calcularRentabilidadAseg(ordenes) {
     ).catch(() => []) || [])[0];
     const metaIngresos = meta?.meta_ingresos || 0;
     const habiles      = _diasHabilesMes(hoy) || 22;
-    const valorPlazaDia = metaIngresos > 0
-      ? metaIngresos / (CAPACIDAD_TALLER * habiles)
-      : 0;
+    // Valor de plaza: manual (configurado a mano) tiene prioridad; si no,
+    // se deriva de la meta de ingresos del mes.
+    const manual = parseFloat(localStorage.getItem('aseg_valor_plaza_dia')) || 0;
+    const valorPlazaDia = manual > 0
+      ? manual
+      : (metaIngresos > 0 ? metaIngresos / (CAPACIDAD_TALLER * habiles) : 0);
     _asegRentabilidad.metaIngresos = metaIngresos;
     _asegRentabilidad.valorPlazaDia = valorPlazaDia;
+    _asegRentabilidad.manual = manual > 0;
 
     // 2) Ingreso facturado por orden = suma de valores de sus etapas
     const ids = ordenes.map(o => o.id).join(',');
@@ -115,6 +119,32 @@ function _asegBadgeRent(ordenId) {
   return `<span title="${tip}" style="font-size:11px;background:${bg};color:${col};padding:2px 8px;border-radius:99px;font-weight:700;white-space:nowrap">${ico} ${signo}${fmt(Math.abs(r.rent))}${extra}</span>`;
 }
 
+// Lee los datos de aseguradora de una orden (campo JSONB datos_aseguradora
+// o el tag [DATOS_ASEG:...] guardado en observaciones como respaldo).
+function _leerDatosAseg(orden) {
+  let d = {};
+  try {
+    if (orden.datos_aseguradora) {
+      d = typeof orden.datos_aseguradora === 'string'
+        ? JSON.parse(orden.datos_aseguradora) : orden.datos_aseguradora;
+    } else if (orden.observaciones) {
+      const m = String(orden.observaciones).match(/\[DATOS_ASEG:(.*?)\]/s);
+      if (m) d = JSON.parse(m[1]);
+    }
+  } catch (e) {}
+  return d || {};
+}
+
+// Guarda el "valor de plaza por día" manual (activa renta/pérdida sin
+// depender del sistema de metas). Se guarda por navegador (localStorage).
+function guardarValorPlazaAseg(v) {
+  const n = parseFloat(String(v).replace(/[^\d.]/g, '')) || 0;
+  if (n > 0) localStorage.setItem('aseg_valor_plaza_dia', String(n));
+  else localStorage.removeItem('aseg_valor_plaza_dia');
+  toast(n > 0 ? 'Valor de plaza guardado ✓' : 'Valor de plaza quitado');
+  cargarModuloAseguradoras();
+}
+
 // ─── Dashboard principal ──────────────────────────────────
 
 async function montarAseguradoras() {
@@ -126,7 +156,7 @@ async function montarAseguradoras() {
 async function cargarModuloAseguradoras() {
   const cont = document.getElementById('pag-aseguradoras');
   if (!cont) return;
-  cont.innerHTML = '<div class="loading-state">Cargando aseguradoras...</div>';
+  mostrarCargandoSiVacio(cont, '<div class="loading-state">Cargando aseguradoras...</div>');
 
   try {
     // Fetch principal: órdenes con aseguradora (campo aseguradora o tipo_cliente=aseguradora)
@@ -173,6 +203,28 @@ async function cargarModuloAseguradoras() {
         }, 0) / pendAprobacion.length)
       : 0;
 
+    // ── KPIs financieros (valor autorizado / cartera / autorización) ──
+    let facturado = 0, porCobrar = 0;
+    const tiemposAprob = [];
+    todasOrdenes.forEach(o => {
+      const d  = _leerDatosAseg(o);
+      const va = parseFloat(d.valor_autorizado) || 0;
+      if (va > 0) {
+        facturado += va;
+        if ((d.estado_pago || 'pendiente') !== 'pagado') porCobrar += va;
+      }
+      if (d.fecha_peritaje && d.fecha_autorizacion) {
+        const dias = (new Date(d.fecha_autorizacion) - new Date(d.fecha_peritaje)) / 86400000;
+        if (dias >= 0 && dias < 365) tiemposAprob.push(dias);
+      }
+    });
+    const promAutoriz = tiemposAprob.length
+      ? Math.round(tiemposAprob.reduce((a,b) => a+b, 0) / tiemposAprob.length)
+      : 0;
+
+    // Valor de plaza actual (para el control de configuración)
+    const vpd = _asegRentabilidad.valorPlazaDia || 0;
+
     // Agrupar por aseguradora
     const porAseg = {};
     todasOrdenes.forEach(o => {
@@ -189,18 +241,26 @@ async function cargarModuloAseguradoras() {
     });
     const asegArray = Object.values(porAseg).sort((a,b) => b.count - a.count);
 
-    cont.innerHTML = `
+    renderSinParpadeo(cont, `
       <div style="padding:0 0 24px">
 
         <!-- KPI STRIP -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:24px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:16px">
           ${_asegKpi('Activos', activas.length, '#2563EB')}
-          ${_asegKpi('En pulmón', enPulmon.length, '#D97706')}
-          ${_asegKpi('Pend. repuestos', pendRep.length, '#DC2626')}
-          ${_asegKpi('En reparación', enRep.length, '#059669')}
-          ${_asegKpi('Ciclo prom. (mes)', promCiclo + 'd', '#7C3AED')}
-          ${_asegKpi('Días prom. aprobac.', promAprobDias + 'd', '#0891B2')}
+          ${_asegKpi('Facturado (autorizado)', fmt(facturado), '#0891B2')}
+          ${_asegKpi('Por cobrar', fmt(porCobrar), porCobrar > 0 ? '#DC2626' : '#059669')}
+          ${_asegKpi('Tiempo autorización', promAutoriz + 'd', '#7C3AED')}
+          ${_asegKpi('Ciclo prom. (mes)', promCiclo + 'd', '#D97706')}
           ${_asegKpiRentabilidad(fmt)}
+        </div>
+
+        <!-- CONFIG VALOR DE PLAZA (base de renta/pérdida) -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#F8FAFC;border:1px solid var(--gris-borde);border-radius:8px;padding:8px 12px;margin-bottom:16px">
+          <span style="font-size:12px;color:var(--gris-mid)">💡 Valor de plaza por día (base renta/pérdida):</span>
+          <input type="number" value="${vpd > 0 ? Math.round(vpd) : ''}" placeholder="ej. 120000"
+            onchange="guardarValorPlazaAseg(this.value)"
+            style="width:130px;padding:6px 10px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:13px">
+          <span style="font-size:11px;color:var(--gris-mid)">${_asegRentabilidad.manual ? 'manual' : (vpd > 0 ? 'derivado de la meta del mes' : 'sin definir — renta/pérdida desactivada')}</span>
         </div>
 
         <!-- FILTROS -->
@@ -241,7 +301,7 @@ async function cargarModuloAseguradoras() {
             </div>`).join('')}
           </div>
         </div>` : ''}
-      </div>`;
+      </div>`);
 
     filtrarAseguradoras();
   } catch(e) {
@@ -250,85 +310,10 @@ async function cargarModuloAseguradoras() {
   }
 }
 
+// Unificado: el módulo y el dashboard son el mismo dashboard completo.
+// Se conserva el nombre porque varios flujos lo llaman tras mutaciones.
 async function cargarDashboardAseguradoras() {
-  const cont = document.getElementById('pag-aseguradoras');
-  if (!cont) return;
-  cont.innerHTML = '<div class="loading-state">Cargando aseguradoras...</div>';
-
-  try {
-    const ordenes = await api(
-      '/ordenes?aseguradora=not.is.null&order=creado_en.desc&select=*'
-    ).catch(() => []) || [];
-
-    _asegOrdenesCache = ordenes;
-    await _calcularRentabilidadAseg(ordenes);
-
-    const fmt  = n => n != null
-      ? new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0 }).format(n)
-      : '—';
-    const today = new Date();
-
-    // ── KPIs ────────────────────────────────────────────────
-    const activas              = ordenes.filter(o => o.estado === 'Activa');
-    const enPulmon             = ordenes.filter(o => o.pulmon);
-    const pendRep              = ordenes.filter(o => o.estado_aseguradora === 'repuestos_incompletos');
-    const enRep                = ordenes.filter(o => o.estado_aseguradora === 'en_reparacion');
-    const entregadas           = ordenes.filter(o => o.entregada_en && o.creado_en);
-    const promCiclo            = entregadas.length
-      ? Math.round(entregadas.reduce((s, o) => s + (new Date(o.entregada_en) - new Date(o.creado_en)) / 86400000, 0) / entregadas.length)
-      : 0;
-    const totalEstadia         = activas.filter(o => o.pulmon_desde).reduce((s, o) => {
-      const dias    = Math.floor((today - new Date(o.pulmon_desde)) / 86400000);
-      const gracia  = o.dias_gracia_estadia ?? 3;
-      const tarifa  = o.valor_estadia_dia   ?? 0;
-      return s + Math.max(0, dias - gracia) * tarifa;
-    }, 0);
-    const pendAprobacion       = ordenes.filter(o =>
-      ['peritaje_enviado','en_pulmon'].includes(o.estado_aseguradora)
-    );
-    const promAprobDias        = pendAprobacion.length
-      ? Math.round(pendAprobacion.reduce((s, o) => {
-          const desde = o.peritaje_enviado_en || o.creado_en;
-          return s + (today - new Date(desde)) / 86400000;
-        }, 0) / pendAprobacion.length)
-      : 0;
-
-    cont.innerHTML = `
-      <div style="padding:0 0 24px">
-
-        <!-- KPI STRIP -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px">
-          ${_asegKpi('Total activos', activas.length, '#2563EB')}
-          ${_asegKpi('En pulmón', enPulmon.length, '#D97706')}
-          ${_asegKpi('Pend. repuestos', pendRep.length, '#DC2626')}
-          ${_asegKpi('En reparación', enRep.length, '#059669')}
-          ${_asegKpi('Ciclo prom.', promCiclo + 'd', '#7C3AED')}
-          ${_asegKpi('Prom. días aprobación', promAprobDias + 'd', '#0891B2')}
-          ${totalEstadia > 0 ? _asegKpi('Estadía acum.', fmt(totalEstadia), '#EA580C') : ''}
-          ${_asegKpiRentabilidad(fmt)}
-        </div>
-
-        <!-- FILTROS -->
-        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-          <input id="aseg-buscar" type="text" placeholder="🔍  Placa, aseguradora, propietario..."
-            style="flex:1;min-width:200px;padding:9px 12px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;outline:none"
-            oninput="filtrarAseguradoras()">
-          <select id="aseg-filtro-estado" onchange="filtrarAseguradoras()"
-            style="padding:9px 12px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;background:white;color:var(--texto)">
-            <option value="">Todos los estados</option>
-            ${Object.entries(ESTADOS_ASEG).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
-          </select>
-        </div>
-
-        <!-- LISTA -->
-        <div id="aseg-lista"></div>
-      </div>`;
-
-    filtrarAseguradoras();
-  } catch(e) {
-    const cont2 = document.getElementById('pag-aseguradoras');
-    if (cont2) cont2.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
-  }
+  return cargarModuloAseguradoras();
 }
 
 function _asegKpi(label, value, color) {
@@ -342,7 +327,7 @@ function _asegKpi(label, value, color) {
 // muestra un aviso para cargarla.
 function _asegKpiRentabilidad(fmt) {
   if (_asegRentabilidad.valorPlazaDia <= 0) {
-    return _asegKpi('Rentabilidad', 'Carga la meta del mes', '#6B7280');
+    return _asegKpi('Rentabilidad', 'Define el valor de plaza ↓', '#6B7280');
   }
   const rents = Object.values(_asegRentabilidad.porOrden);
   const neta  = rents.reduce((s, r) => s + r.rent, 0);
@@ -367,15 +352,37 @@ function filtrarAseguradoras() {
 function renderListaAseguradoras(ordenes) {
   const lista = document.getElementById('aseg-lista');
   if (!lista) return;
-  if (!ordenes.length) {
-    lista.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏢</div><p>No hay órdenes de aseguradoras.</p></div>';
-    return;
-  }
+  const vacioHtml = '<div class="empty-state"><div class="empty-state-icon">🏢</div><p>No hay órdenes de aseguradoras.</p></div>';
+  if (!ordenes.length) { lista.innerHTML = vacioHtml; return; }
 
-  const fmt   = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
-  const today = new Date();
+  // Segmentar por etapa del proceso (un bloque con semáforo por estado)
+  const grupos = {};
+  ordenes.forEach(o => {
+    const est = o.estado_aseguradora || 'peritaje_pendiente';
+    (grupos[est] = grupos[est] || []).push(o);
+  });
 
-  lista.innerHTML = ordenes.map(o => {
+  const html = ESTADOS_ASEG_ORDER.map(k => {
+    const arr = grupos[k] || [];
+    if (!arr.length) return '';
+    const info = ESTADOS_ASEG[k] || ESTADOS_ASEG.peritaje_pendiente;
+    return `<div style="margin-bottom:22px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid ${info.bg}">
+        <span style="width:11px;height:11px;border-radius:50%;background:${info.color};flex-shrink:0"></span>
+        <span style="font-size:13px;font-weight:800;color:${info.color};text-transform:uppercase;letter-spacing:.5px">${info.label}</span>
+        <span style="font-size:12px;font-weight:700;color:white;background:${info.color};border-radius:99px;padding:1px 9px">${arr.length}</span>
+      </div>
+      ${arr.map(_asegCardOrden).join('')}
+    </div>`;
+  }).join('');
+
+  renderSinParpadeo(lista, html || vacioHtml);
+}
+
+// Tarjeta individual de una orden de aseguradora
+function _asegCardOrden(o) {
+    const fmt   = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
+    const today = new Date();
     const est      = o.estado_aseguradora || 'peritaje_pendiente';
     const estInfo  = ESTADOS_ASEG[est] || ESTADOS_ASEG.peritaje_pendiente;
     const diasSist = o.creado_en ? Math.floor((today - new Date(o.creado_en)) / 86400000) : 0;
@@ -460,7 +467,6 @@ function renderListaAseguradoras(ordenes) {
         ${timelineHtml}
       </div>
     </div>`;
-  }).join('');
 }
 
 // ─── Panel "Datos aseguradora" en sidebar de orden ────────
