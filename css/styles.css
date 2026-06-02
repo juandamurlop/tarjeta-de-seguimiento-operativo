@@ -623,7 +623,9 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(16,24,40,0.45);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   z-index: 500;
   align-items: center;
   justify-content: center;
