@@ -127,10 +127,30 @@ function _renderFilaItem(item, num) {
 }
 
 function _agregarSolItem() {
+  // Guardar valores actuales antes de re-renderizar
+  _solItems.forEach(item => {
+    const repEl  = document.getElementById(`si-rep-${item.idx}`);
+    const cantEl = document.getElementById(`si-cant-${item.idx}`);
+    const obsEl  = document.getElementById(`si-obs-${item.idx}`);
+    if (repEl)  item._repuesto     = repEl.value;
+    if (cantEl) item._unidades     = cantEl.value;
+    if (obsEl)  item._observaciones = obsEl.value;
+  });
   const idx = Date.now();
   _solItems.push({ idx, fotoUrl: null });
   const tbody = document.getElementById('sol-items-tbody');
-  if (tbody) tbody.innerHTML = _solItems.map((item, i) => _renderFilaItem(item, i + 1)).join('');
+  if (tbody) {
+    tbody.innerHTML = _solItems.map((item, i) => _renderFilaItem(item, i + 1)).join('');
+    // Restaurar valores guardados
+    _solItems.forEach(item => {
+      const repEl  = document.getElementById(`si-rep-${item.idx}`);
+      const cantEl = document.getElementById(`si-cant-${item.idx}`);
+      const obsEl  = document.getElementById(`si-obs-${item.idx}`);
+      if (repEl  && item._repuesto)      repEl.value  = item._repuesto;
+      if (cantEl && item._unidades)      cantEl.value = item._unidades;
+      if (obsEl  && item._observaciones) obsEl.value  = item._observaciones;
+    });
+  }
   setTimeout(() => document.getElementById(`si-rep-${idx}`)?.focus(), 60);
 }
 
@@ -166,27 +186,19 @@ async function abrirModalSolicitudRepuesto(ordenId, etapaId, placa) {
       </div>
       <div class="modal-body" style="padding-top:10px">
 
-        <!-- Tipo -->
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;font-size:13px">
-          <span style="font-weight:600;color:var(--gris-mid);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Tipo:</span>
-          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-            <input type="radio" name="sol-tipo" id="sol-tipo-taller" value="taller" checked> Taller
+        <input type="hidden" name="sol-tipo" id="sol-tipo-taller" value="taller">
+
+        <div style="font-size:12px;margin-bottom:10px;padding:8px 12px;background:#F8FAFC;border-radius:6px;border:1px solid var(--gris-borde)">
+          <div style="font-weight:600;margin-bottom:6px;color:var(--texto)">¿Hay otro proceso en curso mientras llega el repuesto?</div>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:4px">
+            <input type="radio" name="sol-otro-proceso" value="si" checked style="accent-color:var(--azul)">
+            <span style="color:#059669;font-weight:500">✓ Sí — el técnico continúa trabajando en otra tarea</span>
           </label>
-          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-            <input type="radio" name="sol-tipo" id="sol-tipo-venta" value="venta_directa"> Venta directa
-          </label>
-          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-            <input type="radio" name="sol-tipo" id="sol-tipo-corp" value="corporativo"> Corporativo
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="radio" name="sol-otro-proceso" value="no" style="accent-color:var(--azul)">
+            <span style="color:#D97706;font-weight:500">⏸ No — pausar el contador hasta que llegue el repuesto</span>
           </label>
         </div>
-
-        ${esJefe()
-          ? `<div style="font-size:12px;color:#1E40AF;margin-bottom:10px;padding:7px 10px;background:#EFF6FF;border-radius:6px;border:1px solid #BFDBFE">
-              La etapa <strong>no se pausará</strong> — el mecánico continúa trabajando.
-            </div>`
-          : `<div style="font-size:12px;color:#92400E;margin-bottom:10px;padding:7px 10px;background:#FEF3C7;border-radius:6px;border:1px solid #FDE68A">
-              ⏸ La etapa se pausará hasta que el jefe entregue los repuestos.
-            </div>`
         }
 
         <!-- Tabla compacta -->
@@ -287,7 +299,6 @@ async function enviarSolicitudRepuesto(ordenId, etapaId) {
       unidades:           items[0].unidades,
       observaciones:      items[0].observaciones,
       estado:             'pendiente_jefe',
-      tipo_solicitud:     tipo,
       urgencia:           urgencia
     }, { Prefer: 'return=representation' });
 
@@ -306,8 +317,10 @@ async function enviarSolicitudRepuesto(ordenId, etapaId) {
       }
     }
 
-    // Pausar etapa activa — solo si quien solicita es mecánico (no jefe/gerente)
-    if (!esJefe()) {
+    // Pausar etapa solo si el técnico indicó que NO hay otro proceso en curso
+    const otroProceso = document.querySelector('input[name="sol-otro-proceso"]:checked')?.value;
+    const debePausar = otroProceso !== 'si'; // pausa si respondió "No"
+    if (debePausar) {
       if (etapaId) {
         await api(`/etapas?id=eq.${etapaId}`, 'PATCH', {
           pausado: true, pausa_inicio: new Date().toISOString()
@@ -322,6 +335,7 @@ async function enviarSolicitudRepuesto(ordenId, etapaId) {
         }
       }
     }
+    const pausaMensaje = debePausar ? ' · ⏸ Etapa pausada' : ' · El técnico continúa trabajando';
 
     // Notificación N8N — n8n envía a los 3 chats de repuestos directamente
     const resumen = items.map(i => `${i.repuesto} (x${i.unidades})`).join(', ');
@@ -336,7 +350,7 @@ async function enviarSolicitudRepuesto(ordenId, etapaId) {
     }).catch(() => {});
 
     document.getElementById('modal-sol-multi')?.remove();
-    toast(`${items.length > 1 ? items.length + ' repuestos solicitados' : 'Solicitud enviada'} ✓ — ⏸ Etapa pausada`);
+    toast(`${items.length > 1 ? items.length + ' repuestos solicitados' : 'Solicitud enviada'} ✓${pausaMensaje}`);
 
     if (typeof actualizarBadgeRepuestos === 'function') actualizarBadgeRepuestos();
     if (typeof cargarEtapasMecanico === 'function') cargarEtapasMecanico();
