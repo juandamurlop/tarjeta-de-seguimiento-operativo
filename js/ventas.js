@@ -447,7 +447,7 @@ async function procesarCSVVentasMensuales(input) {
   if (!rows.length) { toast('CSV vacío o formato incorrecto','err'); return; }
   try {
     for (const r of rows) {
-      await api('/ventas_mensuales', 'POST', {
+      await api('/ventas_mensuales?on_conflict=ano,mes_num', 'POST', {
         ano:        parseInt(r.ano),
         mes_num:    parseInt(r.mes_num),
         mes:        r.mes || _MESES_VENTAS[(parseInt(r.mes_num)||1)-1],
@@ -468,7 +468,7 @@ async function procesarCSVVentasServicio(input) {
   if (!rows.length) { toast('CSV vacío o formato incorrecto','err'); return; }
   try {
     for (const r of rows) {
-      await api('/ventas_servicio', 'POST', {
+      await api('/ventas_servicio?on_conflict=concepto,ano,mes_num', 'POST', {
         concepto: (r.concepto || '').toUpperCase(),
         ano:      parseInt(r.ano),
         mes_num:  parseInt(r.mes_num),
@@ -484,7 +484,7 @@ async function guardarCredito() {
   const num = id => parseFloat(document.getElementById('cr-'+id)?.value) || 0;
   const nombre = document.getElementById('cr-nombre')?.value.trim() || 'Crédito';
   try {
-    await api('/credito', 'POST', {
+    await api('/credito?on_conflict=nombre', 'POST', {
       nombre,
       monto_desembolsado: num('monto_desembolsado'),
       total_cuotas:       parseInt(document.getElementById('cr-total_cuotas')?.value) || 0,
