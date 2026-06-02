@@ -1,4 +1,4 @@
-const CACHE_NAME = 'freimanautos-pwa-v138';
+const CACHE_NAME = 'freimanautos-pwa-v139';
 
 const STATIC_ASSETS = [
   '/',
@@ -14,9 +14,14 @@ const STATIC_ASSETS = [
   '/js/cliente.js',
   '/js/cotizaciones.js',
   '/js/taller.js',
+  '/js/taller-kpi.js',
   '/js/repuestos.js',
   '/js/reportes.js',
   '/js/metas.js',
+  '/js/ventas.js',
+  '/js/flotillas.js',
+  '/js/aseguradoras.js',
+  '/js/consumibles.js',
   '/js/app.js',
   '/manifest.webmanifest'
 ];
@@ -42,7 +47,7 @@ function isExternal(url) {
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS)).catch(() => {})
   );
   self.skipWaiting();
 });
@@ -66,18 +71,19 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Cache-first con fallback a red para assets locales GET
+  // NETWORK-FIRST para assets locales GET (HTML/CSS/JS):
+  // siempre intenta traer la versión más reciente; si no hay red,
+  // usa la copia en caché como respaldo offline. Esto garantiza que
+  // cada deploy se vea de inmediato sin tener que limpiar caché.
   event.respondWith(
-    caches.match(request).then(cached => {
-      if (cached) return cached;
-      return fetch(request).then(response => {
-        if (!response || response.status !== 200 || response.type === 'opaque') {
-          return response;
+    fetch(request)
+      .then(response => {
+        if (response && response.status === 200 && response.type !== 'opaque') {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
         }
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
         return response;
-      });
-    })
+      })
+      .catch(() => caches.match(request))
   );
 });
