@@ -24,8 +24,7 @@ async function montarIngresoParticular() {
     </div>
 
     <!-- CARD: VEHÍCULO PARTICULAR -->
-    <div class="dash-panel" style="border:1.5px solid var(--gris-borde);transition:border-color .15s;max-width:420px;margin-bottom:30px"
-         onmouseover="this.style.borderColor='var(--azul)'" onmouseout="this.style.borderColor='var(--gris-borde)'">
+    <div class="dash-panel" style="max-width:420px;margin-bottom:30px">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
         <div style="width:44px;height:44px;background:var(--azul-bg,#EBF2FF);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <svg width="22" height="22" fill="none" stroke="var(--azul)" stroke-width="1.8" viewBox="0 0 24 24">
@@ -258,7 +257,7 @@ function renderVehiculosFlotilla(vehiculos) {
         </thead>
         <tbody>
           ${vehiculos.map(v => `
-            <tr style="border-bottom:1px solid var(--gris-borde)" onmouseover="this.style.background='var(--gris-bg)'" onmouseout="this.style.background=''">
+            <tr class="row-hover" style="border-bottom:1px solid var(--gris-borde)">
               <td style="padding:11px 12px">
                 <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;letter-spacing:2px;color:var(--texto)">${escapeHtml(v.placa||'—')}</span>
                 ${v.foto_tarjeta_url ? `<br><a href="${escapeHtml(v.foto_tarjeta_url)}" target="_blank" style="font-size:10px;color:var(--azul)">ver tarjeta</a>` : ''}

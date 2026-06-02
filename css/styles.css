@@ -2107,9 +2107,30 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
   border: 1.5px solid var(--gris-borde);
   border-radius: var(--radio);
   padding: 20px;
-  transition: box-shadow 0.2s var(--ease-out);
+  transition: box-shadow 0.2s var(--ease-out), transform 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
 }
-.dash-panel:hover { box-shadow: var(--shadow-sm); }
+.dash-panel:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+  transform: translateY(-2px);
+  border-color: #D0D6E0;
+}
+
+/* Utilidad de hover suave para tarjetas armadas con estilos inline.
+   Reemplaza los onmouseover/onmouseout en JS (que se "atascan" cuando la
+   pantalla se refresca con el mouse encima). El :hover de CSS siempre
+   entra y sale solo. */
+.hover-lift {
+  transition: box-shadow 0.18s var(--ease-out), transform 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
+}
+.hover-lift:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.04);
+  transform: translateY(-2px);
+  border-color: #D0D6E0;
+}
+
+/* Resaltado suave de filas de tabla (reemplaza onmouseover/out inline) */
+.row-hover { transition: background 0.15s var(--ease-out); }
+.row-hover:hover { background: var(--gris-bg); }
 .dash-panel-titulo {
   display: flex;
   align-items: center;

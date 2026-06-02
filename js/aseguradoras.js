@@ -289,10 +289,8 @@ async function cargarModuloAseguradoras() {
           <div style="font-size:13px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Resumen por aseguradora</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
             ${asegArray.map(g => `
-            <div style="background:white;border:1px solid var(--gris-borde);border-radius:10px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s"
-              onclick="document.getElementById('aseg-filtro-aseg').value='${escapeHtml(g.nombre)}';filtrarAseguradoras()"
-              onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.10)'"
-              onmouseleave="this.style.boxShadow='none'">
+            <div class="hover-lift" style="background:white;border:1px solid var(--gris-borde);border-radius:10px;padding:14px 16px;cursor:pointer"
+              onclick="document.getElementById('aseg-filtro-aseg').value='${escapeHtml(g.nombre)}';filtrarAseguradoras()">
               <div style="font-size:14px;font-weight:700;color:#5B21B6;margin-bottom:6px">${escapeHtml(g.nombre)}</div>
               <div style="display:flex;gap:16px;font-size:12px">
                 <div><div style="font-weight:700;font-size:20px;color:#1E3A5F">${g.count}</div><div style="color:var(--gris-mid)">órdenes</div></div>
@@ -441,10 +439,8 @@ function _asegCardOrden(o) {
       }
     } catch(e) {}
 
-    return `<div style="background:white;border:1px solid var(--gris-borde);border-radius:10px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);cursor:pointer;transition:box-shadow .15s"
-      onclick="abrirOrden(${o.id})"
-      onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.10)'"
-      onmouseleave="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
+    return `<div class="hover-lift" style="background:white;border:1px solid var(--gris-borde);border-radius:10px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);cursor:pointer"
+      onclick="abrirOrden(${o.id})">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">

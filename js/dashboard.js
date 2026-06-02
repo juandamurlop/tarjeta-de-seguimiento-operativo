@@ -241,7 +241,7 @@ async function cargarDashboardMes() {
       const rC = { Alto:'#DC2626', Medio:'#D97706', Bajo:'#059669' };
       const rB = { Alto:'#FEE2E2', Medio:'#FEF3C7', Bajo:'#E6F5EF' };
       const barColor = riesgo === 'Alto' ? '#DC2626' : riesgo === 'Medio' ? '#D97706' : srvC;
-      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--gris-borde);cursor:pointer" onclick="abrirOrden(${o.id})" onmouseenter="this.style.background='var(--gris-bg)'" onmouseleave="this.style.background=''">
+      return `<div class="row-hover" style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-bottom:1px solid var(--gris-borde);cursor:pointer;border-radius:6px" onclick="abrirOrden(${o.id})">
         <div style="width:3px;align-self:stretch;border-radius:99px;background:${barColor};flex-shrink:0"></div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px">
@@ -509,7 +509,7 @@ async function cargarDashboard() {
           const sC     = srv ? srvColor[srv]||'#6B7280' : '#9CA3AF';
           const sB     = srv ? srvBg[srv]||'#F3F4F6'   : '#F3F4F6';
           const tec    = ea?.tecnico || null;
-          return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--gris-borde);cursor:pointer" onclick="abrirOrden(${o.id})" onmouseenter="this.style.background='var(--gris-bg)'" onmouseleave="this.style.background=''">
+          return `<div class="row-hover" style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-bottom:1px solid var(--gris-borde);cursor:pointer;border-radius:6px" onclick="abrirOrden(${o.id})">
             <div style="width:3px;align-self:stretch;border-radius:99px;background:${vencida?'#DC2626':sC};flex-shrink:0"></div>
             <div style="flex:1;min-width:0">
               <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px">
