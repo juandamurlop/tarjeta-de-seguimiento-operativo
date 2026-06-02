@@ -45,9 +45,8 @@ function _cotFiltrarEmpresas(q) {
     return;
   }
   lista.innerHTML = filtradas.map(e => `
-    <div onclick="_cotSeleccionarEmpresa(${e.id})"
-      style="padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--gris-borde);transition:background .12s;font-size:13px"
-      onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='white'">
+    <div onclick="_cotSeleccionarEmpresa(${e.id})" class="row-hover"
+      style="padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--gris-borde);font-size:13px">
       <div style="font-weight:600;color:var(--texto)">${escapeHtml(e.nombre)}</div>
       <div style="font-size:11px;color:var(--gris-mid)">${e.nit ? 'NIT: '+escapeHtml(e.nit)+' · ' : ''}${e.telefono ? escapeHtml(e.telefono) : ''}${e.contacto_nombre ? ' · '+escapeHtml(e.contacto_nombre) : ''}</div>
     </div>`).join('');

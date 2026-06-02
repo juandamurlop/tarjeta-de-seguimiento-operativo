@@ -2376,6 +2376,7 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
   background: white;
   transition: background .1s;
 }
+.op-row:hover { background: #F8FAFC; }
 
 /* Nombre con avatar */
 .op-col-nombre {

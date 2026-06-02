@@ -2897,7 +2897,7 @@ async function cargarMecanicosVista() {
            </button>` : ''}`;
 
       const rolLabel = esJefeTaller ? 'Jefe de taller' : escapeHtml(ROL_LABEL[m.rol]||m.rol||'—');
-      return `<div class="op-row" onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='white'">
+      return `<div class="op-row">
         <span class="op-col-dot">${indicador}</span>
         <div class="op-col-nombre">
           <div style="width:26px;height:26px;border-radius:50%;background:${esJefeTaller ? '#1E3A5F' : (ocupado ? 'var(--azul)' : '#94A3B8')};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:white;flex-shrink:0">${escapeHtml(m.nombre.charAt(0).toUpperCase())}</div>
@@ -3347,8 +3347,7 @@ async function cargarVehiculos() {
           const ultimaOT = ots[0];
           const badgeCol = activo ? '#2563EB' : '#6B7280';
 
-          return `<div style="background:white;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 11px;transition:box-shadow .15s,border-color .15s;min-width:0"
-            onmouseover="this.style.borderColor='#9AA3B0';this.style.boxShadow='0 3px 10px rgba(0,0,0,0.07)'" onmouseout="this.style.borderColor='';this.style.boxShadow=''">
+          return `<div class="hover-lift" style="background:white;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 11px;min-width:0">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:4px">
               <span onclick="abrirOrden(${ultimaOT?.id});navJefe('detalle')" style="font-family:'DM Mono',monospace;font-size:13px;font-weight:800;color:var(--texto);letter-spacing:.05em;cursor:pointer">${escapeHtml(info.placa||'—')}</span>
               <span style="font-size:9px;font-weight:700;color:${badgeCol};background:${badgeCol}18;padding:1px 6px;border-radius:3px">${ots.length} OT${ots.length!==1?'s':''}</span>
