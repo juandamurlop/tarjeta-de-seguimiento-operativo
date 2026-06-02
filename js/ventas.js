@@ -45,13 +45,20 @@ function _ventasDerivar(d) {
   const byAnoMes = {};
   d.vm.forEach(r => { (byAnoMes[r.ano] = byAnoMes[r.ano] || {})[r.mes_num] = r; });
 
+  // Suma de ventas por servicio (respaldo para años sin fila en ventas_mensuales,
+  // p.ej. 2023/2024) — permite derivar "mejor año" desde la historia completa.
+  const vsSum = {};
+  d.vs.forEach(r => { (vsSum[r.ano] = vsSum[r.ano] || {})[r.mes_num] = (vsSum[r.ano][r.mes_num] || 0) + (+r.valor || 0); });
+  const allAnos = [...new Set([...d.vm.map(r => r.ano), ...d.vs.map(r => r.ano)])].sort((a,b) => a-b);
+  const ventasDe = (a, m) => (+(byAnoMes[a]?.[m]?.ventas)) || vsSum[a]?.[m] || 0;
+
   const filas = [];
   for (let m = 1; m <= 12; m++) {
     const cur = byAnoMes[anoActual]?.[m] || {};
     const ant = byAnoMes[anoAnt]?.[m]   || {};
     let mejor = { ano: null, ventas: 0 };
-    anos.forEach(a => {
-      const v = +(byAnoMes[a]?.[m]?.ventas) || 0;
+    allAnos.forEach(a => {
+      const v = ventasDe(a, m);
       if (v > mejor.ventas) mejor = { ano: a, ventas: v };
     });
     filas.push({
