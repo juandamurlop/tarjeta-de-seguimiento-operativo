@@ -571,6 +571,16 @@ async function abrirOrden(id) {
                   : 'Sin pulmón activo'}
             </div>
           </div>
+          ${orden.tipo_cliente === 'aseguradora' ? `
+          <div class="sidebar-card" id="datos-aseg-card-${orden.id}">
+            <div class="sidebar-card-header" style="background:#EDE9FE;color:#5B21B6;display:flex;align-items:center;gap:6px">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Datos Aseguradora
+            </div>
+            <div class="sidebar-card-body">
+              ${typeof renderDatosAseguradora === 'function' ? renderDatosAseguradora(orden) : ''}
+            </div>
+          </div>` : ''}
           ${orden.aseguradora ? `
           <div class="sidebar-card">
             <div class="sidebar-card-header" style="background:#F5F3FF;color:#6D28D9;display:flex;align-items:center;gap:6px">
@@ -2652,7 +2662,10 @@ function navJefe(pag) {
     case 'aseguradoras':
       pagId = 'pag-aseguradoras';
       titulo = 'Aseguradoras';
-      setTimeout(() => { if (typeof montarAseguradoras === 'function') montarAseguradoras(); }, 50);
+      setTimeout(() => {
+        if (typeof cargarModuloAseguradoras === 'function') cargarModuloAseguradoras();
+        else if (typeof montarAseguradoras === 'function') montarAseguradoras();
+      }, 50);
       break;
     case 'vehiculos':
       pagId = 'pag-vehiculos';
@@ -5014,4 +5027,171 @@ function _actualizarListaCritica(criticas) {
       </div>
     </div>
   `;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PANEL CAPACIDAD DEL TALLER — DETALLE CLICKEABLE
+// ═══════════════════════════════════════════════════════════
+
+function cerrarPanelCapacidad() {
+  document.getElementById('panel-capacidad-overlay')?.remove();
+}
+
+async function abrirPanelCapacidad() {
+  document.getElementById('panel-capacidad-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'panel-capacidad-overlay';
+  overlay.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:800;
+    display:flex;align-items:center;justify-content:center;padding:16px;
+  `;
+  overlay.addEventListener('click', e => { if (e.target === overlay) cerrarPanelCapacidad(); });
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;width:100%;max-width:780px;max-height:90vh;
+      display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden">
+      <div style="background:#1E3A5F;color:white;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <div>
+          <div style="font-size:15px;font-weight:700;letter-spacing:.5px">TALLER · Capacidad y Estado en Tiempo Real</div>
+          <div id="cap-panel-progress-text" style="font-size:12px;color:rgba(255,255,255,.65);margin-top:2px">Cargando...</div>
+        </div>
+        <button onclick="cerrarPanelCapacidad()" style="background:rgba(255,255,255,.15);border:none;border-radius:8px;padding:6px 12px;color:white;cursor:pointer;font-size:13px;font-weight:600">✕ Cerrar</button>
+      </div>
+      <div style="padding:4px 20px 8px;background:#1E3A5F;flex-shrink:0">
+        <div style="background:rgba(255,255,255,.15);border-radius:99px;height:8px;overflow:hidden">
+          <div id="cap-panel-bar" style="height:100%;background:#EAB308;border-radius:99px;transition:width .5s;width:0%"></div>
+        </div>
+      </div>
+      <div id="cap-panel-body" style="overflow-y:auto;padding:16px 20px;flex:1">
+        <div class="loading-state">Cargando datos del taller...</div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  try {
+    const TOTAL_CUPOS = 34;
+    const [ordenesActivas, etapasActivas, ordenesPulmon, programadas] = await Promise.all([
+      api('/ordenes?estado=eq.Activa&select=id,placa,marca,linea,propietario,kilometraje,creado_en,pulmon&order=creado_en.desc').catch(() => []),
+      api('/etapas?fin=is.null&inicio=not.is.null&select=id,orden_id,etapa,tecnico,inicio,tiempo_pausado_min').catch(() => []),
+      api('/ordenes?pulmon=eq.true&select=id,placa,marca,linea,propietario,pulmon_desde,pulmon_tipo&order=pulmon_desde.asc').catch(() => []),
+      api('/ordenes?estado=eq.Programada&select=id,placa,marca,linea,propietario,fecha_programada&order=fecha_programada.asc').catch(() => [])
+    ]);
+
+    // IDs de órdenes con etapas activas
+    const conEtapaActiva = new Set(etapasActivas.map(e => e.orden_id));
+
+    // Clasificar
+    const enOperacion = ordenesActivas.filter(o => !o.pulmon && conEtapaActiva.has(o.id));
+    const quietos     = ordenesActivas.filter(o => !o.pulmon && !conEtapaActiva.has(o.id));
+    const enPulmon    = ordenesPulmon;
+
+    const ocupados = enOperacion.length + quietos.length + enPulmon.filter(p => p.pulmon_tipo !== 'externo').length;
+    const pct      = Math.round((ocupados / TOTAL_CUPOS) * 100);
+
+    // Update progress
+    const barEl  = document.getElementById('cap-panel-bar');
+    const txtEl  = document.getElementById('cap-panel-progress-text');
+    if (barEl) { barEl.style.width = pct + '%'; barEl.style.background = pct > 85 ? '#EF4444' : pct > 65 ? '#EAB308' : '#22C55E'; }
+    if (txtEl) txtEl.textContent = `${ocupados} de ${TOTAL_CUPOS} cupos ocupados (${pct}%)`;
+
+    // Time helper
+    function _tiempoDesde(inicio, pausadoMin) {
+      if (!inicio) return '—';
+      const minTot = Math.floor((Date.now() - new Date(inicio)) / 60000) - (pausadoMin || 0);
+      const h = Math.floor(minTot / 60); const m = minTot % 60;
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    }
+
+    function _verOrdenBtn(id) {
+      return `<button onclick="cerrarPanelCapacidad();abrirOrden(${id});navJefe('detalle')"
+        style="padding:3px 8px;font-size:11px;background:#EBF2FF;color:#1E3A5F;border:1px solid #BFDBFE;border-radius:5px;cursor:pointer;white-space:nowrap;font-weight:600">→ Ver</button>`;
+    }
+
+    function _seccion(color, emoji, titulo, count, bgColor, rows) {
+      return `
+        <div style="background:${bgColor};border:1px solid ${color}30;border-radius:12px;margin-bottom:14px;overflow:hidden">
+          <div style="padding:10px 14px;border-bottom:1px solid ${color}20;display:flex;align-items:center;gap:8px">
+            <span style="font-size:16px">${emoji}</span>
+            <span style="font-size:13px;font-weight:700;color:${color}">${titulo}</span>
+            <span style="background:${color};color:white;border-radius:99px;padding:1px 8px;font-size:11px;font-weight:700;margin-left:4px">${count}</span>
+          </div>
+          ${rows.length ? `
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:12px">
+              ${rows}
+            </table>
+          </div>` : `<div style="padding:12px 14px;color:#9CA3AF;font-size:12px;font-style:italic">No hay vehículos en esta categoría</div>`}
+        </div>`;
+    }
+
+    // EN OPERACION
+    const rowsOp = enOperacion.map(o => {
+      const etapa = etapasActivas.find(e => e.orden_id === o.id);
+      return `<tr style="border-top:1px solid rgba(0,0,0,0.06)">
+        <td style="padding:7px 14px;font-family:'DM Mono',monospace;font-weight:700">${escapeHtml(o.placa||'—')}</td>
+        <td style="padding:7px 8px;color:#555">${escapeHtml(o.propietario||'—')}</td>
+        <td style="padding:7px 8px;font-weight:600">${escapeHtml(etapa?.etapa||etapa?.servicio||'—')}</td>
+        <td style="padding:7px 8px;color:#555">${escapeHtml(etapa?.tecnico||'—')}</td>
+        <td style="padding:7px 8px;font-family:'DM Mono',monospace;color:#059669;font-weight:600">${_tiempoDesde(etapa?.inicio, etapa?.tiempo_pausado_min)}</td>
+        <td style="padding:7px 14px 7px 4px;text-align:right">${_verOrdenBtn(o.id)}</td>
+      </tr>`;
+    }).join('');
+
+    // QUIETOS
+    const rowsQ = quietos.map(o => {
+      const diasQ = o.creado_en ? Math.floor((Date.now() - new Date(o.creado_en)) / 86400000) : 0;
+      return `<tr style="border-top:1px solid rgba(0,0,0,0.06)">
+        <td style="padding:7px 14px;font-family:'DM Mono',monospace;font-weight:700">${escapeHtml(o.placa||'—')}</td>
+        <td style="padding:7px 8px;color:#555">${escapeHtml(o.propietario||'—')}</td>
+        <td style="padding:7px 8px;color:#555">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ')||'—'}</td>
+        <td style="padding:7px 8px;font-family:'DM Mono',monospace;color:#D97706;font-weight:600">${diasQ}d</td>
+        <td style="padding:7px 14px 7px 4px;text-align:right">
+          <div style="display:flex;gap:5px;justify-content:flex-end">
+            ${_verOrdenBtn(o.id)}
+            <button onclick="cerrarPanelCapacidad();abrirOrden(${o.id});navJefe('detalle');setTimeout(()=>abrirModalAgregar(),600)"
+              style="padding:3px 8px;font-size:11px;background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;border-radius:5px;cursor:pointer;white-space:nowrap;font-weight:600">Asignar</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    // EN PULMON
+    const rowsP = enPulmon.map(o => {
+      const minsPulmon = o.pulmon_desde ? Math.floor((Date.now() - new Date(o.pulmon_desde)) / 60000) : 0;
+      const hP = Math.floor(minsPulmon / 60); const mP = minsPulmon % 60;
+      const tiempoPulmon = hP > 24 ? `${Math.floor(hP/24)}d` : hP > 0 ? `${hP}h ${mP}m` : `${mP}m`;
+      return `<tr style="border-top:1px solid rgba(0,0,0,0.06)">
+        <td style="padding:7px 14px;font-family:'DM Mono',monospace;font-weight:700">${escapeHtml(o.placa||'—')}</td>
+        <td style="padding:7px 8px;color:#555">${escapeHtml(o.propietario||'—')}</td>
+        <td style="padding:7px 8px;color:#555">${escapeHtml(o.pulmon_tipo||'—')}</td>
+        <td style="padding:7px 8px;font-family:'DM Mono',monospace;color:#F97316;font-weight:600">${tiempoPulmon}</td>
+        <td style="padding:7px 14px 7px 4px;text-align:right">
+          ${_verOrdenBtn(o.id)}
+        </td>
+      </tr>`;
+    }).join('');
+
+    // PROGRAMADOS
+    const rowsPr = programadas.map(o => {
+      const fechaProg = o.fecha_programada ? new Date(o.fecha_programada).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+      return `<tr style="border-top:1px solid rgba(0,0,0,0.06)">
+        <td style="padding:7px 14px;font-family:'DM Mono',monospace;font-weight:700">${escapeHtml(o.placa||'—')}</td>
+        <td style="padding:7px 8px;color:#555">${escapeHtml(o.propietario||'—')}</td>
+        <td style="padding:7px 8px;color:#7C3AED;font-weight:600">${fechaProg}</td>
+        <td style="padding:7px 14px 7px 4px;text-align:right">${_verOrdenBtn(o.id)}</td>
+      </tr>`;
+    }).join('');
+
+    const body = document.getElementById('cap-panel-body');
+    if (body) {
+      body.innerHTML =
+        _seccion('#DC2626', '🔴', 'EN OPERACIÓN — vehículos con etapas activas', enOperacion.length, '#FFF5F5', rowsOp) +
+        _seccion('#D97706', '🟡', 'QUIETOS — en taller sin etapas activas', quietos.length, '#FFFBEB', rowsQ) +
+        _seccion('#F97316', '🟠', 'EN PULMÓN', enPulmon.length, '#FFF7ED', rowsP) +
+        _seccion('#7C3AED', '🟣', 'PROGRAMADOS', programadas.length, '#F5F3FF', rowsPr);
+    }
+  } catch(e) {
+    const body = document.getElementById('cap-panel-body');
+    if (body) body.innerHTML = `<div class="empty-state">Error cargando datos: ${e.message}</div>`;
+  }
 }

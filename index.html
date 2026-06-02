@@ -79,7 +79,7 @@
     </div>
     <nav class="sidebar-nav" id="sidebar-nav"></nav>
     <div class="sidebar-footer">
-      <div class="sidebar-capacidad" id="sidebar-capacidad">
+      <div class="sidebar-capacidad" id="sidebar-capacidad" onclick="abrirPanelCapacidad()" style="cursor:pointer">
         <div class="capacidad-title">Capacidad del taller</div>
         <div class="capacidad-donut-wrap">
           <svg width="80" height="80" viewBox="0 0 80 80">
@@ -97,6 +97,7 @@
           <div class="capacidad-sub" id="cap-sub">0 de 34 cupos</div>
           <div id="cap-pulmon-sub" style="font-size:11px;color:#F97316;margin-top:2px;display:none"></div>
         </div>
+        <div style="font-size:9px;color:rgba(255,255,255,.4);text-align:center;margin-top:2px">Clic para ver detalle</div>
       </div>
       <button class="btn-logout" onclick="logout()">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>

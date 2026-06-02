@@ -22,7 +22,134 @@ let _asegOrdenesCache = [];
 // ─── Dashboard principal ──────────────────────────────────
 
 async function montarAseguradoras() {
-  await cargarDashboardAseguradoras();
+  await cargarModuloAseguradoras();
+}
+
+// ─── Módulo completo de aseguradoras ─────────────────────
+
+async function cargarModuloAseguradoras() {
+  const cont = document.getElementById('pag-aseguradoras');
+  if (!cont) return;
+  cont.innerHTML = '<div class="loading-state">Cargando aseguradoras...</div>';
+
+  try {
+    // Fetch principal: órdenes con aseguradora (campo aseguradora o tipo_cliente=aseguradora)
+    const [ordenesAseg, ordenesConAseg] = await Promise.all([
+      api('/ordenes?aseguradora=not.is.null&order=creado_en.desc&select=*').catch(() => []),
+      api('/ordenes?tipo_cliente=eq.aseguradora&order=creado_en.desc&limit=200&select=*').catch(() => [])
+    ]);
+
+    // Merge sin duplicados
+    const idsVistas = new Set();
+    const todasOrdenes = [...ordenesAseg, ...ordenesConAseg].filter(o => {
+      if (idsVistas.has(o.id)) return false;
+      idsVistas.add(o.id);
+      return true;
+    }).sort((a,b) => new Date(b.creado_en) - new Date(a.creado_en));
+
+    _asegOrdenesCache = todasOrdenes;
+
+    const fmt = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
+    const today = new Date();
+    const inicioMes = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    // KPIs
+    const activas   = todasOrdenes.filter(o => o.estado === 'Activa');
+    const enPulmon  = todasOrdenes.filter(o => o.pulmon);
+    const pendRep   = todasOrdenes.filter(o => o.estado_aseguradora === 'repuestos_incompletos');
+    const enRep     = todasOrdenes.filter(o => o.estado_aseguradora === 'en_reparacion');
+
+    const entregadasMes = todasOrdenes.filter(o =>
+      o.entregada_en && new Date(o.entregada_en) >= inicioMes
+    );
+    const promCiclo = entregadasMes.length
+      ? Math.round(entregadasMes.reduce((s,o) => s + (new Date(o.entregada_en) - new Date(o.creado_en)) / 86400000, 0) / entregadasMes.length)
+      : 0;
+
+    const pendAprobacion = todasOrdenes.filter(o =>
+      ['peritaje_enviado','en_pulmon'].includes(o.estado_aseguradora)
+    );
+    const promAprobDias = pendAprobacion.length
+      ? Math.round(pendAprobacion.reduce((s,o) => {
+          const desde = o.peritaje_enviado_en || o.creado_en;
+          return s + (today - new Date(desde)) / 86400000;
+        }, 0) / pendAprobacion.length)
+      : 0;
+
+    // Agrupar por aseguradora
+    const porAseg = {};
+    todasOrdenes.forEach(o => {
+      const nombre = o.aseguradora || 'Sin aseguradora';
+      if (!porAseg[nombre]) porAseg[nombre] = { nombre, ordenes: [], total: 0, dias: [] };
+      porAseg[nombre].ordenes.push(o);
+    });
+    Object.values(porAseg).forEach(g => {
+      g.count = g.ordenes.length;
+      const conDias = g.ordenes.filter(o => o.entregada_en && o.creado_en);
+      g.promDias = conDias.length
+        ? Math.round(conDias.reduce((s,o) => s + (new Date(o.entregada_en) - new Date(o.creado_en)) / 86400000, 0) / conDias.length)
+        : 0;
+    });
+    const asegArray = Object.values(porAseg).sort((a,b) => b.count - a.count);
+
+    cont.innerHTML = `
+      <div style="padding:0 0 24px">
+
+        <!-- KPI STRIP -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:24px">
+          ${_asegKpi('Activos', activas.length, '#2563EB')}
+          ${_asegKpi('En pulmón', enPulmon.length, '#D97706')}
+          ${_asegKpi('Pend. repuestos', pendRep.length, '#DC2626')}
+          ${_asegKpi('En reparación', enRep.length, '#059669')}
+          ${_asegKpi('Ciclo prom. (mes)', promCiclo + 'd', '#7C3AED')}
+          ${_asegKpi('Días prom. aprobac.', promAprobDias + 'd', '#0891B2')}
+        </div>
+
+        <!-- FILTROS -->
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <input id="aseg-buscar" type="text" placeholder="Placa, aseguradora, propietario..."
+            style="flex:1;min-width:200px;padding:9px 12px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;outline:none"
+            oninput="filtrarAseguradoras()">
+          <select id="aseg-filtro-estado" onchange="filtrarAseguradoras()"
+            style="padding:9px 12px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;background:white;color:var(--texto)">
+            <option value="">Todos los estados</option>
+            ${Object.entries(ESTADOS_ASEG).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
+          </select>
+          <select id="aseg-filtro-aseg" onchange="filtrarAseguradoras()"
+            style="padding:9px 12px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;background:white;color:var(--texto)">
+            <option value="">Todas las aseguradoras</option>
+            ${asegArray.map(g => `<option value="${escapeHtml(g.nombre)}">${escapeHtml(g.nombre)} (${g.count})</option>`).join('')}
+          </select>
+        </div>
+
+        <!-- LISTA -->
+        <div id="aseg-lista"></div>
+
+        <!-- PANEL POR ASEGURADORA -->
+        ${asegArray.length > 1 ? `
+        <div style="margin-top:24px;border-top:1.5px solid var(--gris-borde);padding-top:18px">
+          <div style="font-size:13px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Resumen por aseguradora</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+            ${asegArray.map(g => `
+            <div style="background:white;border:1px solid var(--gris-borde);border-radius:10px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s"
+              onclick="document.getElementById('aseg-filtro-aseg').value='${escapeHtml(g.nombre)}';filtrarAseguradoras()"
+              onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.10)'"
+              onmouseleave="this.style.boxShadow='none'">
+              <div style="font-size:14px;font-weight:700;color:#5B21B6;margin-bottom:6px">${escapeHtml(g.nombre)}</div>
+              <div style="display:flex;gap:16px;font-size:12px">
+                <div><div style="font-weight:700;font-size:20px;color:#1E3A5F">${g.count}</div><div style="color:var(--gris-mid)">órdenes</div></div>
+                ${g.promDias > 0 ? `<div><div style="font-weight:700;font-size:20px;color:#7C3AED">${g.promDias}d</div><div style="color:var(--gris-mid)">ciclo prom.</div></div>` : ''}
+              </div>
+            </div>`).join('')}
+          </div>
+        </div>` : ''}
+      </div>`;
+
+    filtrarAseguradoras();
+  } catch(e) {
+    const c = document.getElementById('pag-aseguradoras');
+    if (c) c.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+  }
 }
 
 async function cargarDashboardAseguradoras() {
@@ -112,12 +239,14 @@ function _asegKpi(label, value, color) {
 }
 
 function filtrarAseguradoras() {
-  const q   = (document.getElementById('aseg-buscar')?.value || '').toLowerCase().trim();
-  const est = document.getElementById('aseg-filtro-estado')?.value || '';
+  const q    = (document.getElementById('aseg-buscar')?.value || '').toLowerCase().trim();
+  const est  = document.getElementById('aseg-filtro-estado')?.value || '';
+  const aseg = document.getElementById('aseg-filtro-aseg')?.value || '';
   const data = _asegOrdenesCache.filter(o => {
-    const matchQ   = !q   || [o.placa, o.aseguradora, o.propietario, o.marca].some(f => (f||'').toLowerCase().includes(q));
-    const matchEst = !est || (o.estado_aseguradora || 'peritaje_pendiente') === est;
-    return matchQ && matchEst;
+    const matchQ    = !q    || [o.placa, o.aseguradora, o.propietario, o.marca].some(f => (f||'').toLowerCase().includes(q));
+    const matchEst  = !est  || (o.estado_aseguradora || 'peritaje_pendiente') === est;
+    const matchAseg = !aseg || (o.aseguradora || 'Sin aseguradora') === aseg;
+    return matchQ && matchEst && matchAseg;
   });
   renderListaAseguradoras(data);
 }
@@ -218,6 +347,92 @@ function renderListaAseguradoras(ordenes) {
       </div>
     </div>`;
   }).join('');
+}
+
+// ─── Panel "Datos aseguradora" en sidebar de orden ────────
+
+function renderDatosAseguradora(orden) {
+  // Leer datos_aseguradora desde JSON guardado en observaciones o campo propio
+  let datos = {};
+  try {
+    if (orden.datos_aseguradora) {
+      datos = typeof orden.datos_aseguradora === 'string'
+        ? JSON.parse(orden.datos_aseguradora)
+        : orden.datos_aseguradora;
+    }
+  } catch(e) {}
+
+  const v = s => escapeHtml(datos[s] || '');
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:12px">
+      <div class="field" style="margin:0">
+        <label style="font-size:10px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">Ajustador</label>
+        <input id="da-ajustador-${orden.id}" value="${v('ajustador')}" placeholder="Nombre del ajustador"
+          style="width:100%;padding:6px 8px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:12px;box-sizing:border-box">
+      </div>
+      <div class="field" style="margin:0">
+        <label style="font-size:10px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">Fecha peritaje</label>
+        <input id="da-peritaje-${orden.id}" type="date" value="${v('fecha_peritaje')}"
+          style="width:100%;padding:6px 8px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:12px;box-sizing:border-box">
+      </div>
+      <div class="field" style="margin:0">
+        <label style="font-size:10px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">Fecha autorización</label>
+        <input id="da-autorizacion-${orden.id}" type="date" value="${v('fecha_autorizacion')}"
+          style="width:100%;padding:6px 8px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:12px;box-sizing:border-box">
+      </div>
+      <div class="field" style="margin:0">
+        <label style="font-size:10px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">Valor autorizado (COP)</label>
+        <input id="da-valor-${orden.id}" type="number" value="${datos.valor_autorizado||''}" placeholder="0"
+          style="width:100%;padding:6px 8px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:12px;box-sizing:border-box">
+      </div>
+      <div class="field" style="margin:0">
+        <label style="font-size:10px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">Estado pago</label>
+        <select id="da-pago-${orden.id}"
+          style="width:100%;padding:6px 8px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:12px;background:white;box-sizing:border-box">
+          <option value="pendiente" ${(datos.estado_pago||'pendiente')==='pendiente'?'selected':''}>Pendiente</option>
+          <option value="parcial"   ${datos.estado_pago==='parcial'?'selected':''}>Parcial</option>
+          <option value="pagado"    ${datos.estado_pago==='pagado'?'selected':''}>Pagado</option>
+        </select>
+      </div>
+      <button onclick="guardarDatosAseguradora(${orden.id})"
+        style="padding:7px 12px;background:#5B21B6;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;width:100%">
+        Guardar datos aseguradora
+      </button>
+    </div>`;
+}
+
+async function guardarDatosAseguradora(ordenId) {
+  const datos = {
+    ajustador:         document.getElementById(`da-ajustador-${ordenId}`)?.value.trim()   || '',
+    fecha_peritaje:    document.getElementById(`da-peritaje-${ordenId}`)?.value           || '',
+    fecha_autorizacion:document.getElementById(`da-autorizacion-${ordenId}`)?.value       || '',
+    valor_autorizado:  parseFloat(document.getElementById(`da-valor-${ordenId}`)?.value)  || 0,
+    estado_pago:       document.getElementById(`da-pago-${ordenId}`)?.value               || 'pendiente'
+  };
+
+  try {
+    // Intentar guardar en campo datos_aseguradora si existe; si no, en observaciones como JSON tag
+    let patch = {};
+    try {
+      // Try JSONB field first
+      await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { datos_aseguradora: datos });
+      patch = { datos_aseguradora: datos };
+    } catch(e1) {
+      // Fallback: store JSON tag in observaciones
+      const arr = await api(`/ordenes?id=eq.${ordenId}&select=observaciones`).catch(()=>[]);
+      const obs = arr?.[0]?.observaciones || '';
+      const tag = `[DATOS_ASEG:${JSON.stringify(datos)}]`;
+      const obsLimpia = obs.replace(/\[DATOS_ASEG:.*?\]/s, '').trim();
+      await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', {
+        observaciones: (obsLimpia ? obsLimpia + '\n' : '') + tag
+      });
+    }
+    toast('Datos de aseguradora guardados ✓');
+    if (typeof abrirOrden === 'function') abrirOrden(ordenId);
+  } catch(e) {
+    toast('Error guardando: ' + e.message, 'err');
+  }
 }
 
 // ─── Sección aseguradoras en sidebar de orden ─────────────
