@@ -938,7 +938,7 @@ async function cargarGraficoFinanciero(periodo = 'mensual') {
 async function cargarDashboardFinanciero() {
   const cont = document.getElementById('dash-financiero-contenido');
   if (!cont) return;
-  cont.innerHTML = '<div class="loading-state">Cargando datos financieros...</div>';
+  mostrarCargandoSiVacio(cont, '<div class="loading-state">Cargando datos financieros...</div>');
 
   try {
     const [ordenes, etapas, repItems, solicitudes] = await Promise.all([
@@ -1103,7 +1103,7 @@ async function cargarDashboardFinanciero() {
     // ════════════════════════════════════════════════════
     // RENDER
     // ════════════════════════════════════════════════════
-    cont.innerHTML = `
+    renderSinParpadeo(cont, `
       <!-- Header -->
       <div style="margin-bottom:10px;display:flex;align-items:baseline;gap:10px">
         <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--gris-mid)">Análisis Financiero</div>
@@ -1192,7 +1192,7 @@ async function cargarDashboardFinanciero() {
         <div style="font-size:10px;color:var(--gris-mid);margin-bottom:10px">Etapas completadas e ingresos generados</div>
         ${tecnicoHtml}
       </div>
-    `;
+    `);
     cargarGraficoFinanciero('mensual');
   } catch(e) {
     cont.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;

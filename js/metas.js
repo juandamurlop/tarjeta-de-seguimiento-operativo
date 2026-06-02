@@ -7,7 +7,7 @@ let _metasData = [];
 async function cargarDashboardMetas() {
   const cont = document.getElementById('dash-metas-contenido');
   if (!cont) return;
-  cont.innerHTML = '<div class="loading-state">Cargando metas...</div>';
+  mostrarCargandoSiVacio(cont, '<div class="loading-state">Cargando metas...</div>');
 
   try {
     const metas = await api('/metas_taller?order=ano.desc,mes_num.desc&limit=24').catch(()=>[]) || [];
@@ -116,7 +116,7 @@ async function cargarDashboardMetas() {
     const mesSigNombre = mesesNombres[mesSig.getMonth()];
     const mesSigAnio   = mesSig.getFullYear();
 
-    cont.innerHTML = `
+    renderSinParpadeo(cont, `
       <!-- Header -->
       <div style="margin-bottom:10px;display:flex;align-items:baseline;gap:10px">
         <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--gris-mid)">Metas del taller</div>
@@ -150,7 +150,7 @@ async function cargarDashboardMetas() {
         </div>
       </div>
       </div><!-- /dash-metas-bottom -->
-    `;
+    `);
   } catch(e) {
     cont.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
   }

@@ -26,7 +26,7 @@ async function cargarOrdenes() {
   if (filtroEstado === null) return; // tab pulmón activo
   const lista = document.getElementById('lista-ordenes');
   if (!lista) return;
-  lista.innerHTML = '<div class="loading-state">Cargando órdenes...</div>';
+  mostrarCargandoSiVacio(lista, '<div class="loading-state">Cargando órdenes...</div>');
   try {
     let query;
     if (filtroEstado === 'Activa') {
@@ -120,13 +120,13 @@ function renderTablaOrdenes(data, etapas) {
     return;
   }
   const rows = data.map(o => _buildOrdenRow(o, etapas)).join('');
-  lista.innerHTML = `<div class="ordenes-tabla-wrap"><table class="ordenes-tabla">
+  renderSinParpadeo(lista, `<div class="ordenes-tabla-wrap"><table class="ordenes-tabla">
     <thead><tr>
       <th>Orden</th><th>Vehículo</th><th>Etapa actual</th>
       <th>Responsable</th><th>Entrega est.</th><th>Días</th><th>Estado</th>
     </tr></thead>
     <tbody>${rows}</tbody>
-  </table></div>`;
+  </table></div>`);
 }
 
 function filtrarTablaOrdenes(q) {

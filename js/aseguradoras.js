@@ -19,6 +19,102 @@ const ESTADOS_ASEG_ORDER = [
 
 let _asegOrdenesCache = [];
 
+// ═══════════════════════════════════════════════════════════
+// RENTABILIDAD POR VEHÍCULO (valor de plaza vs. tiempo en taller)
+// ───────────────────────────────────────────────────────────
+// El taller tiene CAPACIDAD_TALLER cupos fijos. Cada cupo ("plaza")
+// debe generar cierto dinero por día para cumplir la meta. Un carro que
+// ocupa un cupo muchos días pero factura poco bloquea una plaza rentable
+// → pérdida. La base del cálculo es la meta mensual:
+//   valorPlazaDía = meta_ingresos_mes / (CAPACIDAD_TALLER × días hábiles L-V)
+//   costoOcupación = valorPlazaDía × días en taller
+//   rentabilidad   = ingreso de la orden − costoOcupación
+//   puntoEquilibrio (díasMax) = ingreso / valorPlazaDía
+// ═══════════════════════════════════════════════════════════
+let _asegRentabilidad = { valorPlazaDia: 0, metaIngresos: 0, porOrden: {} };
+
+// Días hábiles (lunes a viernes) del mes de la fecha dada
+function _diasHabilesMes(fecha) {
+  const y = fecha.getFullYear(), m = fecha.getMonth();
+  const ultimo = new Date(y, m + 1, 0).getDate();
+  let n = 0;
+  for (let d = 1; d <= ultimo; d++) {
+    const wd = new Date(y, m, d).getDay();
+    if (wd >= 1 && wd <= 5) n++;
+  }
+  return n;
+}
+
+// Calcula la rentabilidad de cada orden de aseguradora y la guarda en
+// _asegRentabilidad.porOrden[id]. Se llama antes de renderizar la lista.
+async function _calcularRentabilidadAseg(ordenes) {
+  const porOrden = {};
+  _asegRentabilidad = { valorPlazaDia: 0, metaIngresos: 0, porOrden };
+  try {
+    if (!ordenes || !ordenes.length) return;
+
+    const hoy = new Date();
+    // 1) Meta de ingresos del mes actual → valor de la plaza por día
+    const meta = (await api(
+      `/metas_taller?ano=eq.${hoy.getFullYear()}&mes_num=eq.${hoy.getMonth() + 1}&select=meta_ingresos&limit=1`
+    ).catch(() => []) || [])[0];
+    const metaIngresos = meta?.meta_ingresos || 0;
+    const habiles      = _diasHabilesMes(hoy) || 22;
+    const valorPlazaDia = metaIngresos > 0
+      ? metaIngresos / (CAPACIDAD_TALLER * habiles)
+      : 0;
+    _asegRentabilidad.metaIngresos = metaIngresos;
+    _asegRentabilidad.valorPlazaDia = valorPlazaDia;
+
+    // 2) Ingreso facturado por orden = suma de valores de sus etapas
+    const ids = ordenes.map(o => o.id).join(',');
+    const etapas = ids
+      ? (await api(`/etapas?orden_id=in.(${ids})&select=orden_id,valor`).catch(() => []) || [])
+      : [];
+    const ingresoPorOrden = {};
+    etapas.forEach(e => {
+      ingresoPorOrden[e.orden_id] = (ingresoPorOrden[e.orden_id] || 0) + (e.valor || 0);
+    });
+
+    // 3) Rentabilidad por orden
+    ordenes.forEach(o => {
+      const ingreso  = ingresoPorOrden[o.id] || 0;
+      const desde    = o.ingreso_en || o.creado_en;
+      const hasta    = o.entregada_en ? new Date(o.entregada_en) : hoy;
+      const dias     = desde ? Math.max(1, Math.floor((hasta - new Date(desde)) / 86400000)) : 1;
+      const costo    = valorPlazaDia * dias;
+      const rent     = ingreso - costo;
+      const diasMax  = valorPlazaDia > 0 ? ingreso / valorPlazaDia : null;
+      porOrden[o.id] = { ingreso, dias, costo, rent, diasMax, entregada: !!o.entregada_en };
+    });
+  } catch (e) {
+    console.warn('[aseg] rentabilidad falló:', e);
+  }
+}
+
+// HTML del badge de rentabilidad para una orden (vacío si no hay meta)
+function _asegBadgeRent(ordenId) {
+  const vpd = _asegRentabilidad.valorPlazaDia;
+  const r   = _asegRentabilidad.porOrden[ordenId];
+  if (!r || vpd <= 0) return '';
+  const fmt   = n => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0 }).format(Math.round(n));
+  const verde = r.rent >= 0;
+  const col   = verde ? '#059669' : '#DC2626';
+  const bg    = verde ? '#E6F5EF' : '#FEE2E2';
+  const ico   = verde ? '🟢' : '🔴';
+  const signo = r.rent >= 0 ? '+' : '−';
+
+  // Aviso de punto de equilibrio para órdenes aún activas
+  let extra = '';
+  if (!r.entregada && r.diasMax != null) {
+    const rest = Math.ceil(r.diasMax - r.dias);
+    if (rest <= 0)       extra = ' · ⚠ sobre el límite';
+    else if (rest <= 3)  extra = ` · 🟡 ${rest}d al límite`;
+  }
+  const tip = `Ingreso ${fmt(r.ingreso)} − costo de plaza ${fmt(r.costo)} (${r.dias}d × ${fmt(vpd)}/día) = ${signo}${fmt(Math.abs(r.rent))}`;
+  return `<span title="${tip}" style="font-size:11px;background:${bg};color:${col};padding:2px 8px;border-radius:99px;font-weight:700;white-space:nowrap">${ico} ${signo}${fmt(Math.abs(r.rent))}${extra}</span>`;
+}
+
 // ─── Dashboard principal ──────────────────────────────────
 
 async function montarAseguradoras() {
@@ -48,6 +144,7 @@ async function cargarModuloAseguradoras() {
     }).sort((a,b) => new Date(b.creado_en) - new Date(a.creado_en));
 
     _asegOrdenesCache = todasOrdenes;
+    await _calcularRentabilidadAseg(todasOrdenes);
 
     const fmt = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
     const today = new Date();
@@ -103,6 +200,7 @@ async function cargarModuloAseguradoras() {
           ${_asegKpi('En reparación', enRep.length, '#059669')}
           ${_asegKpi('Ciclo prom. (mes)', promCiclo + 'd', '#7C3AED')}
           ${_asegKpi('Días prom. aprobac.', promAprobDias + 'd', '#0891B2')}
+          ${_asegKpiRentabilidad(fmt)}
         </div>
 
         <!-- FILTROS -->
@@ -163,6 +261,7 @@ async function cargarDashboardAseguradoras() {
     ).catch(() => []) || [];
 
     _asegOrdenesCache = ordenes;
+    await _calcularRentabilidadAseg(ordenes);
 
     const fmt  = n => n != null
       ? new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0 }).format(n)
@@ -206,6 +305,7 @@ async function cargarDashboardAseguradoras() {
           ${_asegKpi('Ciclo prom.', promCiclo + 'd', '#7C3AED')}
           ${_asegKpi('Prom. días aprobación', promAprobDias + 'd', '#0891B2')}
           ${totalEstadia > 0 ? _asegKpi('Estadía acum.', fmt(totalEstadia), '#EA580C') : ''}
+          ${_asegKpiRentabilidad(fmt)}
         </div>
 
         <!-- FILTROS -->
@@ -236,6 +336,19 @@ function _asegKpi(label, value, color) {
     <div style="font-size:24px;font-weight:800;color:${color};line-height:1;margin-bottom:5px">${value}</div>
     <div style="font-size:10px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">${label}</div>
   </div>`;
+}
+
+// KPIs de rentabilidad (neta + en pérdida). Si no hay meta del mes,
+// muestra un aviso para cargarla.
+function _asegKpiRentabilidad(fmt) {
+  if (_asegRentabilidad.valorPlazaDia <= 0) {
+    return _asegKpi('Rentabilidad', 'Carga la meta del mes', '#6B7280');
+  }
+  const rents = Object.values(_asegRentabilidad.porOrden);
+  const neta  = rents.reduce((s, r) => s + r.rent, 0);
+  const perd  = rents.filter(r => r.rent < 0).length;
+  return _asegKpi('Rentabilidad neta', fmt(Math.round(neta)), neta >= 0 ? '#059669' : '#DC2626')
+       + _asegKpi('En pérdida', perd, perd > 0 ? '#DC2626' : '#059669');
 }
 
 function filtrarAseguradoras() {
@@ -331,6 +444,7 @@ function renderListaAseguradoras(ordenes) {
             <span style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;letter-spacing:2px">${escapeHtml(o.placa||'—')}</span>
             <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gris-mid)">${formatOT(o.id)}</span>
             ${estadiaHtml}
+            ${_asegBadgeRent(o.id)}
           </div>
           <div style="font-size:12px;color:var(--gris-mid)">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'} · ${escapeHtml(o.propietario||'—')}</div>
           <div style="font-size:12px;font-weight:700;color:#5B21B6;margin-top:2px">🏢 ${escapeHtml(o.aseguradora)}</div>

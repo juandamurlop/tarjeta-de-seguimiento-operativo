@@ -125,6 +125,103 @@ function abrirLightbox(url) {
 function cerrarLightbox() { 
   const lightbox = document.getElementById('lightbox');
   const img = document.getElementById('lightbox-img');
-  if (lightbox) lightbox.classList.remove('show'); 
-  if (img) img.src = ''; 
+  if (lightbox) lightbox.classList.remove('show');
+  if (img) img.src = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+// ACTUALIZACIÓN SIN PARPADEO (morph del DOM)
+// ───────────────────────────────────────────────────────────
+// Reemplaza el clásico `cont.innerHTML = html` en pantallas que se
+// refrescan por temporizador. En vez de destruir y reconstruir todo el
+// subárbol (lo que causa el "flash" tipo F5, el salto de scroll y la
+// pérdida de foco), recorre el DOM existente y solo toca lo que cambió:
+// texto, atributos y nodos añadidos/eliminados. Mismo efecto que taller.js
+// pero genérico. Ante cualquier error cae de vuelta a innerHTML.
+// ═══════════════════════════════════════════════════════════
+function renderSinParpadeo(target, html) {
+  if (!target) return;
+  try {
+    const tpl = document.createElement('template');
+    tpl.innerHTML = html;
+    _morphHijos(target, tpl.content);
+  } catch (e) {
+    console.warn('[render] morph falló, fallback innerHTML:', e);
+    target.innerHTML = html;
+  }
+}
+
+function _mismoTipoNodo(a, b) {
+  if (a.nodeType !== b.nodeType) return false;
+  if (a.nodeType === 1) return a.tagName === b.tagName;
+  return true;
+}
+
+function _morphHijos(viejoPadre, nuevoPadre) {
+  let viejo = viejoPadre.firstChild;
+  let nuevo = nuevoPadre.firstChild;
+  while (nuevo) {
+    const sigNuevo = nuevo.nextSibling;
+    if (!viejo) {
+      viejoPadre.appendChild(document.importNode(nuevo, true));
+    } else {
+      const sigViejo = viejo.nextSibling;
+      if (!_mismoTipoNodo(viejo, nuevo)) {
+        viejoPadre.replaceChild(document.importNode(nuevo, true), viejo);
+      } else {
+        _morphNodo(viejo, nuevo);
+      }
+      viejo = sigViejo;
+    }
+    nuevo = sigNuevo;
+  }
+  // Eliminar nodos viejos sobrantes
+  while (viejo) {
+    const sig = viejo.nextSibling;
+    viejoPadre.removeChild(viejo);
+    viejo = sig;
+  }
+}
+
+function _morphNodo(viejo, nuevo) {
+  // Texto / comentario: solo actualizar el valor si cambió
+  if (viejo.nodeType === 3 || viejo.nodeType === 8) {
+    if (viejo.nodeValue !== nuevo.nodeValue) viejo.nodeValue = nuevo.nodeValue;
+    return;
+  }
+  if (viejo.nodeType !== 1) return;
+
+  // No tocar un campo que el usuario está editando en este momento
+  if (viejo === document.activeElement &&
+      ['INPUT', 'TEXTAREA', 'SELECT'].includes(viejo.tagName)) return;
+
+  _morphAttrs(viejo, nuevo);
+
+  // No re-sincronizar el value/checked en vivo de inputs (lo maneja el usuario)
+  if (['INPUT', 'TEXTAREA'].includes(viejo.tagName)) return;
+
+  _morphHijos(viejo, nuevo);
+}
+
+function _morphAttrs(viejo, nuevo) {
+  const nAttrs = nuevo.attributes;
+  for (let i = 0; i < nAttrs.length; i++) {
+    const a = nAttrs[i];
+    if (viejo.getAttribute(a.name) !== a.value) viejo.setAttribute(a.name, a.value);
+  }
+  const vAttrs = viejo.attributes;
+  for (let i = vAttrs.length - 1; i >= 0; i--) {
+    const name = vAttrs[i].name;
+    if (!nuevo.hasAttribute(name)) viejo.removeAttribute(name);
+  }
+}
+
+// Muestra un placeholder de carga SOLO si el contenedor está vacío (primera
+// carga). En refrescos automáticos conserva el contenido actual para evitar
+// el flash "Cargando…" → contenido en cada tick del temporizador.
+function mostrarCargandoSiVacio(cont, html) {
+  if (!cont) return;
+  const soloPlaceholder = cont.children.length <= 1 &&
+    (cont.querySelector('.loading-state') || cont.querySelector('.empty-state'));
+  if (!cont.textContent.trim() || soloPlaceholder) cont.innerHTML = html;
 }

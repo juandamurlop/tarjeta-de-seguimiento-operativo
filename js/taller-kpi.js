@@ -276,7 +276,7 @@ async function cargarKPITaller() {
       </tr>`;
     }).join('');
 
-    cont.innerHTML = `
+    renderSinParpadeo(cont, `
       <div class="kpi-shell">
 
         <div class="kpi-header">
@@ -392,7 +392,7 @@ async function cargarKPITaller() {
           </table>
         </div>
 
-      </div>`;
+      </div>`);
 
   } catch (err) {
     if (cont) cont.innerHTML = `<div class="empty-state" style="padding:40px">
