@@ -339,12 +339,12 @@ async function cargarDashboardMes() {
             <div>
               <div style="font-size:12px;font-weight:700;color:var(--texto);margin-bottom:1px">Repuestos pendientes</div>
               <div style="font-size:10px;color:var(--gris-mid);margin-bottom:12px">Solicitudes activas</div>
-              <div style="font-size:26px;font-weight:800;color:${solicitudesPend.length>0?'#DC2626':'#059669'};line-height:1">${solicitudesPend.length}</div>
-              <div style="font-size:11px;font-weight:600;color:${solicitudesPend.length>0?'#DC2626':'#059669'};margin-top:6px">${solicitudesPend.length>0?'Atención requerida':'Todo al día'}</div>
+              <div style="font-size:26px;font-weight:800;color:${solicitudesPend.length>0?'var(--rojo)':'var(--verde)'};line-height:1">${solicitudesPend.length}</div>
+              <div style="font-size:11px;font-weight:600;color:${solicitudesPend.length>0?'var(--rojo)':'var(--verde)'};margin-top:6px">${solicitudesPend.length>0?'Atención requerida':'Todo al día'}</div>
               ${solicitudesPend.length>0?`<div style="font-size:10px;color:var(--gris-mid);margin-top:3px">${solicitudesPend.length} ${solicitudesPend.length===1?'solicitud pendiente':'solicitudes pendientes'}</div>`:'<div style="font-size:10px;color:var(--gris-mid);margin-top:3px">Sin pendientes</div>'}
             </div>
-            <div style="width:44px;height:44px;background:${solicitudesPend.length>0?'#FEE2E2':'#E6F5EF'};border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="20" height="20" fill="none" stroke="${solicitudesPend.length>0?'#DC2626':'#059669'}" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            <div style="width:44px;height:44px;background:${solicitudesPend.length>0?'var(--rojo-bg)':'var(--verde-bg)'};border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="20" height="20" fill="none" stroke="${solicitudesPend.length>0?'var(--rojo)':'var(--verde)'}" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
             </div>
           </div>
         </div>
