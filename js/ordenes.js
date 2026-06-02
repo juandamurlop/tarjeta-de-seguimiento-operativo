@@ -85,7 +85,7 @@ function _buildOrdenRow(o, etapas) {
   if (!o.linea)         camposFaltantes.push('línea');
   if (!o.telefono)      camposFaltantes.push('teléfono');
   const contactAlert = camposFaltantes.length
-    ? `<span class="ord-alert-contact" title="Faltan: ${camposFaltantes.join(', ')}">⚠ Faltan datos</span>`
+    ? `<span class="ord-alert-contact" title="Faltan datos: ${camposFaltantes.join(', ')}">⚠</span>`
     : '';
 
   return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-search="${escapeHtml(searchStr)}">

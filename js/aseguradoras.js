@@ -315,8 +315,8 @@ async function cargarDashboardAseguradoras() {
 }
 
 function _asegKpi(label, value, color) {
-  return `<div style="background:white;border:1px solid var(--gris-borde);border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
-    <div style="font-size:24px;font-weight:800;color:${color};line-height:1;margin-bottom:5px">${value}</div>
+  return `<div style="background:white;border:1px solid var(--gris-borde);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow-sm)">
+    <div style="font-size:22px;font-weight:800;color:${color};line-height:1.05;margin-bottom:5px">${value}</div>
     <div style="font-size:10px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">${label}</div>
   </div>`;
 }
@@ -454,7 +454,7 @@ function _asegCardOrden(o) {
           ${repHtml}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
-          <span style="background:${estInfo.bg};color:${estInfo.color};padding:4px 10px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap">${estInfo.label}</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;background:${estInfo.bg};color:${estInfo.color};padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0"></span>${estInfo.label}</span>
           <span style="font-size:11px;color:var(--gris-mid)">${diasSist}d en sistema</span>
         </div>
       </div>

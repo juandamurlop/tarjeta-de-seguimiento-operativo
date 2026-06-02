@@ -3092,17 +3092,17 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 .ord-alert-contact {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 4px;
-  margin-left: 5px;
-  background: #FEF3C7;
-  color: #B45309;
-  border: 1px solid #FDE68A;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 9.5px;
+  border-radius: 50%;
+  margin-left: 6px;
+  background: var(--amarillo-bg);
+  color: var(--amarillo);
   vertical-align: middle;
-  letter-spacing: .02em;
+  cursor: help;
+  flex-shrink: 0;
 }
 
 /* ══════════════════════════════════════════════════════════
