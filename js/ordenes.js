@@ -1105,6 +1105,10 @@ async function guardarDescripcion(ordenId) {
 // ============================================================
 // NUEVA ORDEN
 // ============================================================
+// Si tiene un id, el formulario está "completando" una orden agendada
+// (Programada) en vez de crear una nueva → al guardar hace PATCH + activa.
+let _ordenCompletandoId = null;
+
 function resetNuevaOrden() {
   const fields = ['n-placa', 'n-marca', 'n-linea', 'n-modelo', 'n-color', 'n-propietario', 'n-telefono', 'n-km', 'n-fecha1', 'n-fecha2', 'n-inv-obs', 'n-cedula-cliente', 'n-vin', 'n-correo-cliente', 'n-descripcion-general'];
   fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -1762,8 +1766,18 @@ async function crearOrden() {
   };
 
   try {
-    const res = await api('/ordenes?select=id', 'POST', body, { Prefer: 'return=representation' });
-    const ordenId = res[0].id;
+    const completando = _ordenCompletandoId;
+    let ordenId;
+    if (completando) {
+      // Completar una orden agendada (Programada): actualizar con todos los
+      // datos y activarla (el body ya trae estado:'Activa' e ingreso_en:ahora).
+      await api(`/ordenes?id=eq.${completando}`, 'PATCH', body);
+      ordenId = completando;
+      _ordenCompletandoId = null;
+    } else {
+      const res = await api('/ordenes?select=id', 'POST', body, { Prefer: 'return=representation' });
+      ordenId = res[0].id;
+    }
 
     if (fotosIngresoPendientes.length) {
       const prog = document.getElementById('prog-ingreso');
@@ -1785,7 +1799,7 @@ async function crearOrden() {
     resetNuevaOrden();
     fotosIngresoPendientes = [];
     modalOrdenId = ordenId;
-    toast('Orden creada ✓');
+    toast(completando ? '✓ Vehículo recibido — orden activada' : 'Orden creada ✓');
     abrirModalServicios();
   } catch(e) { toast('Error: ' + e.message, 'err'); }
 }
@@ -2398,13 +2412,52 @@ async function cambiarEstado(v) {
 }
 
 async function recibirVehiculo(ordenId) {
-  if (!confirm('¿Confirmar ingreso del vehículo al taller?\nEsto activará la orden y habilitará las etapas de trabajo.')) return;
+  // Abre el formulario completo PRE-LLENADO con lo agendado, para completar
+  // kilometraje, inventario, daños, etc. Al guardar, activa la orden (PATCH).
+  let orden;
   try {
-    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { estado: 'Activa', ingreso_en: new Date().toISOString() });
-    toast('✓ Vehículo recibido — orden activada');
-    cargarOrdenes();
-    abrirOrden(ordenId);
-  } catch(e) { toast('Error: ' + e.message, 'err'); }
+    orden = (await api(`/ordenes?id=eq.${ordenId}&limit=1`).catch(() => []))?.[0];
+  } catch(e) { toast('Error: ' + e.message, 'err'); return; }
+  if (!orden) { toast('Orden no encontrada', 'err'); return; }
+
+  navJefe('nueva'); // abre y resetea el formulario (resetNuevaOrden limpia el modo)
+
+  setTimeout(() => {
+    _ordenCompletandoId = ordenId; // activar modo "completar" DESPUÉS del reset
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val != null && val !== '') el.value = val; };
+    set('n-placa', orden.placa);
+    set('n-marca', orden.marca);
+    set('n-linea', orden.linea);
+    set('n-modelo', orden.modelo);
+    set('n-color', orden.color);
+    set('n-vin', orden.vin);
+    set('n-propietario', orden.propietario);
+    set('n-telefono', orden.telefono);
+    set('n-cedula-cliente', orden.cedula_cliente);
+    set('n-correo-cliente', orden.correo_cliente);
+
+    // Tipo de cliente
+    const tipo  = orden.tipo_cliente || 'particular';
+    const tabId = tipo === 'aseguradora' ? 'tcb-aseguradora'
+                : tipo === 'flotilla'    ? 'tcb-flotilla'
+                : tipo === 'empresa'     ? 'tcb-empresa'
+                : 'tcb-particular';
+    const tab = document.getElementById(tabId);
+    if (tab && typeof selTipoCliente === 'function') selTipoCliente(tab, tipo);
+    if (orden.aseguradora) {
+      const selId = tipo === 'aseguradora' ? 'n-aseguradora-sel' : tipo === 'flotilla' ? 'n-flotilla-sel' : null;
+      if (selId) setTimeout(() => { const sel = document.getElementById(selId); if (sel) sel.value = orden.aseguradora; }, 250);
+    }
+
+    const resultDiv = document.getElementById('placa-resultado');
+    if (resultDiv) {
+      resultDiv.className = 'placa-resultado encontrado';
+      resultDiv.innerHTML = `📥 Completando ingreso de <strong>${escapeHtml(orden.placa || '')}</strong>. Agrega kilometraje, inventario y daños; al guardar se activará la orden.`;
+      resultDiv.style.display = 'block';
+    }
+    toast(`Completa los datos de ${orden.placa} para activar`);
+  }, 320);
 }
 
 // ============================================================
@@ -4310,6 +4363,7 @@ document.addEventListener('click', () => {
 
 // ── Reset nueva orden ────────────────────────────────────────
 function resetNuevaOrden() {
+  _ordenCompletandoId = null; // formulario fresco = crear, no completar
   ['n-placa','n-marca','n-linea','n-modelo','n-color','n-km','n-fecha1','n-fecha2',
    'n-inv-obs','n-vin','n-propietario','n-telefono','n-cedula-cliente','n-correo-cliente',
    'n-direccion','n-propietario-aseg','n-telefono-aseg','n-cedula-aseg','n-correo-aseg',
