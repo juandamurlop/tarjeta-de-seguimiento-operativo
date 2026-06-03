@@ -246,42 +246,6 @@ async function cargarKPITaller() {
     // ── Render ────────────────────────────────────────────
     const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 
-    // ── Datos de los paneles (debajo de los KPIs) ─────────
-    // 1) Carga por sección — etapas activas agrupadas por etapa
-    const _porSeccion = {};
-    etapasActivas.forEach(e => {
-      const sec = e.etapa || e.servicio || 'Otro';
-      _porSeccion[sec] = (_porSeccion[sec] || 0) + 1;
-    });
-    const cargaSeccion = Object.entries(_porSeccion)
-      .map(([label, valor]) => ({ label, valor }))
-      .sort((a, b) => b.valor - a.valor).slice(0, 8);
-
-    // 2) Órdenes por días en taller
-    const _buckets = { '0–3 días': 0, '4–7 días': 0, '8–15 días': 0, '+15 días': 0 };
-    ordenesActivas.forEach(o => {
-      const base = o.ingreso_en || o.creado_en;
-      const d = base ? Math.floor((Date.now() - new Date(base)) / 86400000) : 0;
-      if (d <= 3) _buckets['0–3 días']++;
-      else if (d <= 7) _buckets['4–7 días']++;
-      else if (d <= 15) _buckets['8–15 días']++;
-      else _buckets['+15 días']++;
-    });
-    const _diasCol = { '0–3 días': '#059669', '4–7 días': '#2A5298', '8–15 días': '#D97706', '+15 días': '#DC2626' };
-    const ordenesDias = Object.entries(_buckets).map(([label, valor]) => ({ label, valor, color: _diasCol[label] }));
-
-    // 3) Repuestos por estado
-    const _repLbl = { pendiente_jefe: 'Solicitado', enviado_repuestos: 'En repuestos', cotizado: 'Cotizado', pedido: 'Pedido', recibido_taller: 'En taller' };
-    const _porRep = {};
-    (solicitudesRep || []).forEach(s => { const l = _repLbl[s.estado]; if (l) _porRep[l] = (_porRep[l] || 0) + 1; });
-    const repuestosEstado = Object.values(_repLbl).map(l => ({ label: l, valor: _porRep[l] || 0 }));
-
-    // 4) Técnicos: qué hacen ahora
-    const tecnicosAhora = etapasActivas.map(e => {
-      const o = ordenesActivas.find(or => or.id === e.orden_id) || {};
-      return { tecnico: e.tecnico || 'Sin técnico', placa: o.placa || '—', ordenId: e.orden_id, etapa: e.etapa || e.servicio || '', ms: e.inicio ? Date.now() - new Date(e.inicio).getTime() : 0 };
-    }).sort((a, b) => b.ms - a.ms);
-
     renderSinParpadeo(cont, `
       <div class="kpi-shell">
 
@@ -378,33 +342,6 @@ async function cargarKPITaller() {
             <div class="kpi-card-lbl">Sin movimiento +4h</div>
             <div class="kpi-card-sub">${k8Filas.length ? 'Revisar prioridad' : 'Todas con actividad'}</div>
             <div class="kpi-card-link">Ver detalle →</div>
-          </div>
-        </div>
-
-        <!-- PANELES / GRÁFICOS -->
-        <div class="kpi-paneles">
-          <div class="card kpi-panel">
-            <div class="kpi-panel-titulo">Carga por sección · etapas activas</div>
-            ${_kpiBarras(cargaSeccion, '#2A5298')}
-          </div>
-          <div class="card kpi-panel">
-            <div class="kpi-panel-titulo">Órdenes por días en taller</div>
-            ${_kpiBarras(ordenesDias, '#2A5298')}
-          </div>
-          <div class="card kpi-panel">
-            <div class="kpi-panel-titulo">Repuestos por estado</div>
-            ${_kpiBarras(repuestosEstado, '#7C3AED')}
-          </div>
-          <div class="card kpi-panel">
-            <div class="kpi-panel-titulo">Técnicos · qué hacen ahora (${tecnicosAhora.length})</div>
-            ${tecnicosAhora.length ? tecnicosAhora.map(t => `
-              <div class="kpi-tec-row" onclick="_kpiAbrirOrden(${t.ordenId})">
-                <span style="width:7px;height:7px;border-radius:50%;background:#22C55E;flex-shrink:0;box-shadow:0 0 0 2px #DCFCE7"></span>
-                <span style="font-weight:600;font-size:12px;flex-shrink:0">${escapeHtml(t.tecnico)}</span>
-                <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gris-mid);flex-shrink:0">${escapeHtml(t.placa)}</span>
-                <span style="font-size:11px;color:var(--gris-mid);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${escapeHtml(t.etapa)}</span>
-                <span style="font-size:11px;font-weight:700;color:var(--azul);flex-shrink:0">${_kpiDur(t.ms)}</span>
-              </div>`).join('') : '<div style="font-size:12px;color:var(--gris-mid)">Ningún técnico trabajando ahora</div>'}
           </div>
         </div>
 
