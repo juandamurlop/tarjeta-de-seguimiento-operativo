@@ -208,20 +208,6 @@ async function abrirModalSolicitudRepuesto(ordenId, etapaId, placa) {
           + Agregar ítem
         </button>
 
-        <!-- Urgencia -->
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px">
-          <span style="font-weight:600;color:var(--gris-mid);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Urgencia:</span>
-          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-            <input type="radio" name="sol-urgencia" value="normal" checked> Normal
-          </label>
-          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-            <input type="radio" name="sol-urgencia" value="urgente"> Urgente
-          </label>
-          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-            <input type="radio" name="sol-urgencia" value="muy_urgente"> Muy urgente
-          </label>
-        </div>
-
         <!-- Timer en vivo -->
         <div style="font-size:11px;color:var(--gris-mid)">
           ⏱ Solicitado hace: <span id="sol-timer-live" style="font-weight:700;color:var(--texto)">0m</span>
@@ -268,8 +254,6 @@ function _quitarFotoSolItem(idx) {
 }
 
 async function enviarSolicitudRepuesto(ordenId, etapaId) {
-  const tipo     = document.querySelector('input[name="sol-tipo"]:checked')?.value || 'taller';
-  const urgencia = document.querySelector('input[name="sol-urgencia"]:checked')?.value || 'normal';
   const items = _solItems.map(item => ({
     repuesto:      (document.getElementById(`si-rep-${item.idx}`)?.value || '').trim(),
     unidades:      parseFloat(document.getElementById(`si-cant-${item.idx}`)?.value) || 1,
