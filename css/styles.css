@@ -2331,14 +2331,14 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
   overflow: hidden;
 }
 .cal-head {
-  background: var(--azul);
-  color: rgba(255,255,255,0.8);
+  background: var(--gris-bg);
+  color: var(--gris-mid);
   text-align: center;
-  padding: 8px 4px;
-  font-size: 11px;
+  padding: 9px 4px;
+  font-size: 10.5px;
   font-weight: 700;
-  font-family: 'DM Mono', monospace;
-  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
 }
 .cal-cell {
   background: white;
@@ -2353,7 +2353,7 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 .cal-cell.cal-empty { background: var(--gris-bg); }
 .cal-cell.cal-pasado { background: #FAFAFA; }
 .cal-cell.cal-con-ordenes { background: #fff; }
-.cal-cell.cal-hoy { background: var(--azul-light); outline: 2px solid var(--azul-mid); outline-offset: -2px; }
+.cal-cell.cal-hoy { background: var(--azul-light); }
 .cal-dia {
   display: flex;
   align-items: center;
@@ -2363,6 +2363,16 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
   font-family: 'DM Sans', sans-serif;
   color: var(--gris-texto);
   margin-bottom: 2px;
+}
+.cal-hoy .cal-dia span {
+  background: var(--azul);
+  color: #fff;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .cal-dia strong {
   min-width: 20px;
@@ -2413,16 +2423,18 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
   box-shadow: var(--shadow-sm);
 }
 @media (max-width: 600px) {
-  .cal-cell { min-height: 44px; padding: 4px 3px; gap: 3px; }
-  .cal-head  { padding: 5px 2px; font-size: 9px; letter-spacing: 0; }
-  .cal-dia   { font-size: 10px; }
-  .cal-dia strong { min-width: 16px; height: 16px; font-size: 9px; }
-  .cal-orden { font-size: 9px; padding: 2px 4px; border-left-width: 2px; }
+  .cal-grid { gap: 1px; }
+  .cal-cell { min-height: 60px; padding: 4px 3px; gap: 2px; }
+  .cal-head  { padding: 6px 2px; font-size: 9px; letter-spacing: .3px; }
+  .cal-dia   { font-size: 11px; margin-bottom: 1px; }
+  .cal-dia strong { min-width: 15px; height: 15px; font-size: 9px; }
+  .cal-hoy .cal-dia span { width: 18px; height: 18px; font-size: 10px; }
+  .cal-orden { font-size: 9px; padding: 2px 4px; border-left-width: 2px; border-radius: 4px; }
   .cal-orden-meta { display: none; }
-  .cal-mas   { font-size: 9px; }
+  .cal-mas   { font-size: 8.5px; padding: 0; }
   /* Calendar nav compacto en móvil */
   .cal-shell  { padding: 10px 8px; }
-  .cal-mes-titulo { font-size: 13px; }
+  .cal-mes-titulo { font-size: 13px; letter-spacing: .3px; }
   .cal-nav    { margin-bottom: 8px; }
   .cal-leyenda { flex-wrap: wrap; gap: 4px; font-size: 10px; margin-bottom: 8px; }
 }
