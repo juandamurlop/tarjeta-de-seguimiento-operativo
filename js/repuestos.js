@@ -297,8 +297,7 @@ async function enviarSolicitudRepuesto(ordenId, etapaId) {
       repuesto:           items[0].repuesto,
       unidades:           items[0].unidades,
       observaciones:      items[0].observaciones,
-      estado:             'pendiente_jefe',
-      urgencia:           urgencia
+      estado:             'pendiente_jefe'
     }, { Prefer: 'return=representation' });
 
     const solicitudId = solicitudRes?.[0]?.id;
@@ -1347,8 +1346,7 @@ async function guardarCotizaciones(solicitudId) {
     }
 
     await api(`/solicitudes_repuesto?id=eq.${solicitudId}`, 'PATCH', {
-      estado: 'cotizado',
-      nota_repuestos: notas
+      estado: 'cotizado'
     });
     toast('Cotizaciones guardadas ✓');
     document.getElementById('modal-cotizar')?.remove();
