@@ -421,16 +421,16 @@ async function cargarKPITaller() {
         <div class="kpi-paneles">
           <div class="card kpi-panel">
             <div class="kpi-panel-titulo">Flujo · ingresos vs entregas (7 días)</div>
-            <div style="display:flex;align-items:flex-end;gap:8px;height:70px;padding-top:4px">
-              ${dias7.map(d => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-                <div style="display:flex;align-items:flex-end;gap:2px;height:58px">
-                  <div title="Ingresos: ${d.ingresos}" style="width:9px;height:${Math.max(Math.round(d.ingresos / maxT * 56), d.ingresos ? 3 : 0)}px;background:#2A5298;border-radius:3px 3px 0 0"></div>
-                  <div title="Entregas: ${d.entregas}" style="width:9px;height:${Math.max(Math.round(d.entregas / maxT * 56), d.entregas ? 3 : 0)}px;background:#059669;border-radius:3px 3px 0 0"></div>
+            <div style="display:flex;align-items:flex-end;gap:6px;height:52px;padding-top:3px">
+              ${dias7.map(d => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div style="display:flex;align-items:flex-end;gap:2px;height:42px">
+                  <div title="Ingresos: ${d.ingresos}" style="width:7px;height:${Math.max(Math.round(d.ingresos / maxT * 40), d.ingresos ? 3 : 0)}px;background:#2A5298;border-radius:3px 3px 0 0"></div>
+                  <div title="Entregas: ${d.entregas}" style="width:7px;height:${Math.max(Math.round(d.entregas / maxT * 40), d.entregas ? 3 : 0)}px;background:#059669;border-radius:3px 3px 0 0"></div>
                 </div>
-                <div style="font-size:9px;color:var(--gris-mid)">${d.lbl}</div>
+                <div style="font-size:8px;color:var(--gris-mid)">${d.lbl}</div>
               </div>`).join('')}
             </div>
-            <div style="display:flex;gap:16px;margin-top:8px;font-size:10px;color:var(--gris-mid)">
+            <div style="display:flex;gap:14px;margin-top:7px;font-size:9px;color:var(--gris-mid)">
               <span><span style="display:inline-block;width:8px;height:8px;background:#2A5298;border-radius:2px;vertical-align:middle"></span> Ingresos</span>
               <span><span style="display:inline-block;width:8px;height:8px;background:#059669;border-radius:2px;vertical-align:middle"></span> Entregas</span>
             </div>

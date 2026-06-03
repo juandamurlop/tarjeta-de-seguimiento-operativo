@@ -2536,22 +2536,22 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
   padding-bottom: 10px; border-bottom: 1.5px solid var(--gris-borde);
 }
 
-/* Resumen rápido — 4 columnas (alineado con los KPIs) */
-.kpi-resumen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; max-width: 760px; margin: 0 auto; }
+/* Resumen rápido — 4 columnas fijas, alineadas a la izquierda */
+.kpi-resumen { display: grid; grid-template-columns: repeat(4, 148px); gap: 8px; justify-content: start; }
 .kpi-res-item {
   background: white; border: 1px solid var(--gris-borde); border-radius: var(--radio);
-  padding: 9px 10px; text-align: center; box-shadow: var(--shadow-sm);
+  padding: 8px 10px; text-align: center; box-shadow: var(--shadow-sm);
 }
 .kpi-res-num { font-size: 18px; font-weight: 800; font-family: 'DM Mono', monospace; color: var(--texto); line-height: 1; }
 .kpi-res-lbl { font-size: 9px; color: var(--gris-mid); margin-top: 2px; text-transform: uppercase; letter-spacing: .4px; }
 
-/* Grid KPIs — 4 columnas (8 tarjetas = 4+4), centrado */
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; max-width: 760px; margin: 0 auto; }
+/* Grid KPIs — 4 columnas fijas (4+4), alineadas a la izquierda */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 158px); gap: 8px; justify-content: start; }
 
 /* Card */
 .kpi-card {
   background: white; border: 1px solid var(--gris-borde); border-radius: 10px;
-  padding: 11px 12px; cursor: pointer; box-shadow: var(--shadow-sm);
+  padding: 10px 11px; cursor: pointer; box-shadow: var(--shadow-sm);
   transition: transform .15s var(--ease-out), box-shadow .15s var(--ease-out), border-color .15s var(--ease-out);
   display: flex; flex-direction: column; gap: 1px; position: relative; overflow: hidden;
 }
@@ -2575,10 +2575,10 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 .kpi-card-sub { font-size: 9px; color: var(--gris-mid); line-height: 1.25; }
 .kpi-card-link { font-size: 9px; font-weight: 600; color: var(--azul-mid); margin-top: 3px; }
 
-/* Paneles / gráficos de Gestión Operativa */
-.kpi-paneles { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; }
-.kpi-panel { padding: 14px 16px; }
-.kpi-panel-titulo { font-size: 12px; font-weight: 700; color: var(--texto); margin-bottom: 12px; }
+/* Paneles / gráficos de Gestión Operativa — fijos y a la izquierda */
+.kpi-paneles { display: grid; grid-template-columns: repeat(auto-fill, 268px); gap: 10px; justify-content: start; }
+.kpi-panel { padding: 12px 14px; }
+.kpi-panel-titulo { font-size: 11.5px; font-weight: 700; color: var(--texto); margin-bottom: 10px; }
 .kpi-tec-row {
   display: flex; align-items: center; gap: 8px; padding: 6px 4px;
   border-bottom: 1px solid var(--gris-borde); cursor: pointer; border-radius: 6px;
@@ -2625,7 +2625,8 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 /* Mobile */
 @media (max-width: 768px) {
   .kpi-shell { padding: 12px; gap: 14px; }
-  .kpi-resumen, .kpi-grid { grid-template-columns: repeat(2, 1fr); max-width: none; }
+  .kpi-resumen, .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .kpi-paneles { grid-template-columns: 1fr; }
   .kpi-card { padding: 13px 12px; }
   .kpi-card-num { font-size: 24px; }
 }
