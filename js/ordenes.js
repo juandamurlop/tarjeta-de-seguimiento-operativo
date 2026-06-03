@@ -5178,7 +5178,7 @@ function _actualizarListaCritica(criticas) {
 
   cont.style.display = 'block';
   cont.innerHTML = `
-    <div style="background:#FEF2F2;border:1px solid #FCA5A5;border-radius:10px;padding:8px 11px;margin-bottom:12px">
+    <div style="display:inline-block;max-width:100%;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:10px;padding:8px 11px;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:5px;font-weight:700;font-size:11px;color:#991B1B;margin-bottom:7px;text-transform:uppercase;letter-spacing:.4px">
         <svg width="13" height="13" fill="none" stroke="#DC2626" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         Alertas críticas · +5h sin movimiento (${criticas.length})
