@@ -25,6 +25,14 @@ function _kpiSemaforo(val, umbralRojo, umbralAmarillo) {
 }
 
 // ── Modal de drilldown ───────────────────────────────────
+// Mini-estadística del "pulso del día"
+function _pulsoStat(label, val, color) {
+  return `<div style="text-align:center;min-width:78px">
+    <div style="font-size:20px;font-weight:800;color:${color};line-height:1">${val}</div>
+    <div style="font-size:9px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.4px;margin-top:4px">${label}</div>
+  </div>`;
+}
+
 // Gráfico de barras horizontales: items = [{label, valor, color?}]
 function _kpiBarras(items, colorDefault) {
   if (!items || !items.length) return '<div style="font-size:12px;color:var(--gris-mid)">Sin datos</div>';
@@ -92,11 +100,13 @@ async function cargarKPITaller() {
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
 
   try {
-    const [ordenesActivas, todasEtapas, solicitudesRep, mecanicosData] = await Promise.all([
+    const _hace14d = new Date(ahora - 14 * 86400000).toISOString();
+    const [ordenesActivas, todasEtapas, solicitudesRep, mecanicosData, entregadasRecientes] = await Promise.all([
       api('/ordenes?estado=eq.Activa&order=creado_en.asc').catch(() => []),
       api('/etapas?select=id,orden_id,etapa,servicio,mecanico_id,tecnico,creado_en,inicio,fin,pausado,tiempo_pausado_min&order=creado_en.asc').catch(() => []),
       api('/solicitudes_repuesto?estado=not.in.(entregado,rechazado)&order=creado_en.asc').catch(() => []),
-      api('/mecanicos?activo=eq.true&order=nombre.asc').catch(() => [])
+      api('/mecanicos?activo=eq.true&order=nombre.asc').catch(() => []),
+      api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${_hace14d}&select=id,placa,ingreso_en,entregada_en,fecha_entrega_1,creado_en`).catch(() => [])
     ]);
 
     const etapasActivas = todasEtapas.filter(e => e.inicio && !e.fin);
@@ -246,6 +256,53 @@ async function cargarKPITaller() {
     // ── Render ────────────────────────────────────────────
     const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 
+    // ════════ DATOS DE CONTROL DE LA OPERACIÓN ════════
+    const CAP = (typeof CAPACIDAD_TALLER !== 'undefined' ? CAPACIDAD_TALLER : 34);
+    const _localDay = iso => { if (!iso) return null; const x = new Date(iso); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`; };
+    const _hoyKey = _localDay(new Date());
+
+    // Pulso del día
+    const enTaller = ordenesActivas.filter(o => !o.pulmon).length;
+    const enPulmon = ordenesActivas.filter(o => o.pulmon).length;
+    const pctOcup  = Math.min(100, Math.round(enTaller / CAP * 100));
+    const ingresosHoy = ordenesActivas.filter(o => _localDay(o.ingreso_en) === _hoyKey).length
+                      + entregadasRecientes.filter(o => _localDay(o.ingreso_en) === _hoyKey).length;
+    const entregasHoy = entregadasRecientes.filter(o => _localDay(o.entregada_en) === _hoyKey).length;
+
+    // Throughput últimos 7 días (ingresos vs entregas)
+    const dias7 = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(hoy); d.setDate(d.getDate() - i);
+      dias7.push({ dStr: _localDay(d), lbl: d.toLocaleDateString('es-CO', { weekday: 'short' }).replace('.', ''), ingresos: 0, entregas: 0 });
+    }
+    const _sumDia = (arr, campo, key) => arr.forEach(o => { const d = dias7.find(x => x.dStr === _localDay(o[campo])); if (d) d[key]++; });
+    _sumDia(ordenesActivas, 'ingreso_en', 'ingresos');
+    _sumDia(entregadasRecientes, 'ingreso_en', 'ingresos');
+    _sumDia(entregadasRecientes, 'entregada_en', 'entregas');
+    const maxT = Math.max(1, ...dias7.map(d => Math.max(d.ingresos, d.entregas)));
+
+    // Embudo: órdenes activas por etapa del proceso
+    const _embudo = {};
+    ordenesActivas.filter(o => !o.pulmon).forEach(o => {
+      const ets = todasEtapas.filter(e => e.orden_id === o.id);
+      const act = etapasActivas.find(e => e.orden_id === o.id);
+      let stage;
+      if (act) stage = act.etapa || act.servicio || 'En proceso';
+      else if (!ets.length || ets.every(e => !e.mecanico_id)) stage = 'Sin asignar';
+      else if (ets.every(e => e.fin)) stage = 'Calidad / Listo';
+      else stage = 'Por iniciar';
+      _embudo[stage] = (_embudo[stage] || 0) + 1;
+    });
+    const embudo = Object.entries(_embudo).map(([label, valor]) => ({ label, valor })).sort((a, b) => b.valor - a.valor);
+
+    // Cumplimiento de entregas (últimos 14 días) + órdenes en riesgo
+    const _conMeta = entregadasRecientes.filter(o => o.fecha_entrega_1);
+    const _aTiempo = _conMeta.filter(o => new Date(o.entregada_en) <= new Date(new Date(o.fecha_entrega_1).getTime() + 86400000)).length;
+    const pctCumpl = _conMeta.length ? Math.round(_aTiempo / _conMeta.length * 100) : null;
+    const enRiesgo = ordenesActivas.filter(o => !o.pulmon && o.fecha_entrega_1)
+      .map(o => ({ ...o, dias: Math.ceil((new Date(o.fecha_entrega_1) - hoy) / 86400000) }))
+      .filter(o => o.dias <= 2).sort((a, b) => a.dias - b.dias);
+
     renderSinParpadeo(cont, `
       <div class="kpi-shell">
 
@@ -342,6 +399,59 @@ async function cargarKPITaller() {
             <div class="kpi-card-lbl">Sin movimiento +4h</div>
             <div class="kpi-card-sub">${k8Filas.length ? 'Revisar prioridad' : 'Todas con actividad'}</div>
             <div class="kpi-card-link">Ver detalle →</div>
+          </div>
+        </div>
+
+        <!-- PULSO DEL DÍA -->
+        <div class="card" style="padding:12px 18px;display:flex;flex-wrap:wrap;gap:20px;align-items:center">
+          <div style="flex:1;min-width:180px">
+            <div style="font-size:9.5px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Ocupación del taller</div>
+            <div style="display:flex;align-items:center;gap:9px">
+              <div style="flex:1;height:10px;background:var(--gris-bg);border-radius:99px;overflow:hidden"><div style="height:100%;width:${pctOcup}%;background:${pctOcup >= 90 ? '#DC2626' : pctOcup >= 70 ? '#D97706' : '#059669'};border-radius:99px;transition:width .4s var(--ease-out)"></div></div>
+              <span style="font-size:14px;font-weight:800;white-space:nowrap">${enTaller}/${CAP}</span>
+            </div>
+          </div>
+          ${_pulsoStat('En pulmón', enPulmon, '#D97706')}
+          ${_pulsoStat('Ingresos hoy', ingresosHoy, '#2A5298')}
+          ${_pulsoStat('Entregas hoy', entregasHoy, '#059669')}
+          ${_pulsoStat('Entregas a tiempo', pctCumpl != null ? pctCumpl + '%' : '—', pctCumpl == null ? '#6B7280' : pctCumpl >= 80 ? '#059669' : pctCumpl >= 60 ? '#D97706' : '#DC2626')}
+        </div>
+
+        <!-- PANELES DE CONTROL -->
+        <div class="kpi-paneles">
+          <div class="card kpi-panel">
+            <div class="kpi-panel-titulo">Flujo · ingresos vs entregas (7 días)</div>
+            <div style="display:flex;align-items:flex-end;gap:8px;height:70px;padding-top:4px">
+              ${dias7.map(d => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                <div style="display:flex;align-items:flex-end;gap:2px;height:58px">
+                  <div title="Ingresos: ${d.ingresos}" style="width:9px;height:${Math.max(Math.round(d.ingresos / maxT * 56), d.ingresos ? 3 : 0)}px;background:#2A5298;border-radius:3px 3px 0 0"></div>
+                  <div title="Entregas: ${d.entregas}" style="width:9px;height:${Math.max(Math.round(d.entregas / maxT * 56), d.entregas ? 3 : 0)}px;background:#059669;border-radius:3px 3px 0 0"></div>
+                </div>
+                <div style="font-size:9px;color:var(--gris-mid)">${d.lbl}</div>
+              </div>`).join('')}
+            </div>
+            <div style="display:flex;gap:16px;margin-top:8px;font-size:10px;color:var(--gris-mid)">
+              <span><span style="display:inline-block;width:8px;height:8px;background:#2A5298;border-radius:2px;vertical-align:middle"></span> Ingresos</span>
+              <span><span style="display:inline-block;width:8px;height:8px;background:#059669;border-radius:2px;vertical-align:middle"></span> Entregas</span>
+            </div>
+          </div>
+
+          <div class="card kpi-panel">
+            <div class="kpi-panel-titulo">Órdenes por etapa del proceso</div>
+            ${_kpiBarras(embudo, '#2A5298')}
+          </div>
+
+          <div class="card kpi-panel">
+            <div class="kpi-panel-titulo">Órdenes en riesgo (${enRiesgo.length})</div>
+            ${enRiesgo.length ? enRiesgo.slice(0, 8).map(o => {
+              const venc = o.dias < 0, col = venc ? '#DC2626' : o.dias === 0 ? '#D97706' : '#B45309';
+              const txt = venc ? `vencida ${Math.abs(o.dias)}d` : o.dias === 0 ? 'vence hoy' : `en ${o.dias}d`;
+              return `<div class="kpi-tec-row" onclick="_kpiAbrirOrden(${o.id})">
+                <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:12px;flex-shrink:0">${escapeHtml(o.placa || '—')}</span>
+                <span style="font-size:11px;color:var(--gris-mid);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml([o.marca, o.linea].filter(Boolean).join(' ') || '')}</span>
+                <span style="font-size:11px;font-weight:700;color:${col};flex-shrink:0">${txt}</span>
+              </div>`;
+            }).join('') : '<div style="font-size:12px;color:var(--gris-mid)">Ninguna orden en riesgo ✓</div>'}
           </div>
         </div>
 
