@@ -1106,7 +1106,7 @@ async function guardarDescripcion(ordenId) {
 // NUEVA ORDEN
 // ============================================================
 function resetNuevaOrden() {
-  const fields = ['n-placa', 'n-marca', 'n-linea', 'n-modelo', 'n-color', 'n-propietario', 'n-telefono', 'n-km', 'n-fecha1', 'n-fecha2', 'n-inv-obs', 'n-cedula-cliente', 'n-vin', 'n-correo-cliente', 'n-descripcion-general', 'n-fecha-programada'];
+  const fields = ['n-placa', 'n-marca', 'n-linea', 'n-modelo', 'n-color', 'n-propietario', 'n-telefono', 'n-km', 'n-fecha1', 'n-fecha2', 'n-inv-obs', 'n-cedula-cliente', 'n-vin', 'n-correo-cliente', 'n-descripcion-general'];
   fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   const aseguradora = document.getElementById('n-aseguradora');
   const dano = document.getElementById('n-dano');
@@ -1740,7 +1740,6 @@ async function crearOrden() {
     kilometraje: kmOmitir ? null : (parseInt(document.getElementById('n-km')?.value) || null),
     fecha_entrega_1: document.getElementById('n-fecha1')?.value || null,
     fecha_entrega_2: document.getElementById('n-fecha2')?.value || null,
-    fecha_programada: document.getElementById('n-fecha-programada')?.value || null,
     descripcion_general: document.getElementById('n-descripcion-general')?.value.trim() || null,
     tipo_carroceria: document.getElementById('n-tipo-carroceria')?.value || null,
     danos_vehiculo: (() => {
@@ -1753,27 +1752,10 @@ async function crearOrden() {
       return Object.keys(d).length ? JSON.stringify(d) : null;
     })(),
     inventario: JSON.stringify({ items: invItems, observaciones: document.getElementById('n-inv-obs')?.value.trim() || null }),
-    estado: (() => {
-      const fp = document.getElementById('n-fecha-programada')?.value;
-      if (fp) {
-        // Comparar strings YYYY-MM-DD en hora local para evitar desfase UTC/local.
-        // new Date('YYYY-MM-DD') se parsea como UTC medianoche, lo que en UTC-5
-        // equivale a las 19:00 del día anterior — incorrecto para esta comparación.
-        const d = new Date();
-        const hoy = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        if (fp >= hoy) return 'Programada';
-      }
-      return 'Activa';
-    })(),
-    ingreso_en: (() => {
-      const fp = document.getElementById('n-fecha-programada')?.value;
-      if (fp) {
-        const d = new Date();
-        const hoy = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        if (fp >= hoy) return null; // programada (hoy o futuro): ingreso_en se registra al llegar
-      }
-      return new Date().toISOString(); // activa directa: ingresa ahora
-    })(),
+    // Nueva orden = vehículo que ingresa ahora (Activa). Para programar un
+    // ingreso futuro se usa "Agendar ingreso" en el Calendario.
+    estado: 'Activa',
+    ingreso_en: new Date().toISOString(),
     cliente_id: clienteId,
     vin: vin || null,
     correo_cliente: correoCliente || null
