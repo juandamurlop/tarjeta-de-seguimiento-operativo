@@ -403,7 +403,7 @@ async function cargarKPITaller() {
         </div>
 
         <!-- PULSO DEL DÍA -->
-        <div class="card" style="padding:12px 18px;display:flex;flex-wrap:wrap;gap:20px;align-items:center">
+        <div class="card" style="padding:12px 18px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;max-width:656px">
           <div style="flex:1;min-width:180px">
             <div style="font-size:9.5px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Ocupación del taller</div>
             <div style="display:flex;align-items:center;gap:9px">
