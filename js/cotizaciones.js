@@ -626,14 +626,8 @@ async function guardarNuevaCotizacion(conPdf = false) {
     }
 
     if (conPdf && cotId) {
-      toast('Generando PDF...');
-      const pdfUrl = await generarPdfCotizacion(cotId);
-      if (pdfUrl) {
-        toast('PDF generado ✓');
-        window.open(pdfUrl, '_blank');
-      } else {
-        toast('No se pudo generar el PDF', 'warn');
-      }
+      // generarPdfCotizacion ya muestra los toasts y abre el PDF.
+      await generarPdfCotizacion(cotId);
     }
 
     _cotEditandoId = null;
