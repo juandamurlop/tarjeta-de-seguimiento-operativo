@@ -2575,6 +2575,18 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 .kpi-card-sub { font-size: 9px; color: var(--gris-mid); line-height: 1.25; }
 .kpi-card-link { font-size: 9px; font-weight: 600; color: var(--azul-mid); margin-top: 3px; }
 
+/* Paneles / gráficos de Gestión Operativa */
+.kpi-paneles { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; }
+.kpi-panel { padding: 14px 16px; }
+.kpi-panel-titulo { font-size: 12px; font-weight: 700; color: var(--texto); margin-bottom: 12px; }
+.kpi-tec-row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 4px;
+  border-bottom: 1px solid var(--gris-borde); cursor: pointer; border-radius: 6px;
+  transition: background 0.12s var(--ease-out);
+}
+.kpi-tec-row:last-child { border-bottom: none; }
+.kpi-tec-row:hover { background: var(--gris-bg); }
+
 /* Drilldown */
 .kpi-drill-fila {
   display: grid; grid-template-columns: 56px 1fr auto auto; align-items: center; gap: 10px;

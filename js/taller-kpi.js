@@ -25,6 +25,20 @@ function _kpiSemaforo(val, umbralRojo, umbralAmarillo) {
 }
 
 // ── Modal de drilldown ───────────────────────────────────
+// Gráfico de barras horizontales: items = [{label, valor, color?}]
+function _kpiBarras(items, colorDefault) {
+  if (!items || !items.length) return '<div style="font-size:12px;color:var(--gris-mid)">Sin datos</div>';
+  const max = Math.max(1, ...items.map(i => i.valor || 0));
+  return items.map(i => {
+    const pct = Math.round((i.valor || 0) / max * 100);
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="font-size:11px;color:var(--gris-texto);width:94px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(i.label)}</div>
+      <div style="flex:1;height:14px;background:var(--gris-bg);border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${i.color || colorDefault || '#2A5298'};border-radius:99px;min-width:${i.valor ? 4 : 0}px;transition:width .4s var(--ease-out)"></div></div>
+      <div style="font-size:12px;font-weight:700;color:var(--texto);width:22px;text-align:right;flex-shrink:0">${i.valor || 0}</div>
+    </div>`;
+  }).join('');
+}
+
 function kpiDrilldown(key) {
   const { titulo, filas } = window._kpiStore[key] || { titulo: '—', filas: [] };
   const ex = document.getElementById('_kpiModal');
@@ -232,50 +246,41 @@ async function cargarKPITaller() {
     // ── Render ────────────────────────────────────────────
     const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 
-    // Tabla de órdenes
-    const tablaFilas = ordenesActivas.map(o => {
-      const ets = todasEtapas.filter(e => e.orden_id === o.id);
-      const etAct = etapasActivas.find(e => e.orden_id === o.id);
-      const comp = ets.filter(e => e.fin).length;
-      const total = ets.length;
-      const sinAsig = !ets.length || ets.every(e => !e.mecanico_id);
-      const vencida = o.fecha_entrega_1 && new Date(o.fecha_entrega_1) < hoy;
-      const sinMov = k8Filas.some(f => f.ordenId === o.id);
-      const alertas = [
-        sinAsig ? '<span class="kpi-badge rojo">Sin asignar</span>' : '',
-        vencida  ? '<span class="kpi-badge rojo">Vencida</span>' : '',
-        sinMov   ? '<span class="kpi-badge amarillo">Sin movimiento</span>' : ''
-      ].filter(Boolean).join(' ');
+    // ── Datos de los paneles (debajo de los KPIs) ─────────
+    // 1) Carga por sección — etapas activas agrupadas por etapa
+    const _porSeccion = {};
+    etapasActivas.forEach(e => {
+      const sec = e.etapa || e.servicio || 'Otro';
+      _porSeccion[sec] = (_porSeccion[sec] || 0) + 1;
+    });
+    const cargaSeccion = Object.entries(_porSeccion)
+      .map(([label, valor]) => ({ label, valor }))
+      .sort((a, b) => b.valor - a.valor).slice(0, 8);
 
-      let entHtml = '—';
-      if (o.fecha_entrega_1) {
-        const d = Math.round((new Date(o.fecha_entrega_1) - hoy) / 86400000);
-        const c = d < 0 ? 'var(--rojo)' : d <= 2 ? 'var(--amarillo)' : 'var(--verde)';
-        entHtml = '<span style="color:' + c + ';font-weight:600;font-size:12px">' + (d < 0 ? Math.abs(d) + 'd venció' : d === 0 ? 'Hoy' : d + 'd') + '</span>';
-      }
+    // 2) Órdenes por días en taller
+    const _buckets = { '0–3 días': 0, '4–7 días': 0, '8–15 días': 0, '+15 días': 0 };
+    ordenesActivas.forEach(o => {
+      const base = o.ingreso_en || o.creado_en;
+      const d = base ? Math.floor((Date.now() - new Date(base)) / 86400000) : 0;
+      if (d <= 3) _buckets['0–3 días']++;
+      else if (d <= 7) _buckets['4–7 días']++;
+      else if (d <= 15) _buckets['8–15 días']++;
+      else _buckets['+15 días']++;
+    });
+    const _diasCol = { '0–3 días': '#059669', '4–7 días': '#2A5298', '8–15 días': '#D97706', '+15 días': '#DC2626' };
+    const ordenesDias = Object.entries(_buckets).map(([label, valor]) => ({ label, valor, color: _diasCol[label] }));
 
-      const pct = total ? Math.round((comp / total) * 100) : 0;
-      return `<tr class="kpi-tabla-fila" onclick="_kpiAbrirOrden(${o.id})" style="cursor:pointer">
-        <td>
-          <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:13px">${escapeHtml(o.placa || '—')}</div>
-          <div style="font-size:10px;color:var(--gris-mid)">${formatOT(o.id)}</div>
-        </td>
-        <td style="font-size:12px">${escapeHtml([o.marca, o.linea].filter(Boolean).join(' ') || '—')}</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-            ${etAct ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#22C55E;box-shadow:0 0 0 2px #DCFCE7;flex-shrink:0"></span>' : ''}
-            <span style="font-size:11px;color:${etAct ? 'var(--verde)' : 'var(--gris-mid)'};font-weight:${etAct ? '700' : '400'}">${etAct ? 'En proceso' : (comp === total && total > 0 ? 'Completada' : 'Pendiente')}</span>
-            <span style="font-size:10px;color:var(--gris-mid)">${comp}/${total}</span>
-          </div>
-          <div style="height:4px;background:var(--gris-borde);border-radius:99px;width:80px">
-            <div style="height:4px;background:${pct === 100 ? 'var(--verde)' : etAct ? '#22C55E' : 'var(--azul)'};border-radius:99px;width:${Math.round(pct * 0.8)}px"></div>
-          </div>
-        </td>
-        <td style="font-size:12px;font-weight:${etAct ? '600' : '400'};color:${etAct ? 'var(--texto)' : 'var(--gris-mid)'}">${escapeHtml(etAct?.tecnico || '—')}</td>
-        <td>${entHtml}</td>
-        <td>${alertas || '<span style="color:var(--verde);font-size:12px">✓ OK</span>'}</td>
-      </tr>`;
-    }).join('');
+    // 3) Repuestos por estado
+    const _repLbl = { pendiente_jefe: 'Solicitado', enviado_repuestos: 'En repuestos', cotizado: 'Cotizado', pedido: 'Pedido', recibido_taller: 'En taller' };
+    const _porRep = {};
+    (solicitudesRep || []).forEach(s => { const l = _repLbl[s.estado]; if (l) _porRep[l] = (_porRep[l] || 0) + 1; });
+    const repuestosEstado = Object.values(_repLbl).map(l => ({ label: l, valor: _porRep[l] || 0 }));
+
+    // 4) Técnicos: qué hacen ahora
+    const tecnicosAhora = etapasActivas.map(e => {
+      const o = ordenesActivas.find(or => or.id === e.orden_id) || {};
+      return { tecnico: e.tecnico || 'Sin técnico', placa: o.placa || '—', ordenId: e.orden_id, etapa: e.etapa || e.servicio || '', ms: e.inicio ? Date.now() - new Date(e.inicio).getTime() : 0 };
+    }).sort((a, b) => b.ms - a.ms);
 
     renderSinParpadeo(cont, `
       <div class="kpi-shell">
@@ -373,6 +378,33 @@ async function cargarKPITaller() {
             <div class="kpi-card-lbl">Sin movimiento +4h</div>
             <div class="kpi-card-sub">${k8Filas.length ? 'Revisar prioridad' : 'Todas con actividad'}</div>
             <div class="kpi-card-link">Ver detalle →</div>
+          </div>
+        </div>
+
+        <!-- PANELES / GRÁFICOS -->
+        <div class="kpi-paneles">
+          <div class="card kpi-panel">
+            <div class="kpi-panel-titulo">Carga por sección · etapas activas</div>
+            ${_kpiBarras(cargaSeccion, '#2A5298')}
+          </div>
+          <div class="card kpi-panel">
+            <div class="kpi-panel-titulo">Órdenes por días en taller</div>
+            ${_kpiBarras(ordenesDias, '#2A5298')}
+          </div>
+          <div class="card kpi-panel">
+            <div class="kpi-panel-titulo">Repuestos por estado</div>
+            ${_kpiBarras(repuestosEstado, '#7C3AED')}
+          </div>
+          <div class="card kpi-panel">
+            <div class="kpi-panel-titulo">Técnicos · qué hacen ahora (${tecnicosAhora.length})</div>
+            ${tecnicosAhora.length ? tecnicosAhora.map(t => `
+              <div class="kpi-tec-row" onclick="_kpiAbrirOrden(${t.ordenId})">
+                <span style="width:7px;height:7px;border-radius:50%;background:#22C55E;flex-shrink:0;box-shadow:0 0 0 2px #DCFCE7"></span>
+                <span style="font-weight:600;font-size:12px;flex-shrink:0">${escapeHtml(t.tecnico)}</span>
+                <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gris-mid);flex-shrink:0">${escapeHtml(t.placa)}</span>
+                <span style="font-size:11px;color:var(--gris-mid);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${escapeHtml(t.etapa)}</span>
+                <span style="font-size:11px;font-weight:700;color:var(--azul);flex-shrink:0">${_kpiDur(t.ms)}</span>
+              </div>`).join('') : '<div style="font-size:12px;color:var(--gris-mid)">Ningún técnico trabajando ahora</div>'}
           </div>
         </div>
 
