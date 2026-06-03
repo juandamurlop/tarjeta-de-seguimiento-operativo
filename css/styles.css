@@ -483,6 +483,7 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 /* Glow sutil en los arcos del donut */
 #cap-fill-activas { filter: drop-shadow(0 0 3px rgba(234,179,8,0.55)); }
 #cap-fill-pulmon  { filter: drop-shadow(0 0 3px rgba(249,115,22,0.55)); }
+#cap-pct { font-size: 16px; font-weight: 800; filter: drop-shadow(0 0 4px rgba(255,255,255,0.25)); }
 .sidebar-overlay {
   display: none;
   position: fixed;
