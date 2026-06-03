@@ -2449,7 +2449,26 @@ function montarJefe() {
       localStorage.setItem('nav_grupos', JSON.stringify(_grupAbiertos));
       const cont = document.getElementById('nav-grupo-' + id);
       const chevron = document.getElementById('nav-chevron-' + id);
-      if (cont) cont.style.display = _grupAbiertos[id] ? 'block' : 'none';
+      if (cont) {
+        clearTimeout(cont._animT);
+        if (_grupAbiertos[id]) {
+          // Abrir: 0 → altura real (suave), luego liberar a 'none'
+          cont.style.display = 'block';
+          cont.style.maxHeight = '0px';
+          cont.style.opacity = '0';
+          void cont.offsetHeight; // forzar reflow
+          cont.style.maxHeight = cont.scrollHeight + 'px';
+          cont.style.opacity = '1';
+          cont._animT = setTimeout(() => { if (_grupAbiertos[id]) cont.style.maxHeight = 'none'; }, 340);
+        } else {
+          // Cerrar: fijar altura actual → 0
+          cont.style.maxHeight = cont.scrollHeight + 'px';
+          void cont.offsetHeight; // forzar reflow
+          cont.style.maxHeight = '0px';
+          cont.style.opacity = '0';
+          cont._animT = setTimeout(() => { if (!_grupAbiertos[id]) cont.style.display = 'none'; }, 340);
+        }
+      }
       if (chevron) chevron.style.transform = _grupAbiertos[id] ? 'rotate(0deg)' : 'rotate(-90deg)';
     };
     window._navToggleGrupo = _toggleGrupo;
@@ -2459,7 +2478,7 @@ function montarJefe() {
         <span class="nav-section-label">${label}</span>
         <svg id="nav-chevron-${id}" width="13" height="13" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .2s;transform:rotate(${_grupAbiertos[id]?'0':'-90'}deg);opacity:.8"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
-      <div id="nav-grupo-${id}" style="display:${_grupAbiertos[id]?'block':'none'};overflow:hidden">`;
+      <div id="nav-grupo-${id}" class="nav-grupo-body"${_grupAbiertos[id]?'':' style="display:none"'}>`;
 
     sidebarNav.innerHTML = `
       ${_grupoHeader('operaciones','Gestión Operativa')}
