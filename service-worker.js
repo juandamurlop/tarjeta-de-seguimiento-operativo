@@ -1,4 +1,4 @@
-const CACHE_NAME = 'freimanautos-pwa-v139';
+const CACHE_NAME = 'freimanautos-pwa-v140';
 
 const STATIC_ASSETS = [
   '/',
@@ -71,19 +71,20 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // NETWORK-FIRST para assets locales GET (HTML/CSS/JS):
-  // siempre intenta traer la versión más reciente; si no hay red,
-  // usa la copia en caché como respaldo offline. Esto garantiza que
-  // cada deploy se vea de inmediato sin tener que limpiar caché.
+  // STALE-WHILE-REVALIDATE para assets locales GET (HTML/CSS/JS):
+  // responde al instante desde la caché (rápido) y, en paralelo, baja la
+  // versión nueva para actualizar la caché de cara a la próxima carga.
+  // Equilibrio ideal: rápido como cache-first y se actualiza solo.
   event.respondWith(
-    fetch(request)
-      .then(response => {
+    caches.match(request).then(cached => {
+      const red = fetch(request).then(response => {
         if (response && response.status === 200 && response.type !== 'opaque') {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
         }
         return response;
-      })
-      .catch(() => caches.match(request))
+      }).catch(() => cached);
+      return cached || red;
+    })
   );
 });
