@@ -1109,6 +1109,43 @@ function _reRenderFilasCot() {
   });
 }
 
+// ── Puntaje de proveedores (desde el historial de cotizaciones) ──
+// Combina velocidad de entrega (días promedio) y confianza (% de veces
+// que su cotización fue la elegida por el jefe). Devuelve por proveedor:
+// { n, elegido, avgDias, puntaje (0-100), estrellas (1-5) }.
+async function _calcularScoresProveedores() {
+  const cots = await api('/cotizaciones_repuesto?select=proveedor_id,dias_entrega,precio_venta_jefe').catch(() => []) || [];
+  const stats = {};
+  cots.forEach(c => {
+    if (!c.proveedor_id) return;
+    const s = stats[c.proveedor_id] || (stats[c.proveedor_id] = { n: 0, diasSum: 0, diasN: 0, elegido: 0 });
+    s.n++;
+    if (c.dias_entrega != null) { s.diasSum += (+c.dias_entrega || 0); s.diasN++; }
+    if (c.precio_venta_jefe != null) s.elegido++;
+  });
+  const out = {};
+  Object.entries(stats).forEach(([id, s]) => {
+    const avgDias = s.diasN ? s.diasSum / s.diasN : null;
+    const tasaElegido = s.n ? s.elegido / s.n : 0;
+    const velocidad = avgDias == null ? 55
+      : avgDias <= 1 ? 100 : avgDias <= 2 ? 85 : avgDias <= 3 ? 70
+      : avgDias <= 5 ? 55 : avgDias <= 7 ? 40 : 25;
+    const confianza = tasaElegido * 100;
+    const puntaje = Math.round(velocidad * 0.6 + confianza * 0.4);
+    const estrellas = Math.max(1, Math.min(5, Math.round(puntaje / 20 * 2) / 2));
+    out[id] = { n: s.n, elegido: s.elegido, avgDias, puntaje, estrellas };
+  });
+  return out;
+}
+
+function _estrellasHtml(n) {
+  if (n == null) return '<span style="color:var(--gris-mid)">—</span>';
+  const full = Math.floor(n);
+  const half = (n - full) >= 0.5;
+  const empty = 5 - full - (half ? 1 : 0);
+  return `<span style="color:#F59E0B;letter-spacing:1px">${'★'.repeat(full)}${half ? '⯨' : ''}${'<span style="color:#D1D5DB">★</span>'.repeat(Math.max(0, empty))}</span>`;
+}
+
 async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, modelo, anio, vin) {
   _cotDatosVehiculo = { repuesto: repuesto||'', unidades: unidades||1, placa: placa||'', marca: marca||'', modelo: modelo||'', anio: anio||'', vin: vin||'' };
 
@@ -1120,18 +1157,20 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
   ]);
   document.getElementById('modal-cotizar')?.remove();
 
-  // Score / favorito
-  const provConScore = proveedores.map(p => ({
-    ...p, score: p.tiempo_respuesta_promedio_min ?? Infinity
-  })).sort((a,b) => a.score - b.score);
-  const favoritoId = provConScore[0]?.score < Infinity ? provConScore[0].id : null;
+  // Score / favorito (calculado desde el historial de cotizaciones)
+  const _scores = await _calcularScoresProveedores();
+  const provConScore = proveedores.map(p => ({ ...p, _sc: _scores[p.id] || null }))
+    .sort((a,b) => (b._sc?.puntaje || 0) - (a._sc?.puntaje || 0));
+  const favorito   = provConScore.find(p => p._sc && p._sc.n > 0) || null;
+  const favoritoId = favorito?.id || null;
 
-  // Opciones del select con favorito ★
+  // Opciones del select con favorito ★ y puntaje
   const provOpts = '<option value="">— Seleccionar proveedor —</option>' +
     provConScore.map(p => {
-      const star  = p.id === favoritoId ? '★ ' : '';
-      const prom  = p.tiempo_respuesta_promedio_min != null ? ` (${Math.round(p.tiempo_respuesta_promedio_min/60)}h prom.)` : '';
-      return `<option value="${p.id}">${star}${escapeHtml(p.nombre)}${prom}</option>`;
+      const star = p.id === favoritoId ? '★ ' : '';
+      const sc   = p._sc;
+      const info = sc ? ` — ${sc.estrellas}★${sc.avgDias != null ? ', ' + (Math.round(sc.avgDias*10)/10) + 'd' : ''}` : '';
+      return `<option value="${p.id}">${star}${escapeHtml(p.nombre)}${info}</option>`;
     }).join('');
 
   // Filas iniciales
@@ -1144,7 +1183,7 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
   // Info header
   const vehiculoStr = [marca, modelo, anio].filter(Boolean).join(' ') || placa || '';
   const timerStr    = sol?.creado_en ? _tiempoDesde(sol.creado_en, ' desde solicitud') : '';
-  const favNom      = favoritoId ? provConScore[0].nombre : null;
+  const favNom      = favorito ? favorito.nombre : null;
 
   const div = document.createElement('div');
   div.id = 'modal-cotizar';
@@ -1327,6 +1366,10 @@ async function cargarProveedores() {
 
   try {
     const provs = await api('/proveedores?order=nombre.asc').catch(()=>[]) || [];
+    const scores = await _calcularScoresProveedores();
+    // Favorito = mayor puntaje con historial
+    let favId = null, favPun = -1;
+    provs.forEach(p => { const s = scores[p.id]; if (s && s.n > 0 && s.puntaje > favPun) { favPun = s.puntaje; favId = p.id; } });
 
     // Poblar registry para evitar pasar JSON en onclick
     _provRegistry = {};
@@ -1344,6 +1387,7 @@ async function cargarProveedores() {
           <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--gris-mid);text-transform:uppercase">Ciudad</th>
           <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--gris-mid);text-transform:uppercase">WhatsApp</th>
           <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--gris-mid);text-transform:uppercase">Marcas</th>
+          <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--gris-mid);text-transform:uppercase">Puntaje</th>
           <th></th>
         </tr></thead>
         <tbody>
@@ -1354,6 +1398,17 @@ async function cargarProveedores() {
             <td style="padding:10px 12px;font-family:'DM Mono',monospace">${escapeHtml(p.whatsapp||'—')}</td>
             <td style="padding:10px 12px;font-size:11px;color:var(--gris-mid)">
               ${p.multimarca?'<span style="background:var(--azul-light);color:var(--azul);padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600">Multimarca</span>':(p.marcas||[]).slice(0,3).map(escapeHtml).join(', ')||'—'}
+            </td>
+            <td style="padding:10px 12px">
+              ${(() => {
+                const s = scores[p.id];
+                if (!s || !s.n) return '<span style="font-size:11px;color:var(--gris-mid)">Sin historial</span>';
+                return `<div style="display:flex;align-items:center;gap:6px;white-space:nowrap">
+                  ${p.id === favId ? '<span title="Favorito de confianza" style="color:#D97706;font-weight:800">★</span>' : ''}
+                  ${_estrellasHtml(s.estrellas)}
+                  <span style="font-size:10px;color:var(--gris-mid)">${s.avgDias != null ? (Math.round(s.avgDias*10)/10) + 'd · ' : ''}${s.elegido}/${s.n}✓</span>
+                </div>`;
+              })()}
             </td>
             <td style="padding:10px 12px">
               <button class="btn btn-ghost btn-sm" data-prov-id="${p.id}" onclick="_editarProveedorPorId(this)">Editar</button>
