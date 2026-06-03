@@ -2614,8 +2614,9 @@ function montarJefe() {
 
   // Cargar la lista de mecánicos para los selects
   cargarMecanicos().finally(() => {
-    // Restaurar última página visitada (para que F5 no pierda el contexto)
-    const ultimaPag = localStorage.getItem('ultima_pag_jefe') || 'dashboard';
+    // Al abrir la app / iniciar sesión → Gestión Operativa por defecto.
+    // En F5 dentro de la misma sesión se conserva la página (sessionStorage).
+    const ultimaPag = sessionStorage.getItem('ultima_pag_jefe') || 'taller-kpi';
     navJefe(ultimaPag);
   });
   
@@ -2742,9 +2743,9 @@ function navJefe(pag) {
   const actionsEl = document.getElementById('topbar-actions');
   if (actionsEl) actionsEl.innerHTML = '';
 
-  // Guardar última página para restaurar en F5
+  // Guardar última página para restaurar en F5 (solo durante la sesión)
   const pagsSinGuardar = ['nueva', 'detalle'];
-  if (!pagsSinGuardar.includes(pag)) localStorage.setItem('ultima_pag_jefe', pag);
+  if (!pagsSinGuardar.includes(pag)) sessionStorage.setItem('ultima_pag_jefe', pag);
 
   // Si es la página de órdenes, cargar las órdenes
   if (pag === 'ordenes') cargarOrdenes();
