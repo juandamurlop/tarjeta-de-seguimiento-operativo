@@ -64,8 +64,9 @@ function kpiDrilldown(key) {
 function _kpiAbrirOrden(ordenId) {
   if (!ordenId) return;
   document.getElementById('_kpiModal')?.remove();
-  navJefe('ordenes');
-  setTimeout(() => { if (typeof abrirOrden === 'function') abrirOrden(ordenId); }, 350);
+  // abrirOrden ya navega al detalle (pag-detalle). El navJefe('ordenes')
+  // previo dejaba al usuario en la lista en vez de abrir la orden.
+  if (typeof abrirOrden === 'function') abrirOrden(ordenId);
 }
 
 // ── Función principal ────────────────────────────────────
