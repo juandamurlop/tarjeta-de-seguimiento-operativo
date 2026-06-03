@@ -5178,20 +5178,17 @@ function _actualizarListaCritica(criticas) {
 
   cont.style.display = 'block';
   cont.innerHTML = `
-    <div style="background:#FEF2F2;border:1.5px solid #DC2626;border-radius:12px;padding:12px 14px;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;color:#7F1D1D;margin-bottom:8px">
-        <svg width="15" height="15" fill="none" stroke="#DC2626" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        Alertas críticas — etapas +5h sin movimiento (${criticas.length})
+    <div style="background:#FEF2F2;border:1px solid #FCA5A5;border-radius:10px;padding:8px 11px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:5px;font-weight:700;font-size:11px;color:#991B1B;margin-bottom:7px;text-transform:uppercase;letter-spacing:.4px">
+        <svg width="13" height="13" fill="none" stroke="#DC2626" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Alertas críticas · +5h sin movimiento (${criticas.length})
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
         ${criticas.map(({ etapa, orden, minutos }) => `
-          <div onclick="_alertaVerOrden(${etapa.orden_id})" style="display:flex;align-items:center;justify-content:space-between;background:white;border-radius:8px;padding:7px 10px;cursor:pointer;border:1px solid #FECACA">
-            <div>
-              <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:12px;color:#7F1D1D">${orden.placa || '—'}</span>
-              <span style="font-size:11px;color:#991B1B;margin-left:6px">${etapa.etapa || etapa.servicio || 'Etapa'}</span>
-              <span style="font-size:11px;color:#B91C1C;margin-left:4px">· ${etapa.tecnico || 'Sin técnico'}</span>
-            </div>
-            <span style="font-size:11px;font-weight:700;color:#DC2626;flex-shrink:0">${_fmtMin(minutos)}</span>
+          <div class="hover-lift" onclick="_alertaVerOrden(${etapa.orden_id})" title="${escapeHtml((etapa.etapa||etapa.servicio||'Etapa')+' · '+(etapa.tecnico||'Sin técnico'))}" style="display:inline-flex;align-items:center;gap:6px;background:white;border-radius:7px;padding:5px 9px;cursor:pointer;border:1px solid #FECACA">
+            <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:11px;color:#7F1D1D">${orden.placa || '—'}</span>
+            <span style="font-size:10px;color:#991B1B;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${etapa.etapa || etapa.servicio || 'Etapa'}</span>
+            <span style="font-size:10px;font-weight:700;color:#DC2626">${_fmtMin(minutos)}</span>
           </div>
         `).join('')}
       </div>

@@ -376,23 +376,6 @@ async function cargarKPITaller() {
           </div>
         </div>
 
-        <div class="kpi-tabla-wrap">
-          <div class="kpi-tabla-titulo">Estado de todas las órdenes activas (${ordenesActivas.length})</div>
-          <table class="kpi-tabla">
-            <thead>
-              <tr>
-                <th>Placa / OT</th>
-                <th>Vehículo</th>
-                <th>Progreso</th>
-                <th>Técnico activo</th>
-                <th>Entrega</th>
-                <th>Alertas</th>
-              </tr>
-            </thead>
-            <tbody>${tablaFilas || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gris-mid)">Sin órdenes activas</td></tr>'}</tbody>
-          </table>
-        </div>
-
       </div>`);
 
   } catch (err) {
