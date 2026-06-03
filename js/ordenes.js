@@ -1761,7 +1761,7 @@ async function crearOrden() {
         // equivale a las 19:00 del día anterior — incorrecto para esta comparación.
         const d = new Date();
         const hoy = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        if (fp > hoy) return 'Programada';
+        if (fp >= hoy) return 'Programada';
       }
       return 'Activa';
     })(),
@@ -1770,7 +1770,7 @@ async function crearOrden() {
       if (fp) {
         const d = new Date();
         const hoy = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        if (fp > hoy) return null; // programada: ingreso_en se registra al llegar
+        if (fp >= hoy) return null; // programada (hoy o futuro): ingreso_en se registra al llegar
       }
       return new Date().toISOString(); // activa directa: ingresa ahora
     })(),
