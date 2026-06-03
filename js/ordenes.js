@@ -3032,7 +3032,7 @@ async function cargarMecanicosVista() {
         : `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#D1D5DB;flex-shrink:0"></span>`;
 
       const estadoHtml = ocupado
-        ? `<div style="display:flex;flex-direction:column;gap:3px;min-width:0;cursor:pointer" onclick="navJefe('ordenes');setTimeout(()=>abrirOrden(${ord?.id||'null'}),300)" title="Abrir orden">
+        ? `<div style="display:flex;flex-direction:column;gap:3px;min-width:0;cursor:pointer" onclick="abrirOrden(${ord?.id||0})" title="Abrir orden">
             <div style="display:flex;align-items:center;gap:6px;min-width:0">
               <div style="width:3px;height:14px;background:${color};border-radius:99px;flex-shrink:0"></div>
               <span style="font-size:12px;font-weight:600;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(primeraEtapa.etapa)||'—'}</span>
@@ -5155,10 +5155,9 @@ function _mostrarPopupAlerta(etapa, orden, minutos, nivel) {
 }
 
 function _alertaVerOrden(ordenId) {
-  // Cerrar popup y navegar al detalle
+  // Cerrar popup y abrir el detalle de la orden
   document.querySelectorAll('.alerta-popup-etapa').forEach(p => p.remove());
-  if (typeof verDetalleOrden === 'function') verDetalleOrden(ordenId);
-  else if (typeof navJefe === 'function') navJefe('ordenes');
+  if (ordenId && typeof abrirOrden === 'function') abrirOrden(ordenId);
 }
 
 function _alertaMarcarRevisado(etapaId, btn) {
