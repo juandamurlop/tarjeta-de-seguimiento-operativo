@@ -2729,7 +2729,7 @@ async function cargarCalendario() {
   cont.innerHTML = '<div class="loading-state">Cargando...</div>';
   try {
     const ordenes = await api(
-      `/ordenes?select=id,placa,marca,linea,propietario,estado,pulmon,fecha_entrega_1,fecha_entrega_2&or=(estado.eq.Activa,pulmon.eq.true)&order=fecha_entrega_1.asc`
+      `/ordenes?select=id,placa,marca,linea,propietario,estado,pulmon,fecha_entrega_1,fecha_entrega_2,fecha_programada&or=(estado.eq.Activa,pulmon.eq.true,estado.eq.Programada)&order=fecha_entrega_1.asc`
     ).catch(() => []) || [];
     renderCalendario(cont, ordenes, calMesActual);
   } catch(e) {
@@ -2747,9 +2747,20 @@ function renderCalendario(cont, ordenes, mesDate) {
   const primerDia = new Date(año, mes, 1).getDay(); // 0=dom
   const offset = (primerDia + 6) % 7; // lunes primero
 
-  // Indexar órdenes por fecha (fecha_entrega_1 o fecha_entrega_2)
+  // Indexar órdenes por fecha. Las Programadas (agendadas) se ubican por su
+  // fecha_programada (día de ingreso); el resto por sus fechas de entrega.
   const porDia = {};
   ordenes.forEach(o => {
+    if (o.estado === 'Programada') {
+      if (o.fecha_programada) {
+        const d = new Date(o.fecha_programada + 'T00:00:00');
+        if (d.getFullYear() === año && d.getMonth() === mes) {
+          const key = d.getDate();
+          (porDia[key] = porDia[key] || []).push({ ...o, esProgramada: true });
+        }
+      }
+      return;
+    }
     [o.fecha_entrega_1, o.fecha_entrega_2].filter(Boolean).forEach((f, fi) => {
       const d = new Date(f);
       if (d.getFullYear() === año && d.getMonth() === mes) {
@@ -2776,13 +2787,14 @@ function renderCalendario(cont, ordenes, mesDate) {
     const pasado = fecha < hoy;
 
     const ordsHtml = ords.slice(0, 4).map(o => {
-      const urgente = !o.esFecha2 && new Date(o.fecha_entrega_1) <= hoy;
-      const color = urgente ? '#DC2626' : o.esFecha2 ? '#D97706' : '#2A5298';
-      const bg    = urgente ? '#FEE2E2' : o.esFecha2 ? '#FEF3C7' : '#EBF2FF';
+      const prog    = o.esProgramada;
+      const urgente = !prog && !o.esFecha2 && o.fecha_entrega_1 && new Date(o.fecha_entrega_1) <= hoy;
+      const color = prog ? '#7C3AED' : urgente ? '#DC2626' : o.esFecha2 ? '#D97706' : '#2A5298';
+      const bg    = prog ? '#F3E8FF' : urgente ? '#FEE2E2' : o.esFecha2 ? '#FEF3C7' : '#EBF2FF';
       return `<div class="cal-orden" style="background:${bg};color:${color};border-left-color:${color}" onclick="abrirOrden(${o.id})">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
           <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:11px">${escapeHtml(o.placa) || '---'}</span>
-          ${o.esFecha2 ? '<span style="font-size:9px;font-weight:800;opacity:0.75">F2</span>' : ''}
+          ${prog ? '<span style="font-size:9px;font-weight:800;opacity:0.85">📅</span>' : o.esFecha2 ? '<span style="font-size:9px;font-weight:800;opacity:0.75">F2</span>' : ''}
         </div>
         <div class="cal-orden-meta">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || escapeHtml(o.propietario) || 'Orden activa'}</div>
       </div>`;
@@ -2798,6 +2810,12 @@ function renderCalendario(cont, ordenes, mesDate) {
 
   cont.innerHTML = `
     <div class="cal-shell">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+      <button class="btn btn-primary btn-sm" onclick="abrirModalAgendar()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Agendar ingreso
+      </button>
+    </div>
     <div class="cal-nav">
       <button class="btn btn-ghost btn-sm" onclick="calCambiarMes(-1)">← Anterior</button>
       <div>
@@ -2807,8 +2825,9 @@ function renderCalendario(cont, ordenes, mesDate) {
       <button class="btn btn-ghost btn-sm" onclick="calCambiarMes(1)">Siguiente →</button>
     </div>
     <div class="cal-leyenda">
-      <span class="cal-ley-dot" style="background:#EBF2FF;border:1px solid #2A5298"></span><span style="font-size:11px;color:var(--gris-mid)">Fecha 1</span>
-      <span class="cal-ley-dot" style="background:#FEF3C7;border:1px solid #D97706;margin-left:12px"></span><span style="font-size:11px;color:var(--gris-mid)">Fecha 2</span>
+      <span class="cal-ley-dot" style="background:#F3E8FF;border:1px solid #7C3AED"></span><span style="font-size:11px;color:var(--gris-mid)">📅 Agendada</span>
+      <span class="cal-ley-dot" style="background:#EBF2FF;border:1px solid #2A5298;margin-left:12px"></span><span style="font-size:11px;color:var(--gris-mid)">Entrega 1</span>
+      <span class="cal-ley-dot" style="background:#FEF3C7;border:1px solid #D97706;margin-left:12px"></span><span style="font-size:11px;color:var(--gris-mid)">Entrega 2</span>
       <span class="cal-ley-dot" style="background:#FEE2E2;border:1px solid #DC2626;margin-left:12px"></span><span style="font-size:11px;color:var(--gris-mid)">Vencida</span>
     </div>
     <div class="cal-grid">
@@ -2826,11 +2845,105 @@ async function calCambiarMes(delta) {
   cont.innerHTML = '<div class="loading-state">Cargando...</div>';
   try {
     const ordenes = await api(
-      `/ordenes?select=id,placa,marca,linea,propietario,estado,pulmon,fecha_entrega_1,fecha_entrega_2&or=(estado.eq.Activa,pulmon.eq.true)`
+      `/ordenes?select=id,placa,marca,linea,propietario,estado,pulmon,fecha_entrega_1,fecha_entrega_2,fecha_programada&or=(estado.eq.Activa,pulmon.eq.true,estado.eq.Programada)`
     ).catch(() => []) || [];
     renderCalendario(cont, ordenes, calMesActual);
   } catch(e) {
     cont.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// AGENDAR INGRESO — registro ligero de un vehículo que llegará
+// (crea la orden como Programada; el resto se completa al llegar)
+// ═══════════════════════════════════════════════════════════
+async function abrirModalAgendar() {
+  document.getElementById('modal-agendar')?.remove();
+  const [aseg, flot] = await Promise.all([
+    api('/aseguradoras?activo=eq.true&order=nombre.asc').catch(() => []) || [],
+    api('/flotillas?activo=eq.true&order=nombre.asc').catch(() => []) || []
+  ]);
+  const hoyStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
+
+  const ov = document.createElement('div');
+  ov.id = 'modal-agendar';
+  ov.className = 'modal-overlay show';
+  ov.style.display = 'flex';
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  ov.innerHTML = `
+    <div class="modal" style="max-width:460px">
+      <div class="modal-header">
+        <h2>Agendar ingreso</h2>
+        <button class="modal-close" onclick="document.getElementById('modal-agendar').remove()">✕</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:13px">
+        <div style="font-size:12px;color:var(--gris-mid);line-height:1.5">Registro rápido de un vehículo que ingresará próximamente. Los demás datos (kilometraje, inventario, daños…) se completan cuando llegue al taller.</div>
+        <div class="field" style="margin:0"><label>Placa *</label><input id="ag-placa" placeholder="ABC123" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="field" style="margin:0"><label>Fecha programada *</label><input id="ag-fecha" type="date" min="${hoyStr}" value="${hoyStr}"></div>
+        <div class="field" style="margin:0"><label>Tipo de cliente</label>
+          <select id="ag-tipo" onchange="_agendarToggleTipo(this.value)">
+            <option value="particular">Particular</option>
+            <option value="aseguradora">Aseguradora</option>
+            <option value="flotilla">Flotilla / Empresa</option>
+          </select>
+        </div>
+        <div class="field" id="ag-aseg-wrap" style="margin:0;display:none"><label>Aseguradora</label>
+          <select id="ag-aseg"><option value="">— Seleccionar —</option>${aseg.map(a => `<option value="${escapeHtml(a.nombre)}">${escapeHtml(a.nombre)}</option>`).join('')}</select>
+        </div>
+        <div class="field" id="ag-flot-wrap" style="margin:0;display:none"><label>Flotilla / Empresa</label>
+          <select id="ag-flot"><option value="">— Seleccionar —</option>${flot.map(f => `<option value="${escapeHtml(f.nombre)}">${escapeHtml(f.nombre)}</option>`).join('')}</select>
+        </div>
+        <div class="field" style="margin:0"><label>Cliente — nombre</label><input id="ag-nombre" placeholder="Nombre del cliente"></div>
+        <div class="field" style="margin:0"><label>Cliente — teléfono</label><input id="ag-tel" placeholder="Teléfono" inputmode="numeric" oninput="this.value=this.value.replace(/[^\\d]/g,'')"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-agendar').remove()">Cancelar</button>
+        <button class="btn btn-primary" id="ag-guardar" onclick="guardarAgendamiento()">Agendar →</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  setTimeout(() => document.getElementById('ag-placa')?.focus(), 80);
+}
+
+function _agendarToggleTipo(tipo) {
+  const a = document.getElementById('ag-aseg-wrap');
+  const f = document.getElementById('ag-flot-wrap');
+  if (a) a.style.display = tipo === 'aseguradora' ? '' : 'none';
+  if (f) f.style.display = tipo === 'flotilla' ? '' : 'none';
+}
+
+async function guardarAgendamiento() {
+  const placa = document.getElementById('ag-placa')?.value.trim().toUpperCase();
+  const fecha = document.getElementById('ag-fecha')?.value;
+  if (!placa) { toast('La placa es obligatoria', 'err'); document.getElementById('ag-placa')?.focus(); return; }
+  if (!fecha) { toast('La fecha programada es obligatoria', 'err'); return; }
+  const tipo = document.getElementById('ag-tipo')?.value || 'particular';
+  let aseguradora = null;
+  if (tipo === 'aseguradora')   aseguradora = document.getElementById('ag-aseg')?.value || null;
+  else if (tipo === 'flotilla') aseguradora = document.getElementById('ag-flot')?.value || null;
+
+  const body = {
+    placa,
+    propietario:      document.getElementById('ag-nombre')?.value.trim() || null,
+    telefono:         document.getElementById('ag-tel')?.value.trim()    || null,
+    tipo_cliente:     tipo,
+    aseguradora,
+    fecha_programada: fecha,
+    estado:           'Programada',
+    ingreso_en:       null
+  };
+
+  const btn = document.getElementById('ag-guardar');
+  if (btn) { btn.disabled = true; btn.textContent = 'Agendando...'; }
+  try {
+    await api('/ordenes', 'POST', body, { Prefer: 'return=minimal' });
+    toast('Ingreso agendado ✓');
+    document.getElementById('modal-agendar')?.remove();
+    if (typeof cargarCalendario === 'function') cargarCalendario();
+    if (typeof _refrescarCapacidad === 'function') _refrescarCapacidad();
+  } catch(e) {
+    toast('Error al agendar: ' + e.message, 'err');
+    if (btn) { btn.disabled = false; btn.textContent = 'Agendar →'; }
   }
 }
 
