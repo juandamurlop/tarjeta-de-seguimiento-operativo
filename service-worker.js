@@ -1,4 +1,4 @@
-const CACHE_NAME = 'freimanautos-pwa-v168';
+const CACHE_NAME = 'freimanautos-pwa-v169';
 
 const STATIC_ASSETS = [
   '/',
@@ -21,6 +21,7 @@ const STATIC_ASSETS = [
   '/js/ventas.js',
   '/js/flotillas.js',
   '/js/aseguradoras.js',
+  '/js/cartera-cliente.js',
   '/js/consumibles.js',
   '/js/app.js',
   '/manifest.webmanifest'
