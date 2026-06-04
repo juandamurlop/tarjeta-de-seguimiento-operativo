@@ -321,7 +321,8 @@ async function generarReporteAseguradoras(asegFiltro, fechaIni, fechaFin, format
     if (typeof _calcularRentabilidadAseg === 'function') { try { await _calcularRentabilidadAseg(ordenes); } catch(e){} }
     const rentMap = (typeof _asegRentabilidad !== 'undefined' && _asegRentabilidad.porOrden) || {};
     const vpd     = (typeof _asegRentabilidad !== 'undefined' && _asegRentabilidad.valorPlazaDia) || 0;
-    const rentOn  = vpd > 0;
+    const rentOn  = (typeof _asegRentabilidad !== 'undefined' && !!_asegRentabilidad.activo) || vpd > 0;
+    const rOk     = r => !!(r && r.vpd > 0);   // la orden tiene valor de plaza (propio o global)
     const leer    = (typeof _leerDatosAseg === 'function') ? _leerDatosAseg : (() => ({}));
     const EST     = (typeof ESTADOS_ASEG !== 'undefined') ? ESTADOS_ASEG : {};
     const estLabel = k => (EST[k] && EST[k].label) || k || '—';
@@ -349,7 +350,7 @@ async function generarReporteAseguradoras(asegFiltro, fechaIni, fechaFin, format
           if (!pagado) { A.porCobrar += va; if (o.entregada_en && (today - new Date(o.entregada_en)) / 86400000 > DIAS_VENCE) { A.vencida += va; A.vencidaCount++; } }
         } else if (!o.entregada_en) { A.sinAutorizar++; A.estimado += (r ? r.ingreso : 0); }
         if (d.fecha_peritaje && d.fecha_autorizacion) { const dd = (new Date(d.fecha_autorizacion) - new Date(d.fecha_peritaje)) / 86400000; if (dd >= 0 && dd < 365) A.aprobDias.push(dd); }
-        if (r) { A.neta += r.rent; if (r.rent < 0) A.enPerdida++; }
+        if (rOk(r)) { A.neta += r.rent; if (r.rent < 0) A.enPerdida++; }
         if (o.pulmon_desde) { const diasP = Math.floor((today - new Date(o.pulmon_desde)) / 86400000); const gracia = o.dias_gracia_estadia ?? 3; const tarifa = o.valor_estadia_dia ?? 0; A.estadia += Math.max(0, diasP - gracia) * tarifa; }
       });
       detalle.push({ o, va, pago, r, diasSist: o.creado_en ? Math.floor((today - new Date(o.creado_en)) / 86400000) : null, est: o.estado_aseguradora || 'peritaje_pendiente' });
@@ -397,7 +398,7 @@ async function generarReporteAseguradoras(asegFiltro, fechaIni, fechaFin, format
         const dRows = detalle.map(({o,va,pago,r,diasSist,est}) => [
           o.placa||'—', o.propietario||'—', o.aseguradora||'—', estLabel(est),
           fmtF(o.creado_en), fmtF(o.entregada_en), diasSist ?? '—',
-          va || '', pagoLabel(va,pago), (rentOn && r) ? Math.round(r.rent) : '',
+          va || '', pagoLabel(va,pago), rOk(r) ? Math.round(r.rent) : '',
           o.pulmon && o.pulmon_desde ? Math.floor((today - new Date(o.pulmon_desde)) / 86400000) : ''
         ]);
         const ws3 = XLSX.utils.aoa_to_sheet([dHdr,...dRows]);
@@ -450,7 +451,7 @@ async function generarReporteAseguradoras(asegFiltro, fechaIni, fechaFin, format
         <td style="font-weight:700;color:${diasSist>30?'#DC2626':diasSist>15?'#D97706':'#374151'}">${diasSist??'—'}d</td>
         <td style="font-family:monospace">${va>0?fmt(va):'—'}</td>
         <td><span style="color:${pagoCol};font-weight:700;font-size:9px">${pagoLabel(va,pago)}</span></td>
-        <td style="font-family:monospace;font-weight:700;color:${!rentOn||!r?'#9CA3AF':(r.rent>=0?'#059669':'#DC2626')}">${rentOn&&r?fmt(r.rent):'—'}</td>
+        <td style="font-family:monospace;font-weight:700;color:${!rOk(r)?'#9CA3AF':(r.rent>=0?'#059669':'#DC2626')}">${rOk(r)?fmt(r.rent):'—'}</td>
       </tr>`;
     }).join('');
 
@@ -481,7 +482,7 @@ async function generarReporteAseguradoras(asegFiltro, fechaIni, fechaFin, format
       </div>
     </div>
     <div class="kpi-row">${kpisHtml}</div>
-    <div class="nota">Rentabilidad = ingreso de la orden − (valor de plaza/día × días en taller). Valor de plaza: ${rentOn?fmt(vpd)+'/día':'no definido (defínelo en el módulo Aseguradoras para activar renta/pérdida)'}.</div>
+    <div class="nota">Rentabilidad = ingreso de la orden − (valor de plaza/día × días en taller). El valor de plaza se toma de cada aseguradora (configurable en su ficha); si no tiene, usa el global${rentOn?'':' (aún no definido — defínelo en el módulo Aseguradoras)'}.</div>
     <div class="section"><div class="section-title">Resumen por aseguradora</div>
     <table><thead><tr><th>Aseguradora</th><th>Órdenes</th><th>Autorizado</th><th>Por cobrar</th><th>Vencida</th><th>Sin aut.</th><th>Rent. neta</th><th>T.aprob</th><th>Ciclo</th><th>Estadía</th></tr></thead>
     <tbody>${resumenHtml}</tbody></table></div>

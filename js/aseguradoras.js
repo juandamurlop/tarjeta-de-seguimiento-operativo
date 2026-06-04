@@ -51,28 +51,35 @@ function _diasHabilesMes(fecha) {
 // _asegRentabilidad.porOrden[id]. Se llama antes de renderizar la lista.
 async function _calcularRentabilidadAseg(ordenes) {
   const porOrden = {};
-  _asegRentabilidad = { valorPlazaDia: 0, metaIngresos: 0, porOrden };
+  _asegRentabilidad = { valorPlazaDia: 0, metaIngresos: 0, porOrden, porAseg: {}, activo: false };
   try {
     if (!ordenes || !ordenes.length) return;
 
     const hoy = new Date();
-    // 1) Meta de ingresos del mes actual → valor de la plaza por día
+    // 1) Valor de plaza GLOBAL (respaldo): manual tiene prioridad; si no, de la meta.
     const meta = (await api(
       `/metas_taller?ano=eq.${hoy.getFullYear()}&mes_num=eq.${hoy.getMonth() + 1}&select=meta_ingresos&limit=1`
     ).catch(() => []) || [])[0];
     const metaIngresos = meta?.meta_ingresos || 0;
     const habiles      = _diasHabilesMes(hoy) || 22;
-    // Valor de plaza: manual (configurado a mano) tiene prioridad; si no,
-    // se deriva de la meta de ingresos del mes.
     const manual = parseFloat(localStorage.getItem('aseg_valor_plaza_dia')) || 0;
-    const valorPlazaDia = manual > 0
+    const vpdDefault = manual > 0
       ? manual
       : (metaIngresos > 0 ? metaIngresos / (CAPACIDAD_TALLER * habiles) : 0);
-    _asegRentabilidad.metaIngresos = metaIngresos;
-    _asegRentabilidad.valorPlazaDia = valorPlazaDia;
-    _asegRentabilidad.manual = manual > 0;
 
-    // 2) Ingreso facturado por orden = suma de valores de sus etapas
+    // 2) Valor de plaza POR aseguradora (columna valor_plaza_dia del catálogo).
+    //    Si no está configurado para una aseguradora, usa el global.
+    let catRows = (typeof _asegCatalogo === 'object' && _asegCatalogo) ? Object.values(_asegCatalogo) : [];
+    if (!catRows.length) catRows = await api('/aseguradoras?select=*').catch(() => []) || [];
+    const vpdPorAseg = {};
+    catRows.forEach(a => { const v = parseFloat(a && a.valor_plaza_dia) || 0; if (v > 0) vpdPorAseg[(a.nombre || '').trim().toLowerCase()] = v; });
+
+    _asegRentabilidad.metaIngresos  = metaIngresos;
+    _asegRentabilidad.valorPlazaDia = vpdDefault;
+    _asegRentabilidad.manual        = manual > 0;
+    _asegRentabilidad.porAseg       = vpdPorAseg;
+
+    // 3) Ingreso facturado por orden = suma de valores de sus etapas
     const ids = ordenes.map(o => o.id).join(',');
     const etapas = ids
       ? (await api(`/etapas?orden_id=in.(${ids})&select=orden_id,valor`).catch(() => []) || [])
@@ -82,16 +89,18 @@ async function _calcularRentabilidadAseg(ordenes) {
       ingresoPorOrden[e.orden_id] = (ingresoPorOrden[e.orden_id] || 0) + (e.valor || 0);
     });
 
-    // 3) Rentabilidad por orden
+    // 4) Rentabilidad por orden — usa el valor de plaza de SU aseguradora
     ordenes.forEach(o => {
+      const vpd      = vpdPorAseg[(o.aseguradora || '').trim().toLowerCase()] || vpdDefault;
       const ingreso  = ingresoPorOrden[o.id] || 0;
       const desde    = o.ingreso_en || o.creado_en;
       const hasta    = o.entregada_en ? new Date(o.entregada_en) : hoy;
       const dias     = desde ? Math.max(1, Math.floor((hasta - new Date(desde)) / 86400000)) : 1;
-      const costo    = valorPlazaDia * dias;
+      const costo    = vpd * dias;
       const rent     = ingreso - costo;
-      const diasMax  = valorPlazaDia > 0 ? ingreso / valorPlazaDia : null;
-      porOrden[o.id] = { ingreso, dias, costo, rent, diasMax, entregada: !!o.entregada_en };
+      const diasMax  = vpd > 0 ? ingreso / vpd : null;
+      porOrden[o.id] = { ingreso, dias, costo, rent, diasMax, entregada: !!o.entregada_en, vpd };
+      if (vpd > 0) _asegRentabilidad.activo = true;
     });
   } catch (e) {
     console.warn('[aseg] rentabilidad falló:', e);
@@ -100,9 +109,9 @@ async function _calcularRentabilidadAseg(ordenes) {
 
 // HTML del badge de rentabilidad para una orden (vacío si no hay meta)
 function _asegBadgeRent(ordenId) {
-  const vpd = _asegRentabilidad.valorPlazaDia;
   const r   = _asegRentabilidad.porOrden[ordenId];
-  if (!r || vpd <= 0) return '';
+  if (!r || !(r.vpd > 0)) return '';
+  const vpd = r.vpd;
   const fmt   = n => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0 }).format(Math.round(n));
   const verde = r.rent >= 0;
   const col   = verde ? '#059669' : '#DC2626';
@@ -342,10 +351,10 @@ async function cargarModuloAseguradoras() {
     });
     const asegArray = Object.values(porAseg).sort((a,b) => b.count - a.count);
 
-    const rents = Object.values(_asegRentabilidad.porOrden);
+    const rents = Object.values(_asegRentabilidad.porOrden).filter(r => r.vpd > 0);
     const netaRent = rents.reduce((s, r) => s + r.rent, 0);
     const enPerdidaN = rents.filter(r => r.rent < 0).length;
-    const rentOn = _asegRentabilidad.valorPlazaDia > 0;
+    const rentOn = !!_asegRentabilidad.activo;
 
     // Lista de compañías (catálogo + las que tienen órdenes), con sus totales
     const nombresSet = new Set();
@@ -578,7 +587,25 @@ function _asegFichaHtml(nombre) {
       ${a?.valor_hora ? `<div><div class="v" style="color:#7C3AED">${fmt(a.valor_hora)}</div><div class="l">Estadía / hora</div></div>` : ''}
     </div>
     ${contactos.length ? `<div class="aseg-ficha-contactos">${contactos.map(c => `<span class="aseg-chip" style="background:#F5F3FF;color:#5B21B6">👤 ${escapeHtml(c.nombre||'—')}${c.telefono ? ' · ' + escapeHtml(c.telefono) : ''}${c.correo ? ' · ' + escapeHtml(c.correo) : ''}</span>`).join('')}</div>` : ''}
+    ${a ? `<div class="aseg-ficha-plaza">
+      <span>💡 Valor de plaza por día <span style="color:var(--gris-mid)">(rentabilidad de esta aseguradora)</span>:</span>
+      <input type="number" data-aseg="${escapeHtml(nombre)}" value="${a.valor_plaza_dia ? Math.round(a.valor_plaza_dia) : ''}" placeholder="usa el global"
+        onchange="guardarValorPlazaAsegCompania(this.dataset.aseg, this.value)" class="aseg-input" style="width:130px">
+      <span class="aseg-config-hint">${a.valor_plaza_dia ? 'propio de esta aseguradora' : 'sin definir — usa el valor global'}</span>
+    </div>` : ''}
   </div>`;
+}
+
+// Guarda el valor de plaza por día PROPIO de una aseguradora (columna del catálogo).
+async function guardarValorPlazaAsegCompania(nombre, v) {
+  const n = parseFloat(String(v).replace(/[^\d.]/g, '')) || 0;
+  try {
+    await api(`/aseguradoras?nombre=eq.${encodeURIComponent(nombre)}`, 'PATCH', { valor_plaza_dia: n > 0 ? n : null });
+    toast(n > 0 ? `Valor de plaza guardado para ${nombre} ✓` : 'Valor de plaza quitado');
+    cargarModuloAseguradoras();
+  } catch (e) {
+    toast('Error guardando (¿falta correr el SQL de valor_plaza_dia?): ' + e.message, 'err');
+  }
 }
 
 // Abre el formulario de nueva aseguradora y refresca el módulo al guardar
