@@ -336,6 +336,22 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
   0%, 100% { box-shadow: 0 2px 8px rgba(225,29,72,0.40), 0 0 0 1px rgba(255,255,255,0.08); }
   50%      { box-shadow: 0 2px 14px rgba(225,29,72,0.85), 0 0 0 1px rgba(255,255,255,0.14); }
 }
+
+/* Destello del ícono cuando llega una notificación nueva */
+.nav-flash { animation: navFlashBg 0.85s var(--ease-out) 3; }
+.nav-flash svg {
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 7px rgba(251,113,133,0.95));
+  animation: navFlashIcon 0.85s var(--ease-out) 3;
+}
+@keyframes navFlashBg {
+  0%, 100% { background: rgba(225,29,72,0); }
+  50%      { background: rgba(225,29,72,0.16); }
+}
+@keyframes navFlashIcon {
+  0%, 100% { transform: scale(1); }
+  35%      { transform: scale(1.22); }
+}
 .nav-section-label {
   font-size: 10.5px;
   letter-spacing: 1.2px;

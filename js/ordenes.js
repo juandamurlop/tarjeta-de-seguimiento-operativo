@@ -2637,7 +2637,12 @@ function montarJefe() {
 }
 
 // ─── Badges de notificación del menú lateral ──────────────
+function _navBadgePrevGet() {
+  try { return JSON.parse(localStorage.getItem('nav_badge_prev') || '{}'); } catch (e) { return {}; }
+}
+
 // Crea/actualiza una píldora de conteo dentro de un ítem del menú.
+// Si el conteo AUMENTA (algo nuevo), abre su grupo y destella el ícono.
 function _setNavBadge(navId, count) {
   const item = document.getElementById(navId);
   if (!item) return;
@@ -2651,6 +2656,30 @@ function _setNavBadge(navId, count) {
   } else if (b) {
     b.style.display = 'none';
   }
+  // ¿Llegó algo nuevo? → revelar (abrir grupo cerrado + destello)
+  const prevAll = _navBadgePrevGet();
+  const prev = prevAll[navId] || 0;
+  if (n > prev) _revealNavItem(navId);
+  prevAll[navId] = n;
+  try { localStorage.setItem('nav_badge_prev', JSON.stringify(prevAll)); } catch (e) {}
+}
+
+// Abre el grupo del ítem (si está colapsado) y destella su ícono.
+function _revealNavItem(navId) {
+  const item = document.getElementById(navId);
+  if (!item) return;
+  // Abrir el grupo contenedor si está cerrado
+  const groupBody = item.closest('.nav-grupo-body');
+  if (groupBody && getComputedStyle(groupBody).display === 'none') {
+    const gid = groupBody.id.replace('nav-grupo-', '');
+    if (typeof window._navToggleGrupo === 'function') window._navToggleGrupo(gid);
+  }
+  // Destello del ícono (reinicia la animación si ya estaba corriendo)
+  item.classList.remove('nav-flash');
+  void item.offsetWidth;
+  item.classList.add('nav-flash');
+  clearTimeout(item._flashT);
+  item._flashT = setTimeout(() => item.classList.remove('nav-flash'), 2800);
 }
 
 // Refresca todos los badges del menú (pendientes que requieren atención).
