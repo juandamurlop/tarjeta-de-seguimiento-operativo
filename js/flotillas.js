@@ -220,8 +220,8 @@ async function cargarVehiculosFlotilla(flotillaId) {
   if (!lista) return;
   try {
     const url = flotillaId
-      ? `/vehiculos?flotilla_id=eq.${flotillaId}&order=creado_en.desc`
-      : `/vehiculos?flotilla_id=is.null&order=creado_en.desc`;
+      ? `/vehiculos?flotilla_id=eq.${flotillaId}&order=fecha_ingreso.desc`
+      : `/vehiculos?flotilla_id=is.null&order=fecha_ingreso.desc`;
     _vehiculosActual = await api(url).catch(() => []) || [];
     renderVehiculosFlotilla(_vehiculosActual);
   } catch (e) {

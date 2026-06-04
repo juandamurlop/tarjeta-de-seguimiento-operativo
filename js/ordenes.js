@@ -1640,7 +1640,13 @@ function agregarNuevaAsegNueva(onSaved) {
     };
 
     try {
-      await api('/aseguradoras', 'POST', body, { Prefer:'return=minimal' });
+      try {
+        await api('/aseguradoras', 'POST', body, { Prefer:'return=minimal' });
+      } catch (e1) {
+        // Reintento sin columnas que podrían no existir aún en la BD (ej. nit)
+        const { nit, ...bodySinNit } = body;
+        await api('/aseguradoras', 'POST', bodySinNit, { Prefer:'return=minimal' });
+      }
       toast('Aseguradora creada ✓');
       document.getElementById('modal-nueva-aseg').remove();
       await recargarListasNuevaOrden();
