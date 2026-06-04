@@ -145,6 +145,88 @@ function guardarValorPlazaAseg(v) {
   cargarModuloAseguradoras();
 }
 
+// ─── Modal rápido: cargar/editar autorización desde la tarjeta ───
+let _autorizDatosPrev = {};
+
+async function abrirModalAutorizacion(ordenId) {
+  const arr = await api(`/ordenes?id=eq.${ordenId}&limit=1&select=id,placa,aseguradora,datos_aseguradora,observaciones`).catch(() => []);
+  const orden = arr?.[0];
+  if (!orden) { toast('No se pudo cargar la orden', 'err'); return; }
+  const datos = _leerDatosAseg(orden);
+  _autorizDatosPrev[ordenId] = datos;
+
+  document.getElementById('modal-autoriz')?.remove();
+  const m = document.createElement('div');
+  m.id = 'modal-autoriz';
+  m.className = 'modal-overlay show';
+  m.innerHTML = `
+    <div class="modal" style="max-width:400px">
+      <div class="modal-header">
+        <h2>Autorización de aseguradora</h2>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-autoriz').remove()">✕</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+        <div style="font-size:13px;color:var(--gris-mid)">
+          <strong style="font-family:'DM Mono',monospace;letter-spacing:1px;color:var(--texto)">${escapeHtml(orden.placa||'—')}</strong>
+          · ${escapeHtml(orden.aseguradora||'')}
+        </div>
+        <div class="field">
+          <label>Valor autorizado (COP)</label>
+          <input id="az-valor" type="number" step="1000" min="0" placeholder="0" value="${datos.valor_autorizado||''}">
+        </div>
+        <div class="field">
+          <label>Fecha de autorización <span style="font-weight:400;color:var(--gris-mid)">(opcional)</span></label>
+          <input id="az-fecha" type="date" value="${escapeHtml(datos.fecha_autorizacion||'')}">
+          <div style="font-size:11px;color:var(--gris-mid);margin-top:3px">Alimenta el "tiempo de autorización" (peritaje → aprobación).</div>
+        </div>
+        <div class="field">
+          <label>Estado de pago</label>
+          <select id="az-pago">
+            <option value="pendiente" ${(datos.estado_pago||'pendiente')==='pendiente'?'selected':''}>Pendiente (por cobrar)</option>
+            <option value="parcial"   ${datos.estado_pago==='parcial'?'selected':''}>Pago parcial</option>
+            <option value="pagado"    ${datos.estado_pago==='pagado'?'selected':''}>Pagado</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-autoriz').remove()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarAutorizacionRapida(${ordenId})">Guardar</button>
+      </div>
+    </div>`;
+  m.addEventListener('click', e => { if (e.target === m) m.remove(); });
+  document.body.appendChild(m);
+  setTimeout(() => document.getElementById('az-valor')?.focus(), 50);
+}
+
+async function guardarAutorizacionRapida(ordenId) {
+  const prev = _autorizDatosPrev[ordenId] || {};
+  const datos = {
+    ...prev,
+    valor_autorizado:   parseFloat(document.getElementById('az-valor')?.value) || 0,
+    fecha_autorizacion: document.getElementById('az-fecha')?.value || prev.fecha_autorizacion || '',
+    estado_pago:        document.getElementById('az-pago')?.value || 'pendiente'
+  };
+  try {
+    // Guardar en campo JSONB; si no existe, respaldo como tag en observaciones
+    try {
+      await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { datos_aseguradora: datos });
+    } catch (e1) {
+      const arr = await api(`/ordenes?id=eq.${ordenId}&select=observaciones`).catch(() => []);
+      const obs = arr?.[0]?.observaciones || '';
+      const tag = `[DATOS_ASEG:${JSON.stringify(datos)}]`;
+      const obsLimpia = obs.replace(/\[DATOS_ASEG:.*?\]/s, '').trim();
+      await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', {
+        observaciones: (obsLimpia ? obsLimpia + '\n' : '') + tag
+      });
+    }
+    document.getElementById('modal-autoriz')?.remove();
+    toast('Autorización guardada ✓');
+    cargarModuloAseguradoras();
+  } catch (e) {
+    toast('Error guardando: ' + e.message, 'err');
+  }
+}
+
 // ─── Dashboard principal ──────────────────────────────────
 
 async function montarAseguradoras() {
@@ -501,7 +583,9 @@ function _asegCardOrden(o) {
         </div>
       </div>
       <!-- Autorización / cobro -->
-      <div class="aseg-money">${autorizHtml}</div>
+      <div class="aseg-money">${autorizHtml}
+        <button class="aseg-edit-btn" onclick="event.stopPropagation();abrirModalAutorizacion(${o.id})">${va > 0 ? '✏️ Editar' : '＋ Cargar valor'}</button>
+      </div>
       <!-- Timeline -->
       <div class="aseg-timeline">${timelineHtml}</div>
     </div>`;
