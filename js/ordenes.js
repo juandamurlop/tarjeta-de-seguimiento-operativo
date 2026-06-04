@@ -2545,10 +2545,9 @@ function montarJefe() {
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
           <span class="nav-label">Cotizaciones</span>
         </button>
-        <button class="nav-item" id="nav-repuestos" onclick="navJefe('repuestos')" style="position:relative">
+        <button class="nav-item" id="nav-repuestos" onclick="navJefe('repuestos')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
           <span class="nav-label">Repuestos</span>
-          <span id="badge-repuestos" style="display:none;position:absolute;top:6px;right:8px;background:var(--rojo);color:white;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;line-height:16px;text-align:center">0</span>
         </button>
       </div>
 
@@ -2623,13 +2622,49 @@ function montarJefe() {
   
   // Cargar capacidad al inicio
   _refrescarCapacidad();
-  setTimeout(() => { if (typeof actualizarBadgeRepuestos === 'function') actualizarBadgeRepuestos(); }, 1500);
+  setTimeout(() => { if (typeof actualizarBadgesNav === 'function') actualizarBadgesNav(); }, 1500);
+  if (!window._navBadgeInterval) {
+    window._navBadgeInterval = setInterval(() => {
+      if (typeof actualizarBadgesNav === 'function') actualizarBadgesNav();
+    }, 45000);
+  }
 
   // Activar Realtime (pendiente de implementar)
   if (typeof iniciarRealtime === 'function') iniciarRealtime();
 
   // Sistema de alertas de etapas sin movimiento
   iniciarSistemaAlertas();
+}
+
+// ─── Badges de notificación del menú lateral ──────────────
+// Crea/actualiza una píldora de conteo dentro de un ítem del menú.
+function _setNavBadge(navId, count) {
+  const item = document.getElementById(navId);
+  if (!item) return;
+  let b = item.querySelector('.nav-badge');
+  const n = Number(count) || 0;
+  if (n > 0) {
+    if (!b) { b = document.createElement('span'); b.className = 'nav-badge'; item.appendChild(b); }
+    b.textContent = n > 99 ? '99+' : String(n);
+    b.style.display = 'inline-flex';
+    b.title = `${n} pendiente${n === 1 ? '' : 's'}`;
+  } else if (b) {
+    b.style.display = 'none';
+  }
+}
+
+// Refresca todos los badges del menú (pendientes que requieren atención).
+async function actualizarBadgesNav() {
+  try {
+    const [rep, cot, aseg] = await Promise.all([
+      api('/solicitudes_repuesto?estado=eq.pendiente_jefe&select=id').catch(() => []),
+      api('/cotizaciones?estado=eq.pendiente&select=id').catch(() => []),
+      api('/ordenes?aseguradora=not.is.null&estado_aseguradora=eq.peritaje_pendiente&select=id').catch(() => [])
+    ]);
+    _setNavBadge('nav-repuestos',    (rep  || []).length);
+    _setNavBadge('nav-cotizaciones', (cot  || []).length);
+    _setNavBadge('nav-aseguradoras', (aseg || []).length);
+  } catch (e) {}
 }
 
 function navJefe(pag) {

@@ -349,10 +349,7 @@ async function enviarSolicitudRepuesto(ordenId, etapaId) {
 async function actualizarBadgeRepuestos() {
   try {
     const p = await api('/solicitudes_repuesto?estado=eq.pendiente_jefe&select=id').catch(()=>[]) || [];
-    const badge = document.getElementById('badge-repuestos');
-    if (!badge) return;
-    badge.textContent = p.length;
-    badge.style.display = p.length>0 ? 'inline-flex' : 'none';
+    if (typeof _setNavBadge === 'function') _setNavBadge('nav-repuestos', p.length);
   } catch(e) {}
 }
 
