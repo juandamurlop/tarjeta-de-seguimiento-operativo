@@ -203,15 +203,27 @@ async function cargarModuloAseguradoras() {
         }, 0) / pendAprobacion.length)
       : 0;
 
-    // ── KPIs financieros (valor autorizado / cartera / autorización) ──
-    let facturado = 0, porCobrar = 0;
+    // ── KPIs financieros (autorizado / cartera / vencida / autorización) ──
+    const DIAS_VENCE = 30;
+    let facturado = 0, porCobrar = 0, conValor = 0;
+    let sinAutorizar = 0, estimadoRiesgo = 0;
+    let vencidaMonto = 0, vencidaCount = 0;
     const tiemposAprob = [];
     todasOrdenes.forEach(o => {
       const d  = _leerDatosAseg(o);
       const va = parseFloat(d.valor_autorizado) || 0;
+      const pagado = (d.estado_pago || 'pendiente') === 'pagado';
       if (va > 0) {
-        facturado += va;
-        if ((d.estado_pago || 'pendiente') !== 'pagado') porCobrar += va;
+        facturado += va; conValor++;
+        if (!pagado) {
+          porCobrar += va;
+          if (o.entregada_en && (today - new Date(o.entregada_en)) / 86400000 > DIAS_VENCE) {
+            vencidaMonto += va; vencidaCount++;
+          }
+        }
+      } else if (!o.entregada_en) {
+        sinAutorizar++;
+        estimadoRiesgo += (_asegRentabilidad.porOrden[o.id]?.ingreso || 0);
       }
       if (d.fecha_peritaje && d.fecha_autorizacion) {
         const dias = (new Date(d.fecha_autorizacion) - new Date(d.fecha_peritaje)) / 86400000;
@@ -241,40 +253,52 @@ async function cargarModuloAseguradoras() {
     });
     const asegArray = Object.values(porAseg).sort((a,b) => b.count - a.count);
 
-    renderSinParpadeo(cont, `
-      <div style="padding:0 0 24px">
+    const rents = Object.values(_asegRentabilidad.porOrden);
+    const netaRent = rents.reduce((s, r) => s + r.rent, 0);
+    const enPerdidaN = rents.filter(r => r.rent < 0).length;
+    const rentOn = _asegRentabilidad.valorPlazaDia > 0;
 
-        <!-- KPI STRIP -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:16px">
-          ${_asegKpi('Activos', activas.length, '#2563EB')}
-          ${_asegKpi('Facturado (autorizado)', fmt(facturado), '#0891B2')}
-          ${_asegKpi('Por cobrar', fmt(porCobrar), porCobrar > 0 ? '#DC2626' : '#059669')}
-          ${_asegKpi('Tiempo autorización', promAutoriz + 'd', '#7C3AED')}
-          ${_asegKpi('Ciclo prom. (mes)', promCiclo + 'd', '#D97706')}
-          ${_asegKpiRentabilidad(fmt)}
+    renderSinParpadeo(cont, `
+      <div class="aseg-wrap">
+
+        <!-- DINERO -->
+        <div class="aseg-kpi-grupo">💰 Dinero de aseguradoras</div>
+        <div class="aseg-kpis">
+          ${_asegKpi('⏳', sinAutorizar, 'Pendiente por autorizar', '#D97706', sinAutorizar ? `~${fmt(estimadoRiesgo)} en riesgo` : 'todo autorizado')}
+          ${_asegKpi('✅', fmt(facturado), 'Autorizado', '#0891B2', `${conValor} de ${todasOrdenes.length} con valor`)}
+          ${_asegKpi('💵', fmt(porCobrar), 'Por cobrar', porCobrar > 0 ? '#DC2626' : '#059669', porCobrar > 0 ? 'cartera pendiente' : 'al día')}
+          ${_asegKpi('⏰', fmt(vencidaMonto), 'Cartera vencida', vencidaCount ? '#DC2626' : '#059669', vencidaCount ? `${vencidaCount} con +${DIAS_VENCE}d sin pago` : 'sin vencidos')}
+        </div>
+
+        <!-- OPERACIÓN -->
+        <div class="aseg-kpi-grupo">🔧 Operación y rentabilidad</div>
+        <div class="aseg-kpis">
+          ${_asegKpi('🚗', activas.length, 'Activos', '#2563EB', 'cupos ocupados')}
+          ${rentOn
+            ? _asegKpi('📈', fmt(Math.round(netaRent)), 'Rentabilidad neta', netaRent >= 0 ? '#059669' : '#DC2626', netaRent >= 0 ? 'en ganancia' : 'en pérdida')
+            : _asegKpi('📈', '—', 'Rentabilidad neta', '#6B7280', 'define el valor de plaza ↓')}
+          ${_asegKpi('🔴', enPerdidaN, 'En pérdida', enPerdidaN > 0 ? '#DC2626' : '#059669', enPerdidaN ? 'requieren atención' : 'ninguna')}
+          ${_asegKpi('🕐', promAutoriz + 'd', 'Tiempo autorización', '#7C3AED', 'peritaje → aprobación')}
+          ${_asegKpi('🔄', promCiclo + 'd', 'Ciclo prom. (mes)', '#0EA5E9', 'ingreso → entrega')}
         </div>
 
         <!-- CONFIG VALOR DE PLAZA (base de renta/pérdida) -->
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#F8FAFC;border:1px solid var(--gris-borde);border-radius:8px;padding:8px 12px;margin-bottom:16px">
-          <span style="font-size:12px;color:var(--gris-mid)">💡 Valor de plaza por día (base renta/pérdida):</span>
+        <div class="aseg-config">
+          <span>💡 Valor de plaza por día (base renta/pérdida):</span>
           <input type="number" value="${vpd > 0 ? Math.round(vpd) : ''}" placeholder="ej. 120000"
-            onchange="guardarValorPlazaAseg(this.value)"
-            style="width:130px;padding:6px 10px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:13px">
-          <span style="font-size:11px;color:var(--gris-mid)">${_asegRentabilidad.manual ? 'manual' : (vpd > 0 ? 'derivado de la meta del mes' : 'sin definir — renta/pérdida desactivada')}</span>
+            onchange="guardarValorPlazaAseg(this.value)" class="aseg-input" style="width:130px">
+          <span class="aseg-config-hint">${_asegRentabilidad.manual ? 'manual' : (vpd > 0 ? 'derivado de la meta del mes' : 'sin definir — renta/pérdida desactivada')}</span>
         </div>
 
         <!-- FILTROS -->
-        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div class="aseg-filtros">
           <input id="aseg-buscar" type="text" placeholder="Placa, aseguradora, propietario..."
-            style="flex:1;min-width:200px;padding:9px 12px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;outline:none"
-            oninput="filtrarAseguradoras()">
-          <select id="aseg-filtro-estado" onchange="filtrarAseguradoras()"
-            style="padding:9px 12px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;background:white;color:var(--texto)">
+            class="aseg-input" style="flex:1;min-width:200px" oninput="filtrarAseguradoras()">
+          <select id="aseg-filtro-estado" onchange="filtrarAseguradoras()" class="aseg-input" style="background:#fff">
             <option value="">Todos los estados</option>
             ${Object.entries(ESTADOS_ASEG).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
           </select>
-          <select id="aseg-filtro-aseg" onchange="filtrarAseguradoras()"
-            style="padding:9px 12px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;background:white;color:var(--texto)">
+          <select id="aseg-filtro-aseg" onchange="filtrarAseguradoras()" class="aseg-input" style="background:#fff">
             <option value="">Todas las aseguradoras</option>
             ${asegArray.map(g => `<option value="${escapeHtml(g.nombre)}">${escapeHtml(g.nombre)} (${g.count})</option>`).join('')}
           </select>
@@ -314,24 +338,25 @@ async function cargarDashboardAseguradoras() {
   return cargarModuloAseguradoras();
 }
 
-function _asegKpi(label, value, color) {
-  return `<div style="background:white;border:1px solid var(--gris-borde);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow-sm)">
-    <div style="font-size:22px;font-weight:800;color:${color};line-height:1.05;margin-bottom:5px">${value}</div>
-    <div style="font-size:10px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">${label}</div>
+function _asegKpi(icon, value, label, color, sub) {
+  return `<div class="aseg-kpi" style="--ac:${color}">
+    <div class="aseg-kpi-top"><span class="aseg-kpi-ico">${icon}</span><span class="aseg-kpi-val">${value}</span></div>
+    <div class="aseg-kpi-lbl">${label}</div>
+    ${sub ? `<div class="aseg-kpi-sub">${sub}</div>` : ''}
   </div>`;
 }
 
-// KPIs de rentabilidad (neta + en pérdida). Si no hay meta del mes,
-// muestra un aviso para cargarla.
-function _asegKpiRentabilidad(fmt) {
-  if (_asegRentabilidad.valorPlazaDia <= 0) {
-    return _asegKpi('Rentabilidad', 'Define el valor de plaza ↓', '#6B7280');
+// Devuelve la fecha en que la orden entró a su etapa actual (para "días en etapa")
+function _asegInicioEtapa(o, est) {
+  switch (est) {
+    case 'peritaje_enviado':      return o.peritaje_enviado_en;
+    case 'en_pulmon':             return o.pulmon_desde;
+    case 'repuestos_incompletos':
+    case 'repuestos_completos':   return o.repuestos_completos_en || o.pulmon_desde;
+    case 'en_reparacion':         return o.reparacion_iniciada_en;
+    case 'terminado':             return o.entregada_en;
+    default:                      return o.creado_en; // peritaje_pendiente
   }
-  const rents = Object.values(_asegRentabilidad.porOrden);
-  const neta  = rents.reduce((s, r) => s + r.rent, 0);
-  const perd  = rents.filter(r => r.rent < 0).length;
-  return _asegKpi('Rentabilidad neta', fmt(Math.round(neta)), neta >= 0 ? '#059669' : '#DC2626')
-       + _asegKpi('En pérdida', perd, perd > 0 ? '#DC2626' : '#059669');
 }
 
 function filtrarAseguradoras() {
@@ -384,6 +409,23 @@ function _asegCardOrden(o) {
     const est      = o.estado_aseguradora || 'peritaje_pendiente';
     const estInfo  = ESTADOS_ASEG[est] || ESTADOS_ASEG.peritaje_pendiente;
     const diasSist = o.creado_en ? Math.floor((today - new Date(o.creado_en)) / 86400000) : 0;
+    const inicioEt = _asegInicioEtapa(o, est);
+    const diasEt   = inicioEt ? Math.floor((today - new Date(inicioEt)) / 86400000) : diasSist;
+
+    // Autorización / cobro
+    const datos = _leerDatosAseg(o);
+    const va    = parseFloat(datos.valor_autorizado) || 0;
+    const pago  = datos.estado_pago || 'pendiente';
+    let autorizHtml;
+    if (va > 0) {
+      const pagoMap = { pagado:['#059669','#E6F5EF','Pagado'], parcial:['#B45309','#FEF3C7','Pago parcial'], pendiente:['#DC2626','#FEE2E2','Por cobrar'] };
+      const [pc, pb, pl] = pagoMap[pago] || pagoMap.pendiente;
+      autorizHtml = `<span class="aseg-chip" style="background:#ECFEFF;color:#0E7490">✅ Autorizado ${fmt(va)}</span>
+        <span class="aseg-chip" style="background:${pb};color:${pc}">${pl}</span>`;
+    } else {
+      const estimado = _asegRentabilidad.porOrden[o.id]?.ingreso || 0;
+      autorizHtml = `<span class="aseg-chip" style="background:#F3F4F6;color:#6B7280">⏳ Sin autorizar${estimado ? ' · ~' + fmt(estimado) + ' estimado' : ''}</span>`;
+    }
 
     // Estadía
     let estadiaHtml = '';
@@ -439,29 +481,29 @@ function _asegCardOrden(o) {
       }
     } catch(e) {}
 
-    return `<div class="hover-lift" style="background:white;border:1px solid var(--gris-borde);border-radius:10px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);cursor:pointer"
-      onclick="abrirOrden(${o.id})">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
+    return `<div class="aseg-card hover-lift" style="--ac:${estInfo.color}" onclick="abrirOrden(${o.id})">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">
-            <span style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;letter-spacing:2px">${escapeHtml(o.placa||'—')}</span>
-            <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gris-mid)">${formatOT(o.id)}</span>
+            <span class="aseg-placa">${escapeHtml(o.placa||'—')}</span>
+            <span class="aseg-ot">${formatOT(o.id)}</span>
             ${estadiaHtml}
             ${_asegBadgeRent(o.id)}
           </div>
-          <div style="font-size:12px;color:var(--gris-mid)">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'} · ${escapeHtml(o.propietario||'—')}</div>
-          <div style="font-size:12px;font-weight:700;color:#5B21B6;margin-top:2px">🏢 ${escapeHtml(o.aseguradora)}</div>
+          <div class="aseg-meta">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'} · ${escapeHtml(o.propietario||'—')}</div>
+          <div class="aseg-aseg">🏢 ${escapeHtml(o.aseguradora)}</div>
           ${repHtml}
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
-          <span style="display:inline-flex;align-items:center;gap:5px;background:${estInfo.bg};color:${estInfo.color};padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0"></span>${estInfo.label}</span>
-          <span style="font-size:11px;color:var(--gris-mid)">${diasSist}d en sistema</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+          <span class="aseg-chip" style="background:${estInfo.bg};color:${estInfo.color}"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0"></span>${estInfo.label}</span>
+          <span style="font-size:11px;font-weight:700;color:${diasEt >= 7 ? '#DC2626' : 'var(--gris-mid)'}">${diasEt}d en esta etapa</span>
+          <span style="font-size:10px;color:var(--gris-mid)">${diasSist}d en total</span>
         </div>
       </div>
+      <!-- Autorización / cobro -->
+      <div class="aseg-money">${autorizHtml}</div>
       <!-- Timeline -->
-      <div style="display:flex;align-items:flex-start;padding-top:10px;border-top:1px solid var(--gris-borde)">
-        ${timelineHtml}
-      </div>
+      <div class="aseg-timeline">${timelineHtml}</div>
     </div>`;
 }
 
