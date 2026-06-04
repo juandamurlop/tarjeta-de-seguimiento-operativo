@@ -2759,18 +2759,18 @@ tr.destello-nuevo { animation: destelloBg 1.3s var(--ease-out) 3; }
 /* ═══════════════════════════════════════════════════════════
    PANEL CAPACIDAD — TORTAS POR CATEGORÍA
 ═══════════════════════════════════════════════════════════ */
-.cap-donuts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.cap-donuts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-bottom: 14px; }
 .cap-donut {
-  background: #fff; border: 1.5px solid var(--gris-borde); border-radius: 14px;
-  padding: 12px 8px 10px; text-align: center; cursor: pointer;
+  background: #fff; border: 1.5px solid var(--gris-borde); border-radius: 12px;
+  padding: 9px 5px 8px; text-align: center; cursor: pointer;
   transition: transform .15s var(--ease-out), box-shadow .15s var(--ease-out), border-color .15s var(--ease-out);
 }
 .cap-donut:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .cap-donut-sel { border-color: var(--azul); box-shadow: var(--shadow-md); }
-.cap-donut svg { display: block; margin: 0 auto 6px; }
+.cap-donut svg { display: block; margin: 0 auto 5px; width: 58px; height: 58px; }
 .cap-donut svg circle:nth-child(2) { transition: stroke-dasharray .6s var(--ease-out); }
-.cap-donut-lbl { font-size: 12px; font-weight: 700; color: var(--texto); line-height: 1.1; }
-.cap-donut-sub { font-size: 9.5px; color: var(--gris-mid); text-transform: uppercase; letter-spacing: .3px; margin-top: 2px; }
+.cap-donut-lbl { font-size: 11px; font-weight: 700; color: var(--texto); line-height: 1.1; }
+.cap-donut-sub { font-size: 8.5px; color: var(--gris-mid); text-transform: uppercase; letter-spacing: .2px; margin-top: 2px; }
 
 .cap-detalle { background: #F9FAFB; border: 1px solid var(--gris-borde); border-radius: 12px; overflow: hidden; }
 .cap-detalle-head {
