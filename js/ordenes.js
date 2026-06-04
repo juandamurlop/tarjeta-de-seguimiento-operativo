@@ -2641,33 +2641,56 @@ function montarJefe() {
 }
 
 // ─── Badges de notificación del menú lateral ──────────────
-function _navBadgePrevGet() {
-  try { return JSON.parse(localStorage.getItem('nav_badge_prev') || '{}'); } catch (e) { return {}; }
-}
+function _navBadgePrevGet() { try { return JSON.parse(localStorage.getItem('nav_badge_prev') || '{}'); } catch (e) { return {}; } }
+function _navBadgePrevSet(o) { try { localStorage.setItem('nav_badge_prev', JSON.stringify(o)); } catch (e) {} }
+function _navSeenGet() { try { return JSON.parse(localStorage.getItem('nav_badge_seen') || '{}'); } catch (e) { return {}; } }
+function _navSeenSet(o) { try { localStorage.setItem('nav_badge_seen', JSON.stringify(o)); } catch (e) {} }
 
-// Crea/actualiza una píldora de conteo dentro de un ítem del menú.
-// Si el conteo AUMENTA (algo nuevo), abre su grupo y destella el ícono.
+// Crea/actualiza el indicador de un ítem del menú.
+// Ilumina (punto + borde + destello) solo si hay pendientes NO atendidos
+// (conteo mayor al ya visto). Si ya se atendió la sección, queda en calma.
 function _setNavBadge(navId, count) {
   const item = document.getElementById(navId);
   if (!item) return;
   let b = item.querySelector('.nav-badge');
   const n = Number(count) || 0;
+  const seenAll = _navSeenGet();
+  const seen = seenAll[navId] || 0;
+  const esNuevo = n > seen;          // hay algo nuevo sin atender
+
   if (n > 0) {
     if (!b) { b = document.createElement('span'); b.className = 'nav-badge'; item.appendChild(b); }
-    b.textContent = n > 99 ? '99+' : String(n);
     b.style.display = 'inline-block';
     b.title = `${n} pendiente${n === 1 ? '' : 's'}`;
-    item.classList.add('nav-notif');
+    b.classList.toggle('visto', !esNuevo);
+    item.classList.toggle('nav-notif', esNuevo);
   } else {
     if (b) b.style.display = 'none';
     item.classList.remove('nav-notif');
+    if (seenAll[navId]) { delete seenAll[navId]; _navSeenSet(seenAll); } // reset al quedar en 0
   }
-  // ¿Llegó algo nuevo? → revelar (abrir grupo cerrado + destello)
+
+  // ¿Subió respecto al último refresco y es nuevo? → abrir grupo + destellar
   const prevAll = _navBadgePrevGet();
   const prev = prevAll[navId] || 0;
-  if (n > prev) _revealNavItem(navId);
+  if (n > prev && esNuevo) _revealNavItem(navId);
   prevAll[navId] = n;
-  try { localStorage.setItem('nav_badge_prev', JSON.stringify(prevAll)); } catch (e) {}
+  _navBadgePrevSet(prevAll);
+}
+
+// Marca una sección como atendida: apaga su iluminación (la deja en calma).
+function _navMarcarVisto(navId) {
+  if (!navId) return;
+  const prevAll = _navBadgePrevGet();
+  const n = prevAll[navId] || 0;
+  const seenAll = _navSeenGet();
+  seenAll[navId] = n;
+  _navSeenSet(seenAll);
+  const item = document.getElementById(navId);
+  if (!item) return;
+  item.classList.remove('nav-notif', 'nav-flash');
+  const b = item.querySelector('.nav-badge');
+  if (b) { if (n > 0) b.classList.add('visto'); else b.style.display = 'none'; }
 }
 
 // Abre el grupo del ítem (si está colapsado) y destella su ícono.
@@ -2703,6 +2726,8 @@ async function actualizarBadgesNav() {
 }
 
 function navJefe(pag) {
+  // Al entrar a una sección, apagar su iluminación de notificación
+  if (typeof _navMarcarVisto === 'function') _navMarcarVisto('nav-' + pag);
   // Actualizar clases active en sidebar y bottom nav
   // Detener polling KPI al salir de esa pantalla
   if (pag !== 'taller-kpi' && window._kpiInterval) { clearInterval(window._kpiInterval); window._kpiInterval = null; }

@@ -49,6 +49,7 @@ async function actualizarBadgeMecRepuestos() {
 }
 
 function navMec(pag) {
+  if (typeof _navMarcarVisto === 'function') _navMarcarVisto('nav-mec-' + pag);
   ['ordenes','historial'].forEach(p => {
     const nb = document.getElementById('nav-mec-'+p);
     const bb = document.getElementById('bnav-mec-'+p);

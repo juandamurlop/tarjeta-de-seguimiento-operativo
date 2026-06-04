@@ -837,6 +837,7 @@ async function actualizarBadgeRepPerfil() {
 }
 
 function mostrarSeccionRep(sec) {
+  if (typeof _navMarcarVisto === 'function') _navMarcarVisto('nav-rep-' + sec);
   _repSeccionActual = sec;
   const btnSol   = document.getElementById('nav-rep-solicitudes');
   const btnProv  = document.getElementById('nav-rep-proveedores');

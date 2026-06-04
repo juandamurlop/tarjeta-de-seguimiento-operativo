@@ -351,6 +351,13 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 }
 .nav-item.nav-notif svg { opacity: 0.95; }
 
+/* Indicador "en calma" — ya atendido: punto tenue, sin pulso ni glow */
+.nav-badge.visto {
+  animation: none;
+  background: rgba(var(--neon-naranja), 0.55);
+  box-shadow: 0 0 0 2px rgba(var(--neon-naranja), 0.10);
+}
+
 /* ── Alerta luminosa reutilizable para contenido nuevo/actualizado ── */
 .destello-nuevo { animation: destelloGlow 1.25s var(--ease-out) 2; position: relative; z-index: 1; }
 @keyframes destelloGlow {
