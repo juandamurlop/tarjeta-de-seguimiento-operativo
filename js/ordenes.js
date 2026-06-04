@@ -5231,9 +5231,11 @@ async function _chequearAlertas() {
       }
     });
 
-    // Popup recurrente cada 20 min (20, 40, 60, 80, ...), si no fue revisada
+    // Popup recurrente: cada 20 min la primera hora (20, 40, 60) y luego cada
+    // hora (120, 180, 240, ...), si no fue revisada.
+    const _alertaTramo = m => m < 60 ? 'm' + Math.floor(m / 20) : 'h' + Math.floor(m / 60);
     [...amarillas, ...naranjas].forEach(({ etapa, orden, minutos }) => {
-      const key = etapa.id + ':' + Math.floor(minutos / 20); // clave por tramo de 20 min
+      const key = etapa.id + ':' + _alertaTramo(minutos);
       if (_alertasYaMostradas.has(key)) return;
       if (_alertasRevisadas.has(etapa.id)) return;
       _alertasYaMostradas.add(key);
