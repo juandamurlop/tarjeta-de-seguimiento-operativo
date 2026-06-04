@@ -3627,22 +3627,41 @@ tr.destello-nuevo { animation: destelloBg 1.3s var(--ease-out) 3; }
 }
 
 /* ═══════════════════════════════════════════════════════════
-   BRILLO NEÓN AL PASAR EL MOUSE — recuadros / tarjetas
-   Un resplandor azul neón que aparece al hacer hover y se
-   desvanece al salir. Aplica a las tarjetas de cualquier panel.
+   BRILLO NEÓN AL PASAR EL MOUSE — funciona en TODO el sistema
+   · Tarjetas/paneles (divs): resplandor azul (box-shadow + borde)
+   · Filas de tablas/listas: resalte azul de fondo (el box-shadow
+     no se renderiza en <tr> con border-collapse)
 ═══════════════════════════════════════════════════════════ */
-.card, .kpi-card, .kpi-panel, .kpi-res-item,
-.aseg-kpi, .aseg-card, .aseg-comp-card, .aseg-ficha-card,
-.dash-card, .dash-panel, .orden-card, .cot-card, .cap-donut {
-  transition: box-shadow .24s var(--ease-out),
-              border-color .24s var(--ease-out),
-              transform .24s var(--ease-out);
+.card, .login-card, .dash-card, .dash-panel, .orden-card, .detalle-header-card,
+.det-datos-card, .sidebar-card, .srv-panel, .etapa-card, .pulmon-card, .srv-card-select,
+.historial-item, .mec-orden-card, .cliente-orden-card, .cot-card, .no-card, .solicitud-card,
+.kpi-res-item, .kpi-card, .kpi-panel, .aseg-kpi, .aseg-card, .aseg-comp-card, .aseg-ficha-card,
+.cap-donut, .rep-card, .rep-form-card {
+  transition: box-shadow .22s var(--ease-out),
+              border-color .22s var(--ease-out),
+              transform .22s var(--ease-out);
 }
-.card:hover, .kpi-card:hover, .kpi-panel:hover, .kpi-res-item:hover,
-.aseg-kpi:hover, .aseg-card:hover, .aseg-comp-card:hover, .aseg-ficha-card:hover,
-.dash-card:hover, .dash-panel:hover, .orden-card:hover, .cot-card:hover, .cap-donut:hover {
+.card:hover, .login-card:hover, .dash-card:hover, .dash-panel:hover, .orden-card:hover,
+.detalle-header-card:hover, .det-datos-card:hover, .sidebar-card:hover, .srv-panel:hover,
+.etapa-card:hover, .pulmon-card:hover, .srv-card-select:hover, .historial-item:hover,
+.mec-orden-card:hover, .cliente-orden-card:hover, .cot-card:hover, .no-card:hover,
+.solicitud-card:hover, .kpi-res-item:hover, .kpi-card:hover, .kpi-panel:hover, .aseg-kpi:hover,
+.aseg-card:hover, .aseg-comp-card:hover, .aseg-ficha-card:hover, .cap-donut:hover,
+.rep-card:hover, .rep-form-card:hover {
   border-color: rgba(var(--neon), 0.75);
   box-shadow: 0 0 0 1px rgba(var(--neon), 0.5),
               0 0 18px rgba(var(--neon), 0.32),
               0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+/* Filas de listas/tablas — resalte azul al pasar el mouse */
+.ord-row, .row-hover, .op-row, .cot-item-row, .dash-entrega-row, .proceso-orden-row,
+.inv-item, .cliente-etapa-row, .kpi-tabla-fila, .cap-row, .kpi-tec-row, .kpi-drill-fila {
+  transition: background-color .16s var(--ease-out), box-shadow .16s var(--ease-out);
+}
+.ord-row:hover, .row-hover:hover, .op-row:hover, .cot-item-row:hover, .dash-entrega-row:hover,
+.proceso-orden-row:hover, .inv-item:hover, .cliente-etapa-row:hover, .kpi-tabla-fila:hover,
+.cap-row:hover, .kpi-tec-row:hover, .kpi-drill-fila:hover {
+  background-color: rgba(var(--neon), 0.11);
+  box-shadow: inset 3px 0 0 rgb(var(--neon));
 }
