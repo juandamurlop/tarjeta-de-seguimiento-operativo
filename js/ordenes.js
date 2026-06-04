@@ -1533,7 +1533,7 @@ async function agregarNuevaEmpresaNueva() {
   } catch(e) { toast('Error: '+e.message,'err'); }
 }
 
-function agregarNuevaAsegNueva() {
+function agregarNuevaAsegNueva(onSaved) {
   // Eliminar modal previo
   document.getElementById('modal-nueva-aseg')?.remove();
 
@@ -1640,6 +1640,7 @@ function agregarNuevaAsegNueva() {
       toast('Aseguradora creada ✓');
       document.getElementById('modal-nueva-aseg').remove();
       await recargarListasNuevaOrden();
+      if (typeof onSaved === 'function') onSaved();
     } catch(e) {
       errEl.textContent = 'Error: ' + e.message;
       errEl.style.display = 'block';

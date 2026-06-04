@@ -18,6 +18,7 @@ const ESTADOS_ASEG_ORDER = [
 ];
 
 let _asegOrdenesCache = [];
+let _asegCatalogo = {};
 
 // ═══════════════════════════════════════════════════════════
 // RENTABILIDAD POR VEHÍCULO (valor de plaza vs. tiempo en taller)
@@ -242,10 +243,15 @@ async function cargarModuloAseguradoras() {
 
   try {
     // Fetch principal: órdenes con aseguradora (campo aseguradora o tipo_cliente=aseguradora)
-    const [ordenesAseg, ordenesConAseg] = await Promise.all([
+    const [ordenesAseg, ordenesConAseg, catalogo] = await Promise.all([
       api('/ordenes?aseguradora=not.is.null&order=creado_en.desc&select=*').catch(() => []),
-      api('/ordenes?tipo_cliente=eq.aseguradora&order=creado_en.desc&limit=200&select=*').catch(() => [])
+      api('/ordenes?tipo_cliente=eq.aseguradora&order=creado_en.desc&limit=200&select=*').catch(() => []),
+      api('/aseguradoras?order=nombre.asc').catch(() => [])
     ]);
+
+    // Catálogo de aseguradoras (datos guardados por compañía), indexado por nombre
+    _asegCatalogo = {};
+    (catalogo || []).forEach(a => { _asegCatalogo[(a.nombre || '').trim().toLowerCase()] = a; });
 
     // Merge sin duplicados
     const idsVistas = new Set();
@@ -343,6 +349,15 @@ async function cargarModuloAseguradoras() {
     renderSinParpadeo(cont, `
       <div class="aseg-wrap">
 
+        <!-- BARRA SUPERIOR: catálogo -->
+        <div class="aseg-topbar">
+          <span class="aseg-topbar-info">🏢 ${Object.keys(_asegCatalogo).length} aseguradora${Object.keys(_asegCatalogo).length === 1 ? '' : 's'} en el catálogo</span>
+          <button class="btn btn-primary btn-sm" onclick="abrirNuevaAseguradoraDesdeModulo()" style="display:flex;align-items:center;gap:6px">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nueva aseguradora
+          </button>
+        </div>
+
         <!-- DINERO -->
         <div class="aseg-kpi-grupo">💰 Dinero de aseguradoras</div>
         <div class="aseg-kpis">
@@ -385,6 +400,9 @@ async function cargarModuloAseguradoras() {
             ${asegArray.map(g => `<option value="${escapeHtml(g.nombre)}">${escapeHtml(g.nombre)} (${g.count})</option>`).join('')}
           </select>
         </div>
+
+        <!-- FICHA (aparece al seleccionar una aseguradora) -->
+        <div id="aseg-ficha"></div>
 
         <!-- LISTA -->
         <div id="aseg-lista"></div>
@@ -451,7 +469,63 @@ function filtrarAseguradoras() {
     const matchAseg = !aseg || (o.aseguradora || 'Sin aseguradora') === aseg;
     return matchQ && matchEst && matchAseg;
   });
+
+  // Ficha de la aseguradora seleccionada (datos + totales)
+  const fichaEl = document.getElementById('aseg-ficha');
+  if (fichaEl) fichaEl.innerHTML = (aseg && aseg !== 'Sin aseguradora') ? _asegFichaHtml(aseg) : '';
+
   renderListaAseguradoras(data);
+}
+
+// Ficha con los datos del catálogo + totales de la aseguradora seleccionada
+function _asegFichaHtml(nombre) {
+  const fmt = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
+  const a = _asegCatalogo[(nombre||'').trim().toLowerCase()];
+  const ordenes = _asegOrdenesCache.filter(o => (o.aseguradora||'') === nombre);
+  const activas = ordenes.filter(o => o.estado === 'Activa').length;
+
+  let autorizado = 0, porCobrar = 0;
+  ordenes.forEach(o => {
+    const d = _leerDatosAseg(o);
+    const va = parseFloat(d.valor_autorizado) || 0;
+    if (va > 0) { autorizado += va; if ((d.estado_pago||'pendiente') !== 'pagado') porCobrar += va; }
+  });
+
+  let contactos = [];
+  try { contactos = a?.contactos ? (typeof a.contactos === 'string' ? JSON.parse(a.contactos) : a.contactos) : []; } catch(e) {}
+
+  const datosLinea = a
+    ? [a.nit ? 'NIT ' + escapeHtml(a.nit) : '', a.telefono ? '📞 ' + escapeHtml(a.telefono) : '', a.correo ? '✉ ' + escapeHtml(a.correo) : ''].filter(Boolean).join('  ·  ')
+    : '';
+
+  return `<div class="aseg-ficha-card">
+    <div class="aseg-ficha-head">
+      <div style="min-width:0">
+        <div class="aseg-ficha-nombre">🏢 ${escapeHtml(nombre)}</div>
+        ${a
+          ? `${datosLinea ? `<div class="aseg-ficha-sub">${datosLinea}</div>` : ''}${a.direccion ? `<div class="aseg-ficha-sub">📍 ${escapeHtml(a.direccion)}</div>` : ''}`
+          : `<div class="aseg-ficha-sub" style="color:#D97706">No está en el catálogo todavía — créala para guardar sus datos.</div>`}
+      </div>
+      ${a ? '' : `<button class="btn btn-primary btn-sm" onclick="abrirNuevaAseguradoraDesdeModulo()">Crear en catálogo</button>`}
+    </div>
+    <div class="aseg-ficha-stats">
+      <div><div class="v">${ordenes.length}</div><div class="l">Órdenes totales</div></div>
+      <div><div class="v" style="color:#2563EB">${activas}</div><div class="l">Activas</div></div>
+      <div><div class="v" style="color:#0891B2">${fmt(autorizado)}</div><div class="l">Autorizado</div></div>
+      <div><div class="v" style="color:${porCobrar > 0 ? '#DC2626' : '#059669'}">${fmt(porCobrar)}</div><div class="l">Por cobrar</div></div>
+      ${a?.valor_hora ? `<div><div class="v" style="color:#7C3AED">${fmt(a.valor_hora)}</div><div class="l">Estadía / hora</div></div>` : ''}
+    </div>
+    ${contactos.length ? `<div class="aseg-ficha-contactos">${contactos.map(c => `<span class="aseg-chip" style="background:#F5F3FF;color:#5B21B6">👤 ${escapeHtml(c.nombre||'—')}${c.telefono ? ' · ' + escapeHtml(c.telefono) : ''}${c.correo ? ' · ' + escapeHtml(c.correo) : ''}</span>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+// Abre el formulario de nueva aseguradora y refresca el módulo al guardar
+function abrirNuevaAseguradoraDesdeModulo() {
+  if (typeof agregarNuevaAsegNueva === 'function') {
+    agregarNuevaAsegNueva(() => cargarModuloAseguradoras());
+  } else {
+    toast('El formulario de aseguradora no está disponible', 'err');
+  }
 }
 
 function renderListaAseguradoras(ordenes) {
