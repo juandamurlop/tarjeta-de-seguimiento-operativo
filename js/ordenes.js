@@ -5223,22 +5223,21 @@ async function _chequearAlertas() {
       const minutos        = Math.floor(tiempoNetoMs / 60000);
       const orden          = ordenMap[e.orden_id] || {};
 
-      if (minutos >= 300) {
-        criticas.push({ etapa: e, orden, minutos });
-      } else if (minutos >= 180) {
-        naranjas.push({ etapa: e, orden, minutos });
-      } else if (minutos >= 60) {
-        amarillas.push({ etapa: e, orden, minutos });
+      // Lista crítica persistente a partir de 5h
+      if (minutos >= 300) criticas.push({ etapa: e, orden, minutos });
+      // Aviso desde los 20 min: amarillo hasta 1h, naranja de 1h en adelante
+      if (minutos >= 20) {
+        (minutos >= 60 ? naranjas : amarillas).push({ etapa: e, orden, minutos });
       }
     });
 
-    // Mostrar popup para amarillas y naranjas (una vez por sesión, si no revisada)
+    // Popup recurrente cada 20 min (20, 40, 60, 80, ...), si no fue revisada
     [...amarillas, ...naranjas].forEach(({ etapa, orden, minutos }) => {
-      const key = etapa.id + ':' + Math.floor(minutos / 60); // clave por hora entera
+      const key = etapa.id + ':' + Math.floor(minutos / 20); // clave por tramo de 20 min
       if (_alertasYaMostradas.has(key)) return;
       if (_alertasRevisadas.has(etapa.id)) return;
       _alertasYaMostradas.add(key);
-      const color = minutos >= 180 ? 'naranja' : 'amarillo';
+      const color = minutos >= 60 ? 'naranja' : 'amarillo';
       _mostrarPopupAlerta(etapa, orden, minutos, color);
     });
 
