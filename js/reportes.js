@@ -703,10 +703,10 @@ async function generarReporte(tipo, fechaIni, fechaFin, formato) {
       solicitudesRep, cotizaciones, flotillas
     ] = await Promise.all([
       api(`/etapas?fin=gte.${desdeISO}&fin=lte.${hastaISO}&select=id,orden_id,etapa,etapa_key,servicio,tecnico,mecanico_id,inicio,fin,valor,horas_facturadas,horas_adicionales,horas_estimadas,tiempo_pausado_min`).catch(()=>[]) || [],
-      api(`/ordenes?or=(creado_en.gte.${desdeISO},entregada_en.gte.${desdeISO})&select=id,placa,marca,linea,propietario,aseguradora,tipo_cliente,flotilla_id,estado,creado_en,entregada_en,fecha_entrega_1,fecha_entrega_2`).catch(()=>[]) || [],
+      api(`/ordenes?or=(creado_en.gte.${desdeISO},entregada_en.gte.${desdeISO})&select=id,placa,marca,linea,propietario,aseguradora,tipo_cliente,estado,creado_en,entregada_en,fecha_entrega_1,fecha_entrega_2`).catch(()=>[]) || [],
       api(`/novedades?creado_en=gte.${desdeISO}&creado_en=lte.${hastaISO}&select=id,orden_id,etapa_id,tipo,responsable,motivo,desde,creado_en`).catch(()=>[]) || [],
-      api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${desdeISO}&entregada_en=lte.${hastaISO}&select=id,placa,marca,linea,propietario,aseguradora,tipo_cliente,flotilla_id,creado_en,entregada_en,fecha_entrega_1,pulmon,pulmon_desde,pulmon_fin,pulmon_tipo`).catch(()=>[]) || [],
-      api(`/ordenes?creado_en=gte.${desdeISO}&creado_en=lte.${hastaISO}&select=id,placa,marca,linea,propietario,aseguradora,tipo_cliente,flotilla_id,creado_en,estado,pulmon,pulmon_desde,pulmon_fin,pulmon_tipo`).catch(()=>[]) || [],
+      api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${desdeISO}&entregada_en=lte.${hastaISO}&select=id,placa,marca,linea,propietario,aseguradora,tipo_cliente,creado_en,entregada_en,fecha_entrega_1,pulmon,pulmon_desde,pulmon_fin,pulmon_tipo`).catch(()=>[]) || [],
+      api(`/ordenes?creado_en=gte.${desdeISO}&creado_en=lte.${hastaISO}&select=id,placa,marca,linea,propietario,aseguradora,tipo_cliente,creado_en,estado,pulmon,pulmon_desde,pulmon_fin,pulmon_tipo`).catch(()=>[]) || [],
       api(`/solicitudes_repuesto?creado_en=gte.${desdeISO}&creado_en=lte.${hastaISO}&select=id,orden_id,etapa_id,repuesto,unidades,estado,tiempo_espera_min,creado_en`).catch(()=>[]) || [],
       api(`/cotizaciones_repuesto?select=id,solicitud_id,opcion,precio_costo,precio_venta_jefe,estado_opcion`).catch(()=>[]) || [],
       api(`/flotillas?select=id,nombre&order=nombre.asc`).catch(()=>[]) || []
@@ -1097,9 +1097,14 @@ function _calcularMetricas(etapas, ordenes, novedades, ordenesEntregadas, ordene
   const valPorOrden = {};
   etapas.forEach(e => { valPorOrden[e.orden_id] = (valPorOrden[e.orden_id]||0)+(e.valor||0); });
 
+  // La flotilla guarda su NOMBRE en el campo "aseguradora" con tipo_cliente='flotilla'.
+  // Por eso se clasifica primero por tipo_cliente para no contar flotillas como aseguradoras.
+  const esFlotilla = o => o.tipo_cliente === 'flotilla';
+  const esAseg     = o => !esFlotilla(o) && (o.tipo_cliente === 'aseguradora' || !!o.aseguradora);
+
   const tipoMap = {};
   ordenes.forEach(o => {
-    const key = o.aseguradora ? 'Aseguradora' : (o.tipo_cliente==='flotilla'?'Flotilla':'Particular');
+    const key = esFlotilla(o) ? 'Flotilla' : (esAseg(o) ? 'Aseguradora' : 'Particular');
     if (!tipoMap[key]) tipoMap[key] = { ordenes:0, valor:0 };
     tipoMap[key].ordenes++;
     tipoMap[key].valor += (valPorOrden[o.id]||0);
@@ -1108,26 +1113,25 @@ function _calcularMetricas(etapas, ordenes, novedades, ordenesEntregadas, ordene
     .map(([tipo, d]) => ({ tipo, ...d }))
     .sort((a,b) => b.ordenes - a.ordenes);
 
-  // ── Ranking aseguradoras ──
+  // ── Ranking aseguradoras (excluye flotillas) ──
   const asegMap = {};
-  ordenes.filter(o=>o.aseguradora).forEach(o => {
-    if (!asegMap[o.aseguradora]) asegMap[o.aseguradora] = { ordenes:0, valor:0 };
-    asegMap[o.aseguradora].ordenes++;
-    asegMap[o.aseguradora].valor += (valPorOrden[o.id]||0);
+  ordenes.filter(esAseg).forEach(o => {
+    const k = o.aseguradora || 'Sin nombre';
+    if (!asegMap[k]) asegMap[k] = { ordenes:0, valor:0 };
+    asegMap[k].ordenes++;
+    asegMap[k].valor += (valPorOrden[o.id]||0);
   });
   const rankingAseguradoras = Object.entries(asegMap)
     .map(([nombre, d]) => ({ nombre, ...d }))
     .sort((a,b) => b.ordenes - a.ordenes).slice(0,10);
 
-  // ── Ranking flotillas / empresas ──
-  const flotillaById = {};
-  (flotillas || []).forEach(f => { flotillaById[f.id] = f.nombre; });
+  // ── Ranking flotillas / empresas (por nombre, guardado en "aseguradora") ──
   const flotMap2 = {};
-  ordenes.filter(o => o.tipo_cliente === 'flotilla' && o.flotilla_id).forEach(o => {
-    const nombre = flotillaById[o.flotilla_id] || `Empresa #${o.flotilla_id}`;
-    if (!flotMap2[o.flotilla_id]) flotMap2[o.flotilla_id] = { nombre, ordenes:0, valor:0 };
-    flotMap2[o.flotilla_id].ordenes++;
-    flotMap2[o.flotilla_id].valor += (valPorOrden[o.id]||0);
+  ordenes.filter(esFlotilla).forEach(o => {
+    const nombre = o.aseguradora || 'Sin flotilla';
+    if (!flotMap2[nombre]) flotMap2[nombre] = { nombre, ordenes:0, valor:0 };
+    flotMap2[nombre].ordenes++;
+    flotMap2[nombre].valor += (valPorOrden[o.id]||0);
   });
   const rankingFlotillas = Object.values(flotMap2)
     .sort((a,b) => b.ordenes - a.ordenes);
