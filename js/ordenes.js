@@ -2718,6 +2718,7 @@ function navJefe(pag) {
     case 'aseguradoras':
       pagId = 'pag-aseguradoras';
       titulo = 'Aseguradoras';
+      if (typeof resetVistaAseguradoras === 'function') resetVistaAseguradoras();
       setTimeout(() => {
         if (typeof cargarModuloAseguradoras === 'function') cargarModuloAseguradoras();
         else if (typeof montarAseguradoras === 'function') montarAseguradoras();

@@ -2680,6 +2680,22 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 .aseg-topbar-info { font-size: 12px; font-weight: 700; color: var(--gris-mid); }
 .aseg-kpi-grupo { font-size: 11px; font-weight: 800; color: var(--gris-mid); text-transform: uppercase; letter-spacing: .6px; margin: 0 0 9px; }
 
+/* Selector de aseguradoras (vista lista) */
+.aseg-comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.aseg-comp-card {
+  background: #fff; border: 1px solid var(--gris-borde); border-left: 3px solid #5B21B6;
+  border-radius: 14px; padding: 16px; cursor: pointer; box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 11px;
+}
+.aseg-comp-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.aseg-comp-nombre { font-size: 15px; font-weight: 800; color: #5B21B6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aseg-comp-flag { font-size: 9.5px; font-weight: 700; color: #B45309; background: #FEF3C7; border-radius: 99px; padding: 2px 8px; white-space: nowrap; flex-shrink: 0; }
+.aseg-comp-nums { display: flex; gap: 22px; }
+.aseg-comp-nums .n { font-size: 22px; font-weight: 800; color: var(--texto); line-height: 1; }
+.aseg-comp-nums .t { font-size: 10px; color: var(--gris-mid); text-transform: uppercase; letter-spacing: .4px; display: block; margin-top: 3px; }
+.aseg-comp-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.aseg-comp-go { font-size: 11px; font-weight: 700; color: var(--azul); margin-top: auto; }
+
 /* Ficha de aseguradora seleccionada */
 .aseg-ficha-card { background: #fff; border: 1px solid var(--gris-borde); border-left: 3px solid #5B21B6; border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
 .aseg-ficha-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

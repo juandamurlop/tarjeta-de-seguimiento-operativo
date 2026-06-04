@@ -19,6 +19,7 @@ const ESTADOS_ASEG_ORDER = [
 
 let _asegOrdenesCache = [];
 let _asegCatalogo = {};
+let _asegSeleccionada = null; // nombre de la aseguradora abierta (null = vista lista)
 
 // ═══════════════════════════════════════════════════════════
 // RENTABILIDAD POR VEHÍCULO (valor de plaza vs. tiempo en taller)
@@ -346,86 +347,104 @@ async function cargarModuloAseguradoras() {
     const enPerdidaN = rents.filter(r => r.rent < 0).length;
     const rentOn = _asegRentabilidad.valorPlazaDia > 0;
 
-    renderSinParpadeo(cont, `
-      <div class="aseg-wrap">
+    // Lista de compañías (catálogo + las que tienen órdenes), con sus totales
+    const nombresSet = new Set();
+    Object.values(_asegCatalogo).forEach(a => { if (a.nombre) nombresSet.add(a.nombre); });
+    todasOrdenes.forEach(o => { if (o.aseguradora) nombresSet.add(o.aseguradora); });
+    const companias = [...nombresSet].map(nombre => {
+      const ords = todasOrdenes.filter(o => (o.aseguradora || '') === nombre);
+      const act = ords.filter(o => o.estado === 'Activa').length;
+      let aut = 0, cob = 0, sinAut = 0;
+      ords.forEach(o => {
+        const d = _leerDatosAseg(o); const va = parseFloat(d.valor_autorizado) || 0;
+        if (va > 0) { aut += va; if ((d.estado_pago || 'pendiente') !== 'pagado') cob += va; }
+        else if (!o.entregada_en) sinAut++;
+      });
+      return { nombre, count: ords.length, act, aut, cob, sinAut, enCat: !!_asegCatalogo[(nombre || '').trim().toLowerCase()] };
+    }).sort((a, b) => b.act - a.act || b.count - a.count);
 
-        <!-- BARRA SUPERIOR: catálogo -->
-        <div class="aseg-topbar">
-          <span class="aseg-topbar-info">🏢 ${Object.keys(_asegCatalogo).length} aseguradora${Object.keys(_asegCatalogo).length === 1 ? '' : 's'} en el catálogo</span>
-          <button class="btn btn-primary btn-sm" onclick="abrirNuevaAseguradoraDesdeModulo()" style="display:flex;align-items:center;gap:6px">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nueva aseguradora
-          </button>
-        </div>
-
-        <!-- DINERO -->
-        <div class="aseg-kpi-grupo">💰 Dinero de aseguradoras</div>
-        <div class="aseg-kpis">
-          ${_asegKpi('⏳', sinAutorizar, 'Pendiente por autorizar', '#D97706', sinAutorizar ? `~${fmt(estimadoRiesgo)} en riesgo` : 'todo autorizado')}
-          ${_asegKpi('✅', fmt(facturado), 'Autorizado', '#0891B2', `${conValor} de ${todasOrdenes.length} con valor`)}
-          ${_asegKpi('💵', fmt(porCobrar), 'Por cobrar', porCobrar > 0 ? '#DC2626' : '#059669', porCobrar > 0 ? 'cartera pendiente' : 'al día')}
-          ${_asegKpi('⏰', fmt(vencidaMonto), 'Cartera vencida', vencidaCount ? '#DC2626' : '#059669', vencidaCount ? `${vencidaCount} con +${DIAS_VENCE}d sin pago` : 'sin vencidos')}
-        </div>
-
-        <!-- OPERACIÓN -->
-        <div class="aseg-kpi-grupo">🔧 Operación y rentabilidad</div>
-        <div class="aseg-kpis">
-          ${_asegKpi('🚗', activas.length, 'Activos', '#2563EB', 'cupos ocupados')}
-          ${rentOn
-            ? _asegKpi('📈', fmt(Math.round(netaRent)), 'Rentabilidad neta', netaRent >= 0 ? '#059669' : '#DC2626', netaRent >= 0 ? 'en ganancia' : 'en pérdida')
-            : _asegKpi('📈', '—', 'Rentabilidad neta', '#6B7280', 'define el valor de plaza ↓')}
-          ${_asegKpi('🔴', enPerdidaN, 'En pérdida', enPerdidaN > 0 ? '#DC2626' : '#059669', enPerdidaN ? 'requieren atención' : 'ninguna')}
-          ${_asegKpi('🕐', promAutoriz + 'd', 'Tiempo autorización', '#7C3AED', 'peritaje → aprobación')}
-          ${_asegKpi('🔄', promCiclo + 'd', 'Ciclo prom. (mes)', '#0EA5E9', 'ingreso → entrega')}
-        </div>
-
-        <!-- CONFIG VALOR DE PLAZA (base de renta/pérdida) -->
-        <div class="aseg-config">
-          <span>💡 Valor de plaza por día (base renta/pérdida):</span>
-          <input type="number" value="${vpd > 0 ? Math.round(vpd) : ''}" placeholder="ej. 120000"
-            onchange="guardarValorPlazaAseg(this.value)" class="aseg-input" style="width:130px">
-          <span class="aseg-config-hint">${_asegRentabilidad.manual ? 'manual' : (vpd > 0 ? 'derivado de la meta del mes' : 'sin definir — renta/pérdida desactivada')}</span>
-        </div>
-
-        <!-- FILTROS -->
-        <div class="aseg-filtros">
-          <input id="aseg-buscar" type="text" placeholder="Placa, aseguradora, propietario..."
-            class="aseg-input" style="flex:1;min-width:200px" oninput="filtrarAseguradoras()">
-          <select id="aseg-filtro-estado" onchange="filtrarAseguradoras()" class="aseg-input" style="background:#fff">
-            <option value="">Todos los estados</option>
-            ${Object.entries(ESTADOS_ASEG).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
-          </select>
-          <select id="aseg-filtro-aseg" onchange="filtrarAseguradoras()" class="aseg-input" style="background:#fff">
-            <option value="">Todas las aseguradoras</option>
-            ${asegArray.map(g => `<option value="${escapeHtml(g.nombre)}">${escapeHtml(g.nombre)} (${g.count})</option>`).join('')}
-          </select>
-        </div>
-
-        <!-- FICHA (aparece al seleccionar una aseguradora) -->
-        <div id="aseg-ficha"></div>
-
-        <!-- LISTA -->
-        <div id="aseg-lista"></div>
-
-        <!-- PANEL POR ASEGURADORA -->
-        ${asegArray.length > 1 ? `
-        <div style="margin-top:24px;border-top:1.5px solid var(--gris-borde);padding-top:18px">
-          <div style="font-size:13px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Resumen por aseguradora</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
-            ${asegArray.map(g => `
-            <div class="hover-lift" style="background:white;border:1px solid var(--gris-borde);border-radius:10px;padding:14px 16px;cursor:pointer"
-              onclick="document.getElementById('aseg-filtro-aseg').value='${escapeHtml(g.nombre)}';filtrarAseguradoras()">
-              <div style="font-size:14px;font-weight:700;color:#5B21B6;margin-bottom:6px">${escapeHtml(g.nombre)}</div>
-              <div style="display:flex;gap:16px;font-size:12px">
-                <div><div style="font-weight:700;font-size:20px;color:#1E3A5F">${g.count}</div><div style="color:var(--gris-mid)">órdenes</div></div>
-                ${g.promDias > 0 ? `<div><div style="font-weight:700;font-size:20px;color:#7C3AED">${g.promDias}d</div><div style="color:var(--gris-mid)">ciclo prom.</div></div>` : ''}
-              </div>
-            </div>`).join('')}
+    if (_asegSeleccionada) {
+      // ═══ VISTA DETALLE — solo las órdenes de la aseguradora seleccionada ═══
+      renderSinParpadeo(cont, `
+        <div class="aseg-wrap">
+          <div class="aseg-topbar">
+            <button class="btn btn-ghost btn-sm" onclick="volverListaAseguradoras()" style="display:flex;align-items:center;gap:6px">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              Aseguradoras
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="abrirNuevaAseguradoraDesdeModulo()" style="display:flex;align-items:center;gap:6px">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nueva aseguradora
+            </button>
           </div>
-        </div>` : ''}
-      </div>`);
 
-    filtrarAseguradoras();
+          ${_asegFichaHtml(_asegSeleccionada)}
+
+          <div class="aseg-filtros">
+            <input id="aseg-buscar" type="text" placeholder="Placa, propietario..."
+              class="aseg-input" style="flex:1;min-width:200px" oninput="filtrarAseguradoras()">
+            <select id="aseg-filtro-estado" onchange="filtrarAseguradoras()" class="aseg-input" style="background:#fff">
+              <option value="">Todos los estados</option>
+              ${Object.entries(ESTADOS_ASEG).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
+            </select>
+          </div>
+
+          <div id="aseg-lista"></div>
+        </div>`);
+
+      filtrarAseguradoras();
+
+    } else {
+      // ═══ VISTA LISTA — aseguradoras registradas (overview + selector) ═══
+      renderSinParpadeo(cont, `
+        <div class="aseg-wrap">
+
+          <div class="aseg-topbar">
+            <span class="aseg-topbar-info">🏢 ${companias.length} aseguradora${companias.length === 1 ? '' : 's'}</span>
+            <button class="btn btn-primary btn-sm" onclick="abrirNuevaAseguradoraDesdeModulo()" style="display:flex;align-items:center;gap:6px">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nueva aseguradora
+            </button>
+          </div>
+
+          <!-- DINERO -->
+          <div class="aseg-kpi-grupo">💰 Dinero de aseguradoras</div>
+          <div class="aseg-kpis">
+            ${_asegKpi('⏳', sinAutorizar, 'Pendiente por autorizar', '#D97706', sinAutorizar ? `~${fmt(estimadoRiesgo)} en riesgo` : 'todo autorizado')}
+            ${_asegKpi('✅', fmt(facturado), 'Autorizado', '#0891B2', `${conValor} de ${todasOrdenes.length} con valor`)}
+            ${_asegKpi('💵', fmt(porCobrar), 'Por cobrar', porCobrar > 0 ? '#DC2626' : '#059669', porCobrar > 0 ? 'cartera pendiente' : 'al día')}
+            ${_asegKpi('⏰', fmt(vencidaMonto), 'Cartera vencida', vencidaCount ? '#DC2626' : '#059669', vencidaCount ? `${vencidaCount} con +${DIAS_VENCE}d sin pago` : 'sin vencidos')}
+          </div>
+
+          <!-- OPERACIÓN -->
+          <div class="aseg-kpi-grupo">🔧 Operación y rentabilidad</div>
+          <div class="aseg-kpis">
+            ${_asegKpi('🚗', activas.length, 'Activos', '#2563EB', 'cupos ocupados')}
+            ${rentOn
+              ? _asegKpi('📈', fmt(Math.round(netaRent)), 'Rentabilidad neta', netaRent >= 0 ? '#059669' : '#DC2626', netaRent >= 0 ? 'en ganancia' : 'en pérdida')
+              : _asegKpi('📈', '—', 'Rentabilidad neta', '#6B7280', 'define el valor de plaza ↓')}
+            ${_asegKpi('🔴', enPerdidaN, 'En pérdida', enPerdidaN > 0 ? '#DC2626' : '#059669', enPerdidaN ? 'requieren atención' : 'ninguna')}
+            ${_asegKpi('🕐', promAutoriz + 'd', 'Tiempo autorización', '#7C3AED', 'peritaje → aprobación')}
+            ${_asegKpi('🔄', promCiclo + 'd', 'Ciclo prom. (mes)', '#0EA5E9', 'ingreso → entrega')}
+          </div>
+
+          <!-- CONFIG VALOR DE PLAZA -->
+          <div class="aseg-config">
+            <span>💡 Valor de plaza por día (base renta/pérdida):</span>
+            <input type="number" value="${vpd > 0 ? Math.round(vpd) : ''}" placeholder="ej. 120000"
+              onchange="guardarValorPlazaAseg(this.value)" class="aseg-input" style="width:130px">
+            <span class="aseg-config-hint">${_asegRentabilidad.manual ? 'manual' : (vpd > 0 ? 'derivado de la meta del mes' : 'sin definir — renta/pérdida desactivada')}</span>
+          </div>
+
+          <!-- SELECTOR DE ASEGURADORAS -->
+          <div class="aseg-kpi-grupo" style="margin-top:6px">📋 Selecciona una aseguradora para ver sus órdenes</div>
+          <input id="aseg-buscar-comp" type="text" placeholder="Buscar aseguradora..."
+            class="aseg-input" style="width:100%;margin-bottom:12px;box-sizing:border-box" oninput="filtrarCompanias()">
+          <div class="aseg-comp-grid" id="aseg-comp-grid">
+            ${companias.length ? companias.map(_asegCompCard).join('') : '<div class="empty-state"><div class="empty-state-icon">🏢</div><p>No hay aseguradoras todavía. Crea la primera con el botón de arriba.</p></div>'}
+          </div>
+        </div>`);
+    }
   } catch(e) {
     const c = document.getElementById('pag-aseguradoras');
     if (c) c.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
@@ -462,19 +481,61 @@ function _asegInicioEtapa(o, est) {
 function filtrarAseguradoras() {
   const q    = (document.getElementById('aseg-buscar')?.value || '').toLowerCase().trim();
   const est  = document.getElementById('aseg-filtro-estado')?.value || '';
-  const aseg = document.getElementById('aseg-filtro-aseg')?.value || '';
+  const aseg = _asegSeleccionada || '';
   const data = _asegOrdenesCache.filter(o => {
     const matchQ    = !q    || [o.placa, o.aseguradora, o.propietario, o.marca].some(f => (f||'').toLowerCase().includes(q));
     const matchEst  = !est  || (o.estado_aseguradora || 'peritaje_pendiente') === est;
     const matchAseg = !aseg || (o.aseguradora || 'Sin aseguradora') === aseg;
     return matchQ && matchEst && matchAseg;
   });
-
-  // Ficha de la aseguradora seleccionada (datos + totales)
-  const fichaEl = document.getElementById('aseg-ficha');
-  if (fichaEl) fichaEl.innerHTML = (aseg && aseg !== 'Sin aseguradora') ? _asegFichaHtml(aseg) : '';
-
   renderListaAseguradoras(data);
+}
+
+// Tarjeta de una aseguradora en la vista de selección
+function _asegCompCard(c) {
+  const fmt = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
+  return `<div class="aseg-comp-card hover-lift" data-nombre="${escapeHtml(c.nombre)}" onclick="abrirAseguradora(this.dataset.nombre)">
+    <div class="aseg-comp-top">
+      <span class="aseg-comp-nombre">🏢 ${escapeHtml(c.nombre)}</span>
+      ${c.enCat ? '' : '<span class="aseg-comp-flag">sin datos</span>'}
+    </div>
+    <div class="aseg-comp-nums">
+      <div><span class="n">${c.count}</span><span class="t">órdenes</span></div>
+      <div><span class="n" style="color:#2563EB">${c.act}</span><span class="t">activas</span></div>
+    </div>
+    <div class="aseg-comp-chips">
+      <span class="aseg-chip" style="background:#ECFEFF;color:#0E7490">✅ ${fmt(c.aut)}</span>
+      <span class="aseg-chip" style="background:${c.cob > 0 ? '#FEE2E2' : '#E6F5EF'};color:${c.cob > 0 ? '#DC2626' : '#059669'}">💵 ${fmt(c.cob)}</span>
+      ${c.sinAut ? `<span class="aseg-chip" style="background:#FEF3C7;color:#B45309">⏳ ${c.sinAut} sin autorizar</span>` : ''}
+    </div>
+    <div class="aseg-comp-go">Ver órdenes →</div>
+  </div>`;
+}
+
+// Filtra las tarjetas de aseguradoras por nombre (vista lista)
+function filtrarCompanias() {
+  const q = (document.getElementById('aseg-buscar-comp')?.value || '').toLowerCase().trim();
+  document.querySelectorAll('#aseg-comp-grid .aseg-comp-card').forEach(card => {
+    const nombre = (card.dataset.nombre || '').toLowerCase();
+    card.style.display = (!q || nombre.includes(q)) ? '' : 'none';
+  });
+}
+
+// Abre el detalle de una aseguradora (solo sus órdenes)
+function abrirAseguradora(nombre) {
+  _asegSeleccionada = nombre;
+  cargarModuloAseguradoras();
+}
+
+// Vuelve a la lista de aseguradoras
+function volverListaAseguradoras() {
+  _asegSeleccionada = null;
+  cargarModuloAseguradoras();
+}
+
+// Reinicia la vista a la lista (al entrar desde el menú lateral)
+function resetVistaAseguradoras() {
+  _asegSeleccionada = null;
 }
 
 // Ficha con los datos del catálogo + totales de la aseguradora seleccionada
