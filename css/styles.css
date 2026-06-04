@@ -2834,6 +2834,24 @@ tr.destello-nuevo { animation: destelloBg 1.3s var(--ease-out) 3; }
   margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--gris-borde);
   font-size: 12px; color: var(--gris-mid);
 }
+
+/* Panel de control gerencial */
+.aseg-paneles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+.aseg-panel { background: #fff; border: 1px solid var(--gris-borde); border-radius: 12px; padding: 13px 15px; box-shadow: var(--shadow-sm); }
+.aseg-panel-tit { font-size: 11.5px; font-weight: 700; color: var(--texto); margin-bottom: 11px; }
+.aseg-barra { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.aseg-barra-lbl { font-size: 11px; color: var(--gris-mid); width: 96px; flex-shrink: 0; }
+.aseg-barra-track { flex: 1; height: 13px; background: var(--gris-bg); border-radius: 99px; overflow: hidden; }
+.aseg-barra-fill { height: 100%; border-radius: 99px; min-width: 2px; transition: width .5s var(--ease-out); }
+.aseg-barra-val { font-size: 12px; font-weight: 700; color: var(--texto); width: 20px; text-align: right; flex-shrink: 0; }
+.aseg-mini-row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--gris-borde); cursor: pointer; border-radius: 6px; transition: background .12s var(--ease-out); }
+.aseg-mini-row:last-child { border-bottom: none; }
+.aseg-mini-row:hover { background: var(--gris-bg); }
+.aseg-mini-placa { font-family: 'DM Mono', monospace; font-weight: 700; font-size: 12px; flex-shrink: 0; }
+.aseg-mini-meta { font-size: 11px; color: var(--gris-mid); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aseg-mini-val { font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.aseg-mini-vacio { font-size: 12px; color: var(--gris-mid); padding: 8px 4px; }
+@media (max-width: 768px) { .aseg-paneles { grid-template-columns: 1fr; } }
 .aseg-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 10px; margin-bottom: 18px; }
 .aseg-kpi {
   background: #fff; border: 1px solid var(--gris-borde); border-left: 3px solid var(--ac);

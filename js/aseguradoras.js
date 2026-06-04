@@ -408,6 +408,43 @@ async function cargarModuloAseguradoras() {
 
     } else {
       // ═══ VISTA LISTA — aseguradoras registradas (overview + selector) ═══
+
+      // ── Datos para el panel de control gerencial ──
+      const embudo = ESTADOS_ASEG_ORDER.map(k => ({
+        label: (ESTADOS_ASEG[k] || {}).label || k,
+        color: (ESTADOS_ASEG[k] || {}).color || '#6B7280',
+        n: todasOrdenes.filter(o => (o.estado_aseguradora || 'peritaje_pendiente') === k).length
+      }));
+      const maxEmb = Math.max(1, ...embudo.map(e => e.n));
+      const embudoHtml = embudo.map(e => `
+        <div class="aseg-barra">
+          <span class="aseg-barra-lbl">${e.label}</span>
+          <div class="aseg-barra-track"><div class="aseg-barra-fill" style="width:${Math.round(e.n / maxEmb * 100)}%;background:${e.color}"></div></div>
+          <span class="aseg-barra-val">${e.n}</span>
+        </div>`).join('');
+
+      const enPerdidaTop = todasOrdenes
+        .map(o => ({ o, r: _asegRentabilidad.porOrden[o.id] }))
+        .filter(x => x.r && x.r.vpd > 0 && x.r.rent < 0)
+        .sort((a, b) => a.r.rent - b.r.rent).slice(0, 6);
+      const perdidaHtml = enPerdidaTop.length ? enPerdidaTop.map(({ o, r }) => `
+        <div class="aseg-mini-row" onclick="abrirOrden(${o.id})">
+          <span class="aseg-mini-placa">${escapeHtml(o.placa || '—')}</span>
+          <span class="aseg-mini-meta">${escapeHtml(o.aseguradora || '')}</span>
+          <span class="aseg-mini-val" style="color:#DC2626">${fmt(r.rent)}</span>
+        </div>`).join('') : '<div class="aseg-mini-vacio">Ninguna en pérdida ✓</div>';
+
+      const sinAutTop = todasOrdenes
+        .filter(o => !o.entregada_en && !((parseFloat(_leerDatosAseg(o).valor_autorizado) || 0) > 0))
+        .map(o => ({ o, dias: o.creado_en ? Math.floor((today - new Date(o.creado_en)) / 86400000) : 0 }))
+        .sort((a, b) => b.dias - a.dias).slice(0, 6);
+      const sinAutHtml = sinAutTop.length ? sinAutTop.map(({ o, dias }) => `
+        <div class="aseg-mini-row" onclick="abrirOrden(${o.id})">
+          <span class="aseg-mini-placa">${escapeHtml(o.placa || '—')}</span>
+          <span class="aseg-mini-meta">${escapeHtml(o.aseguradora || '')}</span>
+          <span class="aseg-mini-val" style="color:${dias > 15 ? '#DC2626' : dias > 7 ? '#D97706' : '#6B7280'}">${dias}d</span>
+        </div>`).join('') : '<div class="aseg-mini-vacio">Todo autorizado ✓</div>';
+
       renderSinParpadeo(cont, `
         <div class="aseg-wrap">
 
@@ -438,6 +475,23 @@ async function cargarModuloAseguradoras() {
             ${_asegKpi('🔴', enPerdidaN, 'En pérdida', enPerdidaN > 0 ? '#DC2626' : '#059669', enPerdidaN ? 'requieren atención' : 'ninguna')}
             ${_asegKpi('🕐', promAutoriz + 'd', 'Tiempo autorización', '#7C3AED', 'peritaje → aprobación')}
             ${_asegKpi('🔄', promCiclo + 'd', 'Ciclo prom. (mes)', '#0EA5E9', 'ingreso → entrega')}
+          </div>
+
+          <!-- PANEL DE CONTROL GERENCIAL -->
+          <div class="aseg-kpi-grupo">📊 Control de la operación</div>
+          <div class="aseg-paneles">
+            <div class="aseg-panel">
+              <div class="aseg-panel-tit">Órdenes por etapa del proceso</div>
+              ${embudoHtml}
+            </div>
+            <div class="aseg-panel">
+              <div class="aseg-panel-tit">En pérdida — prioridad${enPerdidaTop.length ? ' (' + enPerdidaTop.length + ')' : ''}</div>
+              ${perdidaHtml}
+            </div>
+            <div class="aseg-panel">
+              <div class="aseg-panel-tit">Más tiempo sin autorizar</div>
+              ${sinAutHtml}
+            </div>
           </div>
 
           <!-- SELECTOR DE ASEGURADORAS -->
