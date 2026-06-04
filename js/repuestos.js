@@ -440,7 +440,7 @@ async function cargarRepuestosJefe() {
           const timerSolicitud  = _tiempoDesde(s.creado_en, ' desde solicitud');
           const timerEstado     = _tiempoDesde(s.actualizado_en || s.creado_en, ' en estado');
 
-          return `<div class="card" style="padding:16px">
+          return `<div class="card" data-id="${s.id}" style="padding:16px">
             ${_barraEstado(s.estado)}
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px">
               <div>
@@ -510,6 +510,9 @@ async function cargarRepuestosJefe() {
         }).join('')}
       </div>
     </div>`;
+
+    // Resaltar en naranja las solicitudes nuevas desde la última vez vista
+    if (typeof destellarPendientes === 'function') destellarPendientes('repuestos-jefe', cont, '.card[data-id]');
 
     iniciarPollingRepuestos(()=>{
       if (document.getElementById('repuestos-jefe-contenido')) cargarRepuestosJefe();
@@ -927,7 +930,7 @@ async function cargarSolicitudesRepuestos() {
           const timerSolicitud2 = _tiempoDesde(s.creado_en, ' desde solicitud');
           const timerEstado2    = _tiempoDesde(s.actualizado_en || s.creado_en, ' en estado');
 
-          return `<div class="card" style="padding:16px">
+          return `<div class="card" data-id="${s.id}" style="padding:16px">
             ${_barraEstado(s.estado)}
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px">
               <div style="flex:1;min-width:0">

@@ -358,17 +358,17 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
   box-shadow: 0 0 0 2px rgba(var(--neon-naranja), 0.10);
 }
 
-/* ── Alerta luminosa reutilizable para contenido nuevo/actualizado ── */
-.destello-nuevo { animation: destelloGlow 1.25s var(--ease-out) 2; position: relative; z-index: 1; }
+/* ── Alerta luminosa reutilizable: resalta en NARANJA neón la novedad ── */
+.destello-nuevo { animation: destelloGlow 1.3s var(--ease-out) 3; position: relative; z-index: 1; }
 @keyframes destelloGlow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(var(--neon-naranja),0); }
-  35%      { box-shadow: 0 0 0 2px rgba(var(--neon-naranja),0.55), 0 0 18px rgba(var(--neon-naranja),0.45); }
+  30%      { box-shadow: 0 0 0 2px rgba(var(--neon-naranja),0.6), 0 0 20px rgba(var(--neon-naranja),0.5); }
 }
 /* En filas de tabla el box-shadow no rinde (border-collapse) → usar fondo */
-tr.destello-nuevo { animation: destelloBg 1.25s var(--ease-out) 2; }
+tr.destello-nuevo { animation: destelloBg 1.3s var(--ease-out) 3; }
 @keyframes destelloBg {
   0%, 100% { background-color: rgba(var(--neon-naranja),0); }
-  35%      { background-color: rgba(var(--neon-naranja),0.16); }
+  30%      { background-color: rgba(var(--neon-naranja),0.16); }
 }
 
 /* Destello neón del ícono cuando llega una notificación nueva */

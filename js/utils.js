@@ -161,6 +161,25 @@ function destellarNuevos(key, contenedor, selector) {
   _destelloVistos[key] = actuales;                   // 1ª vez: solo registra
 }
 
+// Al abrir una sección, resalta los ítems que el usuario NO había visto antes
+// (recuerda lo visto en localStorage). La 1ª vez solo registra, sin destellar todo.
+function destellarPendientes(key, contenedor, selector) {
+  if (!contenedor) return;
+  const lsKey = 'destello_seen_' + key;
+  let seen;
+  try { seen = new Set(JSON.parse(localStorage.getItem(lsKey) || 'null')); } catch (e) { seen = null; }
+  const primeraVez = !(seen instanceof Set);
+  if (primeraVez) seen = new Set();
+  const items = contenedor.querySelectorAll(selector);
+  items.forEach(it => {
+    const id = it.dataset ? (it.dataset.destelloId || it.dataset.oid || it.dataset.id) : null;
+    if (!id) return;
+    if (!primeraVez && !seen.has(id)) destellar(it);   // novedad desde la última vez
+    seen.add(id);
+  });
+  try { localStorage.setItem(lsKey, JSON.stringify([...seen])); } catch (e) {}
+}
+
 // ═══════════════════════════════════════════════════════════
 // ACTUALIZACIÓN SIN PARPADEO (morph del DOM)
 // ───────────────────────────────────────────────────────────

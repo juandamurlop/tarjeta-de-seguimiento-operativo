@@ -618,6 +618,11 @@ function renderListaAseguradoras(ordenes) {
   }).join('');
 
   renderSinParpadeo(lista, html || vacioHtml);
+  // Resaltar en naranja las órdenes nuevas desde la última vez que se vio
+  if (typeof destellarPendientes === 'function') {
+    const k = 'aseg' + (_asegSeleccionada ? '-' + _asegSeleccionada : '');
+    destellarPendientes(k, lista, '.aseg-card');
+  }
 }
 
 // Tarjeta individual de una orden de aseguradora
@@ -699,7 +704,7 @@ function _asegCardOrden(o) {
       }
     } catch(e) {}
 
-    return `<div class="aseg-card hover-lift" style="--ac:${estInfo.color}" onclick="abrirOrden(${o.id})">
+    return `<div class="aseg-card hover-lift" style="--ac:${estInfo.color}" data-id="${o.id}" onclick="abrirOrden(${o.id})">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">
