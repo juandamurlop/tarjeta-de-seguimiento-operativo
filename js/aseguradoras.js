@@ -551,7 +551,7 @@ function renderListaAseguradoras(ordenes) {
         <span style="font-size:13px;font-weight:800;color:${info.color};text-transform:uppercase;letter-spacing:.5px">${info.label}</span>
         <span style="font-size:12px;font-weight:700;color:white;background:${info.color};border-radius:99px;padding:1px 9px">${arr.length}</span>
       </div>
-      ${arr.map(_asegCardOrden).join('')}
+      <div class="aseg-cards-grid">${arr.map(_asegCardOrden).join('')}</div>
     </div>`;
   }).join('');
 

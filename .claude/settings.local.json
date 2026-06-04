@@ -35,7 +35,8 @@
       "PowerShell(\\(Get-Command node -ErrorAction SilentlyContinue\\).Source)",
       "Bash(git commit -m 'refactor\\(nueva-orden\\): quitar '\\\\''Programar ingreso futuro'\\\\'' \\(ahora se agenda en el Calendario\\) *)",
       "PowerShell(git -C \"C:\\\\Users\\\\Santiago\\\\Documents\\\\tarjeta-de-seguimiento-operativo\" add -A)",
-      "PowerShell(git -C \"C:\\\\Users\\\\Santiago\\\\Documents\\\\tarjeta-de-seguimiento-operativo\" push origin master)"
+      "PowerShell(git -C \"C:\\\\Users\\\\Santiago\\\\Documents\\\\tarjeta-de-seguimiento-operativo\" push origin master)",
+      "PowerShell(git -C \"C:\\\\Users\\\\Santiago\\\\Documents\\\\tarjeta-de-seguimiento-operativo\" push origin master 2>&1; \"exit: $LASTEXITCODE\")"
     ]
   }
 }
