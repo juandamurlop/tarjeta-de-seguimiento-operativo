@@ -2651,10 +2651,12 @@ function _setNavBadge(navId, count) {
   if (n > 0) {
     if (!b) { b = document.createElement('span'); b.className = 'nav-badge'; item.appendChild(b); }
     b.textContent = n > 99 ? '99+' : String(n);
-    b.style.display = 'inline-flex';
+    b.style.display = 'inline-block';
     b.title = `${n} pendiente${n === 1 ? '' : 's'}`;
-  } else if (b) {
-    b.style.display = 'none';
+    item.classList.add('nav-notif');
+  } else {
+    if (b) b.style.display = 'none';
+    item.classList.remove('nav-notif');
   }
   // ¿Llegó algo nuevo? → revelar (abrir grupo cerrado + destello)
   const prevAll = _navBadgePrevGet();

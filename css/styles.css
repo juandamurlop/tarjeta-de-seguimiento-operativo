@@ -7,6 +7,7 @@
   --azul-light:  #EBF2FF;
   --azul-hover:  #162d4a;
   --neon:        56, 189, 248;   /* RGB del acento neón del sidebar (sky) */
+  --neon-naranja: 251, 146, 60;  /* RGB del neón naranja (notificaciones) */
   --blanco:      #FFFFFF;
   --gris-bg:     #F4F5F7;
   --gris-borde:  #E1E5EC;
@@ -313,7 +314,7 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 .nav-item:hover svg { opacity: 0.95; }
 .nav-item.active svg { opacity: 1; filter: drop-shadow(0 0 5px rgba(var(--neon),0.7)); }
 
-/* Indicador de notificación del menú — punto neón fino con halo premium */
+/* Indicador de notificación del menú — punto neón naranja fino con halo premium */
 .nav-badge {
   margin-left: auto;
   flex-shrink: 0;
@@ -324,35 +325,42 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
   font-size: 0;            /* sin número, solo punto */
   color: transparent;
   display: inline-block;
-  background: rgb(var(--neon));
+  background: rgb(var(--neon-naranja));
   border-radius: 50%;
   box-shadow:
-    0 0 4px rgba(var(--neon),0.95),
-    0 0 9px rgba(var(--neon),0.7),
-    0 0 0 3px rgba(var(--neon),0.14);
+    0 0 4px rgba(var(--neon-naranja),0.95),
+    0 0 9px rgba(var(--neon-naranja),0.7),
+    0 0 0 3px rgba(var(--neon-naranja),0.14);
   animation: navBadgeNeon 1.9s var(--ease-out) infinite;
 }
 @keyframes navBadgeNeon {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 3px rgba(var(--neon),0.8), 0 0 7px rgba(var(--neon),0.5), 0 0 0 3px rgba(var(--neon),0.10);
+    box-shadow: 0 0 3px rgba(var(--neon-naranja),0.8), 0 0 7px rgba(var(--neon-naranja),0.5), 0 0 0 3px rgba(var(--neon-naranja),0.10);
   }
   50% {
     transform: scale(1.18);
-    box-shadow: 0 0 6px rgba(var(--neon),1), 0 0 16px rgba(var(--neon),0.9), 0 0 0 5px rgba(var(--neon),0.22);
+    box-shadow: 0 0 6px rgba(var(--neon-naranja),1), 0 0 16px rgba(var(--neon-naranja),0.9), 0 0 0 5px rgba(var(--neon-naranja),0.22);
   }
 }
+
+/* Borde neón naranja en la celda con notificación */
+.nav-item.nav-notif {
+  box-shadow: inset 0 0 0 1px rgba(var(--neon-naranja),0.45),
+              0 0 12px rgba(var(--neon-naranja),0.18);
+}
+.nav-item.nav-notif svg { opacity: 0.95; }
 
 /* Destello neón del ícono cuando llega una notificación nueva */
 .nav-flash { animation: navFlashBg 0.9s var(--ease-out) 3; }
 .nav-flash svg {
   opacity: 1 !important;
-  filter: drop-shadow(0 0 8px rgba(var(--neon),0.95));
+  filter: drop-shadow(0 0 8px rgba(var(--neon-naranja),0.95));
   animation: navFlashIcon 0.9s var(--ease-out) 3;
 }
 @keyframes navFlashBg {
-  0%, 100% { background: rgba(var(--neon),0); }
-  50%      { background: rgba(var(--neon),0.16); }
+  0%, 100% { background: rgba(var(--neon-naranja),0); }
+  50%      { background: rgba(var(--neon-naranja),0.16); }
 }
 @keyframes navFlashIcon {
   0%, 100% { transform: scale(1); }
