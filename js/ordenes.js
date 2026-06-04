@@ -5204,6 +5204,23 @@ function cerrarPanelCapacidad() {
   document.getElementById('panel-capacidad-overlay')?.remove();
 }
 
+// Mostrar el listado de una categoría al hacer click en su torta
+function _capVer(key) {
+  const d = window._capLists?.[key];
+  if (!d) return;
+  ['op','q','p','pr'].forEach(k => {
+    const el = document.getElementById('cap-donut-' + k);
+    if (el) el.classList.toggle('cap-donut-sel', k === key);
+  });
+  const det = document.getElementById('cap-detalle');
+  if (det) det.innerHTML = `
+    <div class="cap-detalle-head" style="color:${d.color}">
+      <span class="cap-dot" style="background:${d.color}"></span>${d.label}
+      <span class="cap-detalle-count">${d.count} vehículo${d.count === 1 ? '' : 's'}</span>
+    </div>
+    <div class="cap-detalle-list">${d.html || '<div class="cap-vacio">No hay vehículos en esta categoría ✓</div>'}</div>`;
+}
+
 async function abrirPanelCapacidad() {
   document.getElementById('panel-capacidad-overlay')?.remove();
 
@@ -5270,92 +5287,77 @@ async function abrirPanelCapacidad() {
     }
 
     function _verOrdenBtn(id) {
-      return `<button onclick="cerrarPanelCapacidad();abrirOrden(${id});navJefe('detalle')"
-        style="padding:3px 8px;font-size:11px;background:#EBF2FF;color:#1E3A5F;border:1px solid #BFDBFE;border-radius:5px;cursor:pointer;white-space:nowrap;font-weight:600">→ Ver</button>`;
+      return `<button onclick="cerrarPanelCapacidad();abrirOrden(${id});navJefe('detalle')" class="cap-btn-ver">→ Ver</button>`;
+    }
+    function _asignarBtn(id) {
+      return `<button onclick="cerrarPanelCapacidad();abrirOrden(${id});navJefe('detalle');setTimeout(()=>abrirModalAgregar(),600)" class="cap-btn-asignar">Asignar</button>`;
+    }
+    function _capRow(placa, nombre, meta, tiempo, tColor, btns) {
+      return `<div class="cap-row">
+        <span class="cap-placa">${escapeHtml(placa||'—')}</span>
+        <span class="cap-nombre">${escapeHtml(nombre||'—')}</span>
+        <span class="cap-meta">${meta||''}</span>
+        <span class="cap-tiempo" style="color:${tColor}">${tiempo||''}</span>
+        <span class="cap-acc">${btns||''}</span>
+      </div>`;
     }
 
-    function _seccion(color, emoji, titulo, count, bgColor, rows) {
-      return `
-        <div style="background:${bgColor};border:1px solid ${color}30;border-radius:12px;margin-bottom:14px;overflow:hidden">
-          <div style="padding:10px 14px;border-bottom:1px solid ${color}20;display:flex;align-items:center;gap:8px">
-            <span style="font-size:16px">${emoji}</span>
-            <span style="font-size:13px;font-weight:700;color:${color}">${titulo}</span>
-            <span style="background:${color};color:white;border-radius:99px;padding:1px 8px;font-size:11px;font-weight:700;margin-left:4px">${count}</span>
-          </div>
-          ${rows.length ? `
-          <div style="overflow-x:auto">
-            <table style="width:100%;border-collapse:collapse;font-size:12px">
-              ${rows}
-            </table>
-          </div>` : `<div style="padding:12px 14px;color:#9CA3AF;font-size:12px;font-style:italic">No hay vehículos en esta categoría</div>`}
-        </div>`;
-    }
-
-    // EN OPERACION
-    const rowsOp = enOperacion.map(o => {
+    // Listas compactas por categoría
+    const listaOp = enOperacion.map(o => {
       const etapa = etapasActivas.find(e => e.orden_id === o.id);
-      return `<tr style="border-top:1px solid rgba(0,0,0,0.06)">
-        <td style="padding:7px 14px;font-family:'DM Mono',monospace;font-weight:700">${escapeHtml(o.placa||'—')}</td>
-        <td style="padding:7px 8px;color:#555">${escapeHtml(o.propietario||'—')}</td>
-        <td style="padding:7px 8px;font-weight:600">${escapeHtml(etapa?.etapa||etapa?.servicio||'—')}</td>
-        <td style="padding:7px 8px;color:#555">${escapeHtml(etapa?.tecnico||'—')}</td>
-        <td style="padding:7px 8px;font-family:'DM Mono',monospace;color:#059669;font-weight:600">${_tiempoDesde(etapa?.inicio, etapa?.tiempo_pausado_min)}</td>
-        <td style="padding:7px 14px 7px 4px;text-align:right">${_verOrdenBtn(o.id)}</td>
-      </tr>`;
+      const meta = `${escapeHtml(etapa?.etapa||etapa?.servicio||'—')} · ${escapeHtml(etapa?.tecnico||'Sin técnico')}`;
+      return _capRow(o.placa, o.propietario, meta, _tiempoDesde(etapa?.inicio, etapa?.tiempo_pausado_min), '#059669', _verOrdenBtn(o.id));
     }).join('');
 
-    // QUIETOS
-    const rowsQ = quietos.map(o => {
+    const listaQ = quietos.map(o => {
       const diasQ = o.creado_en ? Math.floor((Date.now() - new Date(o.creado_en)) / 86400000) : 0;
-      return `<tr style="border-top:1px solid rgba(0,0,0,0.06)">
-        <td style="padding:7px 14px;font-family:'DM Mono',monospace;font-weight:700">${escapeHtml(o.placa||'—')}</td>
-        <td style="padding:7px 8px;color:#555">${escapeHtml(o.propietario||'—')}</td>
-        <td style="padding:7px 8px;color:#555">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ')||'—'}</td>
-        <td style="padding:7px 8px;font-family:'DM Mono',monospace;color:#D97706;font-weight:600">${diasQ}d</td>
-        <td style="padding:7px 14px 7px 4px;text-align:right">
-          <div style="display:flex;gap:5px;justify-content:flex-end">
-            ${_verOrdenBtn(o.id)}
-            <button onclick="cerrarPanelCapacidad();abrirOrden(${o.id});navJefe('detalle');setTimeout(()=>abrirModalAgregar(),600)"
-              style="padding:3px 8px;font-size:11px;background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;border-radius:5px;cursor:pointer;white-space:nowrap;font-weight:600">Asignar</button>
-          </div>
-        </td>
-      </tr>`;
+      const meta = [o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ')||'—';
+      return _capRow(o.placa, o.propietario, meta, diasQ+'d', '#D97706', _verOrdenBtn(o.id)+_asignarBtn(o.id));
     }).join('');
 
-    // EN PULMON
-    const rowsP = enPulmon.map(o => {
+    const listaP = enPulmon.map(o => {
       const minsPulmon = o.pulmon_desde ? Math.floor((Date.now() - new Date(o.pulmon_desde)) / 60000) : 0;
       const hP = Math.floor(minsPulmon / 60); const mP = minsPulmon % 60;
       const tiempoPulmon = hP > 24 ? `${Math.floor(hP/24)}d` : hP > 0 ? `${hP}h ${mP}m` : `${mP}m`;
-      return `<tr style="border-top:1px solid rgba(0,0,0,0.06)">
-        <td style="padding:7px 14px;font-family:'DM Mono',monospace;font-weight:700">${escapeHtml(o.placa||'—')}</td>
-        <td style="padding:7px 8px;color:#555">${escapeHtml(o.propietario||'—')}</td>
-        <td style="padding:7px 8px;color:#555">${escapeHtml(o.pulmon_tipo||'—')}</td>
-        <td style="padding:7px 8px;font-family:'DM Mono',monospace;color:#F97316;font-weight:600">${tiempoPulmon}</td>
-        <td style="padding:7px 14px 7px 4px;text-align:right">
-          ${_verOrdenBtn(o.id)}
-        </td>
-      </tr>`;
+      return _capRow(o.placa, o.propietario, escapeHtml(o.pulmon_tipo||'—'), tiempoPulmon, '#F97316', _verOrdenBtn(o.id));
     }).join('');
 
-    // PROGRAMADOS
-    const rowsPr = programadas.map(o => {
+    const listaPr = programadas.map(o => {
       const fechaProg = o.fecha_programada ? new Date(o.fecha_programada).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
-      return `<tr style="border-top:1px solid rgba(0,0,0,0.06)">
-        <td style="padding:7px 14px;font-family:'DM Mono',monospace;font-weight:700">${escapeHtml(o.placa||'—')}</td>
-        <td style="padding:7px 8px;color:#555">${escapeHtml(o.propietario||'—')}</td>
-        <td style="padding:7px 8px;color:#7C3AED;font-weight:600">${fechaProg}</td>
-        <td style="padding:7px 14px 7px 4px;text-align:right">${_verOrdenBtn(o.id)}</td>
-      </tr>`;
+      return _capRow(o.placa, o.propietario, 'Programado', fechaProg, '#7C3AED', _verOrdenBtn(o.id));
+    }).join('');
+
+    const cats = [
+      { key:'op', label:'En operación', color:'#DC2626', count:enOperacion.length, sub:'con etapa',   html:listaOp },
+      { key:'q',  label:'Quietos',      color:'#D97706', count:quietos.length,     sub:'sin etapa',   html:listaQ  },
+      { key:'p',  label:'En pulmón',    color:'#F97316', count:enPulmon.length,    sub:'en espera',   html:listaP  },
+      { key:'pr', label:'Programados',  color:'#7C3AED', count:programadas.length, sub:'por ingresar',html:listaPr }
+    ];
+    const totalCat = cats.reduce((s,c)=>s+c.count,0) || 1;
+    window._capLists = {};
+    cats.forEach(c => { window._capLists[c.key] = { html:c.html, label:c.label, color:c.color, count:c.count }; });
+
+    const donutsHtml = cats.map(c => {
+      const pctArc = Math.round(c.count / totalCat * 100);
+      return `<div class="cap-donut" id="cap-donut-${c.key}" onclick="_capVer('${c.key}')">
+        <svg width="84" height="84" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" r="15.9155" fill="none" stroke="#EEF0F3" stroke-width="3.4"/>
+          <circle cx="18" cy="18" r="15.9155" fill="none" stroke="${c.color}" stroke-width="3.4"
+            stroke-dasharray="${pctArc} 100" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+          <text x="18" y="19.6" text-anchor="middle" font-size="11" font-weight="800" fill="${c.color}" font-family="'DM Mono',monospace">${c.count}</text>
+        </svg>
+        <div class="cap-donut-lbl">${c.label}</div>
+        <div class="cap-donut-sub">${c.sub}</div>
+      </div>`;
     }).join('');
 
     const body = document.getElementById('cap-panel-body');
     if (body) {
-      body.innerHTML =
-        _seccion('#DC2626', '🔴', 'EN OPERACIÓN — vehículos con etapas activas', enOperacion.length, '#FFF5F5', rowsOp) +
-        _seccion('#D97706', '🟡', 'QUIETOS — en taller sin etapas activas', quietos.length, '#FFFBEB', rowsQ) +
-        _seccion('#F97316', '🟠', 'EN PULMÓN', enPulmon.length, '#FFF7ED', rowsP) +
-        _seccion('#7C3AED', '🟣', 'PROGRAMADOS', programadas.length, '#F5F3FF', rowsPr);
+      body.innerHTML = `
+        <div class="cap-donuts">${donutsHtml}</div>
+        <div id="cap-detalle" class="cap-detalle"></div>`;
+      const def = cats.slice().sort((a,b)=>b.count-a.count)[0]?.key || 'op';
+      _capVer(def);
     }
   } catch(e) {
     const body = document.getElementById('cap-panel-body');

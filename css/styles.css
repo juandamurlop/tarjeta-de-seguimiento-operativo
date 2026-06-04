@@ -2633,6 +2633,46 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 }
 
 /* ═══════════════════════════════════════════════════════════
+   PANEL CAPACIDAD — TORTAS POR CATEGORÍA
+═══════════════════════════════════════════════════════════ */
+.cap-donuts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.cap-donut {
+  background: #fff; border: 1.5px solid var(--gris-borde); border-radius: 14px;
+  padding: 12px 8px 10px; text-align: center; cursor: pointer;
+  transition: transform .15s var(--ease-out), box-shadow .15s var(--ease-out), border-color .15s var(--ease-out);
+}
+.cap-donut:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.cap-donut-sel { border-color: var(--azul); box-shadow: var(--shadow-md); }
+.cap-donut svg { display: block; margin: 0 auto 6px; }
+.cap-donut svg circle:nth-child(2) { transition: stroke-dasharray .6s var(--ease-out); }
+.cap-donut-lbl { font-size: 12px; font-weight: 700; color: var(--texto); line-height: 1.1; }
+.cap-donut-sub { font-size: 9.5px; color: var(--gris-mid); text-transform: uppercase; letter-spacing: .3px; margin-top: 2px; }
+
+.cap-detalle { background: #F9FAFB; border: 1px solid var(--gris-borde); border-radius: 12px; overflow: hidden; }
+.cap-detalle-head {
+  display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700;
+  padding: 10px 14px; border-bottom: 1px solid var(--gris-borde); background: #fff;
+}
+.cap-dot { width: 9px; height: 9px; border-radius: 99px; display: inline-block; flex-shrink: 0; }
+.cap-detalle-count { margin-left: auto; background: rgba(0,0,0,.06); color: #555; border-radius: 99px; padding: 1px 10px; font-size: 11px; font-weight: 600; }
+.cap-detalle-list { max-height: 320px; overflow-y: auto; }
+.cap-row { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-top: 1px solid rgba(0,0,0,.05); font-size: 12px; }
+.cap-row:first-child { border-top: none; }
+.cap-row:hover { background: #fff; }
+.cap-placa { font-family: 'DM Mono', monospace; font-weight: 700; flex-shrink: 0; min-width: 60px; color: var(--texto); }
+.cap-nombre { color: #555; flex: 1.2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cap-meta { color: #888; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.cap-tiempo { font-family: 'DM Mono', monospace; font-weight: 700; flex-shrink: 0; min-width: 42px; text-align: right; }
+.cap-acc { display: flex; gap: 5px; flex-shrink: 0; }
+.cap-vacio { padding: 22px 14px; text-align: center; color: #9CA3AF; font-style: italic; font-size: 12px; }
+.cap-btn-ver { padding: 3px 9px; font-size: 11px; background: #EBF2FF; color: #1E3A5F; border: 1px solid #BFDBFE; border-radius: 5px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+.cap-btn-asignar { padding: 3px 9px; font-size: 11px; background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; border-radius: 5px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+@media (max-width: 560px) {
+  .cap-donuts { grid-template-columns: repeat(2, 1fr); }
+  .cap-meta { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════
    PANTALLA TALLER
 ═══════════════════════════════════════════════════════════ */
 .taller-grid {
