@@ -292,148 +292,203 @@ function _lanzarReporteSrv(formato) {
   generarReporteServicio(srv, ini, fin, formato);
 }
 
-// ─── Reporte de aseguradoras ─────────────────────────────────
+// ─── Reporte INTEGRAL de aseguradoras ────────────────────────
+// Incluye TODOS los cálculos del módulo: autorizado, por cobrar, cartera
+// vencida, pendiente por autorizar, rentabilidad (valor de plaza), tiempo
+// de autorización, estado de pago, ciclo, pulmón y estadía.
 async function generarReporteAseguradoras(asegFiltro, fechaIni, fechaFin, formato) {
   toast('Generando reporte de aseguradoras...');
   try {
-    const desde    = new Date(fechaIni + 'T00:00:00');
-    const hasta    = new Date(fechaFin  + 'T23:59:59');
+    const desde = new Date(fechaIni + 'T00:00:00');
+    const hasta = new Date(fechaFin  + 'T23:59:59');
     const desdeISO = desde.toISOString();
     const hastaISO = hasta.toISOString();
+    const today = new Date();
+    const DIAS_VENCE = 30;
     const fd  = d => d.toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
-    const fmt = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '$0';
+    const fmt = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(Math.round(n)) : '$0';
     const fmtF = iso => iso ? new Date(iso).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'}) : '—';
 
     let query = `/ordenes?aseguradora=not.is.null&or=(creado_en.gte.${desdeISO},entregada_en.gte.${desdeISO})&creado_en=lte.${hastaISO}&select=*&order=creado_en.desc`;
     if (asegFiltro) query += `&aseguradora=eq.${encodeURIComponent(asegFiltro)}`;
 
     const ordenes = await api(query).catch(()=>[]) || [];
-    const titulo  = asegFiltro
-      ? `Reporte Aseguradora — ${asegFiltro}`
-      : 'Reporte General — Aseguradoras';
+    const titulo  = asegFiltro ? `Reporte Aseguradora — ${asegFiltro}` : 'Reporte Integral — Aseguradoras';
     const subtitulo = `Período: ${fd(desde)} al ${fd(hasta)}`;
-
     if (!ordenes.length) { toast('Sin órdenes en el período seleccionado', 'warn'); return; }
 
-    // Métricas por aseguradora
-    const asegMap = {};
-    const today = new Date();
+    // Rentabilidad (valor de plaza vs tiempo en taller) — reutiliza el cálculo del módulo
+    if (typeof _calcularRentabilidadAseg === 'function') { try { await _calcularRentabilidadAseg(ordenes); } catch(e){} }
+    const rentMap = (typeof _asegRentabilidad !== 'undefined' && _asegRentabilidad.porOrden) || {};
+    const vpd     = (typeof _asegRentabilidad !== 'undefined' && _asegRentabilidad.valorPlazaDia) || 0;
+    const rentOn  = vpd > 0;
+    const leer    = (typeof _leerDatosAseg === 'function') ? _leerDatosAseg : (() => ({}));
+    const EST     = (typeof ESTADOS_ASEG !== 'undefined') ? ESTADOS_ASEG : {};
+    const estLabel = k => (EST[k] && EST[k].label) || k || '—';
+    const estColor = k => (EST[k] && EST[k].color) || '#6B7280';
+
+    const nuevoAcc = () => ({ total:0,entregadas:0,autorizado:0,porCobrar:0,vencida:0,vencidaCount:0,sinAutorizar:0,estimado:0,neta:0,enPerdida:0,estadia:0,aprobDias:[],enPulmon:0,cicloHrs:[] });
+    const glob = nuevoAcc();
+    const porAseg = {};
+    const detalle = [];
+
     ordenes.forEach(o => {
-      const k = o.aseguradora;
-      if (!asegMap[k]) asegMap[k] = { ordenes:[], totalEstadia:0 };
-      asegMap[k].ordenes.push(o);
-      if (o.pulmon_desde) {
-        const diasP  = Math.floor((today - new Date(o.pulmon_desde)) / 86400000);
-        const gracia = o.dias_gracia_estadia ?? 3;
-        const tarifa = o.valor_estadia_dia   ?? 0;
-        asegMap[k].totalEstadia += Math.max(0, diasP - gracia) * tarifa;
-      }
+      const d = leer(o);
+      const va = parseFloat(d.valor_autorizado) || 0;
+      const pago = d.estado_pago || 'pendiente';
+      const pagado = pago === 'pagado';
+      const r = rentMap[o.id] || null;
+      const k = o.aseguradora || 'Sin aseguradora';
+      if (!porAseg[k]) porAseg[k] = nuevoAcc();
+      [glob, porAseg[k]].forEach(A => {
+        A.total++;
+        if (o.entregada_en) { A.entregadas++; if (o.creado_en) A.cicloHrs.push((new Date(o.entregada_en) - new Date(o.creado_en)) / 3600000); }
+        if (o.pulmon) A.enPulmon++;
+        if (va > 0) {
+          A.autorizado += va;
+          if (!pagado) { A.porCobrar += va; if (o.entregada_en && (today - new Date(o.entregada_en)) / 86400000 > DIAS_VENCE) { A.vencida += va; A.vencidaCount++; } }
+        } else if (!o.entregada_en) { A.sinAutorizar++; A.estimado += (r ? r.ingreso : 0); }
+        if (d.fecha_peritaje && d.fecha_autorizacion) { const dd = (new Date(d.fecha_autorizacion) - new Date(d.fecha_peritaje)) / 86400000; if (dd >= 0 && dd < 365) A.aprobDias.push(dd); }
+        if (r) { A.neta += r.rent; if (r.rent < 0) A.enPerdida++; }
+        if (o.pulmon_desde) { const diasP = Math.floor((today - new Date(o.pulmon_desde)) / 86400000); const gracia = o.dias_gracia_estadia ?? 3; const tarifa = o.valor_estadia_dia ?? 0; A.estadia += Math.max(0, diasP - gracia) * tarifa; }
+      });
+      detalle.push({ o, va, pago, r, diasSist: o.creado_en ? Math.floor((today - new Date(o.creado_en)) / 86400000) : null, est: o.estado_aseguradora || 'peritaje_pendiente' });
     });
 
-    const aseguradoras = Object.entries(asegMap).map(([nombre, d]) => {
-      const ords = d.ordenes;
-      const entregadas = ords.filter(o => o.entregada_en && o.creado_en);
-      const cicloPromHrs = entregadas.length
-        ? Math.round(entregadas.reduce((s,o) => s + (new Date(o.entregada_en) - new Date(o.creado_en)) / 3600000, 0) / entregadas.length)
-        : null;
-      const enPulmon = ords.filter(o => o.pulmon).length;
-      const enRep    = ords.filter(o => o.estado_aseguradora === 'en_reparacion').length;
-      const pendRep  = ords.filter(o => o.estado_aseguradora === 'repuestos_incompletos').length;
-      return { nombre, total: ords.length, entregadas: entregadas.length, enPulmon, enRep, pendRep, cicloPromHrs, totalEstadia: d.totalEstadia, ordenes: ords };
-    }).sort((a,b) => b.total - a.total);
+    const prom = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : 0;
+    const resumenAseg = Object.entries(porAseg).map(([nombre,A]) => ({ nombre, ...A, promAprob: prom(A.aprobDias), cicloProm: A.cicloHrs.length ? prom(A.cicloHrs) : null })).sort((a,b)=>b.total-a.total);
+    const G = { ...glob, promAprob: prom(glob.aprobDias), cicloProm: glob.cicloHrs.length ? prom(glob.cicloHrs) : null, activos: ordenes.filter(o=>o.estado==='Activa').length };
+    const pagoLabel = (va,pago) => va > 0 ? (pago==='pagado'?'Pagado':pago==='parcial'?'Parcial':'Por cobrar') : 'Sin autorizar';
 
     if (formato === 'excel') {
       _cargarSheetJS(() => {
         const wb = XLSX.utils.book_new();
         const ws1 = XLSX.utils.aoa_to_sheet([
-          [titulo],[subtitulo],['Generado:', new Date().toLocaleString('es-CO')],[],
-          ['Aseguradora','Total órdenes','Entregadas','En pulmón','En reparación','Pend. repuestos','Ciclo prom. (hrs)','Estadía acum. (COP)'],
-          ...aseguradoras.map(a => [a.nombre,a.total,a.entregadas,a.enPulmon,a.enRep,a.pendRep,a.cicloPromHrs??'—',a.totalEstadia])
+          [titulo],[subtitulo],
+          ['Valor de plaza/día (base rentabilidad):', rentOn ? fmt(vpd) : 'no definido'],
+          ['Generado:', new Date().toLocaleString('es-CO')],[],
+          ['INDICADOR','VALOR'],
+          ['Órdenes en el período', G.total],
+          ['Activas', G.activos],
+          ['Entregadas', G.entregadas],
+          ['Autorizado (facturado)', G.autorizado],
+          ['Por cobrar (cartera)', G.porCobrar],
+          [`Cartera vencida (+${DIAS_VENCE}d sin pago)`, G.vencida],
+          ['Pendiente por autorizar (N°)', G.sinAutorizar],
+          ['Estimado en riesgo (sin autorizar)', G.estimado],
+          ['Rentabilidad neta', rentOn ? Math.round(G.neta) : 'definir valor de plaza'],
+          ['Órdenes en pérdida (N°)', rentOn ? G.enPerdida : '—'],
+          ['Tiempo prom. de autorización (días)', G.promAprob],
+          ['Ciclo promedio (horas)', G.cicloProm ?? '—'],
+          ['En pulmón (N°)', G.enPulmon],
+          ['Estadía acumulada (COP)', G.estadia],
         ]);
-        ws1['!cols'] = [{wch:24},{wch:14},{wch:12},{wch:12},{wch:14},{wch:16},{wch:16},{wch:20}];
+        ws1['!cols'] = [{wch:40},{wch:22}];
         XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
 
-        // Hoja detalle de órdenes
-        const hdr = ['Placa','Propietario','Aseguradora','Estado aseg.','Ingreso','Entrega','Peritaje enviado','Inicio reparación','Días en sistema','En pulmón'];
-        const rows = ordenes.map(o => [
-          o.placa||'—', o.propietario||'—', o.aseguradora||'—',
-          o.estado_aseguradora||'peritaje_pendiente',
-          fmtF(o.creado_en), fmtF(o.entregada_en),
-          fmtF(o.peritaje_enviado_en), fmtF(o.reparacion_iniciada_en),
-          o.creado_en ? Math.floor((today - new Date(o.creado_en)) / 86400000) : '—',
-          o.pulmon ? 'Sí' : 'No'
+        const ws2 = XLSX.utils.aoa_to_sheet([
+          ['Aseguradora','Órdenes','Entregadas','Autorizado','Por cobrar','Vencida','Sin autorizar','Estimado riesgo','Rent. neta','En pérdida','T.aprob (d)','Ciclo (h)','En pulmón','Estadía'],
+          ...resumenAseg.map(a => [a.nombre,a.total,a.entregadas,a.autorizado,a.porCobrar,a.vencida,a.sinAutorizar,a.estimado, rentOn?Math.round(a.neta):'', rentOn?a.enPerdida:'', a.promAprob, a.cicloProm??'', a.enPulmon, a.estadia])
         ]);
-        const ws2 = XLSX.utils.aoa_to_sheet([hdr,...rows]);
-        ws2['!cols'] = [{wch:10},{wch:20},{wch:18},{wch:20},{wch:12},{wch:12},{wch:16},{wch:16},{wch:14},{wch:10}];
-        XLSX.utils.book_append_sheet(wb, ws2, 'Detalle órdenes');
+        ws2['!cols'] = [{wch:22},{wch:9},{wch:11},{wch:14},{wch:13},{wch:12},{wch:13},{wch:15},{wch:13},{wch:11},{wch:11},{wch:10},{wch:11},{wch:14}];
+        XLSX.utils.book_append_sheet(wb, ws2, 'Por aseguradora');
 
-        const nombre = (asegFiltro||'Aseguradoras').replace(/\s+/g,'_') + `_${fechaIni}_${fechaFin}.xlsx`;
-        XLSX.writeFile(wb, nombre);
+        const dHdr = ['Placa','Propietario','Aseguradora','Estado proceso','Ingreso','Entrega','Días sist.','Autorizado','Estado pago','Renta/Pérdida','Días pulmón'];
+        const dRows = detalle.map(({o,va,pago,r,diasSist,est}) => [
+          o.placa||'—', o.propietario||'—', o.aseguradora||'—', estLabel(est),
+          fmtF(o.creado_en), fmtF(o.entregada_en), diasSist ?? '—',
+          va || '', pagoLabel(va,pago), (rentOn && r) ? Math.round(r.rent) : '',
+          o.pulmon && o.pulmon_desde ? Math.floor((today - new Date(o.pulmon_desde)) / 86400000) : ''
+        ]);
+        const ws3 = XLSX.utils.aoa_to_sheet([dHdr,...dRows]);
+        ws3['!cols'] = [{wch:10},{wch:20},{wch:18},{wch:18},{wch:12},{wch:12},{wch:10},{wch:14},{wch:12},{wch:14},{wch:11}];
+        XLSX.utils.book_append_sheet(wb, ws3, 'Detalle órdenes');
+
+        XLSX.writeFile(wb, (asegFiltro||'Aseguradoras').replace(/\s+/g,'_') + `_${fechaIni}_${fechaFin}.xlsx`);
         toast('Excel generado ✓');
       });
       return;
     }
 
-    // PDF
-    const ESTADOS_LABEL = {
-      peritaje_pendiente:'Peritaje pendiente', peritaje_enviado:'Peritaje enviado',
-      en_pulmon:'En pulmón', repuestos_incompletos:'Pend. repuestos',
-      repuestos_completos:'Repuestos listos', en_reparacion:'En reparación', terminado:'Terminado'
-    };
-    const tablaOrdenes = ordenes.slice(0,40).map(o => {
-      const diasSist = o.creado_en ? Math.floor((today - new Date(o.creado_en)) / 86400000) : '—';
-      const est = o.estado_aseguradora || 'peritaje_pendiente';
-      const estCol = {peritaje_pendiente:'#6B7280',peritaje_enviado:'#7C3AED',en_pulmon:'#D97706',repuestos_incompletos:'#DC2626',repuestos_completos:'#2563EB',en_reparacion:'#059669',terminado:'#16A34A'}[est]||'#6B7280';
+    // ── PDF ──
+    const kpi = (val,lbl,col) => `<div class="kpi" style="border-top-color:${col}"><div class="kpi-val" style="color:${col}">${val}</div><div class="kpi-lbl">${lbl}</div></div>`;
+    const kpisHtml = [
+      kpi(G.total, 'Órdenes período', '#1E3A5F'),
+      kpi(G.activos, 'Activas', '#2563EB'),
+      kpi(fmt(G.autorizado), 'Autorizado', '#0891B2'),
+      kpi(fmt(G.porCobrar), 'Por cobrar', G.porCobrar>0?'#DC2626':'#059669'),
+      kpi(fmt(G.vencida), `Cartera vencida (+${DIAS_VENCE}d)`, G.vencidaCount?'#DC2626':'#059669'),
+      kpi(G.sinAutorizar, 'Pend. por autorizar', '#D97706'),
+      kpi(rentOn ? fmt(G.neta) : 'n/d', 'Rentabilidad neta', !rentOn?'#6B7280':(G.neta>=0?'#059669':'#DC2626')),
+      kpi(rentOn ? G.enPerdida : 'n/d', 'En pérdida', '#DC2626'),
+      kpi(G.promAprob+'d', 'T. autorización', '#7C3AED'),
+      kpi(G.cicloProm!=null ? G.cicloProm+'h' : '—', 'Ciclo prom.', '#0EA5E9'),
+      kpi(G.enPulmon, 'En pulmón', '#D97706'),
+      kpi(G.estadia>0 ? fmt(G.estadia) : '—', 'Estadía acum.', '#5B21B6'),
+    ].join('');
+
+    const resumenHtml = resumenAseg.map((a,i) => `<tr>
+      <td><strong style="color:#7C3AED">${i+1}. ${a.nombre}</strong></td>
+      <td><strong>${a.total}</strong></td>
+      <td style="font-family:monospace">${fmt(a.autorizado)}</td>
+      <td style="font-family:monospace;color:${a.porCobrar>0?'#DC2626':'#374151'}">${a.porCobrar>0?fmt(a.porCobrar):'—'}</td>
+      <td style="font-family:monospace;color:${a.vencida>0?'#DC2626':'#374151'}">${a.vencida>0?fmt(a.vencida):'—'}</td>
+      <td>${a.sinAutorizar>0?`<span style="color:#D97706;font-weight:700">${a.sinAutorizar}</span>`:'—'}</td>
+      <td style="font-family:monospace;font-weight:700;color:${!rentOn?'#9CA3AF':(a.neta>=0?'#059669':'#DC2626')}">${rentOn?fmt(a.neta):'n/d'}</td>
+      <td>${a.promAprob?a.promAprob+'d':'—'}</td>
+      <td>${a.cicloProm!=null?a.cicloProm+'h':'—'}</td>
+      <td style="font-family:monospace">${a.estadia>0?fmt(a.estadia):'—'}</td>
+    </tr>`).join('');
+
+    const tablaOrdenes = detalle.slice(0,45).map(({o,va,pago,r,diasSist,est}) => {
+      const pagoCol = va<=0 ? '#6B7280' : (pago==='pagado'?'#059669':pago==='parcial'?'#B45309':'#DC2626');
       return `<tr>
         <td><strong style="font-family:monospace">${o.placa||'—'}</strong></td>
-        <td>${(o.propietario||'—').slice(0,18)}</td>
-        <td>${o.aseguradora||'—'}</td>
-        <td><span style="color:${estCol};font-weight:700;font-size:10px">${ESTADOS_LABEL[est]||est}</span></td>
-        <td>${fmtF(o.creado_en)}</td>
-        <td style="font-weight:700;color:${diasSist>30?'#DC2626':diasSist>15?'#D97706':'#374151'}">${diasSist}d</td>
-        <td>${o.pulmon?'<span style="color:#D97706;font-weight:700">Sí</span>':'—'}</td>
+        <td>${(o.propietario||'—').slice(0,16)}</td>
+        <td>${(o.aseguradora||'—').slice(0,14)}</td>
+        <td><span style="color:${estColor(est)};font-weight:700;font-size:9px">${estLabel(est)}</span></td>
+        <td style="font-weight:700;color:${diasSist>30?'#DC2626':diasSist>15?'#D97706':'#374151'}">${diasSist??'—'}d</td>
+        <td style="font-family:monospace">${va>0?fmt(va):'—'}</td>
+        <td><span style="color:${pagoCol};font-weight:700;font-size:9px">${pagoLabel(va,pago)}</span></td>
+        <td style="font-family:monospace;font-weight:700;color:${!rentOn||!r?'#9CA3AF':(r.rent>=0?'#059669':'#DC2626')}">${rentOn&&r?fmt(r.rent):'—'}</td>
       </tr>`;
     }).join('');
 
-    const resumenHtml = aseguradoras.map((a,i) => `<tr>
-      <td><strong style="color:#7C3AED">${i+1}. ${a.nombre}</strong></td>
-      <td><strong>${a.total}</strong></td>
-      <td>${a.entregadas}</td>
-      <td>${a.enPulmon > 0 ? `<span style="color:#D97706;font-weight:700">${a.enPulmon}</span>` : '—'}</td>
-      <td>${a.pendRep > 0 ? `<span style="color:#DC2626;font-weight:700">${a.pendRep}</span>` : '—'}</td>
-      <td>${a.cicloPromHrs != null ? a.cicloPromHrs+'h' : '—'}</td>
-      <td style="font-family:monospace">${a.totalEstadia > 0 ? fmt(a.totalEstadia) : '—'}</td>
-    </tr>`).join('');
-
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${titulo}</title>
     <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a2e;font-size:12px;line-height:1.5}
-    .page{max-width:960px;margin:0 auto;padding:32px 36px}
-    .rpt-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1E3A5F;padding-bottom:16px;margin-bottom:24px}
-    .rpt-brand{font-size:22px;font-weight:800;color:#1E3A5F;letter-spacing:1px}
-    .section{margin-bottom:26px;page-break-inside:avoid}
-    .section-title{font-size:11px;font-weight:800;color:#7C3AED;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e5e7eb;padding-bottom:7px;margin-bottom:12px}
-    table{width:100%;border-collapse:collapse;font-size:11px}
-    th{background:#f5f3ff;padding:7px 10px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#5B21B6;font-weight:700;border-bottom:1px solid #e2e8f0}
-    td{padding:6px 10px;border-bottom:1px solid #f1f5f0;color:#374151}
-    .footer{margin-top:32px;border-top:1px solid #e2e8f0;padding-top:10px;font-size:9px;color:#aaa;text-align:center}
+    .page{max-width:980px;margin:0 auto;padding:32px 36px}
+    .rpt-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #5B21B6;padding-bottom:16px;margin-bottom:22px}
+    .rpt-brand{font-size:22px;font-weight:800;color:#5B21B6;letter-spacing:1px}
+    .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:22px}
+    .kpi{border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;border-top:3px solid}
+    .kpi-val{font-size:15px;font-weight:800;margin-bottom:2px;line-height:1.1}.kpi-lbl{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.4px}
+    .nota{font-size:10px;color:#888;margin:0 0 18px;font-style:italic}
+    .section{margin-bottom:24px;page-break-inside:avoid}
+    .section-title{font-size:11px;font-weight:800;color:#5B21B6;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e5e7eb;padding-bottom:7px;margin-bottom:12px}
+    table{width:100%;border-collapse:collapse;font-size:10.5px}
+    th{background:#f5f3ff;padding:7px 9px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.3px;color:#5B21B6;font-weight:700;border-bottom:1px solid #e2e8f0}
+    td{padding:6px 9px;border-bottom:1px solid #f1f5f0;color:#374151}
+    .footer{margin-top:30px;border-top:1px solid #e2e8f0;padding-top:10px;font-size:9px;color:#aaa;text-align:center}
     @media print{.page{padding:18px 22px}.section{page-break-inside:avoid}}</style></head><body><div class="page">
     <div class="rpt-header">
       <div><div class="rpt-brand">${_RPT_EMPRESA.nombre}</div>
         <div style="font-size:10px;color:#888;margin-top:3px">${_RPT_EMPRESA.slogan} · NIT ${_RPT_EMPRESA.nit}</div>
         <div style="font-size:10px;color:#aaa">${_RPT_EMPRESA.direccion} · Tel: ${_RPT_EMPRESA.telefono}</div></div>
       <div style="text-align:right">
-        <div style="font-size:14px;font-weight:700;color:#7C3AED">${titulo}</div>
+        <div style="font-size:15px;font-weight:800;color:#5B21B6">${titulo}</div>
         <div style="font-size:11px;color:#555;margin-top:3px">${subtitulo}</div>
         <div style="font-size:10px;color:#999;margin-top:3px">Generado: ${new Date().toLocaleString('es-CO',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
       </div>
     </div>
-    ${!asegFiltro ? `<div class="section"><div class="section-title">Resumen por aseguradora</div>
-    <table><thead><tr><th>Aseguradora</th><th>Total</th><th>Entregadas</th><th>En pulmón</th><th>Pend. rep.</th><th>Ciclo prom.</th><th>Estadía acum.</th></tr></thead>
-    <tbody>${resumenHtml}</tbody></table></div>` : ''}
-    <div class="section"><div class="section-title">Detalle de órdenes${ordenes.length>40?' (primeras 40)':''}</div>
-    <table><thead><tr><th>Placa</th><th>Propietario</th><th>Aseguradora</th><th>Estado</th><th>Ingreso</th><th>Días</th><th>Pulmón</th></tr></thead>
+    <div class="kpi-row">${kpisHtml}</div>
+    <div class="nota">Rentabilidad = ingreso de la orden − (valor de plaza/día × días en taller). Valor de plaza: ${rentOn?fmt(vpd)+'/día':'no definido (defínelo en el módulo Aseguradoras para activar renta/pérdida)'}.</div>
+    <div class="section"><div class="section-title">Resumen por aseguradora</div>
+    <table><thead><tr><th>Aseguradora</th><th>Órdenes</th><th>Autorizado</th><th>Por cobrar</th><th>Vencida</th><th>Sin aut.</th><th>Rent. neta</th><th>T.aprob</th><th>Ciclo</th><th>Estadía</th></tr></thead>
+    <tbody>${resumenHtml}</tbody></table></div>
+    <div class="section"><div class="section-title">Detalle de órdenes${detalle.length>45?' (primeras 45 de '+detalle.length+')':''}</div>
+    <table><thead><tr><th>Placa</th><th>Propietario</th><th>Aseguradora</th><th>Estado proceso</th><th>Días</th><th>Autorizado</th><th>Pago</th><th>Renta/Pérdida</th></tr></thead>
     <tbody>${tablaOrdenes}</tbody></table></div>
-    <div class="footer">${_RPT_EMPRESA.nombre} · NIT ${_RPT_EMPRESA.nit} · Reporte generado el ${new Date().toLocaleString('es-CO')}</div>
+    <div class="footer">${_RPT_EMPRESA.nombre} · NIT ${_RPT_EMPRESA.nit} · Reporte integral de aseguradoras · ${new Date().toLocaleString('es-CO')}</div>
     </div></body></html>`;
 
     const win = window.open('', '_blank');
