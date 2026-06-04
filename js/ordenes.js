@@ -5359,7 +5359,7 @@ function cerrarPanelCapacidad() {
 function _capVer(key) {
   const d = window._capLists?.[key];
   if (!d) return;
-  ['op','q','p','pr'].forEach(k => {
+  Object.keys(window._capLists || {}).forEach(k => {
     const el = document.getElementById('cap-donut-' + k);
     if (el) el.classList.toggle('cap-donut-sel', k === key);
   });
@@ -5466,12 +5466,17 @@ async function abrirPanelCapacidad() {
       return _capRow(o.placa, o.propietario, meta, diasQ+'d', '#D97706', _verOrdenBtn(o.id)+_asignarBtn(o.id));
     }).join('');
 
-    const listaP = enPulmon.map(o => {
+    const _pulFila = (col) => (o) => {
       const minsPulmon = o.pulmon_desde ? Math.floor((Date.now() - new Date(o.pulmon_desde)) / 60000) : 0;
       const hP = Math.floor(minsPulmon / 60); const mP = minsPulmon % 60;
       const tiempoPulmon = hP > 24 ? `${Math.floor(hP/24)}d` : hP > 0 ? `${hP}h ${mP}m` : `${mP}m`;
-      return _capRow(o.placa, o.propietario, escapeHtml(o.pulmon_tipo||'—'), tiempoPulmon, '#F97316', _verOrdenBtn(o.id));
-    }).join('');
+      return _capRow(o.placa, o.propietario, escapeHtml(o.pulmon_tipo||'—'), tiempoPulmon, col, _verOrdenBtn(o.id));
+    };
+    // Pulmón interno = físicamente en el taller (ocupa cupo). Externo = fuera.
+    const enPulmonInt = enPulmon.filter(o => o.pulmon_tipo !== 'externo');
+    const enPulmonExt = enPulmon.filter(o => o.pulmon_tipo === 'externo');
+    const listaPint = enPulmonInt.map(_pulFila('#F97316')).join('');
+    const listaPext = enPulmonExt.map(_pulFila('#0EA5E9')).join('');
 
     const listaPr = programadas.map(o => {
       const fechaProg = o.fecha_programada ? new Date(o.fecha_programada).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
@@ -5481,7 +5486,8 @@ async function abrirPanelCapacidad() {
     const cats = [
       { key:'op', label:'En operación', color:'#DC2626', count:enOperacion.length, sub:'con etapa',   html:listaOp },
       { key:'q',  label:'Quietos',      color:'#D97706', count:quietos.length,     sub:'sin etapa',   html:listaQ  },
-      { key:'p',  label:'En pulmón',    color:'#F97316', count:enPulmon.length,    sub:'en espera',   html:listaP  },
+      { key:'p',  label:'Pulmón (taller)', color:'#F97316', count:enPulmonInt.length, sub:'en el taller',     html:listaPint },
+      { key:'pe', label:'Pulmón externo',  color:'#0EA5E9', count:enPulmonExt.length, sub:'fuera del taller', html:listaPext },
       { key:'pr', label:'Programados',  color:'#7C3AED', count:programadas.length, sub:'por ingresar',html:listaPr }
     ];
     const totalCat = cats.reduce((s,c)=>s+c.count,0) || 1;

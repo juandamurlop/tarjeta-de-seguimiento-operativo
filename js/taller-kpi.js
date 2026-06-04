@@ -263,7 +263,8 @@ async function cargarKPITaller() {
 
     // Pulso del día
     const enTaller = ordenesActivas.filter(o => !o.pulmon).length;
-    const enPulmon = ordenesActivas.filter(o => o.pulmon).length;
+    // Solo pulmón interno cuenta como "físicamente en el taller"; el externo está fuera.
+    const enPulmon = ordenesActivas.filter(o => o.pulmon && o.pulmon_tipo !== 'externo').length;
     const pctOcup  = Math.min(100, Math.round(enTaller / CAP * 100));
     const ingresosHoy = ordenesActivas.filter(o => _localDay(o.ingreso_en) === _hoyKey).length
                       + entregadasRecientes.filter(o => _localDay(o.ingreso_en) === _hoyKey).length;
