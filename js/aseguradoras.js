@@ -440,14 +440,6 @@ async function cargarModuloAseguradoras() {
             ${_asegKpi('🔄', promCiclo + 'd', 'Ciclo prom. (mes)', '#0EA5E9', 'ingreso → entrega')}
           </div>
 
-          <!-- CONFIG VALOR DE PLAZA -->
-          <div class="aseg-config">
-            <span>💡 Valor de plaza por día (base renta/pérdida):</span>
-            <input type="number" value="${vpd > 0 ? Math.round(vpd) : ''}" placeholder="ej. 120000"
-              onchange="guardarValorPlazaAseg(this.value)" class="aseg-input" style="width:130px">
-            <span class="aseg-config-hint">${_asegRentabilidad.manual ? 'manual' : (vpd > 0 ? 'derivado de la meta del mes' : 'sin definir — renta/pérdida desactivada')}</span>
-          </div>
-
           <!-- SELECTOR DE ASEGURADORAS -->
           <div class="aseg-kpi-grupo" style="margin-top:6px">📋 Selecciona una aseguradora para ver sus órdenes</div>
           <input id="aseg-buscar-comp" type="text" placeholder="Buscar aseguradora..."
@@ -591,9 +583,9 @@ function _asegFichaHtml(nombre) {
     ${contactos.length ? `<div class="aseg-ficha-contactos">${contactos.map(c => `<span class="aseg-chip" style="background:#F5F3FF;color:#5B21B6">👤 ${escapeHtml(c.nombre||'—')}${c.telefono ? ' · ' + escapeHtml(c.telefono) : ''}${c.correo ? ' · ' + escapeHtml(c.correo) : ''}</span>`).join('')}</div>` : ''}
     ${a ? `<div class="aseg-ficha-plaza">
       <span>💡 Valor de plaza por día <span style="color:var(--gris-mid)">(rentabilidad de esta aseguradora)</span>:</span>
-      <input type="number" data-aseg="${escapeHtml(nombre)}" value="${a.valor_plaza_dia ? Math.round(a.valor_plaza_dia) : ''}" placeholder="usa el global"
+      <input type="number" data-aseg="${escapeHtml(nombre)}" value="${a.valor_plaza_dia ? Math.round(a.valor_plaza_dia) : ''}" placeholder="ej. 120000"
         onchange="guardarValorPlazaAsegCompania(this.dataset.aseg, this.value)" class="aseg-input" style="width:130px">
-      <span class="aseg-config-hint">${a.valor_plaza_dia ? 'propio de esta aseguradora' : 'sin definir — usa el valor global'}</span>
+      <span class="aseg-config-hint">${a.valor_plaza_dia ? 'propio de esta aseguradora' : 'sin definir — usa el valor por defecto del taller'}</span>
     </div>` : ''}
   </div>`;
 }
