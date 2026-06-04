@@ -95,7 +95,7 @@ function _buildOrdenRow(o, etapas) {
     </td>
     <td>
       <div class="ord-veh-nombre">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'}</div>
-      <div class="ord-veh-ano">${escapeHtml(o.modelo||'')}</div>
+      <div class="ord-veh-cliente">${escapeHtml(o.propietario || '—')}${o.modelo ? ` · ${escapeHtml(o.modelo)}` : ''}</div>
     </td>
     <td>
       ${total > 0 ? `
@@ -171,7 +171,7 @@ async function cargarOrdenesPulmon() {
         </td>
         <td>
           <div class="ord-veh-nombre">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'}</div>
-          <div class="ord-veh-ano">${escapeHtml(o.modelo||'')}</div>
+          <div class="ord-veh-cliente">${escapeHtml(o.propietario || '—')}${o.modelo ? ` · ${escapeHtml(o.modelo)}` : ''}</div>
         </td>
         <td>
           ${total > 0 ? `
