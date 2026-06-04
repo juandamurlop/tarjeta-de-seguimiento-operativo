@@ -2802,7 +2802,7 @@ tr.destello-nuevo { animation: destelloBg 1.3s var(--ease-out) 3; }
 .aseg-wrap { padding: 4px 0 28px; }
 .aseg-topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
 .aseg-topbar-info { font-size: 12px; font-weight: 700; color: var(--gris-mid); }
-.aseg-kpi-grupo { font-size: 11px; font-weight: 800; color: var(--gris-mid); text-transform: uppercase; letter-spacing: .6px; margin: 0 0 9px; }
+.aseg-kpi-grupo { font-size: 10.5px; font-weight: 800; color: var(--gris-mid); text-transform: uppercase; letter-spacing: .5px; margin: 0 0 6px; }
 
 /* Selector de aseguradoras (vista lista) */
 .aseg-comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
@@ -2836,12 +2836,12 @@ tr.destello-nuevo { animation: destelloBg 1.3s var(--ease-out) 3; }
 }
 
 /* Panel de control gerencial */
-.aseg-paneles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
-.aseg-panel { background: #fff; border: 1px solid var(--gris-borde); border-radius: 12px; padding: 13px 15px; box-shadow: var(--shadow-sm); }
-.aseg-panel-tit { font-size: 11.5px; font-weight: 700; color: var(--texto); margin-bottom: 11px; }
-.aseg-barra { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
-.aseg-barra-lbl { font-size: 11px; color: var(--gris-mid); width: 96px; flex-shrink: 0; }
-.aseg-barra-track { flex: 1; height: 13px; background: var(--gris-bg); border-radius: 99px; overflow: hidden; }
+.aseg-paneles { display: grid; grid-template-columns: repeat(3, minmax(0, 320px)); justify-content: start; gap: 9px; margin-bottom: 14px; }
+.aseg-panel { background: #fff; border: 1px solid var(--gris-borde); border-radius: 11px; padding: 11px 13px; box-shadow: var(--shadow-sm); }
+.aseg-panel-tit { font-size: 11px; font-weight: 700; color: var(--texto); margin-bottom: 9px; }
+.aseg-barra { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.aseg-barra-lbl { font-size: 10.5px; color: var(--gris-mid); width: 90px; flex-shrink: 0; }
+.aseg-barra-track { flex: 1; height: 11px; background: var(--gris-bg); border-radius: 99px; overflow: hidden; }
 .aseg-barra-fill { height: 100%; border-radius: 99px; min-width: 2px; transition: width .5s var(--ease-out); }
 .aseg-barra-val { font-size: 12px; font-weight: 700; color: var(--texto); width: 20px; text-align: right; flex-shrink: 0; }
 .aseg-mini-row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--gris-borde); cursor: pointer; border-radius: 6px; transition: background .12s var(--ease-out); }
@@ -2852,18 +2852,18 @@ tr.destello-nuevo { animation: destelloBg 1.3s var(--ease-out) 3; }
 .aseg-mini-val { font-size: 12px; font-weight: 700; flex-shrink: 0; }
 .aseg-mini-vacio { font-size: 12px; color: var(--gris-mid); padding: 8px 4px; }
 @media (max-width: 768px) { .aseg-paneles { grid-template-columns: 1fr; } }
-.aseg-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.aseg-kpis { display: grid; grid-template-columns: repeat(auto-fill, 158px); gap: 8px; justify-content: start; margin-bottom: 14px; }
 .aseg-kpi {
   background: #fff; border: 1px solid var(--gris-borde); border-left: 3px solid var(--ac);
-  border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow-sm);
+  border-radius: 11px; padding: 9px 11px; box-shadow: var(--shadow-sm);
   transition: transform .15s var(--ease-out), box-shadow .15s var(--ease-out);
 }
 .aseg-kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.aseg-kpi-top { display: flex; align-items: baseline; gap: 7px; }
-.aseg-kpi-ico { font-size: 14px; flex-shrink: 0; }
-.aseg-kpi-val { font-size: 20px; font-weight: 800; color: var(--ac); line-height: 1; word-break: break-word; }
-.aseg-kpi-lbl { font-size: 10px; font-weight: 700; color: var(--gris-mid); text-transform: uppercase; letter-spacing: .4px; margin-top: 7px; }
-.aseg-kpi-sub { font-size: 10.5px; color: #9AA3B2; margin-top: 3px; }
+.aseg-kpi-top { display: flex; align-items: baseline; gap: 6px; }
+.aseg-kpi-ico { font-size: 12.5px; flex-shrink: 0; }
+.aseg-kpi-val { font-size: 16px; font-weight: 800; color: var(--ac); line-height: 1.05; word-break: break-word; }
+.aseg-kpi-lbl { font-size: 9px; font-weight: 700; color: var(--gris-mid); text-transform: uppercase; letter-spacing: .3px; margin-top: 5px; line-height: 1.15; }
+.aseg-kpi-sub { font-size: 9.5px; color: #9AA3B2; margin-top: 2px; }
 
 .aseg-config {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
