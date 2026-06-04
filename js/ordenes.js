@@ -2846,6 +2846,33 @@ function renderCalendario(cont, ordenes, mesDate) {
     </div>`;
   }
 
+  // ── Vista AGENDA (lista por día) — se muestra solo en móvil ──
+  let agendaHtml = '';
+  for (let d = 1; d <= diasMes; d++) {
+    const ords = porDia[d] || [];
+    if (!ords.length) continue;
+    const fecha = new Date(año, mes, d);
+    const esHoy = fecha.getTime() === hoy.getTime();
+    const wd    = diasSem[(fecha.getDay() + 6) % 7];
+    const filas = ords.map(o => {
+      const prog    = o.esProgramada;
+      const urgente = !prog && !o.esFecha2 && o.fecha_entrega_1 && new Date(o.fecha_entrega_1) <= hoy;
+      const color = prog ? '#7C3AED' : urgente ? '#DC2626' : o.esFecha2 ? '#D97706' : '#2A5298';
+      const bg    = prog ? '#F3E8FF' : urgente ? '#FEE2E2' : o.esFecha2 ? '#FEF3C7' : '#EBF2FF';
+      const tag   = prog ? '📅 Agendada' : urgente ? 'Vencida' : o.esFecha2 ? 'Entrega 2' : 'Entrega 1';
+      return `<div class="cal-ag-orden" style="border-left-color:${color}" onclick="abrirOrden(${o.id})">
+        <span class="cal-ag-placa">${escapeHtml(o.placa) || '---'}</span>
+        <span class="cal-ag-veh">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || escapeHtml(o.propietario) || 'Orden'}</span>
+        <span class="cal-ag-tag" style="background:${bg};color:${color}">${tag}</span>
+      </div>`;
+    }).join('');
+    agendaHtml += `<div class="cal-ag-dia${esHoy ? ' cal-ag-hoy' : ''}">
+      <div class="cal-ag-fecha"><span class="n">${d}</span> ${wd}${esHoy ? ' · Hoy' : ''} <span class="c">${ords.length}</span></div>
+      <div class="cal-ag-lista">${filas}</div>
+    </div>`;
+  }
+  if (!agendaHtml) agendaHtml = '<div class="empty-state" style="padding:30px 16px"><p>No hay entregas ni ingresos programados este mes.</p></div>';
+
   cont.innerHTML = `
     <div class="cal-shell">
     <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
@@ -2872,6 +2899,7 @@ function renderCalendario(cont, ordenes, mesDate) {
       ${headHtml}
       ${celdas}
     </div>
+    <div class="cal-agenda">${agendaHtml}</div>
     </div>
   `;
 }

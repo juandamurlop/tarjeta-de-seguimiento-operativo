@@ -2440,6 +2440,30 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
   .cal-leyenda { flex-wrap: wrap; gap: 4px; font-size: 10px; margin-bottom: 8px; }
 }
 
+/* Vista AGENDA del calendario (lista por día) — solo en móvil */
+.cal-agenda { display: none; }
+@media (max-width: 768px) {
+  .cal-grid   { display: none; }
+  .cal-agenda { display: block; }
+}
+.cal-ag-dia { margin-bottom: 16px; }
+.cal-ag-fecha {
+  display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--texto);
+  padding: 4px 2px 8px; border-bottom: 1.5px solid var(--gris-borde); margin-bottom: 8px;
+}
+.cal-ag-fecha .n { background: var(--azul); color: #fff; border-radius: 7px; padding: 2px 9px; font-family: 'DM Mono', monospace; font-size: 13px; }
+.cal-ag-fecha .c { margin-left: auto; background: var(--gris-bg); color: var(--gris-mid); border-radius: 99px; padding: 1px 9px; font-size: 11px; font-weight: 700; }
+.cal-ag-hoy .cal-ag-fecha { color: var(--azul); border-bottom-color: var(--azul); }
+.cal-ag-orden {
+  display: flex; align-items: center; gap: 10px; background: #fff;
+  border: 1px solid var(--gris-borde); border-left: 3px solid; border-radius: 9px;
+  padding: 10px 12px; margin-bottom: 7px; cursor: pointer;
+}
+.cal-ag-orden:active { background: #F5F7FA; }
+.cal-ag-placa { font-family: 'DM Mono', monospace; font-weight: 700; font-size: 14px; letter-spacing: 1px; flex-shrink: 0; }
+.cal-ag-veh { font-size: 12px; color: var(--gris-mid); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-ag-tag { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; }
+
 /* ══════════════════════════════════════════════════════════
    OPERARIOS — tabla (desktop + mobile)
 ══════════════════════════════════════════════════════════ */
