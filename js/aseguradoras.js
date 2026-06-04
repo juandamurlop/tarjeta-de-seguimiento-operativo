@@ -263,9 +263,11 @@ async function cargarModuloAseguradoras() {
     _asegCatalogo = {};
     (catalogo || []).forEach(a => { _asegCatalogo[(a.nombre || '').trim().toLowerCase()] = a; });
 
-    // Merge sin duplicados
+    // Merge sin duplicados. Excluye flotillas: una orden de flotilla guarda su
+    // nombre en "aseguradora" con tipo_cliente='flotilla' — NO es una aseguradora.
     const idsVistas = new Set();
     const todasOrdenes = [...ordenesAseg, ...ordenesConAseg].filter(o => {
+      if (o.tipo_cliente === 'flotilla') return false;
       if (idsVistas.has(o.id)) return false;
       idsVistas.add(o.id);
       return true;

@@ -312,7 +312,8 @@ async function generarReporteAseguradoras(asegFiltro, fechaIni, fechaFin, format
     let query = `/ordenes?aseguradora=not.is.null&or=(creado_en.gte.${desdeISO},entregada_en.gte.${desdeISO})&creado_en=lte.${hastaISO}&select=*&order=creado_en.desc`;
     if (asegFiltro) query += `&aseguradora=eq.${encodeURIComponent(asegFiltro)}`;
 
-    const ordenes = await api(query).catch(()=>[]) || [];
+    // Excluir flotillas: guardan su nombre en "aseguradora" pero NO son aseguradoras
+    const ordenes = (await api(query).catch(()=>[]) || []).filter(o => o.tipo_cliente !== 'flotilla');
     const titulo  = asegFiltro ? `Reporte Aseguradora — ${asegFiltro}` : 'Reporte Integral — Aseguradoras';
     const subtitulo = `Período: ${fd(desde)} al ${fd(hasta)}`;
     if (!ordenes.length) { toast('Sin órdenes en el período seleccionado', 'warn'); return; }
