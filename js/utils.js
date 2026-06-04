@@ -130,6 +130,38 @@ function cerrarLightbox() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// ALERTAS LUMINOSAS — destello neón para contenido nuevo/cambiado
+// ───────────────────────────────────────────────────────────
+// destellar(el): resalta un elemento con un brillo neón naranja.
+// destellarNuevos(key, contenedor, selector): tras un re-render, hace
+//   destellar solo los ítems cuyo data-id no estaba en el render anterior
+//   (la primera vez solo registra, para no destellar todo de golpe).
+// ═══════════════════════════════════════════════════════════
+function destellar(el) {
+  if (!el || !el.classList) return;
+  el.classList.remove('destello-nuevo');
+  void el.offsetWidth;            // reinicia la animación si ya estaba
+  el.classList.add('destello-nuevo');
+  clearTimeout(el._destelloT);
+  el._destelloT = setTimeout(() => el.classList.remove('destello-nuevo'), 2600);
+}
+
+const _destelloVistos = {};
+function destellarNuevos(key, contenedor, selector) {
+  if (!contenedor) return;
+  const items = contenedor.querySelectorAll(selector);
+  const actuales = new Set();
+  const vistos = _destelloVistos[key];
+  items.forEach(it => {
+    const id = it.dataset ? (it.dataset.destelloId || it.dataset.oid || it.dataset.id) : null;
+    if (!id) return;
+    actuales.add(id);
+    if (vistos && !vistos.has(id)) destellar(it);   // nuevo desde el último render
+  });
+  _destelloVistos[key] = actuales;                   // 1ª vez: solo registra
+}
+
+// ═══════════════════════════════════════════════════════════
 // ACTUALIZACIÓN SIN PARPADEO (morph del DOM)
 // ───────────────────────────────────────────────────────────
 // Reemplaza el clásico `cont.innerHTML = html` en pantallas que se

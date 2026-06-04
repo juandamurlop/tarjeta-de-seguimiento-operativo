@@ -43,11 +43,8 @@ async function actualizarBadgeMecRepuestos() {
     const llegados = await api(
       `/solicitudes_repuesto?solicitado_por=eq.${encodeURIComponent(sesion.nombre)}&estado=eq.recibido_taller&select=id`
     ).catch(() => []) || [];
-    const mostrar = llegados.length > 0;
-    const badge1 = document.getElementById('badge-mec-repuestos');
-    const badge2 = document.getElementById('badge-bnav-mec-repuestos');
-    if (badge1) badge1.style.display = mostrar ? 'inline-block' : 'none';
-    if (badge2) badge2.style.display = mostrar ? 'inline-block' : 'none';
+    // Indicador neón en "Mis órdenes" cuando hay repuestos llegados
+    if (typeof _setNavBadge === 'function') _setNavBadge('nav-mec-ordenes', llegados.length);
   } catch(e) {}
 }
 

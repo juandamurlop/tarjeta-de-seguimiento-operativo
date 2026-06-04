@@ -351,6 +351,19 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 }
 .nav-item.nav-notif svg { opacity: 0.95; }
 
+/* ── Alerta luminosa reutilizable para contenido nuevo/actualizado ── */
+.destello-nuevo { animation: destelloGlow 1.25s var(--ease-out) 2; position: relative; z-index: 1; }
+@keyframes destelloGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--neon-naranja),0); }
+  35%      { box-shadow: 0 0 0 2px rgba(var(--neon-naranja),0.55), 0 0 18px rgba(var(--neon-naranja),0.45); }
+}
+/* En filas de tabla el box-shadow no rinde (border-collapse) → usar fondo */
+tr.destello-nuevo { animation: destelloBg 1.25s var(--ease-out) 2; }
+@keyframes destelloBg {
+  0%, 100% { background-color: rgba(var(--neon-naranja),0); }
+  35%      { background-color: rgba(var(--neon-naranja),0.16); }
+}
+
 /* Destello neón del ícono cuando llega una notificación nueva */
 .nav-flash { animation: navFlashBg 0.9s var(--ease-out) 3; }
 .nav-flash svg {

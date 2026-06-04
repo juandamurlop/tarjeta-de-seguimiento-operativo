@@ -88,7 +88,7 @@ function _buildOrdenRow(o, etapas) {
     ? `<span class="ord-alert-contact" title="Faltan datos: ${camposFaltantes.join(', ')}">⚠</span>`
     : '';
 
-  return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-search="${escapeHtml(searchStr)}">
+  return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-oid="${o.id}" data-search="${escapeHtml(searchStr)}">
     <td>
       <div class="ord-placa">${escapeHtml(o.placa)}</div>
       <div class="ord-ot">${formatOT(o.id, o.estado)}${contactAlert}</div>
@@ -127,6 +127,10 @@ function renderTablaOrdenes(data, etapas) {
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`);
+  // Destellar las órdenes nuevas desde el último refresco (por pestaña)
+  if (typeof destellarNuevos === 'function') {
+    destellarNuevos('ordenes-' + (typeof filtroEstado !== 'undefined' ? filtroEstado : ''), lista, 'tr.ord-row');
+  }
 }
 
 function filtrarTablaOrdenes(q) {

@@ -821,6 +821,19 @@ async function montarRepuestos() {
   if (title) title.textContent = 'Repuestos';
   mostrarPagina('pag-repuestos');
   cargarSolicitudesRepuestos();
+
+  // Indicador neón de solicitudes pendientes por atender (refresca cada 30s)
+  actualizarBadgeRepPerfil();
+  if (!window._repPerfilBadgeInt) {
+    window._repPerfilBadgeInt = setInterval(actualizarBadgeRepPerfil, 30000);
+  }
+}
+
+async function actualizarBadgeRepPerfil() {
+  try {
+    const p = await api('/solicitudes_repuesto?estado=eq.enviado_repuestos&select=id').catch(() => []) || [];
+    if (typeof _setNavBadge === 'function') _setNavBadge('nav-rep-solicitudes', p.length);
+  } catch (e) {}
 }
 
 function mostrarSeccionRep(sec) {
