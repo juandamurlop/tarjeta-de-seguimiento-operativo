@@ -361,7 +361,8 @@ async function cargarModuloAseguradoras() {
         else if (!o.entregada_en) sinAut++;
       });
       return { nombre, count: ords.length, act, aut, cob, sinAut, enCat: !!_asegCatalogo[(nombre || '').trim().toLowerCase()] };
-    }).sort((a, b) => b.act - a.act || b.count - a.count);
+    }).filter(c => c.count > 0)  // solo aseguradoras con al menos una orden
+      .sort((a, b) => b.act - a.act || b.count - a.count);
 
     if (_asegSeleccionada) {
       // ═══ VISTA DETALLE — solo las órdenes de la aseguradora seleccionada ═══
@@ -441,7 +442,7 @@ async function cargarModuloAseguradoras() {
           <input id="aseg-buscar-comp" type="text" placeholder="Buscar aseguradora..."
             class="aseg-input" style="width:100%;margin-bottom:12px;box-sizing:border-box" oninput="filtrarCompanias()">
           <div class="aseg-comp-grid" id="aseg-comp-grid">
-            ${companias.length ? companias.map(_asegCompCard).join('') : '<div class="empty-state"><div class="empty-state-icon">🏢</div><p>No hay aseguradoras todavía. Crea la primera con el botón de arriba.</p></div>'}
+            ${companias.length ? companias.map(_asegCompCard).join('') : '<div class="empty-state"><div class="empty-state-icon">🏢</div><p>Aún no hay órdenes de aseguradoras. Aparecerán aquí en cuanto registres una orden con su aseguradora.</p></div>'}
           </div>
         </div>`);
     }
