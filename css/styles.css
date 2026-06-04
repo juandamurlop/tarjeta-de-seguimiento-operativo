@@ -2528,16 +2528,17 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 /* ═══════════════════════════════════════════════════════════
    KPI — GESTIÓN OPERATIVA TALLER
 ═══════════════════════════════════════════════════════════ */
-.kpi-shell { padding: 14px 18px; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.kpi-shell { --kpi-w: 720px; padding: 14px 18px; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 
-/* Header */
+/* Header — alineado al mismo ancho que el resto de bloques */
 .kpi-header {
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  max-width: var(--kpi-w);
   padding-bottom: 10px; border-bottom: 1.5px solid var(--gris-borde);
 }
 
-/* Resumen rápido — 4 columnas fijas, alineadas a la izquierda */
-.kpi-resumen { display: grid; grid-template-columns: repeat(4, 148px); gap: 8px; justify-content: start; }
+/* Resumen rápido — 4 columnas iguales, alineadas a la izquierda */
+.kpi-resumen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: var(--kpi-w); }
 .kpi-res-item {
   background: white; border: 1px solid var(--gris-borde); border-radius: var(--radio);
   padding: 8px 10px; text-align: center; box-shadow: var(--shadow-sm);
@@ -2545,8 +2546,8 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 .kpi-res-num { font-size: 18px; font-weight: 800; font-family: 'DM Mono', monospace; color: var(--texto); line-height: 1; }
 .kpi-res-lbl { font-size: 9px; color: var(--gris-mid); margin-top: 2px; text-transform: uppercase; letter-spacing: .4px; }
 
-/* Grid KPIs — 4 columnas fijas (4+4), alineadas a la izquierda */
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 158px); gap: 8px; justify-content: start; }
+/* Grid KPIs — 4 columnas iguales (4+4), alineadas a la izquierda */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: var(--kpi-w); }
 
 /* Card */
 .kpi-card {
@@ -2575,8 +2576,8 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 .kpi-card-sub { font-size: 9px; color: var(--gris-mid); line-height: 1.25; }
 .kpi-card-link { font-size: 9px; font-weight: 600; color: var(--azul-mid); margin-top: 3px; }
 
-/* Paneles / gráficos de Gestión Operativa — fijos y a la izquierda */
-.kpi-paneles { display: grid; grid-template-columns: repeat(auto-fill, 268px); gap: 10px; justify-content: start; }
+/* Paneles / gráficos de Gestión Operativa — 3 iguales, mismo ancho que arriba */
+.kpi-paneles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: var(--kpi-w); }
 .kpi-panel { padding: 12px 14px; }
 .kpi-panel-titulo { font-size: 11.5px; font-weight: 700; color: var(--texto); margin-bottom: 10px; }
 .kpi-tec-row {
