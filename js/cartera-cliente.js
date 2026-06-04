@@ -19,8 +19,10 @@ function _carteraConfig(tipo) {
     return { tipo, pagId:'pag-cartera-flotillas', titulo:'Flotillas', plural:'flotillas', singular:'flotilla',
              icon:'🚚', color:'#7C3AED', catalog:'/flotillas', nombre: o => o.aseguradora || 'Sin flotilla' };
   }
+  // La empresa se guarda en el campo "aseguradora" (organización). Para órdenes
+  // antiguas sin ese dato, se cae al propietario como respaldo.
   return { tipo, pagId:'pag-cartera-empresas', titulo:'Empresas', plural:'empresas', singular:'empresa',
-           icon:'🏢', color:'#0891B2', catalog:'/flotillas', nombre: o => o.propietario || 'Sin empresa' };
+           icon:'🏢', color:'#0891B2', catalog:'/flotillas', nombre: o => o.aseguradora || o.propietario || 'Sin empresa' };
 }
 
 const _carFmt = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(Math.round(n)) : '$0';

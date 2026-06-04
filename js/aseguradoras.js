@@ -263,11 +263,11 @@ async function cargarModuloAseguradoras() {
     _asegCatalogo = {};
     (catalogo || []).forEach(a => { _asegCatalogo[(a.nombre || '').trim().toLowerCase()] = a; });
 
-    // Merge sin duplicados. Excluye flotillas: una orden de flotilla guarda su
-    // nombre en "aseguradora" con tipo_cliente='flotilla' — NO es una aseguradora.
+    // Merge sin duplicados. Solo aseguradoras reales: flotillas y empresas
+    // guardan su nombre en "aseguradora" pero se distinguen por tipo_cliente.
     const idsVistas = new Set();
     const todasOrdenes = [...ordenesAseg, ...ordenesConAseg].filter(o => {
-      if (o.tipo_cliente === 'flotilla') return false;
+      if (o.tipo_cliente === 'flotilla' || o.tipo_cliente === 'empresa') return false;
       if (idsVistas.has(o.id)) return false;
       idsVistas.add(o.id);
       return true;

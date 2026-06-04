@@ -312,8 +312,8 @@ async function generarReporteAseguradoras(asegFiltro, fechaIni, fechaFin, format
     let query = `/ordenes?aseguradora=not.is.null&or=(creado_en.gte.${desdeISO},entregada_en.gte.${desdeISO})&creado_en=lte.${hastaISO}&select=*&order=creado_en.desc`;
     if (asegFiltro) query += `&aseguradora=eq.${encodeURIComponent(asegFiltro)}`;
 
-    // Excluir flotillas: guardan su nombre en "aseguradora" pero NO son aseguradoras
-    const ordenes = (await api(query).catch(()=>[]) || []).filter(o => o.tipo_cliente !== 'flotilla');
+    // Excluir flotillas y empresas: guardan su nombre en "aseguradora" pero NO son aseguradoras
+    const ordenes = (await api(query).catch(()=>[]) || []).filter(o => o.tipo_cliente !== 'flotilla' && o.tipo_cliente !== 'empresa');
     const titulo  = asegFiltro ? `Reporte Aseguradora — ${asegFiltro}` : 'Reporte Integral — Aseguradoras';
     const subtitulo = `Período: ${fd(desde)} al ${fd(hasta)}`;
     if (!ordenes.length) { toast('Sin órdenes en el período seleccionado', 'warn'); return; }
@@ -1102,11 +1102,12 @@ function _calcularMetricas(etapas, ordenes, novedades, ordenesEntregadas, ordene
   // La flotilla guarda su NOMBRE en el campo "aseguradora" con tipo_cliente='flotilla'.
   // Por eso se clasifica primero por tipo_cliente para no contar flotillas como aseguradoras.
   const esFlotilla = o => o.tipo_cliente === 'flotilla';
-  const esAseg     = o => !esFlotilla(o) && (o.tipo_cliente === 'aseguradora' || !!o.aseguradora);
+  const esEmpresa  = o => o.tipo_cliente === 'empresa';
+  const esAseg     = o => !esFlotilla(o) && !esEmpresa(o) && (o.tipo_cliente === 'aseguradora' || !!o.aseguradora);
 
   const tipoMap = {};
   ordenes.forEach(o => {
-    const key = esFlotilla(o) ? 'Flotilla' : (esAseg(o) ? 'Aseguradora' : 'Particular');
+    const key = esFlotilla(o) ? 'Flotilla' : esEmpresa(o) ? 'Empresa' : (esAseg(o) ? 'Aseguradora' : 'Particular');
     if (!tipoMap[key]) tipoMap[key] = { ordenes:0, valor:0 };
     tipoMap[key].ordenes++;
     tipoMap[key].valor += (valPorOrden[o.id]||0);

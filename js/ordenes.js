@@ -488,7 +488,7 @@ async function abrirOrden(id) {
                 <div class="det-dato-fila"><span class="det-dato-lbl">Correo</span><span class="det-dato-val${!orden.correo_cliente?' det-dato-vacio':''}">${orden.correo_cliente?`<a href="mailto:${escapeHtml(orden.correo_cliente)}" style="color:var(--azul-mid)">${escapeHtml(orden.correo_cliente)}</a>`:'—'}</span></div>
                 <div class="det-dato-fila"><span class="det-dato-lbl">Cédula / NIT</span><span class="det-dato-val${!orden.cedula_cliente?' det-dato-vacio':''}" style="font-family:'DM Mono',monospace;font-size:12px">${escapeHtml(orden.cedula_cliente||'')||'—'}</span></div>
                 <div class="det-dato-fila"><span class="det-dato-lbl">Tipo cliente</span><span class="det-dato-val">${escapeHtml(orden.tipo_cliente||'')||'—'}</span></div>
-                <div class="det-dato-fila"><span class="det-dato-lbl">Aseguradora</span><span class="det-dato-val">${escapeHtml(orden.aseguradora||'')||'—'}</span></div>
+                <div class="det-dato-fila"><span class="det-dato-lbl">${orden.tipo_cliente==='flotilla'?'Flotilla':orden.tipo_cliente==='empresa'?'Empresa':'Aseguradora'}</span><span class="det-dato-val">${escapeHtml(orden.aseguradora||'')||'—'}</span></div>
               </div>
             </div>
           </div>
@@ -1734,10 +1734,14 @@ async function crearOrden() {
 
   const body = {
     placa,
+    // Campo "aseguradora" = nombre de la organización (aseguradora / flotilla /
+    // empresa). El tipo real lo distingue tipo_cliente. Así el vehículo queda
+    // ligado a su empresa/flotilla aunque el propietario sea una persona.
     aseguradora: (() => {
       const tipo = document.getElementById('n-tipo-cliente')?.value || '';
       if (tipo === 'aseguradora') return document.getElementById('n-aseguradora-sel')?.value || null;
       if (tipo === 'flotilla')    return document.getElementById('n-flotilla-sel')?.value || null;
+      if (tipo === 'empresa')     return document.getElementById('n-empresa-sel')?.value || null;
       return null;
     })(),
     marca: document.getElementById('n-marca')?.value || null,
@@ -2457,7 +2461,7 @@ async function recibirVehiculo(ordenId) {
     const tab = document.getElementById(tabId);
     if (tab && typeof selTipoCliente === 'function') selTipoCliente(tab, tipo);
     if (orden.aseguradora) {
-      const selId = tipo === 'aseguradora' ? 'n-aseguradora-sel' : tipo === 'flotilla' ? 'n-flotilla-sel' : null;
+      const selId = tipo === 'aseguradora' ? 'n-aseguradora-sel' : tipo === 'flotilla' ? 'n-flotilla-sel' : tipo === 'empresa' ? 'n-empresa-sel' : null;
       if (selId) setTimeout(() => { const sel = document.getElementById(selId); if (sel) sel.value = orden.aseguradora; }, 250);
     }
 
