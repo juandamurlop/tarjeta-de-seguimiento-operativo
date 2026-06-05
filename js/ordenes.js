@@ -496,24 +496,6 @@ async function abrirOrden(id) {
               </div>
             </div>
           </div>
-          <!-- Descripción general del trabajo -->
-          <div style="background:#F0F7FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:14px 16px;margin-bottom:16px">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:7px;margin-bottom:6px">
-              <div style="display:flex;align-items:center;gap:7px">
-                <svg width="14" height="14" fill="none" stroke="#2563EB" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                <span style="font-size:12px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:.05em">Descripción del trabajo</span>
-              </div>
-              ${esJefe() ? `<button class="btn btn-ghost btn-xs" style="font-size:11px;color:var(--azul)" onclick="abrirEditDescripcion(${orden.id}, ${JSON.stringify(orden.descripcion_general||'')})">✏ Editar</button>` : ''}
-            </div>
-            <div style="font-size:13.5px;color:#1E293B;line-height:1.6;white-space:pre-wrap">${orden.descripcion_general ? escapeHtml(orden.descripcion_general) : '<span style="color:#94A3B8;font-style:italic">Sin descripción registrada</span>'}</div>
-            <div id="desc-edit-box-${orden.id}" style="display:none;margin-top:10px">
-              <textarea id="desc-edit-ta-${orden.id}" rows="4" style="width:100%;font-size:13px;border:1.5px solid #BFDBFE;border-radius:8px;padding:8px;resize:vertical;font-family:inherit"></textarea>
-              <div style="display:flex;gap:6px;margin-top:6px">
-                <button class="btn btn-ghost btn-xs" onclick="document.getElementById('desc-edit-box-${orden.id}').style.display='none'">Cancelar</button>
-                <button class="btn btn-primary btn-xs" onclick="guardarDescripcion(${orden.id})">Guardar</button>
-              </div>
-            </div>
-          </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
             <div class="seccion-titulo" style="margin-bottom:0">Servicios y Etapas</div>
             ${esJefe() && !todasCalidadAprobada && orden.estado !== 'Programada' ? '<button class="btn btn-ghost btn-sm" onclick="abrirModalAgregar()">+ Agregar etapas</button>' : ''}
