@@ -449,13 +449,13 @@ function _cotPdfConfig() {
   return {
     logo:       c.logo       || '',
     nombre:     c.nombre     || 'FREIMANAUTOS',
-    slogan:     c.slogan     || 'Simplemente profesional',
-    nit:        c.nit        || '800.012.186',
-    direccion:  c.direccion  || 'Calle 98A # 68D – 15',
-    telefono:   c.telefono   || '320 902 5804',
-    email:      c.email      || 'freimanautossa@yahoo.com',
+    slogan:     c.slogan     || 'Servicio profesional Hyundai y multimarca · Desde 1987',
+    nit:        c.nit        || '800012186',
+    direccion:  c.direccion  || 'Calle 98 A 68 D – 15, Bogotá',
+    telefono:   c.telefono   || '320 9025804',
+    email:      c.email      || 'freimanautosa@gmail.com',
     encabezado: c.encabezado || '',
-    nota:       (c.nota !== undefined) ? c.nota : 'Cotización válida por 15 días. Precios sujetos a verificación al momento de la reparación.',
+    nota:       (c.nota !== undefined) ? c.nota : 'Este documento es una COTIZACIÓN — No es factura de venta · FREIMANAUTOS · NIT:800012186 · Bogotá, Colombia, Dir: Calle 98 A 68 D – 15, Bogotá, Tel: 320 9025804',
     terminos:   c.terminos   || ''
   };
 }
@@ -572,17 +572,19 @@ async function generarPdfCotizacion(cotId, accion = 'descargar') {
     try { moItems   = typeof cot.mano_obra_items === 'string' ? JSON.parse(cot.mano_obra_items) : (cot.mano_obra_items || []); } catch(e) { moItems   = []; }
 
     // Totales recalculados desde los ítems (siempre exactos, no dependen de nada externo)
-    const _tr   = repuestos.reduce((s, i) => s + (+i.total || 0), 0);
-    const _tmo  = moItems.reduce((s, i)  => s + (+i.total || 0), 0);
-    const _sub  = _tr + _tmo;
-    const _ivaV = (cot.iva || 0) > 0 ? Math.round(_sub * 0.19) : 0;  // IVA 19% si aplica
-    const _tot  = _sub + _ivaV;
     const _money = n => '$ ' + new Intl.NumberFormat('es-CO').format(Math.round(n || 0));
+    // Totales con la estructura de la plantilla (bruto por sección + descuento)
+    const _gross = arr => arr.reduce((s, i) => s + (+i.cantidad || 0) * (+i.valor_unitario || 0), 0);
+    const _desc  = arr => arr.reduce((s, i) => s + Math.round((+i.cantidad || 0) * (+i.valor_unitario || 0) * (+i.descuento_pct || 0) / 100), 0);
+    const grRep = _gross(repuestos), grMo = _gross(moItems);
+    const descTot = _desc(repuestos) + _desc(moItems);
+    const base  = grRep + grMo - descTot;                          // subtotal neto
+    const _ivaV = (cot.iva || 0) > 0 ? Math.round(base * 0.19) : 0;  // IVA 19% si aplica
+    const _tot  = base + _ivaV;
     // Ejecutivo a cargo = el perfil (usuario en sesión) que genera la cotización
     const ejecutivo = ((typeof sesion !== 'undefined' && sesion && sesion.nombre) || cot.tecnico || '—');
-    const CFG = _cotPdfConfig();   // plantilla editable (logo + textos)
+    const CFG = _cotPdfConfig();   // plantilla editable
 
-    // ── Generación del PDF EN EL NAVEGADOR (jsPDF) — plantilla configurable ──
     if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Librería PDF no disponible. Recarga la página.');
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit:'pt', format:'a4' });
@@ -591,97 +593,98 @@ async function generarPdfCotizacion(cotId, accion = 'descargar') {
     const M = 40;
     const AZUL = [30,58,95];
 
-    // Encabezado (logo opcional + datos de empresa configurables)
+    // ── Encabezado: logo (SIN borde) + empresa + COTIZACIÓN/No./Fecha ──
     let headX = M;
     if (CFG.logo) {
       try {
         const im = await new Promise(r => { const x = new Image(); x.onload = () => r(x); x.onerror = () => r(null); x.src = CFG.logo; });
         if (im && im.naturalWidth) {
-          const sc = Math.min(44 / im.naturalHeight, 140 / im.naturalWidth);
+          const sc = Math.min(54 / im.naturalHeight, 150 / im.naturalWidth);
           const lw = im.naturalWidth * sc, lh = im.naturalHeight * sc;
           const fmtImg = CFG.logo.indexOf('image/png') >= 0 ? 'PNG' : CFG.logo.indexOf('image/webp') >= 0 ? 'WEBP' : 'JPEG';
-          doc.addImage(CFG.logo, fmtImg, M, 24, lw, lh);
+          doc.addImage(CFG.logo, fmtImg, M, 26, lw, lh);   // sin recuadro ni borde punteado
           headX = M + lw + 14;
         }
       } catch (e) {}
     }
-    doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]);
-    doc.text(CFG.nombre || '', headX, 42);
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120,120,120);
-    let hy = 55;
-    const l1 = [CFG.slogan, CFG.nit ? 'NIT ' + CFG.nit : ''].filter(Boolean).join(' · ');
-    if (l1) { doc.text(l1, headX, hy); hy += 11; }
-    const l2 = [CFG.direccion, CFG.telefono ? 'Tel: ' + CFG.telefono : '', CFG.email].filter(Boolean).join(' · ');
-    if (l2) { doc.text(l2, headX, hy); hy += 11; }
-    if (CFG.encabezado) { doc.setTextColor(80,80,80); doc.text(String(CFG.encabezado), headX, hy); hy += 11; }
-    doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]);
-    doc.text('COTIZACIÓN', W - M, 42, { align:'right' });
+    doc.setFont('helvetica','bold'); doc.setFontSize(17); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]);
+    doc.text(CFG.nombre || '', headX, 40);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(110,110,110);
+    let hy = 53;
+    if (CFG.slogan) { doc.text(String(CFG.slogan), headX, hy); hy += 10.5; }
+    const l2 = [CFG.direccion ? 'Dirección: ' + CFG.direccion : '', CFG.telefono ? 'Tel: ' + CFG.telefono : ''].filter(Boolean).join(' · ');
+    if (l2) { doc.text(l2, headX, hy); hy += 10.5; }
+    const l3 = [CFG.nit ? 'NIT: ' + CFG.nit : '', CFG.email ? 'Email: ' + CFG.email : ''].filter(Boolean).join(' · ');
+    if (l3) { doc.text(l3, headX, hy); hy += 10.5; }
+    if (CFG.encabezado) { doc.text(String(CFG.encabezado), headX, hy); hy += 10.5; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]);
+    doc.text('COTIZACIÓN', W - M, 40, { align:'right' });
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
-    doc.text(`${cot.codigo_cotizacion || ''}`, W - M, 56, { align:'right' });
-    doc.text(`Fecha: ${cot.fecha || ''}`, W - M, 68, { align:'right' });
-    const lineaY = Math.max(hy + 2, 80);
-    doc.setDrawColor(AZUL[0],AZUL[1],AZUL[2]); doc.setLineWidth(1.5); doc.line(M, lineaY, W - M, lineaY);
+    doc.text(`No. ${cot.codigo_cotizacion || ''}`, W - M, 54, { align:'right' });
+    doc.text(`Fecha: ${cot.fecha || ''}`, W - M, 66, { align:'right' });
+    const lineaY = Math.max(hy + 4, 84);
+    doc.setDrawColor(AZUL[0],AZUL[1],AZUL[2]); doc.setLineWidth(1.4); doc.line(M, lineaY, W - M, lineaY);
 
-    // Cliente y vehículo
-    let y = lineaY + 22;
-    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(130,130,130);
-    doc.text('CLIENTE', M, y); doc.text('VEHÍCULO', W/2 + 10, y);
+    // ── Datos del cliente y del vehículo (dos columnas) ──
+    let y = lineaY + 20;
+    const colW = (W - 2 * M - 20) / 2, xL = M, xR = M + colW + 20;
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]);
+    doc.text('DATOS DEL CLIENTE', xL, y); doc.text('DATOS DEL VEHÍCULO', xR, y);
+    doc.setDrawColor(225,225,225); doc.setLineWidth(0.6); doc.line(xL, y + 4, xL + colW, y + 4); doc.line(xR, y + 4, xR + colW, y + 4);
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
-    const fila = (k, v, x, yy) => { doc.setTextColor(140,140,140); doc.text(k, x, yy); doc.setTextColor(40,40,40); doc.text(String(v || '—'), x + 78, yy); };
-    const cli = [['Nombre:',cot.nombre_cliente],['Cédula/NIT:',cot.cedula_cliente],['Teléfono:',cot.telefono_cliente],['Correo:',cot.correo_cliente]];
-    const veh = [['Placa:',cot.placa],['Marca/Línea:',[cot.marca,cot.modelo].filter(Boolean).join(' ')],['Modelo:',cot.año],['Color:',cot.color],['VIN:',cot.vin],['Kilometraje:',cot.kilometraje]];
-    let yc = y + 14; cli.forEach(([k,v]) => { fila(k,v,M,yc); yc += 13; });
-    let yv = y + 14; veh.forEach(([k,v]) => { fila(k,v,W/2 + 10,yv); yv += 13; });
-    y = Math.max(yc, yv) + 4;
-    doc.setTextColor(140,140,140); doc.setFontSize(9); doc.text('Ejecutivo a cargo:', M, y);
-    doc.setTextColor(40,40,40); doc.setFont('helvetica','bold'); doc.text(ejecutivo, M + 95, y); doc.setFont('helvetica','normal');
-    y += 14;
+    const fila = (k, v, x, yy) => { doc.setTextColor(135,135,135); doc.text(k, x, yy); doc.setTextColor(40,40,40); doc.text(String(v || '—'), x + 82, yy); };
+    const cli = [['Nombre:',cot.nombre_cliente],['Cédula / NIT:',cot.cedula_cliente],['Celular:',cot.telefono_cliente],['Correo:',cot.correo_cliente],['Kilometraje:',cot.kilometraje]];
+    const veh = [['Placa:',cot.placa],['Marca:',cot.marca],['Modelo:',cot.modelo],['Año:',cot.año],['Color:',cot.color],['VIN:',cot.vin]];
+    let yc = y + 18; cli.forEach(([k,v]) => { fila(k,v,xL,yc); yc += 13.5; });
+    let yv = y + 18; veh.forEach(([k,v]) => { fila(k,v,xR,yv); yv += 13.5; });
+    y = Math.max(yc, yv) + 8;
 
-    // Tablas de ítems
-    const colStyles = { 0:{halign:'center',cellWidth:34}, 2:{halign:'center',cellWidth:38}, 3:{halign:'right',cellWidth:75}, 4:{halign:'right',cellWidth:80} };
-    const filaItem = i => [i.cantidad ?? 1, i.descripcion || '—', (i.descuento_pct || 0) + '%', _money(i.valor_unitario), _money(i.total)];
+    // ── Tablas: Cant. · Descripción · Vr. Unitario · Dcto. · Total ──
+    const colStyles = { 0:{halign:'center',cellWidth:36}, 2:{halign:'right',cellWidth:78}, 3:{halign:'center',cellWidth:44}, 4:{halign:'right',cellWidth:82} };
+    const filaItem = i => [i.cantidad ?? 1, i.descripcion || '—', _money(i.valor_unitario), (i.descuento_pct || 0) + '%', _money(i.total)];
+    const headTabla = ['Cant.','Descripción','Vr. Unitario','Dcto.','Total'];
+    const tituloTabla = txt => { if (y > H - 120) { doc.addPage(); y = 50; } doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]); doc.text(txt, M, y); y += 6; };
     if (repuestos.length) {
-      doc.autoTable({ startY: y, head: [['Cant','Repuesto','Dto','V. Unit','Total']], body: repuestos.map(filaItem),
-        theme:'striped', headStyles:{ fillColor: AZUL, fontSize:8 }, bodyStyles:{ fontSize:8.5 }, margin:{ left:M, right:M }, columnStyles: colStyles });
-      y = doc.lastAutoTable.finalY + 10;
+      tituloTabla('DETALLE DE REPUESTOS Y SERVICIOS');
+      doc.autoTable({ startY: y, head: [headTabla], body: repuestos.map(filaItem), theme:'grid',
+        headStyles:{ fillColor: AZUL, fontSize:8.5, halign:'left' }, bodyStyles:{ fontSize:8.5 }, margin:{ left:M, right:M }, columnStyles: colStyles });
+      y = doc.lastAutoTable.finalY + 12;
     }
     if (moItems.length) {
-      doc.autoTable({ startY: y, head: [['Cant','Mano de obra','Dto','V. Unit','Total']], body: moItems.map(filaItem),
-        theme:'striped', headStyles:{ fillColor:[124,58,237], fontSize:8 }, bodyStyles:{ fontSize:8.5 }, margin:{ left:M, right:M }, columnStyles: colStyles });
-      y = doc.lastAutoTable.finalY + 10;
+      tituloTabla('DETALLE DE MANO DE OBRA');
+      doc.autoTable({ startY: y, head: [headTabla], body: moItems.map(filaItem), theme:'grid',
+        headStyles:{ fillColor: AZUL, fontSize:8.5, halign:'left' }, bodyStyles:{ fontSize:8.5 }, margin:{ left:M, right:M }, columnStyles: colStyles });
+      y = doc.lastAutoTable.finalY + 12;
     }
 
-    // Totales (caja derecha)
-    if (y > H - 150) { doc.addPage(); y = 50; }
-    const bw = 230, bx = W - M - bw;
-    const totRows = [['Repuestos', _money(_tr)], ['Mano de obra', _money(_tmo)], ['Subtotal', _money(_sub)]];
-    if (_ivaV > 0) totRows.push(['IVA (19%)', _money(_ivaV)]);
+    // ── Totales (estructura de la plantilla) ──
+    if (y > H - 175) { doc.addPage(); y = 50; }
+    const bw = 250, bx = W - M - bw;
+    const totRows = [['Subtotal Repuestos:', _money(grRep)], ['Mano de Obra:', _money(grMo)], ['Descuento:', descTot > 0 ? '- ' + _money(descTot) : _money(0)]];
+    if (_ivaV > 0) totRows.push(['IVA:', _money(_ivaV)]);
     doc.setFontSize(10);
     totRows.forEach(([k,v]) => {
-      doc.setFont('helvetica', k === 'Subtotal' ? 'bold' : 'normal'); doc.setTextColor(90,90,90); doc.text(k, bx, y + 11);
+      doc.setFont('helvetica','normal'); doc.setTextColor(90,90,90); doc.text(k, bx, y + 11);
       doc.setTextColor(40,40,40); doc.text(v, bx + bw, y + 11, { align:'right' });
-      y += 17;
+      y += 16;
     });
     y += 4;
     doc.setFillColor(AZUL[0],AZUL[1],AZUL[2]); doc.rect(bx, y, bw, 26, 'F');
     doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11);
-    doc.text(_ivaV > 0 ? 'TOTAL CON IVA' : 'TOTAL', bx + 12, y + 17);
+    doc.text('VALOR TOTAL:', bx + 12, y + 17);
     doc.text(_money(_tot), bx + bw - 12, y + 17, { align:'right' });
+    y += 40;
 
-    // Términos y condiciones (opcional, configurable)
-    if (CFG.terminos) {
-      const tLines = doc.splitTextToSize(String(CFG.terminos), W - 2 * M);
-      const tY = Math.max(y + 36, H - 50 - tLines.length * 9);
-      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(90,90,90);
-      doc.text('Términos y condiciones', M, tY);
-      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(120,120,120);
-      doc.text(tLines, M, tY + 11);
-    }
+    // ── Observaciones + ejecutivo a cargo ──
+    if (y > H - 80) { doc.addPage(); y = 50; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]); doc.text('OBSERVACIONES', M, y); y += 14;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+    if (CFG.terminos) { const tl = doc.splitTextToSize(String(CFG.terminos), W - 2 * M); doc.text(tl, M, y); y += tl.length * 11 + 4; }
+    doc.text(`Ejecutivo a cargo: ${ejecutivo}`, M, y);
 
-    // Pie
+    // ── Pie (texto de la plantilla, configurable) ──
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(150,150,150);
-    if (CFG.nota) doc.text(doc.splitTextToSize(String(CFG.nota), W - 2 * M - 160), M, H - 28);
-    doc.text(`${CFG.nombre || ''}${CFG.nit ? ' · NIT ' + CFG.nit : ''}`, W - M, H - 28, { align:'right' });
+    if (CFG.nota) doc.text(doc.splitTextToSize(String(CFG.nota), W - 2 * M), W / 2, H - 24, { align:'center' });
 
     const nombrePdf = `Cotizacion_${(cot.codigo_cotizacion || cot.placa || cotId)}.pdf`;
     if (accion === 'enviar') {
