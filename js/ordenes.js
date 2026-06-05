@@ -623,15 +623,7 @@ async function abrirOrden(id) {
                      </div>
                    </div>`
                 : todasCalidadAprobada
-                ? `${_bloqueEntrega(orden)}
-                   <button class="btn btn-success" style="width:100%" onclick="cambiarEstado('Entregada')">
-                     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
-                     Marcar como Finalizada
-                   </button>
-                   <div style="display:flex;gap:6px;margin-top:6px">
-                     <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},false)">📋 Sin precios</button>
-                     <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},true)">💰 Con precios</button>
-                   </div>`
+                ? `${_bloqueEntrega(orden)}${_bloquePreliqCierre(orden)}`
                 : `<div style="display:flex;flex-direction:column;gap:8px">
                      ${comp === total && total > 0
                        ? `<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400E;font-weight:600;text-align:center">
@@ -1801,6 +1793,151 @@ async function guardarCitaEntrega(ordenId) {
     toast('Cita de recogida guardada ✓');
     abrirOrden(ordenId);
   } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// CIERRE DE ORDEN: preliquidación enviada obligatoria + PIN
+// ══════════════════════════════════════════════════════════════
+
+// Envía la preliquidación al cliente por WhatsApp y la marca como enviada
+// (requisito para poder cerrar la orden).
+async function enviarPreliquidacionCliente(ordenId) {
+  try {
+    const arr = await api(`/ordenes?id=eq.${ordenId}&select=placa,marca,linea,propietario,telefono`).catch(() => []);
+    const o = arr && arr[0];
+    if (!o) { toast('No se encontró la orden', 'err'); return; }
+    const tel = _waNumero(o.telefono);
+    if (!tel) { toast('El cliente no tiene celular registrado en la orden', 'err'); return; }
+    const taller = (typeof _cotPdfConfig === 'function' && _cotPdfConfig().nombre) || 'Freimanautos';
+    const nombre = (o.propietario || '').trim().split(' ')[0] || '';
+    const veh    = [o.marca, o.linea].filter(Boolean).join(' ') || 'vehículo';
+    const saludo = nombre ? `Hola ${nombre}, ` : 'Hola, ';
+    const msg = `${saludo}le saluda ${taller}. Le compartimos la preliquidación de su ${veh} de placa ${o.placa} con el detalle de los trabajos y valores. Quedamos atentos a cualquier inquietud antes de la entrega. ¡Gracias! 📄`;
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { preliquidacion_enviada_en: new Date().toISOString() });
+    toast('Preliquidación marcada como enviada ✓');
+    abrirOrden(ordenId);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// Bloque del detalle: enviar preliquidación + cerrar con PIN.
+function _bloquePreliqCierre(orden) {
+  const enviada = !!orden.preliquidacion_enviada_en;
+  let h = `<div style="background:#F8FAFC;border:1px solid var(--gris-borde);border-radius:8px;padding:10px;margin:8px 0">
+    <div style="font-size:11px;font-weight:700;color:var(--gris-mid);margin-bottom:6px">Preliquidación al cliente</div>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},false)">📋 Sin precios</button>
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},true)">💰 Con precios</button>
+    </div>
+    <button class="btn btn-sm" style="width:100%;background:#25D366;border-color:#25D366;color:#fff" onclick="enviarPreliquidacionCliente(${orden.id})">📲 ${enviada ? 'Reenviar' : 'Enviar'} preliquidación (WhatsApp)</button>`;
+  h += enviada
+    ? `<div style="font-size:11px;color:var(--verde);font-weight:600;margin-top:6px">✓ Preliquidación enviada el ${formatTS(orden.preliquidacion_enviada_en)}</div>`
+    : `<div style="font-size:11px;color:#B45309;margin-top:6px">⚠ Debes enviar la preliquidación al cliente antes de cerrar la orden.</div>`;
+  h += `</div>`;
+  // Botón cerrar (bloqueado hasta enviar la preliquidación) — requiere PIN
+  h += enviada
+    ? `<button class="btn btn-success" style="width:100%" onclick="intentarCerrarOrden(${orden.id})">🔒 Cerrar orden (con PIN)</button>`
+    : `<button class="btn" style="width:100%;opacity:.45;cursor:not-allowed" disabled>🔒 Cerrar orden (con PIN)</button>`;
+  h += `<div style="text-align:center;margin-top:4px"><button class="btn btn-ghost btn-sm" style="font-size:10px;color:var(--gris-mid)" onclick="configurarPinCierre()">⚙ Configurar PIN de cierre</button></div>`;
+  return h;
+}
+
+// Verifica preliquidación enviada + abre el modal de PIN para cerrar.
+async function intentarCerrarOrden(ordenId) {
+  let o = (ordenActual && ordenActual.id === ordenId) ? ordenActual : null;
+  if (!o) o = await api(`/ordenes?id=eq.${ordenId}`).then(r => r && r[0]).catch(() => null);
+  if (!o) { toast('Orden no encontrada', 'err'); return; }
+  if (!o.preliquidacion_enviada_en) { toast('Primero envía la preliquidación al cliente', 'err'); return; }
+  const pin = await _getPinCierre();
+  if (!pin) { toast('Primero configura el PIN de cierre'); configurarPinCierre(); return; }
+  _modalPinCierre(ordenId);
+}
+
+async function _getPinCierre() {
+  try {
+    const r = await api(`/config_app?clave=eq.pin_cierre&select=valor`).catch(() => []);
+    return (r && r[0] && r[0].valor) ? String(r[0].valor) : null;
+  } catch (e) { return null; }
+}
+async function _setPinCierre(pin) {
+  await api(`/config_app`, 'POST', { clave: 'pin_cierre', valor: String(pin) }, { Prefer: 'resolution=merge-duplicates' });
+}
+
+function _modalPinCierre(ordenId) {
+  document.getElementById('pin-cierre-modal')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'pin-cierre-modal';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:18px';
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:14px;max-width:340px;width:100%;padding:22px;text-align:center;font-family:'DM Sans',sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+      <div style="font-size:34px">🔒</div>
+      <div style="font-size:16px;font-weight:800;color:var(--azul);margin:6px 0 2px">Cerrar orden</div>
+      <div style="font-size:12px;color:var(--gris-mid);margin-bottom:14px">Ingresa el PIN del jefe de taller / gerente.</div>
+      <input id="pin-cierre-input" type="password" inputmode="numeric" maxlength="8" autocomplete="off"
+        style="width:100%;text-align:center;font-size:22px;letter-spacing:6px;padding:10px;border:1px solid var(--gris-borde);border-radius:8px;font-family:'DM Mono',monospace">
+      <div id="pin-cierre-err" style="font-size:12px;color:#DC2626;height:16px;margin-top:6px"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="document.getElementById('pin-cierre-modal').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" style="flex:1" onclick="_confirmarPinCierre(${ordenId})">Confirmar</button>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  const inp = document.getElementById('pin-cierre-input');
+  setTimeout(() => inp?.focus(), 50);
+  inp?.addEventListener('keydown', e => { if (e.key === 'Enter') _confirmarPinCierre(ordenId); });
+}
+async function _confirmarPinCierre(ordenId) {
+  const inp = document.getElementById('pin-cierre-input');
+  const err = document.getElementById('pin-cierre-err');
+  const val = (inp && inp.value || '').trim();
+  const pin = await _getPinCierre();
+  if (val && pin && val === pin) {
+    document.getElementById('pin-cierre-modal')?.remove();
+    await cambiarEstado('Entregada');
+  } else {
+    if (err) err.textContent = 'PIN incorrecto';
+    if (inp) { inp.value = ''; inp.focus(); }
+  }
+}
+
+// Configurar / cambiar el PIN (requiere el PIN actual si ya existe).
+async function configurarPinCierre() {
+  const actual = await _getPinCierre();
+  document.getElementById('pin-config-modal')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'pin-config-modal';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10003;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:18px';
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:14px;max-width:360px;width:100%;padding:22px;font-family:'DM Sans',sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+      <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:2px">${actual ? 'Cambiar' : 'Configurar'} PIN de cierre</div>
+      <div style="font-size:12px;color:var(--gris-mid);margin-bottom:14px">Solo el jefe de taller y el gerente deben conocerlo.</div>
+      ${actual ? `<input id="pin-cfg-actual" type="password" inputmode="numeric" maxlength="8" placeholder="PIN actual" style="width:100%;padding:9px;border:1px solid var(--gris-borde);border-radius:8px;font-family:'DM Mono',monospace;margin-bottom:8px">` : ''}
+      <input id="pin-cfg-nuevo" type="password" inputmode="numeric" maxlength="8" placeholder="Nuevo PIN (4 a 8 dígitos)" style="width:100%;padding:9px;border:1px solid var(--gris-borde);border-radius:8px;font-family:'DM Mono',monospace">
+      <div id="pin-cfg-err" style="font-size:12px;color:#DC2626;height:16px;margin-top:6px"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('pin-config-modal').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="_guardarPinCierre(${actual ? 1 : 0})">Guardar</button>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+async function _guardarPinCierre(requiereActual) {
+  const err = document.getElementById('pin-cfg-err');
+  const setErr = m => { if (err) err.textContent = m; };
+  if (requiereActual) {
+    const act = (document.getElementById('pin-cfg-actual')?.value || '').trim();
+    const cur = await _getPinCierre();
+    if (act !== cur) { setErr('PIN actual incorrecto'); return; }
+  }
+  const nuevo = (document.getElementById('pin-cfg-nuevo')?.value || '').trim();
+  if (!/^\d{4,8}$/.test(nuevo)) { setErr('El PIN debe tener de 4 a 8 dígitos'); return; }
+  try {
+    await _setPinCierre(nuevo);
+    document.getElementById('pin-config-modal')?.remove();
+    toast('PIN de cierre guardado ✓');
+  } catch (e) { setErr('Error guardando: ' + e.message); }
 }
 
 async function crearOrden() {
