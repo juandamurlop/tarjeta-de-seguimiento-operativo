@@ -1,20 +1,20 @@
 // ─────────────────────────────────────────────────────────────
 // OCR de tarjeta de propiedad — Supabase Edge Function (sin n8n)
-// Usa Gemini 1.5 Flash (visión): rápido, barato y preciso.
+// Usa OpenAI gpt-4o-mini (visión): rápido, barato y preciso.
 // La API key va como SECRETO del servidor, nunca en el navegador.
 //
 // Desplegar:
 //   - Dashboard de Supabase → Edge Functions → New function → "ocr-tarjeta"
 //     → pega este código → Deploy.
-//   - Settings → Edge Functions → Secrets → agrega: GEMINI_API_KEY = <tu key>
-//     (la key gratis se obtiene en https://aistudio.google.com/app/apikey)
+//   - Settings → Edge Functions → Secrets → agrega:
+//       OPENAI_API_KEY = sk-...  (tu key de platform.openai.com, con saldo)
 //
 // Recibe:  { imagen: "<base64 sin prefijo>", tipo: "image/jpeg" }
 // Devuelve:{ datos: { placa, marca, linea, modelo, color, vin, propietario } }
 // ─────────────────────────────────────────────────────────────
 
-const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY") || "";
-const MODELO = "gemini-1.5-flash";
+const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY") || "";
+const MODELO = "gpt-4o-mini";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   try {
     const { imagen, tipo } = await req.json();
     if (!imagen) return json({ error: "Falta la imagen" }, 400);
-    if (!GEMINI_KEY) return json({ error: "Falta el secreto GEMINI_API_KEY" }, 500);
+    if (!OPENAI_KEY) return json({ error: "Falta el secreto OPENAI_API_KEY" }, 500);
 
     const prompt =
       "Eres un extractor de datos de TARJETAS DE PROPIEDAD de vehículos de Colombia. " +
@@ -43,30 +43,39 @@ Deno.serve(async (req) => {
       "'modelo' es el AÑO del vehículo. 'linea' es la referencia/línea. " +
       "La placa en mayúsculas. No agregues texto fuera del JSON.";
 
+    const dataUrl = `data:${tipo || "image/jpeg"};base64,${imagen}`;
+
     const body = {
-      contents: [
+      model: MODELO,
+      temperature: 0,
+      response_format: { type: "json_object" },
+      messages: [
         {
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: tipo || "image/jpeg", data: imagen } },
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
           ],
         },
       ],
-      generationConfig: { temperature: 0, responseMimeType: "application/json" },
     };
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent?key=${GEMINI_KEY}`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
-    );
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENAI_KEY}`,
+      },
+      body: JSON.stringify(body),
+    });
 
     if (!res.ok) {
       const t = await res.text();
-      return json({ error: `Gemini ${res.status}: ${t.slice(0, 200)}` }, 502);
+      return json({ error: `OpenAI ${res.status}: ${t.slice(0, 200)}` }, 502);
     }
 
     const data = await res.json();
-    const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+    const texto = data?.choices?.[0]?.message?.content || "{}";
     let datos: Record<string, string> = {};
     try { datos = JSON.parse(texto); } catch { datos = {}; }
 
