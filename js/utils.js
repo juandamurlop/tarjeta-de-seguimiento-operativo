@@ -86,38 +86,28 @@ function comprimirImagenBase64(file, maxDim = 1400, quality = 0.72) {
   });
 }
 
-// Lee una tarjeta de propiedad y devuelve { placa, marca, linea, modelo,
-// color, vin, propietario }. Comprime la foto, intenta la función propia de
-// Supabase (sin n8n: rápida y con la API key segura en el servidor) y, si aún
-// no está desplegada o falla, usa el webhook de n8n como respaldo.
+// Lee una tarjeta de propiedad con la función propia de Supabase (OpenAI
+// gpt-4o-mini, sin n8n: rápida y con la API key segura en el servidor).
+// Comprime la foto antes de enviar. Devuelve { placa, marca, linea, modelo,
+// color, vin, propietario }.
 async function ocrLeerTarjeta(file) {
   const { base64, mime } = await comprimirImagenBase64(file);
 
-  // 1) Función propia de Supabase (sin n8n)
-  try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/ocr-tarjeta`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: SUPABASE_KEY,
-        Authorization: 'Bearer ' + SUPABASE_KEY
-      },
-      body: JSON.stringify({ imagen: base64, tipo: mime })
-    });
-    if (res.ok) {
-      const d = await res.json();
-      if (d && !d.error && d.datos) return d.datos;
-    }
-  } catch (e) { /* cae al respaldo */ }
-
-  // 2) Respaldo: n8n (mientras se despliega la función de Supabase)
-  const r = await fetch('https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/ocr-tarjeta', {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/ocr-tarjeta`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY
+    },
     body: JSON.stringify({ imagen: base64, tipo: mime })
   });
-  const d2 = await r.json().catch(() => ({}));
-  return (d2 && d2.datos) || {};
+
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok || (d && d.error)) {
+    throw new Error((d && d.error) || `OCR ${res.status}`);
+  }
+  return (d && d.datos) || {};
 }
 
 function formatFecha(f) { return f ? new Date(f).toLocaleDateString('es-CO') : '—'; }
