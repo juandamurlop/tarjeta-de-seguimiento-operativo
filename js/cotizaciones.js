@@ -568,8 +568,10 @@ async function generarPdfCotizacion(cotId, accion = 'descargar') {
     const base  = grRep + grMo - descTot;                          // subtotal neto
     const _ivaV = (cot.iva || 0) > 0 ? Math.round(base * 0.19) : 0;  // IVA 19% si aplica
     const _tot  = base + _ivaV;
-    // Ejecutivo a cargo = el perfil (usuario en sesión) que genera la cotización
-    const ejecutivo = ((typeof sesion !== 'undefined' && sesion && sesion.nombre) || cot.tecnico || '—');
+    // Ejecutivo a cargo = el perfil que CREÓ la cotización (guardado en
+    // cot.tecnico). Si es una cotización antigua sin ese dato, cae al usuario
+    // en sesión.
+    const ejecutivo = ((cot.tecnico && cot.tecnico.trim()) || (typeof sesion !== 'undefined' && sesion && sesion.nombre) || '—');
     const CFG = _cotPdfConfig();   // plantilla editable
 
     if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Librería PDF no disponible. Recarga la página.');
