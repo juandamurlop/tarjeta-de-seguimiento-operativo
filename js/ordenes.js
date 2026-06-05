@@ -108,7 +108,7 @@ function _buildOrdenRow(o, etapas) {
     <td class="ord-resp">${escapeHtml(tecnico) || '<span style="color:var(--gris-mid)">—</span>'}</td>
     <td class="ord-fecha-ent">${fechaEnt}</td>
     <td class="ord-dias">${diasTaller}d</td>
-    <td><span class="ord-pill ${pillCls}">${pillTxt}</span></td>
+    <td><span class="ord-pill ${pillCls}">${pillTxt}</span>${o.estado === 'Archivada' ? `<button class="btn btn-ghost btn-xs" style="color:#DC2626;margin-left:6px;padding:2px 6px" onclick="event.stopPropagation();eliminarOrdenPermanente(${o.id})" title="Eliminar permanentemente">🗑️</button>` : ''}</td>
   </tr>`;
 }
 
@@ -1858,6 +1858,37 @@ function archivarOrden(ordenId) {
       if (typeof navJefe === 'function') navJefe('ordenes');
     } catch (e) { toast('Error: ' + e.message, 'err'); }
   }, 'Archivar orden', 'Se ocultará de las listas (reversible). Ingresa el PIN.');
+}
+
+// Eliminar PERMANENTEMENTE una orden archivada (con PIN + confirmación).
+// Borra primero los registros hijos para evitar conflictos de llaves foráneas.
+function eliminarOrdenPermanente(ordenId) {
+  pedirPin(async () => {
+    if (!confirm('¿ELIMINAR PERMANENTEMENTE esta orden y todos sus datos (etapas, fotos, repuestos)?\n\nEsta acción NO se puede deshacer.')) return;
+    try {
+      // Repuestos: borrar hijos de cada solicitud primero
+      const sols = await api(`/solicitudes_repuesto?orden_id=eq.${ordenId}&select=id`).catch(() => []) || [];
+      if (sols.length) {
+        const ids = sols.map(s => s.id).join(',');
+        await api(`/cotizaciones_repuesto?solicitud_id=in.(${ids})`, 'DELETE').catch(() => {});
+        await api(`/solicitud_items?solicitud_id=in.(${ids})`, 'DELETE').catch(() => {});
+      }
+      await api(`/solicitudes_repuesto?orden_id=eq.${ordenId}`, 'DELETE').catch(() => {});
+      // Hijos directos de la orden
+      await api(`/aprobaciones_etapa?orden_id=eq.${ordenId}`, 'DELETE').catch(() => {});
+      await api(`/fotos_etapas?orden_id=eq.${ordenId}`, 'DELETE').catch(() => {});
+      await api(`/fotos_ingreso?orden_id=eq.${ordenId}`, 'DELETE').catch(() => {});
+      await api(`/novedades?orden_id=eq.${ordenId}`, 'DELETE').catch(() => {});
+      await api(`/etapas?orden_id=eq.${ordenId}`, 'DELETE').catch(() => {});
+      // Cotizaciones del cliente: desligar (conservar el histórico)
+      await api(`/cotizaciones?orden_id=eq.${ordenId}`, 'PATCH', { orden_id: null }).catch(() => {});
+      // Finalmente, la orden
+      await api(`/ordenes?id=eq.${ordenId}`, 'DELETE');
+      toast('Orden eliminada permanentemente ✓');
+      if (typeof navJefe === 'function') navJefe('ordenes');
+      else cargarOrdenes();
+    } catch (e) { toast('Error eliminando: ' + e.message, 'err'); }
+  }, 'Eliminar orden', 'ELIMINACIÓN PERMANENTE. Ingresa el PIN para confirmar.');
 }
 
 async function _getPinCierre() {
