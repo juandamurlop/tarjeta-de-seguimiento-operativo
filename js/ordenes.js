@@ -623,7 +623,10 @@ async function abrirOrden(id) {
                      </div>
                    </div>`
                 : todasCalidadAprobada
-                ? `<div style="font-size:11px;color:var(--verde);font-weight:600;margin-bottom:8px;text-align:center">✓ Calidad aprobada en todas las etapas</div>
+                ? `<div style="font-size:11px;color:var(--verde);font-weight:600;margin-bottom:8px;text-align:center">✓ Calidad aprobada — listo para entrega</div>
+                   <button class="btn" style="width:100%;background:#25D366;border-color:#25D366;color:#fff;margin-bottom:6px" onclick="avisarClienteWhatsapp(${orden.id})">
+                     📲 Avisar al cliente (WhatsApp)
+                   </button>
                    <button class="btn btn-success" style="width:100%" onclick="cambiarEstado('Entregada')">
                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
                      Marcar como Finalizada
@@ -1663,6 +1666,38 @@ async function recargarListasNuevaOrden() {
     aseg.map(a=>`<option value="${escapeHtml(a.nombre)}">${escapeHtml(a.nombre)}</option>`).join('');
   if (selF) selF.innerHTML = '<option value="">— Seleccionar —</option>' +
     flot.map(f=>`<option value="${escapeHtml(f.nombre)}">${escapeHtml(f.nombre)}</option>`).join('');
+}
+
+// Normaliza un teléfono a formato WhatsApp (solo dígitos con indicativo país).
+// Colombia: celular de 10 dígitos -> se antepone 57.
+function _waNumero(raw) {
+  if (!raw) return '';
+  let d = String(raw).replace(/\D/g, '').replace(/^00/, '');
+  if (!d) return '';
+  if (d.length === 10) return '57' + d;        // celular CO sin indicativo
+  if (d.startsWith('57') && d.length >= 12) return d; // ya trae 57
+  return d;                                     // otro país / ya con indicativo
+}
+
+// Abre WhatsApp con un mensaje listo para avisar al cliente que su vehículo
+// está listo para entrega. (No envía solo: el usuario da "Enviar" — gratis,
+// sin API de WhatsApp Business.)
+async function avisarClienteWhatsapp(ordenId) {
+  try {
+    const arr = await api(`/ordenes?id=eq.${ordenId}&select=placa,marca,linea,propietario,telefono`).catch(() => []);
+    const o = arr && arr[0];
+    if (!o) { toast('No se encontró la orden', 'err'); return; }
+    const tel = _waNumero(o.telefono);
+    if (!tel) { toast('El cliente no tiene celular registrado en la orden', 'err'); return; }
+    const taller  = (typeof _cotPdfConfig === 'function' && _cotPdfConfig().nombre) || 'Freimanautos';
+    const veh     = [o.marca, o.linea].filter(Boolean).join(' ') || 'vehículo';
+    const nombre  = (o.propietario || '').trim().split(' ')[0] || '';
+    const saludo  = nombre ? `Hola ${nombre}, ` : 'Hola, ';
+    const msg = `${saludo}le saluda ${taller}. ` +
+      `Su ${veh} de placa ${o.placa} ya está LISTO para entrega. ` +
+      `Puede pasar a recogerlo en nuestro taller. ¡Gracias por confiar en nosotros! 🚗`;
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
 async function crearOrden() {
