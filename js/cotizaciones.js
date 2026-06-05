@@ -463,6 +463,14 @@ async function generarPdfCotizacion(cotId) {
     try { repuestos = typeof cot.repuestos       === 'string' ? JSON.parse(cot.repuestos)       : (cot.repuestos       || []); } catch(e) { repuestos = []; }
     try { moItems   = typeof cot.mano_obra_items === 'string' ? JSON.parse(cot.mano_obra_items) : (cot.mano_obra_items || []); } catch(e) { moItems   = []; }
 
+    // Totales numéricos exactos (los mismos que muestra la app)
+    const _tr  = Math.round(cot.total_repuestos || 0);
+    const _tmo = Math.round(cot.mano_obra || 0);
+    const _sub = _tr + _tmo;
+    const _ivaV = Math.round(cot.iva || 0);
+    const _tot = Math.round(cot.total_general || (_sub + _ivaV));
+    const _money = n => '$ ' + new Intl.NumberFormat('es-CO').format(Math.round(n || 0));
+
     // Payload completo para el workflow de n8n
     const payload = {
       cotizacion_id:     cot.id,
@@ -481,13 +489,20 @@ async function generarPdfCotizacion(cotId) {
       vin:               cot.vin               || '',
       repuestos:         repuestos,
       mano_obra_items:   moItems,
-      total_repuestos:   cot.total_repuestos   || 0,
-      mano_obra:         cot.mano_obra         || 0,
-      subtotal:          (cot.total_repuestos||0) + (cot.mano_obra||0),
-      descuento_total:   cot.descuento_total   || 0,
-      iva:               cot.iva               || 0,
-      con_iva:           (cot.iva || 0) > 0,
-      total_general:     cot.total_general     || 0,
+      total_repuestos:   _tr,
+      mano_obra:         _tmo,
+      subtotal:          _sub,
+      descuento_total:   0,
+      iva:               _ivaV,
+      iva_porcentaje:    _ivaV > 0 ? 19 : 0,
+      con_iva:           _ivaV > 0,
+      total_general:     _tot,
+      // Valores ya formateados, listos para imprimir tal cual en el PDF (sin recalcular)
+      total_repuestos_fmt: _money(_tr),
+      mano_obra_fmt:       _money(_tmo),
+      subtotal_fmt:        _money(_sub),
+      iva_fmt:             _money(_ivaV),
+      total_general_fmt:   _money(_tot),
       // Ejecutivo a cargo: el técnico guardado o, si falta, el usuario en sesión.
       tecnico:           cot.tecnico || ((typeof sesion !== 'undefined' && sesion && sesion.nombre) || '') || '',
       ejecutivo:         cot.tecnico || ((typeof sesion !== 'undefined' && sesion && sesion.nombre) || '') || '',
