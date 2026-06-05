@@ -52,6 +52,40 @@ function toast(msg, tipo = 'ok') {
   setTimeout(() => t.className = '', 3000);
 }
 
+// Comprime/reduce una imagen antes de enviarla al OCR (mucho más rápido:
+// menos peso para subir y para procesar). Devuelve { base64, dataUrl, mime }.
+function comprimirImagenBase64(file, maxDim = 1400, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => {
+        // Si no se puede procesar, enviar el original tal cual
+        const b64 = String(reader.result).split(',')[1] || '';
+        resolve({ base64: b64, dataUrl: reader.result, mime: file.type || 'image/jpeg' });
+      };
+      img.onload = () => {
+        try {
+          let w = img.naturalWidth, h = img.naturalHeight;
+          const scale = Math.min(1, maxDim / Math.max(w, h));
+          w = Math.round(w * scale); h = Math.round(h * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve({ base64: dataUrl.split(',')[1], dataUrl, mime: 'image/jpeg' });
+        } catch (e) {
+          const b64 = String(reader.result).split(',')[1] || '';
+          resolve({ base64: b64, dataUrl: reader.result, mime: file.type || 'image/jpeg' });
+        }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function formatFecha(f) { return f ? new Date(f).toLocaleDateString('es-CO') : '—'; }
 function formatTS(ts) { return ts ? new Date(ts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '—'; }
 function kid(id) { return 'e' + String(id).replace(/\D/g, ''); }
