@@ -548,7 +548,9 @@ function guardarConfigPdfCotizacion() {
   document.getElementById('modal-cot-pdf')?.remove();
 }
 
-async function generarPdfCotizacion(cotId) {
+function enviarPdfCotizacion(cotId) { return generarPdfCotizacion(cotId, 'enviar'); }
+
+async function generarPdfCotizacion(cotId, accion = 'descargar') {
   // Deshabilitar botón mientras genera
   const btn = document.querySelector(`button[data-pdf="${cotId}"]`);
   const txtOrig = btn?.textContent || 'Generar PDF';
@@ -576,7 +578,8 @@ async function generarPdfCotizacion(cotId) {
     const _ivaV = (cot.iva || 0) > 0 ? Math.round(_sub * 0.19) : 0;  // IVA 19% si aplica
     const _tot  = _sub + _ivaV;
     const _money = n => '$ ' + new Intl.NumberFormat('es-CO').format(Math.round(n || 0));
-    const ejecutivo = cot.tecnico || ((typeof sesion !== 'undefined' && sesion && sesion.nombre) || '') || '—';
+    // Ejecutivo a cargo = el perfil (usuario en sesión) que genera la cotización
+    const ejecutivo = ((typeof sesion !== 'undefined' && sesion && sesion.nombre) || cot.tecnico || '—');
     const CFG = _cotPdfConfig();   // plantilla editable (logo + textos)
 
     // ── Generación del PDF EN EL NAVEGADOR (jsPDF) — plantilla configurable ──
@@ -680,8 +683,26 @@ async function generarPdfCotizacion(cotId) {
     if (CFG.nota) doc.text(doc.splitTextToSize(String(CFG.nota), W - 2 * M - 160), M, H - 28);
     doc.text(`${CFG.nombre || ''}${CFG.nit ? ' · NIT ' + CFG.nit : ''}`, W - M, H - 28, { align:'right' });
 
-    doc.save(`Cotizacion_${(cot.codigo_cotizacion || cot.placa || cotId)}.pdf`);
-    toast('PDF generado ✓');
+    const nombrePdf = `Cotizacion_${(cot.codigo_cotizacion || cot.placa || cotId)}.pdf`;
+    if (accion === 'enviar') {
+      // Enviar al cliente: compartir el archivo (WhatsApp / correo / etc.)
+      const blob = doc.output('blob');
+      const file = new File([blob], nombrePdf, { type: 'application/pdf' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: 'Cotización', text: `Cotización ${cot.codigo_cotizacion || ''} · ${CFG.nombre}` }); toast('Listo para enviar ✓'); }
+        catch (e) { /* el usuario canceló el compartir */ }
+      } else {
+        // Sin Share API (escritorio): descarga el PDF y abre WhatsApp con el mensaje
+        doc.save(nombrePdf);
+        const tel = String(cot.telefono_cliente || '').replace(/\D/g, '');
+        const msg = encodeURIComponent(`Hola ${cot.nombre_cliente || ''}, te comparto la cotización ${cot.codigo_cotizacion || ''} de ${CFG.nombre}. Total: ${_money(_tot)}.`);
+        window.open(`https://wa.me/${tel ? '57' + tel : ''}?text=${msg}`, '_blank');
+        toast('PDF descargado — adjúntalo en el chat de WhatsApp que se abrió', 'warn');
+      }
+    } else {
+      doc.save(nombrePdf);
+      toast('PDF generado ✓');
+    }
     return true;
   } catch(e) {
     toast('Error al generar PDF: ' + e.message, 'err');
@@ -860,11 +881,8 @@ function renderCotizaciones(data) {
       </div>
       <div class="cot-card-bot">
         ${estado !== 'rechazada' ? `<button class="btn btn-ghost btn-sm" style="font-size:12px;color:var(--azul)" onclick="event.stopPropagation();editarCotizacion(${c.id})">✏️ Editar</button>` : ''}
-        ${c.url_pdf
-          ? `<a href="${c.url_pdf}" target="_blank" class="btn btn-outline btn-sm" style="font-size:12px" onclick="event.stopPropagation()">📄 Ver PDF</a>
-             <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="event.stopPropagation();generarPdfCotizacion(${c.id})" data-pdf="${c.id}">↺ Regen.</button>`
-          : `<button class="btn btn-outline btn-sm" style="font-size:12px" onclick="event.stopPropagation();generarPdfCotizacion(${c.id})" data-pdf="${c.id}">📄 Generar PDF</button>`
-        }
+        <button class="btn btn-outline btn-sm" style="font-size:12px" onclick="event.stopPropagation();generarPdfCotizacion(${c.id})" data-pdf="${c.id}">📄 PDF</button>
+        <button class="btn btn-primary btn-sm" style="font-size:12px" onclick="event.stopPropagation();enviarPdfCotizacion(${c.id})">📤 Enviar</button>
         ${estado === 'pendiente' ? `
           <button class="btn btn-success btn-sm" onclick="event.stopPropagation();aprobarCotizacion(${c.id})">Aprobar → Crear Orden</button>
           <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();rechazarCotizacion(${c.id})">Rechazar</button>
@@ -1017,11 +1035,8 @@ async function abrirDetalleCotizacion(cotId) {
   footerEl.innerHTML = `
     <button class="btn btn-ghost" onclick="cerrarModalCotizacion()">Cerrar</button>
     ${estado !== 'rechazada' ? `<button class="btn btn-ghost btn-sm" style="color:var(--azul)" onclick="editarCotizacion(${cot.id})">✏️ Editar</button>` : ''}
-    ${cot.url_pdf
-      ? `<a href="${cot.url_pdf}" target="_blank" class="btn btn-outline" style="text-decoration:none">📄 Ver PDF</a>
-         <button class="btn btn-ghost btn-sm" onclick="generarPdfCotizacion(${cot.id})" data-pdf="${cot.id}">↺ Regen. PDF</button>`
-      : `<button class="btn btn-outline" onclick="generarPdfCotizacion(${cot.id})" data-pdf="${cot.id}">📄 Generar PDF</button>`
-    }
+    <button class="btn btn-outline" onclick="generarPdfCotizacion(${cot.id})" data-pdf="${cot.id}">📄 Generar PDF</button>
+    <button class="btn btn-primary" onclick="enviarPdfCotizacion(${cot.id})">📤 Enviar al cliente</button>
     ${estado === 'pendiente' ? `
       <button class="btn btn-success" onclick="cerrarModalCotizacion();aprobarCotizacion(${cot.id})">✓ Aprobar → Crear Orden</button>
       <button class="btn btn-danger btn-sm" onclick="cerrarModalCotizacion();rechazarCotizacion(${cot.id})">Rechazar</button>
