@@ -488,7 +488,9 @@ async function generarPdfCotizacion(cotId) {
       iva:               cot.iva               || 0,
       con_iva:           (cot.iva || 0) > 0,
       total_general:     cot.total_general     || 0,
-      tecnico:           cot.tecnico           || '',
+      // Ejecutivo a cargo: el técnico guardado o, si falta, el usuario en sesión.
+      tecnico:           cot.tecnico || ((typeof sesion !== 'undefined' && sesion && sesion.nombre) || '') || '',
+      ejecutivo:         cot.tecnico || ((typeof sesion !== 'undefined' && sesion && sesion.nombre) || '') || '',
       aseguradora:       cot.aseguradora       || '',
       tipo_cliente:      cot.tipo_cliente      || '',
       nivel_dano:        cot.nivel_dano        || ''
@@ -618,7 +620,9 @@ async function guardarNuevaCotizacion(conPdf = false) {
         codigo_cotizacion: `COT-${now.getFullYear()}-${String(Date.now()).slice(-6)}`,
         fecha:             now.toLocaleDateString('es-CO'),
         hora:              now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-        estado:            'pendiente'
+        estado:            'pendiente',
+        // Ejecutivo a cargo = quien crea la cotización (usuario en sesión)
+        tecnico:           (typeof sesion !== 'undefined' && sesion && sesion.nombre) || ''
       };
       const res = await api('/cotizaciones?select=id', 'POST', body, { Prefer: 'return=representation' });
       cotId = res[0]?.id;
