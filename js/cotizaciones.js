@@ -463,90 +463,93 @@ async function generarPdfCotizacion(cotId) {
     try { repuestos = typeof cot.repuestos       === 'string' ? JSON.parse(cot.repuestos)       : (cot.repuestos       || []); } catch(e) { repuestos = []; }
     try { moItems   = typeof cot.mano_obra_items === 'string' ? JSON.parse(cot.mano_obra_items) : (cot.mano_obra_items || []); } catch(e) { moItems   = []; }
 
-    // Totales numéricos exactos (los mismos que muestra la app)
-    const _tr  = Math.round(cot.total_repuestos || 0);
-    const _tmo = Math.round(cot.mano_obra || 0);
-    const _sub = _tr + _tmo;
-    const _ivaV = Math.round(cot.iva || 0);
-    const _tot = Math.round(cot.total_general || (_sub + _ivaV));
+    // Totales recalculados desde los ítems (siempre exactos, no dependen de nada externo)
+    const _tr   = repuestos.reduce((s, i) => s + (+i.total || 0), 0);
+    const _tmo  = moItems.reduce((s, i)  => s + (+i.total || 0), 0);
+    const _sub  = _tr + _tmo;
+    const _ivaV = (cot.iva || 0) > 0 ? Math.round(_sub * 0.19) : 0;  // IVA 19% si aplica
+    const _tot  = _sub + _ivaV;
     const _money = n => '$ ' + new Intl.NumberFormat('es-CO').format(Math.round(n || 0));
+    const ejecutivo = cot.tecnico || ((typeof sesion !== 'undefined' && sesion && sesion.nombre) || '') || '—';
+    const EMP = (typeof _RPT_EMPRESA !== 'undefined') ? _RPT_EMPRESA
+      : { nombre:'FREIMANAUTOS', slogan:'Simplemente profesional', nit:'800.012.186', direccion:'Calle 98A # 68D – 15', telefono:'320 902 5804', email:'freimanautossa@yahoo.com' };
 
-    // Payload completo para el workflow de n8n
-    const payload = {
-      cotizacion_id:     cot.id,
-      codigo_cotizacion: cot.codigo_cotizacion || '',
-      fecha:             cot.fecha             || '',
-      nombre_cliente:    cot.nombre_cliente    || '',
-      cedula_cliente:    cot.cedula_cliente    || '',
-      telefono_cliente:  cot.telefono_cliente  || '',
-      correo_cliente:    cot.correo_cliente    || '',
-      kilometraje:       cot.kilometraje       || '',
-      placa:             cot.placa             || '',
-      marca:             cot.marca             || '',
-      modelo:            cot.modelo            || '',
-      año:               cot.año               || '',
-      color:             cot.color             || '',
-      vin:               cot.vin               || '',
-      repuestos:         repuestos,
-      mano_obra_items:   moItems,
-      total_repuestos:   _tr,
-      mano_obra:         _tmo,
-      subtotal:          _sub,
-      descuento_total:   0,
-      iva:               _ivaV,
-      iva_porcentaje:    _ivaV > 0 ? 19 : 0,
-      con_iva:           _ivaV > 0,
-      total_general:     _tot,
-      // Valores ya formateados, listos para imprimir tal cual en el PDF (sin recalcular)
-      total_repuestos_fmt: _money(_tr),
-      mano_obra_fmt:       _money(_tmo),
-      subtotal_fmt:        _money(_sub),
-      iva_fmt:             _money(_ivaV),
-      total_general_fmt:   _money(_tot),
-      // Ejecutivo a cargo: el técnico guardado o, si falta, el usuario en sesión.
-      tecnico:           cot.tecnico || ((typeof sesion !== 'undefined' && sesion && sesion.nombre) || '') || '',
-      ejecutivo:         cot.tecnico || ((typeof sesion !== 'undefined' && sesion && sesion.nombre) || '') || '',
-      aseguradora:       cot.aseguradora       || '',
-      tipo_cliente:      cot.tipo_cliente      || '',
-      nivel_dano:        cot.nivel_dano        || ''
-    };
+    // ── Generación del PDF EN EL NAVEGADOR (jsPDF) — plantilla propia ──
+    if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Librería PDF no disponible. Recarga la página.');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'pt', format:'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    const M = 40;
+    const AZUL = [30,58,95];
 
-    toast('Generando PDF...');
-    const res = await fetch(N8N_PDF_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    // Encabezado
+    doc.setFont('helvetica','bold'); doc.setFontSize(22); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]);
+    doc.text(EMP.nombre, M, 50);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120,120,120);
+    doc.text(`${EMP.slogan} · NIT ${EMP.nit}`, M, 63);
+    doc.text(`${EMP.direccion} · Tel: ${EMP.telefono} · ${EMP.email}`, M, 74);
+    doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]);
+    doc.text('COTIZACIÓN', W - M, 48, { align:'right' });
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
+    doc.text(`${cot.codigo_cotizacion || ''}`, W - M, 62, { align:'right' });
+    doc.text(`Fecha: ${cot.fecha || ''}`, W - M, 74, { align:'right' });
+    doc.setDrawColor(AZUL[0],AZUL[1],AZUL[2]); doc.setLineWidth(1.5); doc.line(M, 84, W - M, 84);
+
+    // Cliente y vehículo
+    let y = 104;
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(130,130,130);
+    doc.text('CLIENTE', M, y); doc.text('VEHÍCULO', W/2 + 10, y);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    const fila = (k, v, x, yy) => { doc.setTextColor(140,140,140); doc.text(k, x, yy); doc.setTextColor(40,40,40); doc.text(String(v || '—'), x + 78, yy); };
+    const cli = [['Nombre:',cot.nombre_cliente],['Cédula/NIT:',cot.cedula_cliente],['Teléfono:',cot.telefono_cliente],['Correo:',cot.correo_cliente]];
+    const veh = [['Placa:',cot.placa],['Marca/Línea:',[cot.marca,cot.modelo].filter(Boolean).join(' ')],['Modelo:',cot.año],['Color:',cot.color],['VIN:',cot.vin],['Kilometraje:',cot.kilometraje]];
+    let yc = y + 14; cli.forEach(([k,v]) => { fila(k,v,M,yc); yc += 13; });
+    let yv = y + 14; veh.forEach(([k,v]) => { fila(k,v,W/2 + 10,yv); yv += 13; });
+    y = Math.max(yc, yv) + 4;
+    doc.setTextColor(140,140,140); doc.setFontSize(9); doc.text('Ejecutivo a cargo:', M, y);
+    doc.setTextColor(40,40,40); doc.setFont('helvetica','bold'); doc.text(ejecutivo, M + 95, y); doc.setFont('helvetica','normal');
+    y += 14;
+
+    // Tablas de ítems
+    const colStyles = { 0:{halign:'center',cellWidth:34}, 2:{halign:'center',cellWidth:38}, 3:{halign:'right',cellWidth:75}, 4:{halign:'right',cellWidth:80} };
+    const filaItem = i => [i.cantidad ?? 1, i.descripcion || '—', (i.descuento_pct || 0) + '%', _money(i.valor_unitario), _money(i.total)];
+    if (repuestos.length) {
+      doc.autoTable({ startY: y, head: [['Cant','Repuesto','Dto','V. Unit','Total']], body: repuestos.map(filaItem),
+        theme:'striped', headStyles:{ fillColor: AZUL, fontSize:8 }, bodyStyles:{ fontSize:8.5 }, margin:{ left:M, right:M }, columnStyles: colStyles });
+      y = doc.lastAutoTable.finalY + 10;
+    }
+    if (moItems.length) {
+      doc.autoTable({ startY: y, head: [['Cant','Mano de obra','Dto','V. Unit','Total']], body: moItems.map(filaItem),
+        theme:'striped', headStyles:{ fillColor:[124,58,237], fontSize:8 }, bodyStyles:{ fontSize:8.5 }, margin:{ left:M, right:M }, columnStyles: colStyles });
+      y = doc.lastAutoTable.finalY + 10;
+    }
+
+    // Totales (caja derecha)
+    if (y > H - 150) { doc.addPage(); y = 50; }
+    const bw = 230, bx = W - M - bw;
+    const totRows = [['Repuestos', _money(_tr)], ['Mano de obra', _money(_tmo)], ['Subtotal', _money(_sub)]];
+    if (_ivaV > 0) totRows.push(['IVA (19%)', _money(_ivaV)]);
+    doc.setFontSize(10);
+    totRows.forEach(([k,v]) => {
+      doc.setFont('helvetica', k === 'Subtotal' ? 'bold' : 'normal'); doc.setTextColor(90,90,90); doc.text(k, bx, y + 11);
+      doc.setTextColor(40,40,40); doc.text(v, bx + bw, y + 11, { align:'right' });
+      y += 17;
     });
+    y += 4;
+    doc.setFillColor(AZUL[0],AZUL[1],AZUL[2]); doc.rect(bx, y, bw, 26, 'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text(_ivaV > 0 ? 'TOTAL CON IVA' : 'TOTAL', bx + 12, y + 17);
+    doc.text(_money(_tot), bx + bw - 12, y + 17, { align:'right' });
 
-    // Leer respuesta como texto primero para diagnóstico
-    const rawText = await res.text().catch(() => '');
-    console.log('[PDF] n8n status:', res.status, '| body:', rawText.slice(0, 300));
+    // Pie
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(150,150,150);
+    doc.text('Cotización válida por 15 días. Precios sujetos a verificación al momento de la reparación.', M, H - 28);
+    doc.text(`${EMP.nombre} · NIT ${EMP.nit}`, W - M, H - 28, { align:'right' });
 
-    if (!res.ok) {
-      if (!rawText) throw new Error(`n8n respondió ${res.status} sin cuerpo. ¿Está el workflow activo?`);
-      throw new Error(`n8n ${res.status}: ${rawText.slice(0, 150)}`);
-    }
-    if (!rawText || rawText.trim() === '') {
-      throw new Error('n8n devolvió respuesta vacía. Verifica que el workflow esté ACTIVO y que el nodo "Respond to Webhook" esté configurado.');
-    }
-
-    let data;
-    try { data = JSON.parse(rawText); }
-    catch(e) { throw new Error(`n8n no devolvió JSON válido: ${rawText.slice(0, 120)}`); }
-
-    const pdfUrl = data?.url_pdf || data?.url || data?.pdf_url || null;
-
-    if (!pdfUrl) throw new Error('n8n no devolvió la URL del PDF');
-
-    // Guardar URL en Supabase y actualizar caché
-    await api(`/cotizaciones?id=eq.${cotId}`, 'PATCH', { url_pdf: pdfUrl });
-    const idx = todasCotizaciones.findIndex(c => c.id === cotId);
-    if (idx !== -1) todasCotizaciones[idx].url_pdf = pdfUrl;
-
+    doc.save(`Cotizacion_${(cot.codigo_cotizacion || cot.placa || cotId)}.pdf`);
     toast('PDF generado ✓');
-    await cargarCotizaciones();
-    window.open(pdfUrl, '_blank');
-    return pdfUrl;
+    return true;
   } catch(e) {
     toast('Error al generar PDF: ' + e.message, 'err');
     if (btn) { btn.disabled = false; btn.textContent = txtOrig; }
