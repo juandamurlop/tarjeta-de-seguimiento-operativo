@@ -456,6 +456,10 @@ async function abrirOrden(id) {
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               Editar datos
             </button>` : ''}
+            ${esJefe() && orden.estado !== 'Archivada' ? `<button class="btn btn-ghost btn-sm" style="color:#DC2626" onclick="archivarOrden(${orden.id})" title="Archivar orden (con PIN)">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="4" rx="1"/><path d="M5 7v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+              Archivar
+            </button>` : ''}
           </div>
           <div class="det-datos-grid">
             <!-- Vehículo -->
@@ -1013,16 +1017,28 @@ async function finalizarEtapa(eid, nombre, servicio) {
   } catch(e) { toast('Error: '+e.message, 'err'); }
 }
 
-// ── Guardar para jefe/gerente — siempre editable, sin bloquear ──
+// ── Guardar para jefe/gerente — siempre editable ──
+// Si se MODIFICA un valor de mano de obra que ya estaba guardado (corrección),
+// se exige el PIN. La primera vez que se ingresa NO pide PIN (no estorba).
 async function guardarCamposEtapaJefe(eid, k) {
   const hf  = parseFloat(document.getElementById(`hf-${k}`)?.value) || null;
   const ha  = parseFloat(document.getElementById(`ha-${k}`)?.value) || null;
   const val = parseFloat(document.getElementById(`val-${k}`)?.value) || null;
-  try {
-    await api(`/etapas?id=eq.${eid}`, 'PATCH', { horas_facturadas: hf, horas_adicionales: ha, valor: val });
-    toast('Guardado ✓');
-    if (ordenActual) abrirOrden(ordenActual.id);
-  } catch(e) { toast('Error: ' + e.message, 'err'); }
+  const guardar = async () => {
+    try {
+      await api(`/etapas?id=eq.${eid}`, 'PATCH', { horas_facturadas: hf, horas_adicionales: ha, valor: val });
+      toast('Guardado ✓');
+      if (ordenActual) abrirOrden(ordenActual.id);
+    } catch(e) { toast('Error: ' + e.message, 'err'); }
+  };
+  const prev = await api(`/etapas?id=eq.${eid}&select=horas_facturadas,horas_adicionales,valor`).then(r => r && r[0]).catch(() => null);
+  const yaTenia = prev && (prev.valor != null || prev.horas_facturadas != null || prev.horas_adicionales != null);
+  const cambio  = !prev || (prev.valor != val || prev.horas_facturadas != hf || prev.horas_adicionales != ha);
+  if (yaTenia && cambio && typeof pedirPin === 'function') {
+    pedirPin(guardar, 'Editar mano de obra', 'Estás modificando un valor ya guardado. Ingresa el PIN.');
+  } else {
+    guardar();
+  }
 }
 
 // ── Guardar horas+valor de una sola vez y bloquear (técnico) ─
@@ -1848,9 +1864,18 @@ async function intentarCerrarOrden(ordenId) {
   if (!o) o = await api(`/ordenes?id=eq.${ordenId}`).then(r => r && r[0]).catch(() => null);
   if (!o) { toast('Orden no encontrada', 'err'); return; }
   if (!o.preliquidacion_enviada_en) { toast('Primero envía la preliquidación al cliente', 'err'); return; }
-  const pin = await _getPinCierre();
-  if (!pin) { toast('Primero configura el PIN de cierre'); configurarPinCierre(); return; }
-  _modalPinCierre(ordenId);
+  pedirPin(() => cambiarEstado('Entregada'), 'Cerrar orden', 'Ingresa el PIN del jefe / gerente para cerrar.');
+}
+
+// Archivar orden (eliminación reversible) — requiere PIN.
+function archivarOrden(ordenId) {
+  pedirPin(async () => {
+    try {
+      await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { estado: 'Archivada' });
+      toast('Orden archivada ✓');
+      if (typeof navJefe === 'function') navJefe('ordenes');
+    } catch (e) { toast('Error: ' + e.message, 'err'); }
+  }, 'Archivar orden', 'Se ocultará de las listas (reversible). Ingresa el PIN.');
 }
 
 async function _getPinCierre() {
@@ -1863,7 +1888,12 @@ async function _setPinCierre(pin) {
   await api(`/config_app`, 'POST', { clave: 'pin_cierre', valor: String(pin) }, { Prefer: 'resolution=merge-duplicates' });
 }
 
-function _modalPinCierre(ordenId) {
+// PIN reutilizable: verifica el PIN y, si es correcto, ejecuta onOk().
+let _pinCallback = null;
+async function pedirPin(onOk, titulo, subtitulo) {
+  const pin = await _getPinCierre();
+  if (!pin) { toast('Primero configura el PIN'); configurarPinCierre(); return; }
+  _pinCallback = onOk;
   document.getElementById('pin-cierre-modal')?.remove();
   const ov = document.createElement('div');
   ov.id = 'pin-cierre-modal';
@@ -1871,30 +1901,31 @@ function _modalPinCierre(ordenId) {
   ov.innerHTML = `
     <div style="background:#fff;border-radius:14px;max-width:340px;width:100%;padding:22px;text-align:center;font-family:'DM Sans',sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.3)">
       <div style="font-size:34px">🔒</div>
-      <div style="font-size:16px;font-weight:800;color:var(--azul);margin:6px 0 2px">Cerrar orden</div>
-      <div style="font-size:12px;color:var(--gris-mid);margin-bottom:14px">Ingresa el PIN del jefe de taller / gerente.</div>
+      <div style="font-size:16px;font-weight:800;color:var(--azul);margin:6px 0 2px">${titulo || 'Confirmar con PIN'}</div>
+      <div style="font-size:12px;color:var(--gris-mid);margin-bottom:14px">${subtitulo || 'Ingresa el PIN del jefe de taller / gerente.'}</div>
       <input id="pin-cierre-input" type="password" inputmode="numeric" maxlength="8" autocomplete="off"
         style="width:100%;text-align:center;font-size:22px;letter-spacing:6px;padding:10px;border:1px solid var(--gris-borde);border-radius:8px;font-family:'DM Mono',monospace">
       <div id="pin-cierre-err" style="font-size:12px;color:#DC2626;height:16px;margin-top:6px"></div>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="btn btn-ghost btn-sm" style="flex:1" onclick="document.getElementById('pin-cierre-modal').remove()">Cancelar</button>
-        <button class="btn btn-primary btn-sm" style="flex:1" onclick="_confirmarPinCierre(${ordenId})">Confirmar</button>
+        <button class="btn btn-primary btn-sm" style="flex:1" onclick="_confirmarPin()">Confirmar</button>
       </div>
     </div>`;
   ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
   document.body.appendChild(ov);
   const inp = document.getElementById('pin-cierre-input');
   setTimeout(() => inp?.focus(), 50);
-  inp?.addEventListener('keydown', e => { if (e.key === 'Enter') _confirmarPinCierre(ordenId); });
+  inp?.addEventListener('keydown', e => { if (e.key === 'Enter') _confirmarPin(); });
 }
-async function _confirmarPinCierre(ordenId) {
+async function _confirmarPin() {
   const inp = document.getElementById('pin-cierre-input');
   const err = document.getElementById('pin-cierre-err');
   const val = (inp && inp.value || '').trim();
   const pin = await _getPinCierre();
   if (val && pin && val === pin) {
     document.getElementById('pin-cierre-modal')?.remove();
-    await cambiarEstado('Entregada');
+    const cb = _pinCallback; _pinCallback = null;
+    if (typeof cb === 'function') await cb();
   } else {
     if (err) err.textContent = 'PIN incorrecto';
     if (inp) { inp.value = ''; inp.focus(); }

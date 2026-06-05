@@ -179,7 +179,16 @@ function nuevaCotizacion() {
   closeSidebar();
 }
 
+// Editar una cotización ya creada requiere PIN (jefe/gerente), porque cambia
+// los valores que ve el cliente. Si el PIN no está disponible, no bloquea.
 async function editarCotizacion(cotId) {
+  if (typeof pedirPin === 'function' && typeof _getPinCierre === 'function' && await _getPinCierre()) {
+    pedirPin(() => _editarCotizacionReal(cotId), 'Editar cotización', 'Vas a modificar los valores de una cotización. Ingresa el PIN.');
+    return;
+  }
+  return _editarCotizacionReal(cotId);
+}
+async function _editarCotizacionReal(cotId) {
   cerrarModalCotizacion();
   let cot = todasCotizaciones.find(c => c.id === cotId);
   if (!cot) {
