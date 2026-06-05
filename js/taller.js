@@ -616,6 +616,30 @@ function _tvHoraStr(isoStr) {
   return new Date(isoStr).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', hour12:false });
 }
 
+// Texto corto de la cuenta regresiva de la cita de recogida (para la pantalla TV).
+function _tvCitaTxt(orden) {
+  if (!orden || !orden.cita_entrega || typeof _citaInfo !== 'function') return '';
+  const ci = _citaInfo(orden.cita_entrega);
+  if (!ci) return '';
+  return ci.vencida ? `⏰ ${ci.texto}` : `🚗 ${ci.texto}`;
+}
+
+// Render unificado de un item del panel "Terminados / Listos" (evita 3 copias).
+function _tvPanelItem(orden, tipo) {
+  const hora = tipo === 'entregado' ? _tvHoraStr(orden.entregada_en) : '';
+  const statusTxt = tipo === 'listo' ? 'Listo para entrega' : '✓ Entregado';
+  const cita = tipo === 'listo' ? _tvCitaTxt(orden) : '';
+  return `<div class="tv-panel-item ${tipo}" data-orden-id="${orden.id}" onclick="_tvVerDetalle(${orden.id})">
+    <div class="tv-panel-dot ${tipo}"></div>
+    <div class="tv-panel-info">
+      <div class="tv-panel-placa">${orden.placa}</div>
+      <div class="tv-panel-status ${tipo}">${statusTxt}</div>
+      ${cita ? `<div class="tv-panel-status ${tipo}" style="color:${cita.startsWith('⏰')?'#DC2626':'#059669'};font-weight:700">${cita}</div>` : ''}
+    </div>
+    ${hora ? `<div class="tv-panel-time">${hora}</div>` : ''}
+  </div>`;
+}
+
 function _tvEntregaInfo(orden) {
   if (!orden.fecha_entrega_1) return { color:'#9CA3AF', label:'Sin fecha', hora:null };
   const f    = new Date(orden.fecha_entrega_1);
@@ -1038,18 +1062,7 @@ async function cargarPantallaTaller() {
       }
     });
     const panelListosHtml = panelItems.length
-      ? panelItems.map(({orden, tipo}) => {
-          const hora = tipo === 'entregado' ? _tvHoraStr(orden.entregada_en) : '';
-          const statusTxt = tipo === 'listo' ? 'Listo para entrega' : '✓ Entregado';
-          return `<div class="tv-panel-item ${tipo}" onclick="_tvVerDetalle(${orden.id})">
-            <div class="tv-panel-dot ${tipo}"></div>
-            <div class="tv-panel-info">
-              <div class="tv-panel-placa">${orden.placa}</div>
-              <div class="tv-panel-status ${tipo}">${statusTxt}</div>
-            </div>
-            ${hora ? `<div class="tv-panel-time">${hora}</div>` : ''}
-          </div>`;
-        }).join('')
+      ? panelItems.map(({orden, tipo}) => _tvPanelItem(orden, tipo)).join('')
       : '<div class="tv-panel-empty">Sin terminados hoy</div>';
 
     // ── Panel derecho: Programadas ───────────────────────────
@@ -1087,18 +1100,7 @@ async function cargarPantallaTaller() {
     if (_primeraLlamada) {
       const filasHtml = ordenesOrdenadas.map(renderFila).join('');
       const panelListosHtmlInner = panelItems.length
-        ? panelItems.map(({orden, tipo}) => {
-            const hora = tipo==='entregado' ? _tvHoraStr(orden.entregada_en) : '';
-            const statusTxt = tipo==='listo' ? 'Listo para entrega' : '✓ Entregado';
-            return `<div class="tv-panel-item ${tipo}" data-orden-id="${orden.id}" onclick="_tvVerDetalle(${orden.id})">
-              <div class="tv-panel-dot ${tipo}"></div>
-              <div class="tv-panel-info">
-                <div class="tv-panel-placa">${orden.placa}</div>
-                <div class="tv-panel-status ${tipo}">${statusTxt}</div>
-              </div>
-              ${hora ? `<div class="tv-panel-time">${hora}</div>` : ''}
-            </div>`;
-          }).join('')
+        ? panelItems.map(({orden, tipo}) => _tvPanelItem(orden, tipo)).join('')
         : '<div class="tv-panel-empty">Sin terminados hoy</div>';
 
       cont.innerHTML = `
@@ -1224,23 +1226,12 @@ async function cargarPantallaTaller() {
       // Panel Listos hoy: solo reemplazar si el contenido cambió (evita parpadeo)
       const panelListos = document.getElementById('tv-panel-listos');
       if (panelListos) {
-        const sig = panelItems.map(({orden,tipo}) => `${orden.id}:${tipo}`).join(',');
+        const sig = panelItems.map(({orden,tipo}) => `${orden.id}:${tipo}:${tipo==='listo'?_tvCitaTxt(orden):''}`).join(',');
         if (panelListos.dataset.sig !== sig) {
           panelListos.dataset.sig = sig;
           const scrollPos = panelListos.scrollTop;
           panelListos.innerHTML = panelItems.length
-            ? panelItems.map(({orden, tipo}) => {
-                const hora = tipo==='entregado' ? _tvHoraStr(orden.entregada_en) : '';
-                const statusTxt = tipo==='listo' ? 'Listo para entrega' : '✓ Entregado';
-                return `<div class="tv-panel-item ${tipo}" data-orden-id="${orden.id}" onclick="_tvVerDetalle(${orden.id})">
-                  <div class="tv-panel-dot ${tipo}"></div>
-                  <div class="tv-panel-info">
-                    <div class="tv-panel-placa">${orden.placa}</div>
-                    <div class="tv-panel-status ${tipo}">${statusTxt}</div>
-                  </div>
-                  ${hora ? `<div class="tv-panel-time">${hora}</div>` : ''}
-                </div>`;
-              }).join('')
+            ? panelItems.map(({orden, tipo}) => _tvPanelItem(orden, tipo)).join('')
             : '<div class="tv-panel-empty">Sin terminados hoy</div>';
           panelListos.scrollTop = scrollPos;
         }

@@ -623,10 +623,7 @@ async function abrirOrden(id) {
                      </div>
                    </div>`
                 : todasCalidadAprobada
-                ? `<div style="font-size:11px;color:var(--verde);font-weight:600;margin-bottom:8px;text-align:center">✓ Calidad aprobada — listo para entrega</div>
-                   <button class="btn" style="width:100%;background:#25D366;border-color:#25D366;color:#fff;margin-bottom:6px" onclick="avisarClienteWhatsapp(${orden.id})">
-                     📲 Avisar al cliente (WhatsApp)
-                   </button>
+                ? `${_bloqueEntrega(orden)}
                    <button class="btn btn-success" style="width:100%" onclick="cambiarEstado('Entregada')">
                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
                      Marcar como Finalizada
@@ -1679,9 +1676,55 @@ function _waNumero(raw) {
   return d;                                     // otro país / ya con indicativo
 }
 
-// Abre WhatsApp con un mensaje listo para avisar al cliente que su vehículo
-// está listo para entrega. (No envía solo: el usuario da "Enviar" — gratis,
-// sin API de WhatsApp Business.)
+// ── Mensaje de WhatsApp "listo para entrega" (editable por el usuario) ──
+const _WA_ENTREGA_DEFAULT = 'Hola {nombre}, le saluda {taller}. Su {vehiculo} de placa {placa} ya está LISTO para entrega. Puede pasar a recogerlo en nuestro taller. ¡Gracias por confiar en nosotros! 🚗';
+function _waEntregaTemplate() {
+  try { return localStorage.getItem('wa_entrega_msg') || _WA_ENTREGA_DEFAULT; } catch (e) { return _WA_ENTREGA_DEFAULT; }
+}
+function _waEntregaMsg(o) {
+  const taller  = (typeof _cotPdfConfig === 'function' && _cotPdfConfig().nombre) || 'Freimanautos';
+  const veh     = [o.marca, o.linea].filter(Boolean).join(' ') || 'vehículo';
+  const nombre  = (o.propietario || '').trim().split(' ')[0] || '';
+  return _waEntregaTemplate()
+    .replace(/\{nombre\}/g, nombre)
+    .replace(/\{taller\}/g, taller)
+    .replace(/\{vehiculo\}/g, veh)
+    .replace(/\{placa\}/g, o.placa || '');
+}
+// Editor del mensaje de WhatsApp
+function editarMensajeEntrega() {
+  const prev = document.getElementById('wa-msg-modal'); if (prev) prev.remove();
+  const ov = document.createElement('div');
+  ov.id = 'wa-msg-modal';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:14px;max-width:460px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
+      <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:4px">Mensaje de WhatsApp al cliente</div>
+      <div style="font-size:12px;color:var(--gris-mid);margin-bottom:12px">Se envía cuando el vehículo está listo para entrega.</div>
+      <textarea id="wa-msg-text" rows="6" style="width:100%;border:1px solid var(--gris-borde);border-radius:8px;padding:10px;font-size:13px;font-family:inherit;resize:vertical">${escapeHtml(_waEntregaTemplate())}</textarea>
+      <div style="font-size:11px;color:var(--gris-mid);margin-top:8px;line-height:1.6">
+        Etiquetas que puedes usar (se reemplazan solas):<br>
+        <code>{nombre}</code> · <code>{vehiculo}</code> · <code>{placa}</code> · <code>{taller}</code>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('wa-msg-modal').remove()">Cancelar</button>
+        <button class="btn btn-ghost btn-sm" onclick="localStorage.removeItem('wa_entrega_msg');document.getElementById('wa-msg-text').value=_waEntregaTemplate()">Restaurar</button>
+        <button class="btn btn-primary btn-sm" onclick="_guardarMensajeEntrega()">Guardar</button>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+function _guardarMensajeEntrega() {
+  const v = document.getElementById('wa-msg-text')?.value.trim();
+  if (v) { try { localStorage.setItem('wa_entrega_msg', v); } catch (e) {} }
+  document.getElementById('wa-msg-modal')?.remove();
+  toast('Mensaje guardado ✓');
+}
+
+// Abre WhatsApp con el mensaje "listo para entrega", marca la orden como
+// avisada (para activar el agendamiento de la cita) y refresca el detalle.
+// (No envía solo: el usuario da "Enviar" — gratis, sin API de WhatsApp Business.)
 async function avisarClienteWhatsapp(ordenId) {
   try {
     const arr = await api(`/ordenes?id=eq.${ordenId}&select=placa,marca,linea,propietario,telefono`).catch(() => []);
@@ -1689,14 +1732,74 @@ async function avisarClienteWhatsapp(ordenId) {
     if (!o) { toast('No se encontró la orden', 'err'); return; }
     const tel = _waNumero(o.telefono);
     if (!tel) { toast('El cliente no tiene celular registrado en la orden', 'err'); return; }
-    const taller  = (typeof _cotPdfConfig === 'function' && _cotPdfConfig().nombre) || 'Freimanautos';
-    const veh     = [o.marca, o.linea].filter(Boolean).join(' ') || 'vehículo';
-    const nombre  = (o.propietario || '').trim().split(' ')[0] || '';
-    const saludo  = nombre ? `Hola ${nombre}, ` : 'Hola, ';
-    const msg = `${saludo}le saluda ${taller}. ` +
-      `Su ${veh} de placa ${o.placa} ya está LISTO para entrega. ` +
-      `Puede pasar a recogerlo en nuestro taller. ¡Gracias por confiar en nosotros! 🚗`;
-    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(_waEntregaMsg(o))}`, '_blank');
+    try { await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { entrega_avisada_en: new Date().toISOString() }); } catch (e) {}
+    abrirOrden(ordenId); // refrescar para mostrar el agendamiento de la cita
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// Información de la cita: texto de cuenta regresiva + si está vencida.
+function _citaInfo(citaISO) {
+  if (!citaISO) return null;
+  const t = new Date(citaISO).getTime();
+  const diff = t - Date.now();
+  const min = Math.round(Math.abs(diff) / 60000);
+  const fmt = m => m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${m % 60}m`;
+  const cuando = new Date(citaISO).toLocaleString('es-CO', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true });
+  if (diff > 60000)  return { vencida: false, texto: `Recoge en ${fmt(min)}`, cuando, diffMs: diff };
+  if (diff > -60000) return { vencida: true,  texto: 'Cliente debería estar llegando', cuando, diffMs: diff };
+  return { vencida: true, texto: `Cita vencida hace ${fmt(min)}`, cuando, diffMs: diff };
+}
+
+// Bloque "listo para entrega" del detalle: avisar + agendar cita + cuenta regresiva.
+function _bloqueEntrega(orden) {
+  const tel = orden.telefono ? _waNumero(orden.telefono) : '';
+  const avisado = !!orden.entrega_avisada_en;
+  const ci = _citaInfo(orden.cita_entrega);
+  let h = `<div style="font-size:11px;color:var(--verde);font-weight:600;margin-bottom:8px;text-align:center">✓ Calidad aprobada — listo para entrega</div>`;
+  // Botón avisar (o reenviar) + editar mensaje
+  h += `<div style="display:flex;gap:6px;margin-bottom:6px">
+    <button class="btn" style="flex:1;background:#25D366;border-color:#25D366;color:#fff" onclick="avisarClienteWhatsapp(${orden.id})">📲 ${avisado ? 'Reenviar' : 'Avisar al cliente'} (WhatsApp)</button>
+    <button class="btn btn-ghost btn-sm" title="Editar mensaje" onclick="editarMensajeEntrega()">✏️</button>
+  </div>`;
+  if (avisado) {
+    h += `<div style="font-size:11px;color:var(--gris-mid);margin-bottom:8px">✓ Cliente avisado el ${formatTS(orden.entrega_avisada_en)}</div>`;
+    // Agendar / re-agendar cita
+    const val = orden.cita_entrega ? _toLocalInput(orden.cita_entrega) : '';
+    h += `<div style="background:#F8FAFC;border:1px solid var(--gris-borde);border-radius:8px;padding:10px;margin-bottom:6px">
+      <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:5px">¿Cuándo recoge el cliente?</label>
+      <div style="display:flex;gap:6px">
+        <input type="datetime-local" id="cita-input-${orden.id}" value="${val}" style="flex:1;font-size:12px;padding:6px 8px;border:1px solid var(--gris-borde);border-radius:6px">
+        <button class="btn btn-primary btn-sm" onclick="guardarCitaEntrega(${orden.id})">Guardar</button>
+      </div>`;
+    if (ci) {
+      const col = ci.vencida ? '#DC2626' : '#0369A1';
+      const bg  = ci.vencida ? '#FEF2F2' : '#EFF6FF';
+      h += `<div style="margin-top:8px;background:${bg};border-radius:6px;padding:8px;text-align:center">
+        <div style="font-size:13px;font-weight:800;color:${col}">${ci.vencida ? '⏰ ' : '🚗 '}${ci.texto}</div>
+        <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">Cita: ${ci.cuando}</div>
+      </div>`;
+    }
+    h += `</div>`;
+    // Llamar cliente
+    if (tel) h += `<a href="tel:+${tel}" class="btn btn-ghost btn-sm" style="width:100%;margin-bottom:6px;text-align:center;display:block">📞 Llamar al cliente</a>`;
+  }
+  return h;
+}
+function _toLocalInput(iso) {
+  const d = new Date(iso);
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+async function guardarCitaEntrega(ordenId) {
+  const inp = document.getElementById('cita-input-' + ordenId);
+  const val = inp && inp.value;
+  if (!val) { toast('Selecciona fecha y hora', 'err'); return; }
+  try {
+    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { cita_entrega: new Date(val).toISOString() });
+    _citasAvisadas.delete(ordenId); // permitir nuevo aviso al jefe con la nueva hora
+    toast('Cita de recogida guardada ✓');
+    abrirOrden(ordenId);
   } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
@@ -5201,6 +5304,7 @@ function detenerRealtime() {
 
 const _alertasYaMostradas = new Set();   // ids de etapas cuyo popup ya se mostró
 const _alertasRevisadas   = new Set();   // ids marcados "revisado" por el usuario
+const _citasAvisadas      = new Set();   // ids de ordenes cuya cita ya se avisó al jefe
 let   _alertasInterval    = null;
 
 function iniciarSistemaAlertas() {
@@ -5211,6 +5315,7 @@ function iniciarSistemaAlertas() {
 }
 
 async function _chequearAlertas() {
+  _chequearCitas(); // avisar al jefe de las citas de recogida que ya llegaron
   try {
     // Traer etapas activas (iniciadas, no terminadas, no pausadas)
     const etapas = await api(
@@ -5335,6 +5440,51 @@ function _alertaVerOrden(ordenId) {
   // Cerrar popup y abrir el detalle de la orden
   document.querySelectorAll('.alerta-popup-etapa').forEach(p => p.remove());
   if (ordenId && typeof abrirOrden === 'function') abrirOrden(ordenId);
+}
+
+// ── Citas de recogida: avisar al jefe cuando llega la hora del cliente ──
+async function _chequearCitas() {
+  if (!esJefe()) return;
+  try {
+    const nowIso = new Date().toISOString();
+    const ords = await api(
+      `/ordenes?cita_entrega=not.is.null&cita_entrega=lte.${nowIso}&estado=neq.Entregada` +
+      `&estado=neq.Archivada&select=id,placa,marca,linea,telefono,cita_entrega`
+    ).catch(() => []) || [];
+    ords.forEach(o => {
+      if (_citasAvisadas.has(o.id)) return;
+      _citasAvisadas.add(o.id);
+      _mostrarPopupCita(o);
+    });
+  } catch (e) { console.warn('[Citas] Error:', e); }
+}
+
+function _mostrarPopupCita(o) {
+  const tel = o.telefono ? _waNumero(o.telefono) : '';
+  const veh = [o.marca, o.linea].filter(Boolean).join(' ') || '';
+  const div = document.createElement('div');
+  div.className = 'alerta-popup-etapa'; // reutiliza apilado/estilos base
+  div.style.cssText = `
+    position:fixed;top:16px;right:16px;z-index:10000;
+    background:#ECFDF5;border:1.5px solid #10B981;border-radius:12px;
+    padding:12px 14px;min-width:240px;max-width:300px;
+    box-shadow:0 4px 20px rgba(0,0,0,.15);
+    font-family:'DM Sans',sans-serif;font-size:13px;color:#065F46;
+    animation:slideInRight .25s ease-out;transition:top .2s;`;
+  let topOffset = 16;
+  document.querySelectorAll('.alerta-popup-etapa').forEach(p => { topOffset += p.offsetHeight + 8; });
+  div.style.top = topOffset + 'px';
+  div.innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+      <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px">🚗 Cliente por llegar</div>
+      <button onclick="this.closest('.alerta-popup-etapa').remove()" style="background:none;border:none;cursor:pointer;color:#065F46;opacity:.6;font-size:16px;line-height:1;padding:0;flex-shrink:0">×</button>
+    </div>
+    <div style="margin-top:6px;font-size:12px;opacity:.9"><strong>${o.placa || '—'}</strong>${veh ? ' · ' + veh : ''}<br>Cita de recogida: <strong>${formatTS(o.cita_entrega)}</strong></div>
+    <div style="margin-top:8px;display:flex;gap:8px">
+      <button onclick="_alertaVerOrden(${o.id})" style="flex:1;background:#10B981;color:white;border:none;border-radius:7px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Ver orden</button>
+      ${tel ? `<a href="tel:+${tel}" style="flex:1;background:none;border:1.5px solid #10B981;color:#065F46;border-radius:7px;padding:5px 0;font-size:11px;font-weight:600;text-align:center;text-decoration:none;font-family:'DM Sans',sans-serif">📞 Llamar</a>` : ''}
+    </div>`;
+  document.body.appendChild(div);
 }
 
 function _alertaMarcarRevisado(etapaId, btn) {
