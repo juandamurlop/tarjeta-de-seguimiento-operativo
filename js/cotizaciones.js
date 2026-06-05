@@ -442,6 +442,112 @@ function _cotLeerItems(tbodyId) {
 
 const N8N_PDF_WEBHOOK = 'https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/cotizacion-pdf';
 
+// ─── PLANTILLA DEL PDF — editable por el usuario (localStorage) ───
+function _cotPdfConfig() {
+  let c = {};
+  try { c = JSON.parse(localStorage.getItem('cot_pdf_config') || '{}') || {}; } catch (e) {}
+  return {
+    logo:       c.logo       || '',
+    nombre:     c.nombre     || 'FREIMANAUTOS',
+    slogan:     c.slogan     || 'Simplemente profesional',
+    nit:        c.nit        || '800.012.186',
+    direccion:  c.direccion  || 'Calle 98A # 68D – 15',
+    telefono:   c.telefono   || '320 902 5804',
+    email:      c.email      || 'freimanautossa@yahoo.com',
+    encabezado: c.encabezado || '',
+    nota:       (c.nota !== undefined) ? c.nota : 'Cotización válida por 15 días. Precios sujetos a verificación al momento de la reparación.',
+    terminos:   c.terminos   || ''
+  };
+}
+
+let _cotLogoTmp = null;  // logo en edición (dataURL base64)
+
+function abrirConfigPdfCotizacion() {
+  const c = _cotPdfConfig();
+  _cotLogoTmp = c.logo || '';
+  document.getElementById('modal-cot-pdf')?.remove();
+  const m = document.createElement('div');
+  m.id = 'modal-cot-pdf';
+  m.className = 'modal-overlay show';
+  m.innerHTML = `
+    <div class="modal" style="max-width:560px;max-height:90vh;display:flex;flex-direction:column">
+      <div class="modal-header">
+        <h2>Plantilla del PDF de cotización</h2>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-cot-pdf').remove()">✕</button>
+      </div>
+      <div class="modal-body" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:14px">
+        <div class="field" style="margin:0">
+          <label>Logo</label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div id="cpdf-logo-prev" style="width:90px;height:54px;border:1.5px dashed var(--gris-borde);border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--gris-bg);overflow:hidden">
+              ${c.logo ? `<img src="${c.logo}" style="max-width:100%;max-height:100%;object-fit:contain">` : '<span style="font-size:10px;color:var(--gris-mid)">sin logo</span>'}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label class="btn btn-outline btn-sm" style="margin:0;cursor:pointer">📁 Subir logo<input type="file" accept="image/*" style="display:none" onchange="_cotPdfLogoUpload(this)"></label>
+              <button class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--rojo)" onclick="_cotPdfQuitarLogo()">Quitar logo</button>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field" style="margin:0"><label>Nombre / razón social</label><input id="cpdf-nombre" value="${escapeHtml(c.nombre)}"></div>
+          <div class="field" style="margin:0"><label>NIT</label><input id="cpdf-nit" value="${escapeHtml(c.nit)}"></div>
+          <div class="field" style="margin:0"><label>Eslogan</label><input id="cpdf-slogan" value="${escapeHtml(c.slogan)}"></div>
+          <div class="field" style="margin:0"><label>Teléfono</label><input id="cpdf-telefono" value="${escapeHtml(c.telefono)}"></div>
+          <div class="field" style="margin:0;grid-column:1/-1"><label>Dirección</label><input id="cpdf-direccion" value="${escapeHtml(c.direccion)}"></div>
+          <div class="field" style="margin:0;grid-column:1/-1"><label>Correo</label><input id="cpdf-email" value="${escapeHtml(c.email)}"></div>
+        </div>
+        <div class="field" style="margin:0"><label>Texto de encabezado <span style="color:var(--gris-mid);font-weight:400">(opcional)</span></label><input id="cpdf-encabezado" value="${escapeHtml(c.encabezado)}" placeholder="Ej: Especialistas en latonería y pintura"></div>
+        <div class="field" style="margin:0"><label>Nota de pie</label><input id="cpdf-nota" value="${escapeHtml(c.nota)}"></div>
+        <div class="field" style="margin:0"><label>Términos y condiciones <span style="color:var(--gris-mid);font-weight:400">(opcional)</span></label><textarea id="cpdf-terminos" rows="4" style="width:100%;box-sizing:border-box;resize:vertical;font-family:inherit;font-size:13px;padding:8px 10px;border:1.5px solid var(--gris-borde);border-radius:6px">${escapeHtml(c.terminos)}</textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-cot-pdf').remove()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarConfigPdfCotizacion()">Guardar plantilla</button>
+      </div>
+    </div>`;
+  m.addEventListener('click', e => { if (e.target === m) m.remove(); });
+  document.body.appendChild(m);
+}
+
+function _cotPdfQuitarLogo() {
+  _cotLogoTmp = '';
+  const prev = document.getElementById('cpdf-logo-prev');
+  if (prev) prev.innerHTML = '<span style="font-size:10px;color:var(--gris-mid)">sin logo</span>';
+}
+
+function _cotPdfLogoUpload(input) {
+  const f = input.files?.[0];
+  if (!f) return;
+  if (f.size > 1.5 * 1024 * 1024) { toast('El logo es muy grande (máx 1.5 MB)', 'err'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    _cotLogoTmp = reader.result;
+    const prev = document.getElementById('cpdf-logo-prev');
+    if (prev) prev.innerHTML = `<img src="${_cotLogoTmp}" style="max-width:100%;max-height:100%;object-fit:contain">`;
+  };
+  reader.readAsDataURL(f);
+}
+
+function guardarConfigPdfCotizacion() {
+  const v = id => (document.getElementById(id)?.value ?? '').trim();
+  const cfg = {
+    logo:       _cotLogoTmp || '',
+    nombre:     v('cpdf-nombre'),
+    nit:        v('cpdf-nit'),
+    slogan:     v('cpdf-slogan'),
+    telefono:   v('cpdf-telefono'),
+    direccion:  v('cpdf-direccion'),
+    email:      v('cpdf-email'),
+    encabezado: v('cpdf-encabezado'),
+    nota:       v('cpdf-nota'),
+    terminos:   v('cpdf-terminos')
+  };
+  try { localStorage.setItem('cot_pdf_config', JSON.stringify(cfg)); }
+  catch (e) { toast('No se pudo guardar (¿logo muy pesado?): ' + e.message, 'err'); return; }
+  toast('Plantilla del PDF guardada ✓');
+  document.getElementById('modal-cot-pdf')?.remove();
+}
+
 async function generarPdfCotizacion(cotId) {
   // Deshabilitar botón mientras genera
   const btn = document.querySelector(`button[data-pdf="${cotId}"]`);
@@ -471,10 +577,9 @@ async function generarPdfCotizacion(cotId) {
     const _tot  = _sub + _ivaV;
     const _money = n => '$ ' + new Intl.NumberFormat('es-CO').format(Math.round(n || 0));
     const ejecutivo = cot.tecnico || ((typeof sesion !== 'undefined' && sesion && sesion.nombre) || '') || '—';
-    const EMP = (typeof _RPT_EMPRESA !== 'undefined') ? _RPT_EMPRESA
-      : { nombre:'FREIMANAUTOS', slogan:'Simplemente profesional', nit:'800.012.186', direccion:'Calle 98A # 68D – 15', telefono:'320 902 5804', email:'freimanautossa@yahoo.com' };
+    const CFG = _cotPdfConfig();   // plantilla editable (logo + textos)
 
-    // ── Generación del PDF EN EL NAVEGADOR (jsPDF) — plantilla propia ──
+    // ── Generación del PDF EN EL NAVEGADOR (jsPDF) — plantilla configurable ──
     if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Librería PDF no disponible. Recarga la página.');
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit:'pt', format:'a4' });
@@ -483,21 +588,39 @@ async function generarPdfCotizacion(cotId) {
     const M = 40;
     const AZUL = [30,58,95];
 
-    // Encabezado
-    doc.setFont('helvetica','bold'); doc.setFontSize(22); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]);
-    doc.text(EMP.nombre, M, 50);
+    // Encabezado (logo opcional + datos de empresa configurables)
+    let headX = M;
+    if (CFG.logo) {
+      try {
+        const im = await new Promise(r => { const x = new Image(); x.onload = () => r(x); x.onerror = () => r(null); x.src = CFG.logo; });
+        if (im && im.naturalWidth) {
+          const sc = Math.min(44 / im.naturalHeight, 140 / im.naturalWidth);
+          const lw = im.naturalWidth * sc, lh = im.naturalHeight * sc;
+          const fmtImg = CFG.logo.indexOf('image/png') >= 0 ? 'PNG' : CFG.logo.indexOf('image/webp') >= 0 ? 'WEBP' : 'JPEG';
+          doc.addImage(CFG.logo, fmtImg, M, 24, lw, lh);
+          headX = M + lw + 14;
+        }
+      } catch (e) {}
+    }
+    doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]);
+    doc.text(CFG.nombre || '', headX, 42);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120,120,120);
-    doc.text(`${EMP.slogan} · NIT ${EMP.nit}`, M, 63);
-    doc.text(`${EMP.direccion} · Tel: ${EMP.telefono} · ${EMP.email}`, M, 74);
+    let hy = 55;
+    const l1 = [CFG.slogan, CFG.nit ? 'NIT ' + CFG.nit : ''].filter(Boolean).join(' · ');
+    if (l1) { doc.text(l1, headX, hy); hy += 11; }
+    const l2 = [CFG.direccion, CFG.telefono ? 'Tel: ' + CFG.telefono : '', CFG.email].filter(Boolean).join(' · ');
+    if (l2) { doc.text(l2, headX, hy); hy += 11; }
+    if (CFG.encabezado) { doc.setTextColor(80,80,80); doc.text(String(CFG.encabezado), headX, hy); hy += 11; }
     doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]);
-    doc.text('COTIZACIÓN', W - M, 48, { align:'right' });
+    doc.text('COTIZACIÓN', W - M, 42, { align:'right' });
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
-    doc.text(`${cot.codigo_cotizacion || ''}`, W - M, 62, { align:'right' });
-    doc.text(`Fecha: ${cot.fecha || ''}`, W - M, 74, { align:'right' });
-    doc.setDrawColor(AZUL[0],AZUL[1],AZUL[2]); doc.setLineWidth(1.5); doc.line(M, 84, W - M, 84);
+    doc.text(`${cot.codigo_cotizacion || ''}`, W - M, 56, { align:'right' });
+    doc.text(`Fecha: ${cot.fecha || ''}`, W - M, 68, { align:'right' });
+    const lineaY = Math.max(hy + 2, 80);
+    doc.setDrawColor(AZUL[0],AZUL[1],AZUL[2]); doc.setLineWidth(1.5); doc.line(M, lineaY, W - M, lineaY);
 
     // Cliente y vehículo
-    let y = 104;
+    let y = lineaY + 22;
     doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(130,130,130);
     doc.text('CLIENTE', M, y); doc.text('VEHÍCULO', W/2 + 10, y);
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
@@ -542,10 +665,20 @@ async function generarPdfCotizacion(cotId) {
     doc.text(_ivaV > 0 ? 'TOTAL CON IVA' : 'TOTAL', bx + 12, y + 17);
     doc.text(_money(_tot), bx + bw - 12, y + 17, { align:'right' });
 
+    // Términos y condiciones (opcional, configurable)
+    if (CFG.terminos) {
+      const tLines = doc.splitTextToSize(String(CFG.terminos), W - 2 * M);
+      const tY = Math.max(y + 36, H - 50 - tLines.length * 9);
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(90,90,90);
+      doc.text('Términos y condiciones', M, tY);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(120,120,120);
+      doc.text(tLines, M, tY + 11);
+    }
+
     // Pie
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(150,150,150);
-    doc.text('Cotización válida por 15 días. Precios sujetos a verificación al momento de la reparación.', M, H - 28);
-    doc.text(`${EMP.nombre} · NIT ${EMP.nit}`, W - M, H - 28, { align:'right' });
+    if (CFG.nota) doc.text(doc.splitTextToSize(String(CFG.nota), W - 2 * M - 160), M, H - 28);
+    doc.text(`${CFG.nombre || ''}${CFG.nit ? ' · NIT ' + CFG.nit : ''}`, W - M, H - 28, { align:'right' });
 
     doc.save(`Cotizacion_${(cot.codigo_cotizacion || cot.placa || cotId)}.pdf`);
     toast('PDF generado ✓');
