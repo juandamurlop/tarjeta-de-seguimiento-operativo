@@ -1797,7 +1797,7 @@ async function guardarCitaEntrega(ordenId) {
   if (!val) { toast('Selecciona fecha y hora', 'err'); return; }
   try {
     await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { cita_entrega: new Date(val).toISOString() });
-    _citasAvisadas.delete(ordenId); // permitir nuevo aviso al jefe con la nueva hora
+    document.querySelectorAll(`.cita-popup[data-cita-id="${ordenId}"]`).forEach(p => p.remove());
     toast('Cita de recogida guardada ✓');
     abrirOrden(ordenId);
   } catch (e) { toast('Error: ' + e.message, 'err'); }
@@ -5304,7 +5304,6 @@ function detenerRealtime() {
 
 const _alertasYaMostradas = new Set();   // ids de etapas cuyo popup ya se mostró
 const _alertasRevisadas   = new Set();   // ids marcados "revisado" por el usuario
-const _citasAvisadas      = new Set();   // ids de ordenes cuya cita ya se avisó al jefe
 let   _alertasInterval    = null;
 
 function iniciarSistemaAlertas() {
@@ -5312,6 +5311,9 @@ function iniciarSistemaAlertas() {
   if (_alertasInterval) return; // ya está corriendo
   _chequearAlertas();
   _alertasInterval = setInterval(_chequearAlertas, 5 * 60 * 1000); // cada 5 min
+  // Las citas de recogida se revisan más seguido para que el aviso sea
+  // persistente (reaparece si el jefe lo cierra y el cliente no ha llegado).
+  setInterval(_chequearCitas, 2 * 60 * 1000); // cada 2 min
 }
 
 async function _chequearAlertas() {
@@ -5451,9 +5453,16 @@ async function _chequearCitas() {
       `/ordenes?cita_entrega=not.is.null&cita_entrega=lte.${nowIso}&estado=neq.Entregada` +
       `&estado=neq.Archivada&select=id,placa,marca,linea,telefono,cita_entrega`
     ).catch(() => []) || [];
+    const vivos = new Set(ords.map(o => o.id));
+    // Cerrar avisos de citas ya atendidas (entregadas o reagendadas a futuro).
+    document.querySelectorAll('.cita-popup').forEach(p => {
+      if (!vivos.has(parseInt(p.dataset.citaId))) p.remove();
+    });
+    // Aviso PERSISTENTE: mantener un popup por cada cita vencida sin entregar.
+    // Si el jefe lo cierra, vuelve a aparecer en el siguiente chequeo hasta que
+    // la orden se marque Entregada (o se reprograme la cita).
     ords.forEach(o => {
-      if (_citasAvisadas.has(o.id)) return;
-      _citasAvisadas.add(o.id);
+      if (document.querySelector(`.cita-popup[data-cita-id="${o.id}"]`)) return;
       _mostrarPopupCita(o);
     });
   } catch (e) { console.warn('[Citas] Error:', e); }
@@ -5462,8 +5471,10 @@ async function _chequearCitas() {
 function _mostrarPopupCita(o) {
   const tel = o.telefono ? _waNumero(o.telefono) : '';
   const veh = [o.marca, o.linea].filter(Boolean).join(' ') || '';
+  const ci  = (typeof _citaInfo === 'function') ? _citaInfo(o.cita_entrega) : null;
   const div = document.createElement('div');
-  div.className = 'alerta-popup-etapa'; // reutiliza apilado/estilos base
+  div.className = 'alerta-popup-etapa cita-popup'; // reutiliza apilado/estilos base
+  div.dataset.citaId = o.id;
   div.style.cssText = `
     position:fixed;top:16px;right:16px;z-index:10000;
     background:#ECFDF5;border:1.5px solid #10B981;border-radius:12px;
@@ -5479,7 +5490,7 @@ function _mostrarPopupCita(o) {
       <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px">🚗 Cliente por llegar</div>
       <button onclick="this.closest('.alerta-popup-etapa').remove()" style="background:none;border:none;cursor:pointer;color:#065F46;opacity:.6;font-size:16px;line-height:1;padding:0;flex-shrink:0">×</button>
     </div>
-    <div style="margin-top:6px;font-size:12px;opacity:.9"><strong>${o.placa || '—'}</strong>${veh ? ' · ' + veh : ''}<br>Cita de recogida: <strong>${formatTS(o.cita_entrega)}</strong></div>
+    <div style="margin-top:6px;font-size:12px;opacity:.9"><strong>${o.placa || '—'}</strong>${veh ? ' · ' + veh : ''}<br>Cita de recogida: <strong>${formatTS(o.cita_entrega)}</strong>${ci ? `<br><span style="font-weight:700">${ci.texto}</span>` : ''}</div>
     <div style="margin-top:8px;display:flex;gap:8px">
       <button onclick="_alertaVerOrden(${o.id})" style="flex:1;background:#10B981;color:white;border:none;border-radius:7px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Ver orden</button>
       ${tel ? `<a href="tel:+${tel}" style="flex:1;background:none;border:1.5px solid #10B981;color:#065F46;border-radius:7px;padding:5px 0;font-size:11px;font-weight:600;text-align:center;text-decoration:none;font-family:'DM Sans',sans-serif">📞 Llamar</a>` : ''}
