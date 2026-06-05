@@ -1392,21 +1392,7 @@ async function ocrTarjetaPropiedad(input) {
   if (estado) { estado.style.display = 'block'; estado.innerHTML = '⏳ Leyendo tarjeta de propiedad...'; }
 
   try {
-    const { base64, mime } = await comprimirImagenBase64(file);
-
-    // Llamada via proxy n8n (evita CORS y protege la API key)
-    const response = await fetch('https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/ocr-tarjeta', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        imagen: base64,
-        tipo: mime
-      })
-    });
-
-    const data = await response.json();
-    let parsed = {};
-    try { parsed = data?.datos || {}; } catch(e) { parsed = {}; }
+    const parsed = await ocrLeerTarjeta(file);
 
     const mapa = {
       'n-placa':  parsed.placa?.toUpperCase(),

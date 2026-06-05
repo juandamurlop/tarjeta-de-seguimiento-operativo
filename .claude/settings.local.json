@@ -36,7 +36,9 @@
       "Bash(git commit -m 'refactor\\(nueva-orden\\): quitar '\\\\''Programar ingreso futuro'\\\\'' \\(ahora se agenda en el Calendario\\) *)",
       "PowerShell(git -C \"C:\\\\Users\\\\Santiago\\\\Documents\\\\tarjeta-de-seguimiento-operativo\" add -A)",
       "PowerShell(git -C \"C:\\\\Users\\\\Santiago\\\\Documents\\\\tarjeta-de-seguimiento-operativo\" push origin master)",
-      "PowerShell(git -C \"C:\\\\Users\\\\Santiago\\\\Documents\\\\tarjeta-de-seguimiento-operativo\" push origin master 2>&1; \"exit: $LASTEXITCODE\")"
+      "PowerShell(git -C \"C:\\\\Users\\\\Santiago\\\\Documents\\\\tarjeta-de-seguimiento-operativo\" push origin master 2>&1; \"exit: $LASTEXITCODE\")",
+      "mcp__Claude_Preview__preview_start",
+      "PowerShell($src=\"C:\\\\Users\\\\Santiago\\\\Downloads\\\\Template.docx\"; $dst=\"$env:TEMP\\\\tmpl_extract\"; if\\(Test-Path $dst\\){ Remove-Item $dst -Recurse -Force }; New-Item -ItemType Directory -Path $dst | Out-Null; $zip=\"$env:TEMP\\\\tmpl.zip\"; Copy-Item $src $zip -Force; Expand-Archive -Path $zip -DestinationPath $dst -Force; \"=== ARCHIVOS ===\"; Get-ChildItem -Recurse $dst | Select-Object FullName | ForEach-Object { $_.FullName.Replace\\($dst,''\\) })"
     ]
   }
 }

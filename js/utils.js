@@ -86,6 +86,40 @@ function comprimirImagenBase64(file, maxDim = 1400, quality = 0.72) {
   });
 }
 
+// Lee una tarjeta de propiedad y devuelve { placa, marca, linea, modelo,
+// color, vin, propietario }. Comprime la foto, intenta la función propia de
+// Supabase (sin n8n: rápida y con la API key segura en el servidor) y, si aún
+// no está desplegada o falla, usa el webhook de n8n como respaldo.
+async function ocrLeerTarjeta(file) {
+  const { base64, mime } = await comprimirImagenBase64(file);
+
+  // 1) Función propia de Supabase (sin n8n)
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/ocr-tarjeta`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_KEY,
+        Authorization: 'Bearer ' + SUPABASE_KEY
+      },
+      body: JSON.stringify({ imagen: base64, tipo: mime })
+    });
+    if (res.ok) {
+      const d = await res.json();
+      if (d && !d.error && d.datos) return d.datos;
+    }
+  } catch (e) { /* cae al respaldo */ }
+
+  // 2) Respaldo: n8n (mientras se despliega la función de Supabase)
+  const r = await fetch('https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/ocr-tarjeta', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imagen: base64, tipo: mime })
+  });
+  const d2 = await r.json().catch(() => ({}));
+  return (d2 && d2.datos) || {};
+}
+
 function formatFecha(f) { return f ? new Date(f).toLocaleDateString('es-CO') : '—'; }
 function formatTS(ts) { return ts ? new Date(ts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '—'; }
 function kid(id) { return 'e' + String(id).replace(/\D/g, ''); }

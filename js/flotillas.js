@@ -488,18 +488,7 @@ async function ocrTarjetaVehiculo(input) {
   if (btnGuardar) btnGuardar.disabled = true;
 
   try {
-    const { base64, mime } = await comprimirImagenBase64(file);
-
-    const response = await fetch('https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/ocr-tarjeta', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imagen: base64, tipo: mime })
-    });
-
-    if (!response.ok) throw new Error(`Error OCR: ${response.status}`);
-    const data = await response.json();
-    let parsed = {};
-    try { parsed = data?.datos || {}; } catch(e) { parsed = {}; }
+    const parsed = await ocrLeerTarjeta(file);
 
     const mapa = {
       'vf-placa':      parsed.placa?.toUpperCase(),
