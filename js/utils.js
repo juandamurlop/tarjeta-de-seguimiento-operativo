@@ -128,6 +128,13 @@ function formatOT(id, estado)  {
   if (estado === 'Programada') return 'Prog.';
   return 'OT-' + String(id).padStart(4, '0');
 }
+// Etiqueta de OT a partir del objeto orden: usa el número MANUAL (numero_ot)
+// si la orden lo tiene; si no, el automático OT-####.
+function otDe(o) {
+  if (!o) return '';
+  if (o.estado === 'Programada') return 'Prog.';
+  return (o.numero_ot && String(o.numero_ot).trim()) ? String(o.numero_ot).trim() : formatOT(o.id, o.estado);
+}
 
 function openSidebar() {
   const sidebar = document.getElementById('sidebar');

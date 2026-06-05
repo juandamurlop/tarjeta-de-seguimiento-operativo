@@ -91,7 +91,7 @@ function _buildOrdenRow(o, etapas) {
   return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-oid="${o.id}" data-search="${escapeHtml(searchStr)}">
     <td>
       <div class="ord-placa">${escapeHtml(o.placa)}</div>
-      <div class="ord-ot">${formatOT(o.id, o.estado)}${contactAlert}</div>
+      <div class="ord-ot">${otDe(o)}${contactAlert}</div>
     </td>
     <td>
       <div class="ord-veh-nombre">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'}</div>
@@ -171,7 +171,7 @@ async function cargarOrdenesPulmon() {
       return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-search="${escapeHtml(searchStr)}">
         <td>
           <div class="ord-placa">${escapeHtml(o.placa)}</div>
-          <div class="ord-ot">${formatOT(o.id, o.estado)}</div>
+          <div class="ord-ot">${otDe(o)}</div>
         </td>
         <td>
           <div class="ord-veh-nombre">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'}</div>
@@ -397,7 +397,7 @@ async function abrirOrden(id) {
               <div>
                 <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
                   <div class="detalle-placa">${escapeHtml(orden.placa)}</div>
-                  <div style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--gris-mid);letter-spacing:.5px">${formatOT(orden.id, orden.estado)}</div>
+                  <div style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--gris-mid);letter-spacing:.5px">${otDe(orden)}</div>
                 </div>
                 <div class="detalle-vehiculo">${[orden.marca,orden.linea,orden.modelo,orden.color].filter(Boolean).map(escapeHtml).join(' · ')}</div>
               </div>
@@ -1715,6 +1715,9 @@ async function crearOrden() {
 
   const body = {
     placa,
+    // Número de OT manual (opcional). Si queda vacío, se muestra el automático
+    // OT-#### basado en el id de la orden.
+    numero_ot: document.getElementById('n-numero-ot')?.value.trim() || null,
     // Campo "aseguradora" = nombre de la organización (aseguradora / flotilla /
     // empresa). El tipo real lo distingue tipo_cliente. Así el vehículo queda
     // ligado a su empresa/flotilla aunque el propietario sea una persona.
@@ -2423,6 +2426,7 @@ async function recibirVehiculo(ordenId) {
 
     const set = (id, val) => { const el = document.getElementById(id); if (el && val != null && val !== '') el.value = val; };
     set('n-placa', orden.placa);
+    set('n-numero-ot', orden.numero_ot);
     set('n-marca', orden.marca);
     set('n-linea', orden.linea);
     set('n-modelo', orden.modelo);
@@ -4501,7 +4505,7 @@ document.addEventListener('click', () => {
 // ── Reset nueva orden ────────────────────────────────────────
 function resetNuevaOrden() {
   _ordenCompletandoId = null; // formulario fresco = crear, no completar
-  ['n-placa','n-marca','n-linea','n-modelo','n-color','n-km','n-fecha1','n-fecha2',
+  ['n-placa','n-numero-ot','n-marca','n-linea','n-modelo','n-color','n-km','n-fecha1','n-fecha2',
    'n-inv-obs','n-vin','n-propietario','n-telefono','n-cedula-cliente','n-correo-cliente',
    'n-direccion','n-propietario-aseg','n-telefono-aseg','n-cedula-aseg','n-correo-aseg',
    'n-aseg-nombre','n-aseg-nit','n-flot-nombre','n-flot-nit','n-flot-dir',
@@ -4871,7 +4875,7 @@ tr:nth-child(even) td{background:#F9FAFB}
     <div style="font-size:20px;font-weight:900;letter-spacing:3px;color:#1a1a1a;line-height:1.2">${escapeHtml(orden.placa)}</div>
     <div style="border-top:1px solid #E5E7EB;margin:6px 0 4px"></div>
     <div style="font-size:7.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px">N° Orden</div>
-    <div style="font-size:14px;font-weight:900;font-family:'Courier New',monospace;color:#1a1a1a">${formatOT(orden.id)}</div>
+    <div style="font-size:14px;font-weight:900;font-family:'Courier New',monospace;color:#1a1a1a">${otDe(orden)}</div>
     <div style="font-size:7.5px;color:#6B7280;margin-top:3px">${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})} · ${new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',hour12:true})}</div>
   </div>
 </div>

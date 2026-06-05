@@ -72,8 +72,8 @@ async function cargarDashboardMes() {
     const hoy          = new Date(); hoy.setHours(0,0,0,0);
 
     const [ordenesMes, ordenesActivas, todasEtapas, solicitudesPend, aprobaciones, metasMes] = await Promise.all([
-      api(`/ordenes?creado_en=gte.${inicioMes}&creado_en=lt.${finMes}&select=id,placa,marca,linea,modelo,propietario,estado,pulmon,pulmon_tipo,creado_en,fecha_entrega_1,fecha_entrega_2,entregada_en&order=creado_en.desc`).catch(()=>[]) || [],
-      api(`/ordenes?estado=eq.Activa&select=id,placa,marca,linea,modelo,propietario,estado,pulmon,pulmon_tipo,creado_en,fecha_entrega_1,fecha_entrega_2`).catch(()=>[]) || [],
+      api(`/ordenes?creado_en=gte.${inicioMes}&creado_en=lt.${finMes}&select=id,numero_ot,placa,marca,linea,modelo,propietario,estado,pulmon,pulmon_tipo,creado_en,fecha_entrega_1,fecha_entrega_2,entregada_en&order=creado_en.desc`).catch(()=>[]) || [],
+      api(`/ordenes?estado=eq.Activa&select=id,numero_ot,placa,marca,linea,modelo,propietario,estado,pulmon,pulmon_tipo,creado_en,fecha_entrega_1,fecha_entrega_2`).catch(()=>[]) || [],
       api(`/etapas?select=id,orden_id,servicio,etapa,inicio,fin,valor,tecnico,mecanico_id,tiempo_pausado_min`).catch(()=>[]) || [],
       api(`/solicitudes_repuesto?estado=in.(pendiente_jefe,enviado_repuestos,cotizado,pedido,recibido_taller)&select=id,orden_id,estado,repuesto`).catch(()=>[]) || [],
       api(`/aprobaciones_etapa?select=id,etapa_id,estado&order=creado_en.desc`).catch(()=>[]) || [],
@@ -249,7 +249,7 @@ async function cargarDashboardMes() {
             <span style="font-size:11px;font-weight:700;color:${diasTaller>10?'#DC2626':diasTaller>5?'#D97706':'var(--gris-mid)'}">${diasTaller}d</span>
           </div>
           <div style="font-size:11px;color:var(--gris-mid)">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ')||'—'}</div>
-          <div style="font-size:9px;color:var(--gris-mid);opacity:.65;margin-top:1px">${formatOT(o.id)}${responsable?' · '+responsable.split(' ')[0]:''}</div>
+          <div style="font-size:9px;color:var(--gris-mid);opacity:.65;margin-top:1px">${otDe(o)}${responsable?' · '+responsable.split(' ')[0]:''}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
           <span style="font-size:10px;font-weight:600;color:${srvC};background:${srvBg};padding:2px 8px;border-radius:5px">${srvLabel}</span>
@@ -370,7 +370,7 @@ async function cargarDashboard() {
     const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
 
     const [ordenes, todasEtapas, etapasActArr, aprobaciones, solicitudesPend] = await Promise.all([
-      api(`/ordenes?select=id,placa,marca,linea,modelo,propietario,estado,pulmon,pulmon_tipo,creado_en,fecha_entrega_1,entregada_en`).catch(()=>[]) || [],
+      api(`/ordenes?select=id,numero_ot,placa,marca,linea,modelo,propietario,estado,pulmon,pulmon_tipo,creado_en,fecha_entrega_1,entregada_en`).catch(()=>[]) || [],
       api(`/etapas?select=id,orden_id,servicio,etapa,inicio,fin,tecnico,valor,tiempo_pausado_min&order=creado_en.asc`).catch(()=>[]) || [],
       api(`/etapas?fin=is.null&inicio=not.is.null&select=id,orden_id,servicio,etapa,tecnico,inicio`).catch(()=>[]) || [],
       api(`/aprobaciones_etapa?estado=eq.aprobado&select=etapa_id`).catch(()=>[]) || [],
@@ -517,7 +517,7 @@ async function cargarDashboard() {
                 <span style="font-size:11px;font-weight:700;color:${diasTaller>10?'#DC2626':diasTaller>5?'#D97706':'var(--gris-mid)'}">${diasTaller}d</span>
               </div>
               <div style="font-size:11px;color:var(--gris-mid)">${escapeHtml([o.marca,o.linea].filter(Boolean).join(' ')||'—')}</div>
-              <div style="font-size:9px;color:var(--gris-mid);opacity:.65;margin-top:1px">${formatOT(o.id)}${tec?' · '+tec.split(' ')[0]:''}</div>
+              <div style="font-size:9px;color:var(--gris-mid);opacity:.65;margin-top:1px">${otDe(o)}${tec?' · '+tec.split(' ')[0]:''}</div>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
               <span style="font-size:10px;font-weight:600;color:${sC};background:${sB};padding:2px 8px;border-radius:5px">${etLabel}</span>

@@ -653,7 +653,7 @@ function _tvMostrarOverlay(orden, etapasOrden, badge, esVerde, aprobadas) {
         <div class="tv-overlay-badge${esVerde?' green-bg':''}">${badge}</div>
         <div class="tv-overlay-head">
           <div class="tv-overlay-placa">${orden.placa}</div>
-          <div style="font-family:'DM Mono',monospace;font-size:.7vw;font-weight:600;color:#9CA3AF;letter-spacing:.08em;margin-top:.2vh">${formatOT(orden.id)}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:.7vw;font-weight:600;color:#9CA3AF;letter-spacing:.08em;margin-top:.2vh">${otDe(orden)}</div>
           <div class="tv-overlay-veh">${[orden.marca,orden.linea].filter(Boolean).join(' ')||'—'}</div>
         </div>
         <div class="tv-overlay-body">${etapasHtml}</div>
@@ -804,8 +804,8 @@ async function cargarPantallaTaller() {
       api(`/etapas?fin=is.null&inicio=not.is.null&select=id,orden_id,etapa,servicio,mecanico_id,tecnico,inicio,pausado,pausa_inicio,tiempo_pausado_min`).catch(()=>[]) || [],
       api(`/etapas?select=id,orden_id,etapa,servicio,inicio,fin,tecnico&order=creado_en.asc`).catch(()=>[]) || [],
       api(`/aprobaciones_etapa?select=etapa_id,estado&order=creado_en.desc`).catch(()=>[]) || [],
-      api(`/ordenes?estado=eq.Programada&order=fecha_programada.asc&select=id,placa,marca,linea,fecha_programada`).catch(()=>[]) || [],
-      api(`/ordenes?pulmon=eq.true&order=pulmon_desde.asc&select=id,placa,marca,linea,propietario,pulmon_desde,pulmon_tipo`).catch(()=>[]) || []
+      api(`/ordenes?estado=eq.Programada&order=fecha_programada.asc&select=id,numero_ot,placa,marca,linea,fecha_programada`).catch(()=>[]) || [],
+      api(`/ordenes?pulmon=eq.true&order=pulmon_desde.asc&select=id,numero_ot,placa,marca,linea,propietario,pulmon_desde,pulmon_tipo`).catch(()=>[]) || []
     ]);
 
     // Tomar el estado MÁS RECIENTE por etapa (orden desc ya viene del query)
@@ -980,7 +980,7 @@ async function cargarPantallaTaller() {
         <td>
           <div style="display:flex;align-items:baseline;gap:.5vw;white-space:nowrap">
             <div class="tv-placa">${orden.placa}</div>
-            <div style="font-family:'DM Mono',monospace;font-size:.8vw;font-weight:700;color:#374151;letter-spacing:.04em;white-space:nowrap">${formatOT(orden.id)}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:.8vw;font-weight:700;color:#374151;letter-spacing:.04em;white-space:nowrap">${otDe(orden)}</div>
             ${orden.placa ? `<button onclick="event.stopPropagation();abrirPopupConsumibles('${orden.placa}',${orden.kilometraje||orden.km||0})" title="Consumibles & Docs" style="background:none;border:1px solid #D1D5DB;border-radius:.3vw;padding:.15vh .4vw;cursor:pointer;font-size:.65vw;color:#374151;line-height:1;flex-shrink:0" tabindex="-1">🔧</button>` : ''}
           </div>
           ${orden.propietario ? `<div class="tv-propietario">${orden.propietario}</div>` : ''}
@@ -1062,7 +1062,7 @@ async function cargarPantallaTaller() {
             <div class="tv-prog-dot"></div>
             <div style="flex:1;min-width:0">
               <div class="tv-prog-placa">${o.placa}</div>
-              <div class="tv-prog-ot">${formatOT(o.id)} · ${[o.marca,o.linea].filter(Boolean).join(' ')||'—'}</div>
+              <div class="tv-prog-ot">${otDe(o)} · ${[o.marca,o.linea].filter(Boolean).join(' ')||'—'}</div>
             </div>
             ${label ? `<div class="tv-prog-fecha">${label}</div>` : ''}
           </div>`;

@@ -219,7 +219,7 @@ function renderListaCarteraOrdenes(tipo, data) {
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">
             <span class="aseg-placa">${escapeHtml(o.placa||'—')}</span>
-            <span class="aseg-ot">${formatOT(o.id)}</span>
+            <span class="aseg-ot">${otDe(o)}</span>
           </div>
           <div class="aseg-meta">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'}${o.modelo ? ' · ' + escapeHtml(o.modelo) : ''}</div>
           <div class="aseg-aseg" style="color:${cfg.color}">${cfg.icon} ${escapeHtml(cfg.nombre(o))}</div>
