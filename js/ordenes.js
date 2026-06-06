@@ -3993,16 +3993,25 @@ async function cargarVehiculos() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading-state">Cargando vehículos...</div>';
   try {
-    const ordenes = await api('/ordenes?select=id,placa,marca,linea,modelo,color,vin,propietario,telefono,correo_cliente,cedula_cliente,tipo_cliente,aseguradora,estado,creado_en,fecha_entrega_1&order=placa.asc,creado_en.desc&limit=2000').catch(() => []) || [];
+    // Registro de vehículos (tabla vehiculos) + órdenes. Así la lista muestra
+    // los vehículos registrados aunque no tengan órdenes.
+    const [registro, ordenes] = await Promise.all([
+      api('/vehiculos?select=placa,marca,linea,modelo,color,vin,propietario,cedula_nit,telefono,fecha_ingreso&order=placa.asc&limit=4000').catch(() => []) || [],
+      api('/ordenes?select=id,placa,marca,linea,modelo,color,vin,propietario,telefono,correo_cliente,cedula_cliente,tipo_cliente,aseguradora,estado,creado_en,fecha_entrega_1&order=placa.asc,creado_en.desc&limit=2000').catch(() => []) || []
+    ]);
 
-    // Agrupar por placa
+    // Mapa por placa: primero el registro, luego las órdenes (sin perder datos del registro)
     const vehiculosMap = {};
+    (registro || []).forEach(v => {
+      const placa = (v.placa || '').toUpperCase();
+      if (!placa) return;
+      vehiculosMap[placa] = { info: { ...v, cedula_cliente: v.cedula_nit }, ordenes: [] };
+    });
     ordenes.forEach(o => {
       const placa = (o.placa || '').toUpperCase();
       if (!placa) return;
-      if (!vehiculosMap[placa]) {
-        vehiculosMap[placa] = { info: o, ordenes: [] };
-      }
+      if (!vehiculosMap[placa]) vehiculosMap[placa] = { info: o, ordenes: [] };
+      else vehiculosMap[placa].info = { ...o, ...vehiculosMap[placa].info };
       vehiculosMap[placa].ordenes.push(o);
     });
 
@@ -4019,7 +4028,8 @@ async function cargarVehiculos() {
       const grupos = {};
       lista.forEach(v => {
         const ultima = v.ordenes[0]; // ya viene desc por creado_en
-        const d = ultima?.creado_en ? new Date(ultima.creado_en) : null;
+        const dRef = ultima?.creado_en || v.info?.fecha_ingreso || null;
+        const d = dRef ? new Date(dRef) : null;
         const key = d
           ? d.toLocaleDateString('es-CO',{month:'long',year:'numeric'})
           : 'Sin fecha';
@@ -4035,14 +4045,16 @@ async function cargarVehiculos() {
           const vehiculo = [info.marca, info.linea, info.modelo].filter(Boolean).map(escapeHtml).join(' ');
           const ultimaOT = ots[0];
           const badgeCol = activo ? '#2563EB' : '#6B7280';
+          const _plEsc = escapeHtml(info.placa || '');
+          const clk = ultimaOT ? `abrirOrden(${ultimaOT.id});navJefe('detalle')` : `verHistorialVehiculo('${_plEsc}')`;
 
           return `<div class="hover-lift" style="background:white;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 11px;min-width:0">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:4px">
-              <span onclick="abrirOrden(${ultimaOT?.id});navJefe('detalle')" style="font-family:'DM Mono',monospace;font-size:13px;font-weight:800;color:var(--texto);letter-spacing:.05em;cursor:pointer">${escapeHtml(info.placa||'—')}</span>
+              <span onclick="${clk}" style="font-family:'DM Mono',monospace;font-size:13px;font-weight:800;color:var(--texto);letter-spacing:.05em;cursor:pointer">${escapeHtml(info.placa||'—')}</span>
               <span style="font-size:9px;font-weight:700;color:${badgeCol};background:${badgeCol}18;padding:1px 6px;border-radius:3px">${ots.length} OT${ots.length!==1?'s':''}</span>
             </div>
-            <div style="font-size:10.5px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="abrirOrden(${ultimaOT?.id});navJefe('detalle')">${vehiculo || '—'}</div>
-            ${info.propietario ? `<div style="font-size:10.5px;font-weight:600;color:var(--gris-texto);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="abrirOrden(${ultimaOT?.id});navJefe('detalle')">${escapeHtml(info.propietario)}</div>` : ''}
+            <div style="font-size:10.5px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="${clk}">${vehiculo || '—'}</div>
+            ${info.propietario ? `<div style="font-size:10.5px;font-weight:600;color:var(--gris-texto);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="${clk}">${escapeHtml(info.propietario)}</div>` : ''}
             <div style="margin-top:6px;padding-top:5px;border-top:1px solid var(--gris-borde);display:flex;align-items:center;gap:4px">
               <button onclick="event.stopPropagation();verHistorialVehiculo('${escapeHtml(info.placa||'')}')"
                 style="flex:1;min-width:0;background:none;border:1px solid var(--gris-borde);border-radius:4px;padding:3px 4px;font-size:10px;cursor:pointer;color:var(--azul);display:flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap;overflow:hidden"
