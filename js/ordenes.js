@@ -5221,13 +5221,13 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
 <title>Preliquidación ${escapeHtml(orden.placa)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;font-size:9.5px;line-height:1.45;background:#fff}
-@page{size:A4 landscape;margin:7mm 10mm}
+body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;font-size:9px;line-height:1.35;background:#fff}
+@page{size:A4 landscape;margin:5mm 7mm}
 
 /* Tablas */
-table{width:100%;border-collapse:collapse;font-size:9px}
-th{font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:6px 8px;background:#1a1a1a;color:#fff;text-align:left;border:none}
-td{padding:6px 8px;border-bottom:1px solid #E5E7EB;vertical-align:middle}
+table{width:100%;border-collapse:collapse;font-size:8.5px}
+th{font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:3.5px 7px;background:#1a1a1a;color:#fff;text-align:left;border:none}
+td{padding:3px 7px;border-bottom:1px solid #E5E7EB;vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:nth-child(even) td{background:#F9FAFB}
 
@@ -5251,32 +5251,32 @@ tr:nth-child(even) td{background:#F9FAFB}
 <div style="padding:2px 0 8px">
 
 <!-- ENCABEZADO -->
-<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1a1a1a;padding-bottom:10px;margin-bottom:12px">
-  <div style="display:flex;align-items:center;gap:12px">
-    <img src="${_logoUrl}" alt="Logo" style="height:58px;width:58px;object-fit:contain">
+<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2.5px solid #1a1a1a;padding-bottom:6px;margin-bottom:8px">
+  <div style="display:flex;align-items:center;gap:10px">
+    <img src="${_logoUrl}" alt="Logo" style="height:42px;width:42px;object-fit:contain">
     <div>
-      <div style="font-weight:900;font-size:16px;color:#1a1a1a;letter-spacing:.3px;line-height:1.2">FREIMANAUTOS S.A.</div>
-      <div style="font-size:8px;color:#6B7280;margin-top:3px">NIT 860.012.186-5</div>
-      <div style="font-size:8px;color:#6B7280">Calle 98A #68D-15 Bogotá D.C.</div>
-      <div style="font-size:8px;color:#6B7280">Tel: (601) 742 6450</div>
+      <div style="font-weight:900;font-size:14px;color:#1a1a1a;letter-spacing:.3px;line-height:1.15">FREIMANAUTOS S.A.</div>
+      <div style="font-size:7.5px;color:#6B7280;margin-top:2px">NIT 860.012.186-5</div>
+      <div style="font-size:7.5px;color:#6B7280">Calle 98A #68D-15 Bogotá D.C.</div>
+      <div style="font-size:7.5px;color:#6B7280">Tel: (601) 742 6450</div>
     </div>
   </div>
   <div style="text-align:center">
-    <div style="font-size:26px;font-weight:900;color:#1a1a1a;letter-spacing:2px">ORDEN DE TRABAJO</div>
-    <div style="font-size:8.5px;color:#6B7280;margin-top:3px">Documento preliminar — no constituye factura</div>
+    <div style="font-size:21px;font-weight:900;color:#1a1a1a;letter-spacing:2px">ORDEN DE TRABAJO</div>
+    <div style="font-size:8px;color:#6B7280;margin-top:2px">Documento preliminar — no constituye factura</div>
   </div>
-  <div style="border:2px solid #1a1a1a;border-radius:4px;padding:8px 14px;text-align:center;min-width:150px">
-    <div style="font-size:7.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px">Placa</div>
-    <div style="font-size:20px;font-weight:900;letter-spacing:3px;color:#1a1a1a;line-height:1.2">${escapeHtml(orden.placa)}</div>
-    <div style="border-top:1px solid #E5E7EB;margin:6px 0 4px"></div>
-    <div style="font-size:7.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px">N° Orden</div>
-    <div style="font-size:14px;font-weight:900;font-family:'Courier New',monospace;color:#1a1a1a">${otDe(orden)}</div>
-    <div style="font-size:7.5px;color:#6B7280;margin-top:3px">${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})} · ${new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',hour12:true})}</div>
+  <div style="border:2px solid #1a1a1a;border-radius:4px;padding:5px 12px;text-align:center;min-width:140px">
+    <div style="font-size:7px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px">Placa</div>
+    <div style="font-size:17px;font-weight:900;letter-spacing:3px;color:#1a1a1a;line-height:1.15">${escapeHtml(orden.placa)}</div>
+    <div style="border-top:1px solid #E5E7EB;margin:4px 0 3px"></div>
+    <div style="font-size:7px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px">N° Orden</div>
+    <div style="font-size:12px;font-weight:900;font-family:'Courier New',monospace;color:#1a1a1a">${otDe(orden)}</div>
+    <div style="font-size:7px;color:#6B7280;margin-top:2px">${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})} · ${new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',hour12:true})}</div>
   </div>
 </div>
 
 <!-- FILA INFO: 1.Cliente | 2.Vehículo | 3.Fechas/Daños -->
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;margin-bottom:12px">
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;margin-bottom:7px">
 
   <!-- 1. CLIENTE -->
   <div style="border-right:1px solid #E5E7EB">
@@ -5338,7 +5338,7 @@ tr:nth-child(even) td{background:#F9FAFB}
 </div>
 
 <!-- 4. TRABAJOS (tabla) + TOTALES (derecha) -->
-<div style="display:grid;grid-template-columns:1fr 175px;gap:0;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;margin-bottom:8px">
+<div style="display:grid;grid-template-columns:1fr 175px;gap:0;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;margin-bottom:6px">
   <div style="border-right:1px solid #E5E7EB">
     <div class="sh">4. Descripción de trabajos</div>
     <table>
@@ -5361,7 +5361,7 @@ tr:nth-child(even) td{background:#F9FAFB}
           <td style="text-align:right;font-family:monospace">${fmt(e.valor)}</td>
           <td style="text-align:right;font-family:monospace;font-weight:700">${fmt(e.valor)}</td>
         </tr>`).join('')}
-        ${Array.from({length:Math.max(0,6-etapas.length)},(_,i)=>`<tr><td style="color:#ddd;text-align:center;font-size:8px">${etapas.length+i+1}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}
+        ${Array.from({length:Math.max(0,3-etapas.length)},(_,i)=>`<tr><td style="color:#ddd;text-align:center;font-size:8px">${etapas.length+i+1}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}
       </tbody>
     </table>
   </div>
@@ -5414,7 +5414,7 @@ tr:nth-child(even) td{background:#F9FAFB}
             <td style="text-align:right;font-family:monospace;font-weight:700">${conPrecios&&idx===0&&cot?.precio_venta_jefe ? fmt(cot.precio_venta_jefe) : ''}</td>
           </tr>`).join('');
         }).join('') : ''}
-        ${Array.from({length:Math.max(0,4-solicitudes.length)},(_,i)=>`<tr><td style="color:#ddd;text-align:center;font-size:8px">${solicitudes.length+i+1}</td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}
+        ${Array.from({length:Math.max(0,2-solicitudes.length)},(_,i)=>`<tr><td style="color:#ddd;text-align:center;font-size:8px">${solicitudes.length+i+1}</td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}
       </tbody>
     </table>
     ${novedades.length ? `<div style="border-top:0.8px solid #ccc;padding:3px 7px;background:#FFF5F5"><b style="font-size:7px;text-transform:uppercase;color:#991B1B">Novedades:</b> ${novedades.map(n=>'<span style="font-size:8px;margin-left:6px">'+escapeHtml(n.tipo||'—')+': '+escapeHtml(n.motivo||'—')+'</span>').join('')}</div>` : ''}
@@ -5423,11 +5423,11 @@ tr:nth-child(even) td{background:#F9FAFB}
   <div>
     <div class="sh">6. Firmas</div>
     <div style="padding:8px 10px">
-      <div style="margin-top:22px;border-top:1.2px solid #111;padding-top:4px;margin-bottom:14px">
+      <div style="margin-top:14px;border-top:1.2px solid #111;padding-top:4px;margin-bottom:14px">
         <div style="font-size:8px;font-weight:600;text-align:center">Firma recepcionista</div>
         <div style="font-size:7.5px;color:#888;margin-top:4px">C.C. ______________________</div>
       </div>
-      <div style="margin-top:22px;border-top:1.2px solid #111;padding-top:4px">
+      <div style="margin-top:14px;border-top:1.2px solid #111;padding-top:4px">
         <div style="font-size:8px;font-weight:600;text-align:center">Firma cliente</div>
         <div style="font-size:7.5px;color:#888;margin-top:4px">C.C. ______________________</div>
       </div>
