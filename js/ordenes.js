@@ -4043,13 +4043,13 @@ async function cargarVehiculos() {
             </div>
             <div style="font-size:10.5px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="abrirOrden(${ultimaOT?.id});navJefe('detalle')">${vehiculo || '—'}</div>
             ${info.propietario ? `<div style="font-size:10.5px;font-weight:600;color:var(--gris-texto);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="abrirOrden(${ultimaOT?.id});navJefe('detalle')">${escapeHtml(info.propietario)}</div>` : ''}
-            <div style="margin-top:6px;padding-top:5px;border-top:1px solid var(--gris-borde);display:flex;justify-content:space-between;align-items:center;gap:4px">
+            <div style="margin-top:6px;padding-top:5px;border-top:1px solid var(--gris-borde);display:flex;align-items:center;gap:4px">
               <button onclick="event.stopPropagation();verHistorialVehiculo('${escapeHtml(info.placa||'')}')"
-                style="background:none;border:1px solid var(--gris-borde);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;color:var(--azul);display:flex;align-items:center;gap:3px"
+                style="flex:1;min-width:0;background:none;border:1px solid var(--gris-borde);border-radius:4px;padding:3px 4px;font-size:10px;cursor:pointer;color:var(--azul);display:flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap;overflow:hidden"
                 title="Ver historial de visitas">📋 Historial</button>
               <button onclick="event.stopPropagation();abrirPopupConsumibles('${escapeHtml(info.placa||'')}',${info.kilometraje||0})"
-                style="background:none;border:1px solid var(--gris-borde);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;color:var(--gris-mid);display:flex;align-items:center;gap:3px"
-                title="Ver consumibles y documentos">🔧 Consumibles</button>
+                style="flex:1;min-width:0;background:none;border:1px solid var(--gris-borde);border-radius:4px;padding:3px 4px;font-size:10px;cursor:pointer;color:var(--gris-mid);display:flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap;overflow:hidden"
+                title="Ver consumibles y documentos">🔧 <span style="overflow:hidden;text-overflow:ellipsis">Consumibles</span></button>
             </div>
           </div>`;
         }).join('');
