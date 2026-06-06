@@ -479,7 +479,7 @@ async function abrirOrden(id) {
                 <div class="det-dato-fila"><span class="det-dato-lbl">Color</span><span class="det-dato-val">${escapeHtml(orden.color||'')||'—'}</span></div>
                 <div class="det-dato-fila"><span class="det-dato-lbl">Kilometraje</span><span class="det-dato-val">${orden.kilometraje?orden.kilometraje.toLocaleString('es-CO')+' km':'—'}</span></div>
                 <div class="det-dato-fila"><span class="det-dato-lbl">VIN</span><span class="det-dato-val" style="font-family:'DM Mono',monospace;font-size:11px">${escapeHtml(orden.vin||'')||'—'}</span></div>
-                <div class="det-dato-fila"><span class="det-dato-lbl">Ingreso</span><span class="det-dato-val">${formatFecha(orden.creado_en)}</span></div>
+                <div class="det-dato-fila"><span class="det-dato-lbl">Ingreso</span><span class="det-dato-val">${formatFecha(orden.ingreso_en || orden.creado_en)}</span></div>
                 <div class="det-dato-fila"><span class="det-dato-lbl">Entrega 1</span><span class="det-dato-val">${formatFecha(orden.fecha_entrega_1)||'—'}</span></div>
                 ${orden.fecha_entrega_2 ? `<div class="det-dato-fila"><span class="det-dato-lbl">Entrega 2</span><span class="det-dato-val">${formatFecha(orden.fecha_entrega_2)}</span></div>` : ''}
               </div>
@@ -4727,6 +4727,7 @@ async function abrirEditarOrden(ordenId) {
           </div>
         </div>
 
+        <div class="field" style="grid-column:1/-1"><label>Fecha de ingreso <span style="font-weight:400;color:var(--gris-mid);font-size:11px">(puedes ponerle una fecha anterior)</span></label><input id="ed-ingreso" type="datetime-local" value="${(orden.ingreso_en || orden.creado_en) ? _toLocalInput(orden.ingreso_en || orden.creado_en) : ''}"></div>
         <div class="field"><label>Fecha estimada de entrega</label><input id="ed-fecha1" type="datetime-local" value="${orden.fecha_entrega_1 ? orden.fecha_entrega_1.slice(0,16) : ''}"></div>
         <div class="field"><label>Fecha entrega alternativa</label><input id="ed-fecha2" type="datetime-local" value="${orden.fecha_entrega_2 ? orden.fecha_entrega_2.slice(0,16) : ''}"></div>
       </div>
@@ -4863,6 +4864,10 @@ async function guardarEdicionOrden() {
       fecha_entrega_1: document.getElementById('ed-fecha1')?.value          || null,
       fecha_entrega_2: document.getElementById('ed-fecha2')?.value          || null,
     };
+
+    // Fecha de ingreso (solo si se ingresó un valor, para no borrarla sin querer)
+    const _ingVal = document.getElementById('ed-ingreso')?.value;
+    if (_ingVal) patch.ingreso_en = new Date(_ingVal).toISOString();
 
     await api(`/ordenes?id=eq.${ordenActual.id}`, 'PATCH', patch);
     toast('Datos actualizados ✓');
