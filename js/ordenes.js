@@ -452,6 +452,10 @@ async function abrirOrden(id) {
           })()}
           <div class="det-datos-header">
             <div class="seccion-titulo" style="margin-bottom:0">Datos del vehículo y cliente</div>
+            <button class="btn btn-ghost btn-sm" style="color:var(--azul)" onclick="verHistorialVehiculo('${escapeHtml(orden.placa)}')" title="Ver visitas anteriores de este vehículo">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Historial
+            </button>
             ${esJefe() && orden.estado !== 'Entregada' ? `<button class="btn btn-ghost btn-sm" onclick="abrirEditarOrden(${orden.id})">
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               Editar datos
@@ -1858,6 +1862,55 @@ function archivarOrden(ordenId) {
       if (typeof navJefe === 'function') navJefe('ordenes');
     } catch (e) { toast('Error: ' + e.message, 'err'); }
   }, 'Archivar orden', 'Se ocultará de las listas (reversible). Ingresa el PIN.');
+}
+
+// Historial del vehículo: todas las visitas (órdenes) de una placa, con fechas
+// y qué se le hizo. Incluye las archivadas/entregadas.
+async function verHistorialVehiculo(placa) {
+  if (!placa) return;
+  try {
+    const ords = await api(`/ordenes?placa=eq.${encodeURIComponent(placa)}&order=creado_en.desc&select=id,numero_ot,estado,ingreso_en,creado_en,entregada_en,marca,linea`).catch(() => []) || [];
+    if (!ords.length) { toast('Sin historial para esta placa'); return; }
+    const ids = ords.map(o => o.id).join(',');
+    const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,valor`).catch(() => []) || [];
+    const porOrden = {};
+    etapas.forEach(e => { (porOrden[e.orden_id] = porOrden[e.orden_id] || []).push(e); });
+    const srvNom = { latoneria: 'Latonería', pintura: 'Pintura', mecanica: 'Mecánica', adicionales: 'Adicionales' };
+    const filas = ords.map(o => {
+      const ini  = o.ingreso_en || o.creado_en;
+      const fin  = o.entregada_en;
+      const dias = ini ? Math.max(0, Math.round(((fin ? new Date(fin) : new Date()) - new Date(ini)) / 86400000)) : null;
+      const ets  = porOrden[o.id] || [];
+      const srvs = [...new Set(ets.map(e => srvNom[e.servicio] || e.servicio).filter(Boolean))];
+      const valor = ets.reduce((s, e) => s + (e.valor || 0), 0);
+      return `<div style="border:1px solid var(--gris-borde);border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:pointer" onclick="document.getElementById('hist-veh-modal')?.remove();abrirOrden(${o.id})">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <span style="font-weight:700;font-family:'DM Mono',monospace">${otDe(o)}</span>
+          <span style="font-size:11px;color:var(--gris-mid)">${formatFecha(ini)}${fin ? ` → ${formatFecha(fin)}` : ''}</span>
+        </div>
+        <div style="font-size:12px;color:var(--gris-mid);margin-top:4px">${o.estado || '—'}${dias != null ? ` · ${dias} día(s)` : ''}${valor > 0 ? ` · ${formatCOP(valor)}` : ''}</div>
+        ${srvs.length ? `<div style="margin-top:5px">${srvs.map(s => `<span style="background:#EEF2FF;color:#3730A3;border-radius:5px;padding:1px 7px;margin-right:4px;font-size:11px">${escapeHtml(s)}</span>`).join('')}</div>` : ''}
+      </div>`;
+    }).join('');
+    const veh = [ords[0].marca, ords[0].linea].filter(Boolean).join(' ');
+    document.getElementById('hist-veh-modal')?.remove();
+    const ov = document.createElement('div');
+    ov.id = 'hist-veh-modal';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:18px';
+    ov.innerHTML = `
+      <div style="background:#fff;border-radius:14px;max-width:480px;width:100%;max-height:85vh;display:flex;flex-direction:column;font-family:'DM Sans',sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+        <div style="padding:16px 18px;border-bottom:1px solid var(--gris-borde);display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:16px;font-weight:800;color:var(--azul)">Historial · ${escapeHtml(placa)}</div>
+            <div style="font-size:12px;color:var(--gris-mid)">${escapeHtml(veh || '')}${veh ? ' · ' : ''}${ords.length} visita(s)</div>
+          </div>
+          <button onclick="document.getElementById('hist-veh-modal').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gris-mid);line-height:1">×</button>
+        </div>
+        <div style="padding:14px 18px;overflow-y:auto">${filas}</div>
+      </div>`;
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+  } catch (e) { toast('Error cargando historial: ' + e.message, 'err'); }
 }
 
 // Eliminar PERMANENTEMENTE una orden archivada (con PIN + confirmación).
