@@ -108,7 +108,7 @@ function _buildOrdenRow(o, etapas) {
     <td class="ord-resp">${escapeHtml(tecnico) || '<span style="color:var(--gris-mid)">—</span>'}</td>
     <td class="ord-fecha-ent">${fechaEnt}</td>
     <td class="ord-dias">${diasTaller}d</td>
-    <td><span class="ord-pill ${pillCls}">${pillTxt}</span>${o.estado === 'Archivada' ? `<button class="btn btn-ghost btn-xs" style="color:#DC2626;margin-left:6px;padding:2px 6px" onclick="event.stopPropagation();eliminarOrdenPermanente(${o.id})" title="Eliminar permanentemente">🗑️</button>` : ''}</td>
+    <td><span class="ord-pill ${pillCls}">${pillTxt}</span>${o.estado === 'Archivada' ? `<button class="btn btn-ghost btn-xs" style="color:var(--azul);margin-left:6px;padding:2px 6px" onclick="event.stopPropagation();desarchivarOrden(${o.id})" title="Devolver a Activas">↩</button><button class="btn btn-ghost btn-xs" style="color:#DC2626;margin-left:4px;padding:2px 6px" onclick="event.stopPropagation();eliminarOrdenPermanente(${o.id})" title="Eliminar permanentemente">🗑️</button>` : ''}</td>
   </tr>`;
 }
 
@@ -1911,6 +1911,16 @@ async function verHistorialVehiculo(placa) {
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
   } catch (e) { toast('Error cargando historial: ' + e.message, 'err'); }
+}
+
+// Desarchivar: devolver una orden archivada a Activas (recuperación simple).
+async function desarchivarOrden(ordenId) {
+  if (!confirm('¿Devolver esta orden a la lista de Activas?')) return;
+  try {
+    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { estado: 'Activa' });
+    toast('Orden devuelta a Activas ✓');
+    if (typeof cargarOrdenes === 'function') cargarOrdenes();
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
 // Eliminar PERMANENTEMENTE una orden archivada (con PIN + confirmación).
