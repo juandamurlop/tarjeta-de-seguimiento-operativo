@@ -108,7 +108,7 @@ function _buildOrdenRow(o, etapas) {
     <td class="ord-resp">${escapeHtml(tecnico) || '<span style="color:var(--gris-mid)">—</span>'}</td>
     <td class="ord-fecha-ent">${fechaEnt}</td>
     <td class="ord-dias">${diasTaller}d</td>
-    <td><span class="ord-pill ${pillCls}">${pillTxt}</span>${o.estado === 'Archivada' ? `<button class="btn btn-ghost btn-xs" style="color:var(--azul);margin-left:6px;padding:2px 6px" onclick="event.stopPropagation();desarchivarOrden(${o.id})" title="Devolver a Activas">↩</button><button class="btn btn-ghost btn-xs" style="color:#DC2626;margin-left:4px;padding:2px 6px" onclick="event.stopPropagation();eliminarOrdenPermanente(${o.id})" title="Eliminar permanentemente">🗑️</button>` : ''}</td>
+    <td><span class="ord-pill ${pillCls}">${pillTxt}</span>${o.estado === 'Archivada' ? `<div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" style="color:var(--azul);border:1px solid var(--azul);padding:2px 8px;font-size:11px" onclick="event.stopPropagation();desarchivarOrden(${o.id})" title="Devolver a Activas">↩ Desarchivar</button><button class="btn btn-ghost btn-xs" style="color:#DC2626;border:1px solid #DC2626;padding:2px 8px;font-size:11px" onclick="event.stopPropagation();eliminarOrdenPermanente(${o.id})" title="Eliminar permanentemente">🗑 Eliminar</button></div>` : ''}</td>
   </tr>`;
 }
 
@@ -607,6 +607,7 @@ async function abrirOrden(id) {
                        <span style="width:8px;height:8px;border-radius:50%;background:var(--azul-mid);display:inline-block"></span>
                        <span style="font-size:13px;font-weight:700;color:var(--azul)">${orden.estado === 'Entregada' ? 'Finalizada' : 'Archivada'}</span>
                      </div>
+                     ${orden.estado === 'Archivada' ? `<button class="btn btn-success" style="width:100%" onclick="desarchivarOrden(${orden.id})">↩ Desarchivar (volver a Activas)</button>` : ''}
                      <div style="display:flex;gap:6px;width:100%">
                        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},false)">📋 Sin precios</button>
                        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},true)">💰 Con precios</button>
