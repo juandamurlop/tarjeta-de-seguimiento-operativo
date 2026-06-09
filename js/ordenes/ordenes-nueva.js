@@ -2,8 +2,9 @@
 // ÓRDENES — NUEVA ORDEN, WIZARD, SERVICIOS
 // ═══════════════════════════════════════════════════════════
 function resetNuevaOrden() {
-  const fields = ['n-placa', 'n-marca', 'n-linea', 'n-modelo', 'n-color', 'n-propietario', 'n-telefono', 'n-km', 'n-fecha1', 'n-fecha2', 'n-inv-obs', 'n-cedula-cliente', 'n-vin', 'n-correo-cliente', 'n-descripcion-general'];
+  const fields = ['n-placa', 'n-marca', 'n-linea', 'n-modelo', 'n-color', 'n-propietario', 'n-telefono', 'n-km', 'n-fecha1', 'n-fecha2', 'n-inv-obs', 'n-cedula-cliente', 'n-vin', 'n-correo-cliente', 'n-direccion', 'n-descripcion-general'];
   fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  _toggleOcrBtn(false); // ocultar OCR al limpiar el formulario
   const aseguradora = document.getElementById('n-aseguradora');
   const dano = document.getElementById('n-dano');
   const tipoCliente = document.getElementById('n-tipo-cliente');
@@ -116,46 +117,131 @@ function quitarFotoIngreso(i) {
   renderPreviewIngreso(); 
 }
 
-// ── Autocompletado de placa en tiempo real ──────────────────
+// ── Buscador unificado: placa o nombre de cliente/organización ──
 let _placaDebounce = null;
 let _placaRegistry = {};
+let _clienteRegistry = {};
 
 function seleccionarPlacaById(placa) {
   seleccionarPlaca(placa, _placaRegistry[placa] || {});
 }
 
+// Muestra u oculta el botón de OCR (solo aparece cuando no hay coincidencias).
+function _toggleOcrBtn(mostrar) {
+  const b = document.getElementById('btn-ocr-tarjeta');
+  if (b) b.style.display = mostrar ? 'flex' : 'none';
+}
+
+const _SUG_GRUPO = 'padding:4px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-mid);background:var(--gris-bg)';
+
+// Busca por PLACA o por NOMBRE (cliente/empresa/flotilla). Muestra coincidencias
+// agrupadas; si no hay ninguna, aparece el botón de OCR para escanear la tarjeta.
 async function autocompletarPlaca(val) {
   clearTimeout(_placaDebounce);
   const sugDiv = document.getElementById('placa-sugerencias');
   if (!sugDiv) return;
-  if (!val || val.length < 2) { sugDiv.style.display = 'none'; return; }
+  const q = (val || '').trim();
+  if (q.length < 2) { sugDiv.style.display = 'none'; _toggleOcrBtn(false); return; }
 
   _placaDebounce = setTimeout(async () => {
     try {
-      const [deVehiculos, deOrdenes] = await Promise.all([
-        api(`/vehiculos?placa=ilike.${val}*&select=placa,marca,linea,modelo&limit=6`).catch(()=>[]) || [],
-        api(`/ordenes?placa=ilike.${val}*&select=placa,marca,linea,modelo,propietario,telefono,color&order=creado_en.desc&limit=6`).catch(()=>[]) || []
+      const enc = encodeURIComponent(q);
+      const [deVehiculos, ordPlaca, ordNombre, ordOrg] = await Promise.all([
+        api(`/vehiculos?placa=ilike.${enc}*&select=placa,marca,linea,modelo,color&limit=8`).catch(()=>[]) || [],
+        api(`/ordenes?placa=ilike.${enc}*&select=placa,marca,linea,modelo,color,propietario,telefono,cedula_cliente,correo_cliente,aseguradora,tipo_cliente,direccion,vin&order=creado_en.desc&limit=8`).catch(()=>[]) || [],
+        api(`/ordenes?propietario=ilike.*${enc}*&select=placa,propietario,telefono,cedula_cliente,tipo_cliente&order=creado_en.desc&limit=20`).catch(()=>[]) || [],
+        api(`/ordenes?aseguradora=ilike.*${enc}*&select=placa,aseguradora,tipo_cliente&order=creado_en.desc&limit=20`).catch(()=>[]) || []
       ]);
 
-      // Deduplicar por placa, priorizar vehículos
-      const mapa = {};
-      deOrdenes.forEach(o => { mapa[o.placa] = o; });
-      deVehiculos.forEach(v => { mapa[v.placa] = { ...mapa[v.placa], ...v }; });
-      const sugerencias = Object.values(mapa).slice(0, 6);
+      // 1) Vehículos por placa (dedupe, priorizar tabla vehiculos)
+      const vmap = {};
+      ordPlaca.forEach(o => { vmap[o.placa] = o; });
+      deVehiculos.forEach(v => { vmap[v.placa] = { ...vmap[v.placa], ...v }; });
+      const vehiculos = Object.values(vmap).slice(0, 6);
 
-      if (!sugerencias.length) { sugDiv.style.display = 'none'; return; }
+      // 2) Clientes por nombre del propietario (agrupar + contar vehículos)
+      const cmap = {};
+      ordNombre.forEach(o => {
+        const k = (o.propietario || '').trim();
+        if (!k) return;
+        if (!cmap[k]) cmap[k] = { nombre: k, tipo: 'cliente', cedula: o.cedula_cliente, telefono: o.telefono, placas: new Set() };
+        cmap[k].placas.add(o.placa);
+      });
+      // 3) Organizaciones por nombre (aseguradora/flotilla/empresa)
+      ordOrg.forEach(o => {
+        const k = (o.aseguradora || '').trim();
+        if (!k) return;
+        const key = '@' + k;
+        if (!cmap[key]) cmap[key] = { nombre: k, tipo: o.tipo_cliente || 'organización', placas: new Set() };
+        cmap[key].placas.add(o.placa);
+      });
+      const clientes = Object.values(cmap).slice(0, 6);
 
       _placaRegistry = {};
-      sugerencias.forEach(s => { _placaRegistry[s.placa] = s; });
+      vehiculos.forEach(s => { _placaRegistry[s.placa] = s; });
+      _clienteRegistry = {};
+      clientes.forEach((c, i) => { _clienteRegistry['c' + i] = c; });
 
-      sugDiv.innerHTML = sugerencias.map(s => `
-        <div class="placa-sug-item" data-placa="${escapeHtml(s.placa)}" onmousedown="seleccionarPlacaById(this.dataset.placa)">
-          <span class="placa-sug-placa">${escapeHtml(s.placa)}</span>
-          <span class="placa-sug-veh">${[s.marca,s.linea,s.modelo].filter(Boolean).map(escapeHtml).join(' ')||'—'}</span>
-        </div>`).join('');
+      // Sin coincidencias → ocultar lista y ofrecer OCR
+      if (!vehiculos.length && !clientes.length) {
+        sugDiv.style.display = 'none';
+        _toggleOcrBtn(true);
+        return;
+      }
+      _toggleOcrBtn(false);
+
+      let html = '';
+      if (vehiculos.length) {
+        html += `<div style="${_SUG_GRUPO}">Vehículos</div>`;
+        html += vehiculos.map(s => `
+          <div class="placa-sug-item" data-placa="${escapeHtml(s.placa)}" onmousedown="seleccionarPlacaById(this.dataset.placa)">
+            <span class="placa-sug-placa">${escapeHtml(s.placa)}</span>
+            <span class="placa-sug-veh">${[s.marca,s.linea,s.modelo].filter(Boolean).map(escapeHtml).join(' ')||'—'}</span>
+          </div>`).join('');
+      }
+      if (clientes.length) {
+        html += `<div style="${_SUG_GRUPO}">Clientes / Empresas</div>`;
+        html += clientes.map((c, i) => `
+          <div class="placa-sug-item" onmousedown="seleccionarClienteSug('c${i}')">
+            <span class="placa-sug-placa" style="letter-spacing:0;font-family:inherit">${escapeHtml(c.nombre)}</span>
+            <span class="placa-sug-veh">${c.placas.size} vehículo(s)${c.tipo && c.tipo !== 'cliente' ? ' · ' + escapeHtml(c.tipo) : ''}</span>
+          </div>`).join('');
+      }
+      sugDiv.innerHTML = html;
       sugDiv.style.display = 'block';
     } catch(e) { sugDiv.style.display = 'none'; }
   }, 250);
+}
+
+// Al elegir un cliente/organización: si tiene un solo vehículo lo carga directo;
+// si tiene varios, muestra la lista de sus carros para elegir.
+async function seleccionarClienteSug(key) {
+  const c = _clienteRegistry?.[key];
+  if (!c) return;
+  const sugDiv = document.getElementById('placa-sugerencias');
+  const placas = [...c.placas];
+  if (placas.length === 1) {
+    const input = document.getElementById('n-placa');
+    if (input) input.value = placas[0];
+    cerrarSugerenciasPlaca();
+    buscarPorPlaca();
+    return;
+  }
+  try {
+    const ords = await api(`/ordenes?placa=in.(${placas.join(',')})&select=placa,marca,linea,modelo,color&order=creado_en.desc`).catch(()=>[]) || [];
+    const m = {}; ords.forEach(o => { if (!m[o.placa]) m[o.placa] = o; });
+    const lista = Object.values(m);
+    _placaRegistry = {}; lista.forEach(s => { _placaRegistry[s.placa] = s; });
+    if (sugDiv) {
+      sugDiv.innerHTML = `<div style="${_SUG_GRUPO}">Vehículos de ${escapeHtml(c.nombre)}</div>` +
+        lista.map(s => `
+          <div class="placa-sug-item" data-placa="${escapeHtml(s.placa)}" onmousedown="seleccionarPlacaById(this.dataset.placa)">
+            <span class="placa-sug-placa">${escapeHtml(s.placa)}</span>
+            <span class="placa-sug-veh">${[s.marca,s.linea,s.modelo].filter(Boolean).map(escapeHtml).join(' ')||'—'}</span>
+          </div>`).join('');
+      sugDiv.style.display = 'block';
+    }
+  } catch(e) {}
 }
 
 function seleccionarPlaca(placa, datos) {
@@ -168,13 +254,18 @@ function seleccionarPlaca(placa, datos) {
     const el = document.getElementById(id);
     if (el && val) el.value = val;
   });
-  // Pre-llenar propietario si es particular
+  // Pre-llenar datos del cliente registrado
   if (datos.propietario) {
     const prop = document.getElementById('n-propietario');
     const tel  = document.getElementById('n-telefono');
     if (prop && !prop.value) prop.value = datos.propietario;
     if (tel  && !tel.value  && datos.telefono) tel.value = datos.telefono;
   }
+  const extra = { 'n-cedula-cliente': datos.cedula_cliente, 'n-correo-cliente': datos.correo_cliente, 'n-direccion': datos.direccion, 'n-vin': datos.vin };
+  Object.entries(extra).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el && val && !el.value) el.value = val;
+  });
   buscarPorPlaca(); // Mostrar historial
 }
 
@@ -248,6 +339,7 @@ async function buscarPorPlaca() {
         resultDiv.innerHTML = `${origen} — datos autocompletados.`;
         resultDiv.style.display = 'block';
       }
+      _toggleOcrBtn(false); // hay datos registrados → no hace falta OCR
     }
 
     if (ordenes?.length) {
@@ -264,10 +356,11 @@ async function buscarPorPlaca() {
     } else if (!fuente) {
       if (resultDiv) {
         resultDiv.className = 'placa-resultado nuevo';
-        resultDiv.innerHTML = 'ℹ Placa nueva — sin registros anteriores.';
+        resultDiv.innerHTML = 'ℹ Placa nueva — sin registros. Puedes escanear la tarjeta.';
         resultDiv.style.display = 'block';
       }
       if (histDiv) histDiv.style.display = 'none';
+      _toggleOcrBtn(true); // placa no registrada → ofrecer OCR
     }
   } catch(e) { if (resultDiv) resultDiv.style.display = 'none'; }
 }
