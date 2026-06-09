@@ -1803,7 +1803,6 @@ tr:nth-child(even) td{background:#F9FAFB}
         <div><div class="lbl">Fecha de ingreso</div><div class="val" style="font-size:9px">${fmtFecha(orden.creado_en)}</div></div>
         <div><div class="lbl">Entrega prometida</div><div class="val" style="color:#D97706;font-size:9px">${fmtFecha(orden.fecha_entrega_1)}</div></div>
         <div><div class="lbl">Estado</div><div style="font-weight:700;color:#059669;font-size:9.5px">${escapeHtml(orden.estado||'Activa')}</div></div>
-        <div><div class="lbl">Nivel de daño</div><div style="font-weight:700;font-size:9.5px">${escapeHtml(orden.nivel_dano||'—')}</div></div>
         ${orden.aseguradora ? `<div style="grid-column:span 2;padding-top:4px;border-top:1px solid #E5E7EB"><div class="lbl">Aseguradora</div><div class="val" style="font-size:9px">${escapeHtml(orden.aseguradora)}</div></div>` : ''}
       </div>
       <div style="border-top:1px solid #E5E7EB;padding-top:7px">
