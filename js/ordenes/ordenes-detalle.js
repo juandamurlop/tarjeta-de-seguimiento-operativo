@@ -254,7 +254,7 @@ async function abrirOrden(id) {
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
             <div class="seccion-titulo" style="margin-bottom:0">Servicios y Etapas</div>
-            ${esJefe() && !todasCalidadAprobada && orden.estado !== 'Programada' ? '<button class="btn btn-ghost btn-sm" onclick="abrirModalAgregar()">+ Agregar etapas</button>' : ''}
+            ${esJefe() && orden.estado !== 'Programada' && orden.estado !== 'Entregada' && orden.estado !== 'Archivada' ? '<button class="btn btn-ghost btn-sm" onclick="abrirModalAgregar()">+ Agregar etapas</button>' : ''}
           </div>
           ${orden.estado === 'Programada'
             ? `<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 20px;background:#F8FAFC;border:1.5px dashed #CBD5E1;border-radius:10px;text-align:center;margin-bottom:12px">
