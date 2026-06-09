@@ -198,6 +198,12 @@ async function abrirModalOperario(mec) {
           </select>
         </div>
         <div class="field">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input id="op-es-asesor" type="checkbox" ${esEditar && mec.es_asesor ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer">
+            <span>Es asesor de servicio <span style="font-weight:400;color:var(--gris-mid);font-size:11px">(aparece en las encuestas)</span></span>
+          </label>
+        </div>
+        <div class="field">
           <label style="display:flex;align-items:center;gap:6px">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.63a19.79 19.79 0 01-3.07-8.67A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
             Telegram Chat ID
@@ -237,6 +243,7 @@ async function guardarOperario(mecId, cedulaOriginal) {
   const nombre = document.getElementById('op-nombre')?.value.trim();
   const cedula    = mecId ? cedulaOriginal : document.getElementById('op-cedula')?.value.trim();
   const rol       = document.getElementById('op-rol')?.value;
+  const esAsesor  = !!document.getElementById('op-es-asesor')?.checked;
   const pass      = document.getElementById('op-pass')?.value || '';
   const tgChatId  = document.getElementById('op-telegram')?.value.trim() || null;
   const errEl  = document.getElementById('op-error');
@@ -253,7 +260,7 @@ async function guardarOperario(mecId, cedulaOriginal) {
   try {
     if (mecId) {
       // Editar: actualiza nombre, rol y telegram_chat_id
-      await api(`/mecanicos?id=eq.${mecId}`, 'PATCH', { nombre, rol, telegram_chat_id: tgChatId });
+      await api(`/mecanicos?id=eq.${mecId}`, 'PATCH', { nombre, rol, es_asesor: esAsesor, telegram_chat_id: tgChatId });
       toast(`${nombre} actualizado ✓`);
     } else {
       // Crear: primero registrar en Supabase Auth
@@ -269,7 +276,7 @@ async function guardarOperario(mecId, cedulaOriginal) {
         // Continúa igual — puede que ya exista en auth pero no en mecanicos
       }
       // Insertar en tabla mecanicos
-      await api('/mecanicos', 'POST', { nombre, cedula, rol, activo: true, telegram_chat_id: tgChatId }, { Prefer: 'return=minimal' });
+      await api('/mecanicos', 'POST', { nombre, cedula, rol, es_asesor: esAsesor, activo: true, telegram_chat_id: tgChatId }, { Prefer: 'return=minimal' });
       toast(`${nombre} creado ✓ — contraseña inicial: ${signupPass === cedula ? 'su cédula' : 'la que configuraste'}`);
     }
     document.getElementById('modal-operario')?.remove();

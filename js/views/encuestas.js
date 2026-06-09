@@ -21,7 +21,8 @@ const Encuestas = (() => {
     continuada: null,       // gate: true | false | null
     modalKeyHandler: null,  // listener de Escape del modal activo
     periodo: 'todo',        // filtro del dashboard: 'mes' | '90' | 'todo'
-    resultados: null        // cache crudo { encuestas, items } de la pestaña Resultados
+    resultados: null,       // cache crudo { encuestas, items } de la pestaña Resultados
+    jefe: null              // { nombre } del jefe de taller (desde configuracion)
   };
 
   // ── Constantes de negocio ─────────────────────────────────────────────────
@@ -158,7 +159,11 @@ const Encuestas = (() => {
     if (!cont) return;
 
     if (!_state.mecanicos.length) {
-      _state.mecanicos = await _safe(api('/mecanicos?select=id,nombre,rol,activo&order=nombre.asc'), 'montar.mecanicos') || [];
+      _state.mecanicos = await _safe(api('/mecanicos?select=id,nombre,rol,activo,es_asesor&order=nombre.asc'), 'montar.mecanicos') || [];
+    }
+    if (!_state.jefe) {
+      const cfg = await _safe(api('/configuracion?clave=in.(jefe_nombre,jefe_cedula)'), 'montar.jefe') || [];
+      _state.jefe = { nombre: cfg.find(c => c.clave === 'jefe_nombre')?.valor || 'Jefe de taller' };
     }
 
     cont.innerHTML = `
@@ -262,14 +267,13 @@ const Encuestas = (() => {
       mecs.push({ etapa_id: e.id, servicio: e.servicio, mecanico_id: e.mecanico_id, nombre });
     });
 
-    // Asesores: operarios con rol de asesor (excluye "Asesor Previsora", externo).
-    // Jefe de taller: el único con rol de jefe. Si ningún rol coincide, se ofrece
-    // la lista completa como respaldo para no dejar el selector vacío.
-    const _opt = m => `<option value="${m.id}">${escapeHtml(m.nombre)}</option>`;
-    const asesores = _state.mecanicos.filter(m => /asesor/i.test(m.rol || '') && !/previsora/i.test(m.rol || ''));
-    const jefes = _state.mecanicos.filter(m => /jefe/i.test(m.rol || ''));
-    const opAsesores = (asesores.length ? asesores : _state.mecanicos).map(_opt).join('');
-    const opJefes = (jefes.length ? jefes : _state.mecanicos).map(_opt).join('');
+    // Asesores: operarios con el subrol "asesor" (es_asesor) + el jefe de taller,
+    // que también puede atender. El jefe vive en `configuracion`, no como operario,
+    // por eso va con value="jefe" y se guarda por nombre.
+    const asesores = _state.mecanicos.filter(m => m.es_asesor);
+    const jefeNombre = _state.jefe?.nombre || 'Jefe de taller';
+    const opAsesores = asesores.map(m => `<option value="${m.id}">${escapeHtml(m.nombre)}</option>`).join('') +
+      `<option value="jefe">${escapeHtml(jefeNombre)} (jefe)</option>`;
     const mecResOpts = [
       { v: 'bien', label: 'Bien' }, { v: 'regular', label: 'Regular' },
       { v: 'queja', label: 'Queja' }, { v: 'no_aplica', label: 'No aplica' }
@@ -293,17 +297,11 @@ const Encuestas = (() => {
         </div>
         <div class="modal-body" style="padding:16px 18px">
 
-          <!-- Personas evaluadas -->
+          <!-- Asesor que atendió -->
           <div class="enc-field">
             <label class="enc-field-lbl" for="enc-asesor">Asesor que atendió</label>
             <select id="enc-asesor" style="width:100%;padding:8px 10px;border:1.5px solid var(--gris-borde);border-radius:8px">
               <option value="">— Seleccionar —</option>${opAsesores}
-            </select>
-          </div>
-          <div class="enc-field">
-            <label class="enc-field-lbl" for="enc-jefe">Jefe de taller</label>
-            <select id="enc-jefe" style="width:100%;padding:8px 10px;border:1.5px solid var(--gris-borde);border-radius:8px">
-              <option value="">— Seleccionar —</option>${opJefes}
             </select>
           </div>
 
@@ -327,7 +325,7 @@ const Encuestas = (() => {
             <div class="enc-field-lbl" style="margin-bottom:9px">¿El cliente quedó conforme para continuar la encuesta?</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button type="button" id="enc-gate-si" class="enc-seg-btn" aria-pressed="false" onclick="Encuestas.gate(true)">Sí, continuar</button>
-              <button type="button" id="enc-gate-no" class="enc-seg-btn act-queja" aria-pressed="false" onclick="Encuestas.gate(false)">Cliente molesto · cerrar aquí</button>
+              <button type="button" id="enc-gate-no" class="enc-seg-btn act-queja" aria-pressed="false" onclick="Encuestas.gate(false)">Cerrar aquí</button>
             </div>
           </div>
 
@@ -354,8 +352,7 @@ const Encuestas = (() => {
 
           <!-- MECÁNICOS -->
           <div class="enc-sec-title">Calificación de operarios</div>
-          ${mecs.length ? `<div style="font-size:12px;color:var(--gris-mid);margin-bottom:6px">Según lo que diga el cliente, califica el trabajo de cada responsable. "No aplica" no afecta su promedio.</div>
-          ${mecs.map((mc, i) => `
+          ${mecs.length ? `${mecs.map((mc, i) => `
             <div class="enc-mec-row" id="mecrow-${i}" data-etapa="${mc.etapa_id}" data-mecid="${mc.mecanico_id}" data-srv="${mc.servicio}">
               <div>
                 <div style="font-weight:600;color:var(--texto);font-size:14px">${escapeHtml(mc.nombre)}</div>
@@ -365,10 +362,10 @@ const Encuestas = (() => {
             </div>
           `).join('')}` : `<div style="font-size:13px;color:var(--gris-mid)">Esta orden no tiene operarios asignados en sus etapas.</div>`}
 
-          <!-- COMENTARIOS -->
+          <!-- PREGUNTAS ADICIONALES (texto libre) -->
           <div class="enc-field" style="margin-top:18px">
-            <label class="enc-field-lbl" for="enc-comentarios">Comentarios del cliente</label>
-            <textarea id="enc-comentarios" rows="3" style="width:100%;padding:9px 11px;border:1.5px solid var(--gris-borde);border-radius:8px;resize:vertical" placeholder="Ej: todo bien, pero el ruido de la llanta persiste..."></textarea>
+            <label class="enc-field-lbl" for="enc-comentarios">Preguntas adicionales</label>
+            <textarea id="enc-comentarios" rows="3" style="width:100%;padding:9px 11px;border:1.5px solid var(--gris-borde);border-radius:8px;resize:vertical" placeholder="El cliente opina que ..."></textarea>
           </div>
 
           <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
@@ -419,11 +416,18 @@ const Encuestas = (() => {
     const num = id => { const v = segVal(id); return v == null ? null : Number(v); };
     const cont = _state.continuada;
 
+    // Asesor: el value es un id de operario o "jefe" (no operario → se guarda por nombre).
+    const asesorVal = document.getElementById('enc-asesor')?.value || '';
+    const asesorId = (asesorVal && asesorVal !== 'jefe') ? Number(asesorVal) : null;
+    const asesorNombre = asesorVal === 'jefe'
+      ? (_state.jefe?.nombre || 'Jefe de taller')
+      : (_state.mecanicos.find(m => Number(m.id) === asesorId)?.nombre || null);
+
     const body = {
       orden_id: ordenId,
       cliente_id: clienteId || null,
-      asesor_id: Number(document.getElementById('enc-asesor')?.value) || null,
-      jefe_id: Number(document.getElementById('enc-jefe')?.value) || null,
+      asesor_id: asesorId,
+      asesor_nombre: asesorNombre,
       estado: 'completada',
       continuada: cont,
       cliente_molesto: cont === false,

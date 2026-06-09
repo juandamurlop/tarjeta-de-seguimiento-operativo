@@ -52,7 +52,8 @@
       "Bash(grep -n \"^/\\\\* ═\\\\|^/\\\\* ─\\\\|^/\\\\* =\\\\|^/\\\\* -\\\\|^/\\\\* [A-Z]\" \"C:\\\\Users\\\\juanm\\\\OneDrive\\\\Documentos\\\\appProcesos\\\\css\\\\styles.css\")",
       "Bash(grep -n \"^/\\\\* ═\\\\|^/\\\\* ─\\\\|^/\\\\* =\\\\|^/\\\\* [A-Z]\" \"C:\\\\Users\\\\juanm\\\\OneDrive\\\\Documentos\\\\appProcesos\\\\css\\\\styles.css\")",
       "Bash(grep -n \"^/\\\\* ═══\\\\|^@media\" \"C:\\\\Users\\\\juanm\\\\OneDrive\\\\Documentos\\\\appProcesos\\\\css\\\\styles.css\")",
-      "Bash(grep -r \"api\\\\\\(\\\\`/\\\\w\\\\+\" js/core/api.js js/ordenes/*.js)"
+      "Bash(grep -r \"api\\\\\\(\\\\`/\\\\w\\\\+\" js/core/api.js js/ordenes/*.js)",
+      "Bash(node --check service-worker.js)"
     ]
   }
 }
