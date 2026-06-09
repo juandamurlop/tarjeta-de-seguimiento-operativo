@@ -368,6 +368,7 @@
                 <div class="field" style="margin:0"><label>Modelo (año)</label><input id="n-modelo" placeholder="2021" maxlength="4"></div>
                 <div class="field" style="margin:0"><label>Color</label><input id="n-color" placeholder="Blanco"></div>
                 <div class="field" style="margin:0"><label>VIN <span style="font-weight:400;color:var(--gris-mid);font-size:11px">(opcional)</span></label><input id="n-vin" placeholder="17 caracteres" maxlength="17" style="font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.5px" oninput="this.value=this.value.toUpperCase()"></div>
+                <div class="field" style="margin:0"><label>Asesor de servicio <span style="font-weight:400;color:var(--gris-mid);font-size:11px">(quien atiende)</span></label><select id="n-asesor"><option value="">— Seleccionar —</option></select></div>
 
               </div>
             </div>
@@ -711,6 +712,7 @@
       <div class="pagina" id="pag-repuestos"><div id="rep-contenido"><div class="loading-state">Cargando...</div></div></div>
       <div class="pagina" id="pag-repuestos-jefe"><div id="repuestos-jefe-contenido"></div></div>
       <div class="pagina" id="pag-reportes"><div id="reportes-contenido"></div></div>
+      <div class="pagina" id="pag-encuestas"><div id="encuestas-contenido"></div></div>
       <div class="pagina" id="pag-flotillas"></div>
       <div class="pagina" id="pag-aseguradoras"></div>
       <div class="pagina" id="pag-cartera-flotillas"></div>
@@ -884,6 +886,7 @@
 <script src="js/views/taller-kpi.js"></script>
 <script src="js/views/repuestos.js"></script>
 <script src="js/views/reportes.js"></script>
+<script src="js/views/encuestas.js"></script>
 <script src="js/views/metas.js"></script>
 <script src="js/views/ventas.js"></script>
 <script src="js/views/flotillas.js"></script>

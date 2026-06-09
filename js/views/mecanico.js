@@ -444,6 +444,24 @@ async function cargarHistorialMecanico() {
     }
     const oids = [...new Set(etapas.map(e => e.orden_id))];
     const ordenes = await api(`/ordenes?id=in.(${oids.join(',')})&select=id,placa,marca,linea`).catch(()=>[]) || [];
+
+    // Tarjeta de satisfacción (calificación del cliente sobre su trabajo).
+    // El cálculo vive en el módulo Encuestas (js/views/encuestas.js).
+    const satItems = await api(`/encuesta_items_mecanico?mecanico_id=eq.${sesion.id}&select=puntos,resultado,creado_en`)
+      .catch(e => { console.error('[Mecanico.historial.satItems]', e); return []; }) || [];
+    const sat = (typeof Encuestas !== 'undefined') ? Encuestas.statsMecanico(satItems) : null;
+    const satCard = (sat && sat.evaluadas) ? `
+      <div style="background:white;border:1.5px solid var(--gris-borde);border-radius:var(--radio);padding:16px 18px;margin-bottom:16px;display:flex;align-items:center;gap:18px">
+        <div style="text-align:center;flex-shrink:0">
+          <div style="font-size:34px;font-weight:800;font-family:'DM Mono',monospace;line-height:1;color:${Encuestas.colorScore(sat.promedio)}">${sat.promedio!=null?sat.promedio.toFixed(1):'—'}<span style="font-size:16px;color:var(--gris-mid)">/5</span></div>
+          <div style="font-size:10px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-top:3px">Satisfacción</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;color:var(--texto);margin-bottom:4px">Calificación de tu trabajo</div>
+          <div style="font-size:12px;color:var(--gris-mid)">Según ${sat.evaluadas} evaluación${sat.evaluadas>1?'es':''} de clientes · ${sat.quejas} queja${sat.quejas===1?'':'s'}</div>
+          <div style="margin-top:5px;font-size:12px;color:var(--gris-mid)">Tendencia: ${Encuestas.tendHtml(sat.tendencia)}</div>
+        </div>
+      </div>` : '';
     // Descontar el tiempo pausado (esperas de repuestos) del tiempo real trabajado
     const totalMins = etapas.reduce((acc, e) => {
       if (!e.inicio || !e.fin) return acc;
@@ -459,6 +477,7 @@ async function cargarHistorialMecanico() {
     const srvColor = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
 
     cont.innerHTML = `
+      ${satCard}
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
         <div style="background:white;border:1.5px solid var(--gris-borde);border-radius:var(--radio);padding:16px;text-align:center">
           <div style="font-size:26px;font-weight:700;color:var(--azul);font-family:'DM Mono',monospace">${etapas.length}</div>

@@ -471,6 +471,10 @@ function montarJefe() {
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           <span class="nav-label">Reportes</span>
         </button>
+        <button class="nav-item" id="nav-encuestas" onclick="navJefe('encuestas')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <span class="nav-label">Encuestas</span>
+        </button>
       </div>
 
       ${_grupoHeader('aseguradoras','Carteras')}
@@ -631,7 +635,7 @@ function navJefe(pag) {
   // Actualizar clases active en sidebar y bottom nav
   // Detener polling KPI al salir de esa pantalla
   if (pag !== 'taller-kpi' && window._kpiInterval) { clearInterval(window._kpiInterval); window._kpiInterval = null; }
-  const pages = ['ordenes', 'nueva', 'dashboard', 'taller-kpi', 'cotizaciones', 'calendario', 'mecanicos', 'repuestos', 'reportes', 'flotillas', 'aseguradoras', 'cartera-flotillas', 'cartera-empresas', 'vehiculos', 'vehiculos-lista', 'metas'];
+  const pages = ['ordenes', 'nueva', 'dashboard', 'taller-kpi', 'cotizaciones', 'calendario', 'mecanicos', 'repuestos', 'reportes', 'encuestas', 'flotillas', 'aseguradoras', 'cartera-flotillas', 'cartera-empresas', 'vehiculos', 'vehiculos-lista', 'metas'];
   pages.forEach(p => {
     const navBtn = document.getElementById('nav-' + p);
     const bnavBtn = document.getElementById('bnav-' + p);
@@ -704,6 +708,11 @@ function navJefe(pag) {
       pagId = 'pag-reportes';
       titulo = 'Reportes';
       setTimeout(() => { if (typeof montarReportes === 'function') montarReportes(); }, 50);
+      break;
+    case 'encuestas':
+      pagId = 'pag-encuestas';
+      titulo = 'Encuestas de satisfacción';
+      setTimeout(() => { if (typeof Encuestas !== 'undefined') Encuestas.montar(); }, 50);
       break;
     case 'flotillas':
       pagId = 'pag-flotillas';

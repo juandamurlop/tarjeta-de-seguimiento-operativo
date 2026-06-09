@@ -34,6 +34,9 @@ const PERMISOS_CATALOGO = [
   { key:'ver_repuestos',       label:'Ver inventario de repuestos',        grupo:'Repuestos' },
   { key:'gestionar_repuestos', label:'Agregar y editar repuestos',         grupo:'Repuestos' },
   { key:'ver_reportes',        label:'Ver reportes y estadísticas',        grupo:'Reportes' },
+  { key:'ver_encuestas',       label:'Ver encuestas de satisfacción',      grupo:'Reportes' },
+  { key:'gestionar_encuestas', label:'Registrar/editar encuestas',         grupo:'Reportes' },
+  { key:'ver_calificaciones',  label:'Ver calificaciones y satisfacción',  grupo:'Reportes' },
   { key:'ver_flotillas',       label:'Ver flotillas',                      grupo:'Más' },
   { key:'ver_aseguradoras',    label:'Ver aseguradoras',                   grupo:'Más' },
 ];

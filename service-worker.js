@@ -1,30 +1,53 @@
-const CACHE_NAME = 'freimanautos-pwa-v207';
+const CACHE_NAME = 'freimanautos-pwa-v210';
 
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/css/styles.css',
-  '/js/api.js',
-  '/js/utils.js',
-  '/js/state.js',
-  '/js/auth.js',
-  '/js/dashboard.js',
-  '/js/ordenes.js',
-  '/js/mecanico.js',
-  '/js/cliente.js',
-  '/js/cotizaciones.js',
-  '/js/taller.js',
-  '/js/taller-kpi.js',
-  '/js/repuestos.js',
-  '/js/reportes.js',
-  '/js/metas.js',
-  '/js/ventas.js',
-  '/js/flotillas.js',
-  '/js/aseguradoras.js',
-  '/js/cartera-cliente.js',
-  '/js/consumibles.js',
-  '/js/app.js',
-  '/manifest.webmanifest'
+  '/manifest.webmanifest',
+
+  // CSS (main.css importa el resto vía @import, pero los precacheamos
+  // explícitamente para que el offline funcione sin red)
+  '/css/main.css',
+  '/css/base.css',
+  '/css/layout.css',
+  '/css/components.css',
+  '/css/ordenes.css',
+  '/css/cotizaciones.css',
+  '/css/vistas.css',
+
+  // Core: configuración, API, utilidades, estado global, autenticación
+  '/js/config.js',
+  '/js/core/api.js',
+  '/js/core/utils.js',
+  '/js/core/state.js',
+  '/js/core/auth.js',
+
+  // Módulo órdenes
+  '/js/ordenes/ordenes-lista.js',
+  '/js/ordenes/ordenes-detalle.js',
+  '/js/ordenes/ordenes-nueva.js',
+  '/js/ordenes/ordenes-jefe.js',
+  '/js/ordenes/ordenes-sistema.js',
+
+  // Vistas
+  '/js/views/dashboard.js',
+  '/js/views/mecanico.js',
+  '/js/views/cliente.js',
+  '/js/views/cotizaciones.js',
+  '/js/views/taller.js',
+  '/js/views/taller-kpi.js',
+  '/js/views/repuestos.js',
+  '/js/views/reportes.js',
+  '/js/views/encuestas.js',
+  '/js/views/metas.js',
+  '/js/views/ventas.js',
+  '/js/views/flotillas.js',
+  '/js/views/aseguradoras.js',
+  '/js/views/cartera-cliente.js',
+  '/js/views/consumibles.js',
+
+  // Bootstrap
+  '/js/core/app.js'
 ];
 
 // Hosts externos que siempre van por red

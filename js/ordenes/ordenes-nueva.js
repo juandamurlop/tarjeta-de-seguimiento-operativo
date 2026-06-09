@@ -541,9 +541,10 @@ async function agregarNuevaFlotNueva() {
 }
 
 async function recargarListasNuevaOrden() {
-  const [aseg, flot] = await Promise.all([
-    api('/aseguradoras?activo=eq.true&order=nombre.asc').catch(()=>[]) || [],
-    api('/flotillas?activo=eq.true&order=nombre.asc').catch(()=>[]) || []
+  const [aseg, flot, mecs] = await Promise.all([
+    api('/aseguradoras?activo=eq.true&order=nombre.asc').catch(e=>{ console.error('[NuevaOrden.recargarListas.aseguradoras]', e); return []; }) || [],
+    api('/flotillas?activo=eq.true&order=nombre.asc').catch(e=>{ console.error('[NuevaOrden.recargarListas.flotillas]', e); return []; }) || [],
+    api('/mecanicos?activo=eq.true&order=nombre.asc&select=id,nombre,rol').catch(e=>{ console.error('[NuevaOrden.recargarListas.mecanicos]', e); return []; }) || []
   ]);
   const selA = document.getElementById('n-aseguradora-sel');
   const selF = document.getElementById('n-flotilla-sel');
@@ -551,6 +552,16 @@ async function recargarListasNuevaOrden() {
     aseg.map(a=>`<option value="${escapeHtml(a.nombre)}">${escapeHtml(a.nombre)}</option>`).join('');
   if (selF) selF.innerHTML = '<option value="">— Seleccionar —</option>' +
     flot.map(f=>`<option value="${escapeHtml(f.nombre)}">${escapeHtml(f.nombre)}</option>`).join('');
+
+  // Asesor de servicio: operarios que atienden (excluye pantalla taller / repuestos).
+  const selAsesor = document.getElementById('n-asesor');
+  if (selAsesor) {
+    const asesores = mecs.filter(m => !ROLES_EXCLUIR.includes(m.rol));
+    selAsesor.innerHTML = '<option value="">— Seleccionar —</option>' +
+      asesores.map(m => `<option value="${m.id}">${escapeHtml(m.nombre)}</option>`).join('');
+    // Prefill con el usuario actual si es uno de los asesores válidos.
+    if (sesion?.id && asesores.some(m => Number(m.id) === Number(sesion.id))) selAsesor.value = sesion.id;
+  }
 }
 
 // Normaliza un teléfono a formato WhatsApp (solo dígitos con indicativo país).
@@ -1026,6 +1037,7 @@ async function crearOrden() {
     estado: 'Activa',
     ingreso_en: new Date().toISOString(),
     cliente_id: clienteId,
+    asesor_id: Number(document.getElementById('n-asesor')?.value) || null,
     vin: vin || null,
     correo_cliente: correoCliente || null
   };
