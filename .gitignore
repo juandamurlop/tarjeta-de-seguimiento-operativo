@@ -1,6 +1,3 @@
-# Configuración con credenciales — usa config.example.js como plantilla
-js/config.js
-
 # Dependencias (cuando se agregue package.json)
 node_modules/
 
