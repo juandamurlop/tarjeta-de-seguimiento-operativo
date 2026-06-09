@@ -164,9 +164,23 @@ function montarRolPersonalizado() {
 }
 
 if ('serviceWorker' in navigator) {
+  // Si ya había un service worker controlando la página y aparece uno NUEVO
+  // (tras un deploy), recargar una sola vez para usar de inmediato el JS/CSS
+  // nuevo y no quedar mostrando la versión vieja en caché. En la primera
+  // instalación (sin controlador previo) NO se recarga.
+  const _swHabiaControlador = !!navigator.serviceWorker.controller;
+  let _swRecargando = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    if (!_swHabiaControlador || _swRecargando) return;
+    _swRecargando = true;
+    window.location.reload();
+  });
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('/service-worker.js')
-      .then(reg => console.log('Service Worker registrado:', reg.scope))
+      .then(reg => {
+        console.log('Service Worker registrado:', reg.scope);
+        reg.update(); // buscar versión nueva en cada carga
+      })
       .catch(err => console.warn('Error al registrar Service Worker:', err));
   });
 }
