@@ -203,7 +203,7 @@
                   <label>Placa <span style="color:#DC2626">*</span></label>
                   <div style="position:relative">
                     <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--gris-mid);pointer-events:none" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input id="n-placa" placeholder="Ej: ABC123"
+                    <input id="n-placa" placeholder="Placa o nombre del cliente"
                       style="text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:2px;padding-left:36px;font-size:15px;font-weight:700"
                       oninput="this.value=this.value.toUpperCase();autocompletarPlaca(this.value)"
                       onblur="setTimeout(()=>cerrarSugerenciasPlaca(),200)"
@@ -214,8 +214,8 @@
                     <button class="btn btn-ghost btn-sm" onclick="buscarPorPlaca()" style="font-size:12px;display:flex;align-items:center;gap:4px">
                       <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Buscar
                     </button>
-                    <label class="btn btn-ghost btn-sm" style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
-                      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>Tarjeta OCR
+                    <label id="btn-ocr-tarjeta" class="btn btn-ghost btn-sm" style="font-size:12px;display:none;align-items:center;gap:4px;cursor:pointer">
+                      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>Escanear tarjeta (OCR)
                       <input type="file" id="ocr-tarjeta-input" accept="image/*" capture="environment" style="display:none" onchange="ocrTarjetaPropiedad(this)">
                     </label>
                   </div>
