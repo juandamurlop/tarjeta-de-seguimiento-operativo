@@ -178,6 +178,9 @@ module.exports = [
         montarReportes: 'readonly',
         abrirModalReporte: 'readonly',
 
+        // ── encuestas.js ──────────────────────────────────────
+        Encuestas: 'readonly',
+
         // ── metas.js ──────────────────────────────────────────
         cargarDashboardMetas: 'readonly',
 

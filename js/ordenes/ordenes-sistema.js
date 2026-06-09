@@ -7,10 +7,19 @@ async function cargarMecanicosVista() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading-state">Cargando...</div>';
   try {
-    const [mecsData, etapasActivas] = await Promise.all([
+    const [mecsData, etapasActivas, califItems] = await Promise.all([
       api('/mecanicos?activo=eq.true&order=nombre.asc').catch(() => []) || [],
-      api('/etapas?fin=is.null&inicio=not.is.null&select=id,orden_id,etapa,servicio,mecanico_id,inicio').catch(() => []) || []
+      api('/etapas?fin=is.null&inicio=not.is.null&select=id,orden_id,etapa,servicio,mecanico_id,inicio').catch(() => []) || [],
+      api('/encuesta_items_mecanico?select=mecanico_id,puntos,resultado,creado_en').catch(() => []) || []
     ]);
+
+    // Calificación por mecánico (promedio móvil de encuestas) — reusa el módulo Encuestas
+    const statsCalif = {};
+    if (typeof Encuestas !== 'undefined' && Encuestas.statsMecanico) {
+      const porMec = {};
+      califItems.forEach(it => { (porMec[it.mecanico_id] = porMec[it.mecanico_id] || []).push(it); });
+      Object.entries(porMec).forEach(([mid, arr]) => { statsCalif[mid] = Encuestas.statsMecanico(arr); });
+    }
 
     const ids = [...new Set(etapasActivas.map(e => e.orden_id))];
     const ordenes = ids.length
@@ -75,6 +84,11 @@ async function cargarMecanicosVista() {
            </button>` : ''}`;
 
       const rolLabel = esJefeTaller ? 'Jefe de taller' : escapeHtml(ROL_LABEL[m.rol]||m.rol||'—');
+      // Calificación de satisfacción (solo si el operario tiene encuestas evaluadas)
+      const stCalif = statsCalif[m.id];
+      const califHtml = (stCalif && stCalif.evaluadas)
+        ? `<div style="font-size:10.5px;font-weight:700;margin-top:1px;color:${Encuestas.colorScore(stCalif.promedio)}">★ ${stCalif.promedio != null ? stCalif.promedio.toFixed(1) : '—'}<span style="color:var(--gris-mid);font-weight:400"> · ${stCalif.evaluadas} enc.${stCalif.quejas ? ` · ${stCalif.quejas} queja${stCalif.quejas>1?'s':''}` : ''}</span></div>`
+        : '';
       return `<div class="op-row">
         <span class="op-col-dot">${indicador}</span>
         <div class="op-col-nombre">
@@ -82,6 +96,7 @@ async function cargarMecanicosVista() {
           <div style="min-width:0">
             <span style="font-size:12.5px;font-weight:${esJefeTaller?'700':'600'};color:var(--texto);overflow:hidden;text-overflow:ellipsis;display:block">${escapeHtml(m.nombre)}</span>
             <span class="op-rol-mobile">${rolLabel}</span>
+            ${califHtml}
           </div>
         </div>
         <span class="op-col-rol">${rolLabel}</span>
