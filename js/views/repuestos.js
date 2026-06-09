@@ -29,7 +29,7 @@ function _barraEstado(estadoActual) {
   </div>`;
 }
 
-const N8N_REPUESTO = 'https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa';
+const N8N_REPUESTO = CONFIG.N8N_WEBHOOK_REPUESTO;
 
 const MARCAS_VEHICULOS = [
   'Acura','Alfa Romeo','Audi','BMW','Bentley','Buick','Cadillac','Chevrolet',

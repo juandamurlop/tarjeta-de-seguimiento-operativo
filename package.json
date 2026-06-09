@@ -1,0 +1,17 @@
+{
+  "name": "freimanautos-sistema-operativo",
+  "version": "1.0.0",
+  "description": "Sistema operativo de gestión para Freimanautos — órdenes, taller, flotillas y cotizaciones",
+  "private": true,
+  "scripts": {
+    "lint": "eslint js/",
+    "lint:fix": "eslint js/ --fix",
+    "format": "prettier --write js/ css/",
+    "format:check": "prettier --check js/ css/"
+  },
+  "devDependencies": {
+    "eslint": "^9.28.0",
+    "eslint-config-prettier": "^10.1.5",
+    "prettier": "^3.5.3"
+  }
+}

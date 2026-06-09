@@ -436,7 +436,7 @@ function _cotLeerItems(tbodyId) {
 
 // ─── GUARDAR COTIZACIÓN ───────────────────────────────────
 
-const N8N_PDF_WEBHOOK = 'https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/cotizacion-pdf';
+const N8N_PDF_WEBHOOK = CONFIG.N8N_WEBHOOK_PDF;
 
 // ─── PLANTILLA DEL PDF — editable por el usuario (localStorage) ───
 function _cotPdfConfig() {

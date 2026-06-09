@@ -472,7 +472,7 @@ async function _activarPantallaTaller() {
 
   // También pre-cargar el archivo mp3
   try {
-    const audio = new Audio('motor.mp3');
+    const audio = new Audio('assets/audio/motor.mp3');
     await audio.play().catch(()=>{});
     audio.pause();
     audio.currentTime = 0;
@@ -501,7 +501,7 @@ function _tvSonar() {
       window._tvAudio.play().catch(()=>{});
       return;
     }
-    const audio = new Audio('motor.mp3');
+    const audio = new Audio('assets/audio/motor.mp3');
     audio.play().catch(()=>{});
   } catch(e) { console.warn('Sound error:', e); }
 }

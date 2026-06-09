@@ -13,17 +13,17 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Freimanautos">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="icons/favicon.png">
+  <link rel="icon" type="image/png" href="assets/icons/favicon.png">
 
   <!-- CSS externo (TODO el CSS está aquí) -->
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
@@ -70,7 +70,7 @@
     </div>
     <div class="sidebar-user">
       <div class="sidebar-user-avatar" id="sb-avatar">
-        <img src="icons/logoFreimanpfp.png" style="width:100%;height:100%;object-fit:contain;border-radius:50%">
+        <img src="assets/icons/logoFreimanpfp.png" style="width:100%;height:100%;object-fit:contain;border-radius:50%">
       </div>
       <div class="sidebar-user-info">
         <div class="sidebar-user-name" id="sb-nombre">—</div>
@@ -866,26 +866,38 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="js/api.js"></script>
-<script src="js/utils.js"></script>
-<script src="js/state.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/dashboard.js"></script>
-<script src="js/ordenes.js"></script>
-<script src="js/mecanico.js"></script>
-<script src="js/cliente.js"></script>
-<script src="js/cotizaciones.js"></script>
-<script src="js/taller.js"></script>
-<script src="js/taller-kpi.js"></script>
-<script src="js/repuestos.js"></script>
-<script src="js/reportes.js"></script>
-<script src="js/metas.js"></script>
-<script src="js/ventas.js"></script>
-<script src="js/flotillas.js"></script>
-<script src="js/aseguradoras.js"></script>
-<script src="js/cartera-cliente.js"></script>
-<script src="js/consumibles.js"></script>
-<script src="js/app.js"></script>
+<!-- Core: configuración, API, estado global, utilidades, autenticación -->
+<script src="js/config.js"></script>
+<script src="js/core/api.js"></script>
+<script src="js/core/utils.js"></script>
+<script src="js/core/state.js"></script>
+<script src="js/core/auth.js"></script>
+
+<!-- Módulo órdenes (cargado antes que vistas que dependen de él) -->
+<script src="js/ordenes/ordenes-lista.js"></script>
+<script src="js/ordenes/ordenes-detalle.js"></script>
+<script src="js/ordenes/ordenes-nueva.js"></script>
+<script src="js/ordenes/ordenes-jefe.js"></script>
+<script src="js/ordenes/ordenes-sistema.js"></script>
+
+<!-- Vistas -->
+<script src="js/views/dashboard.js"></script>
+<script src="js/views/mecanico.js"></script>
+<script src="js/views/cliente.js"></script>
+<script src="js/views/cotizaciones.js"></script>
+<script src="js/views/taller.js"></script>
+<script src="js/views/taller-kpi.js"></script>
+<script src="js/views/repuestos.js"></script>
+<script src="js/views/reportes.js"></script>
+<script src="js/views/metas.js"></script>
+<script src="js/views/ventas.js"></script>
+<script src="js/views/flotillas.js"></script>
+<script src="js/views/aseguradoras.js"></script>
+<script src="js/views/cartera-cliente.js"></script>
+<script src="js/views/consumibles.js"></script>
+
+<!-- Bootstrap: arranca la app -->
+<script src="js/core/app.js"></script>
 
 
   <!-- ══ MODAL REPORTE ══════════════════════════════════════ -->

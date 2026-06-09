@@ -173,7 +173,7 @@ async function cargarEtapasMecanico() {
           </div>
           <div style="text-align:right">
             ${orden.pulmon ? '<span class="badge badge-pulmon">En Pulmón</span>' : ''}
-            <div style="font-size:11px;color:var(--gris-mid);font-family:\'DM Mono\',monospace;margin-top:4px">${formatFecha(orden.creado_en)}</div>
+            <div style="font-size:11px;color:var(--gris-mid);font-family:'DM Mono',monospace;margin-top:4px">${formatFecha(orden.creado_en)}</div>
           </div>
         </div>
         ${etapsHtml}
@@ -511,7 +511,6 @@ async function cargarRepuestosMecanico() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading-state">Cargando...</div>';
   try {
-    {
     const solicitudes = await api(`/solicitudes_repuesto?solicitado_por=eq.${encodeURIComponent(sesion.nombre)}&order=creado_en.desc&limit=80&select=*`).catch(()=>[]) || [];
     const ordenIds = [...new Set(solicitudes.map(s => s.orden_id).filter(Boolean))];
     const ordenes = ordenIds.length ? await api(`/ordenes?id=in.(${ordenIds.join(',')})&select=id,placa,propietario,marca,linea,estado`).catch(()=>[]) || [] : [];
@@ -580,65 +579,6 @@ async function cargarRepuestosMecanico() {
         </div>`;
       }).join('') : '<div class="empty-state"><p>No tienes solicitudes de repuestos todavía.</p></div>'}
     `;
-    return;
-    }
-
-    const etapas = await api(`/etapas?mecanico_id=eq.${sesion.id}&fin=is.null&select=orden_id`).catch(()=>[]) || [];
-    const oids = [...new Set(etapas.map(e=>e.orden_id))];
-    const ordenes = oids.length ? await api(`/ordenes?id=in.(${oids.join(',')})&select=id,placa,propietario`).catch(()=>[]) || [] : [];
-    const solicitudes = await api(`/solicitudes_repuesto?solicitado_por=eq.${encodeURIComponent(sesion.nombre)}&order=creado_en.desc&limit=30&select=*`).catch(()=>[]) || [];
-    const estadoColor = {
-      pendiente_jefe:'#D97706', enviado_repuestos:'#7C3AED',
-      cotizado:'#2563EB', pedido:'#0891B2',
-      entregado:'#059669', rechazado:'#DC2626'
-    };
-    const estadoBg = {
-      pendiente_jefe:'#FEF3C7', enviado_repuestos:'#EDE9FE',
-      cotizado:'#EBF2FF', pedido:'#E0F2FE',
-      entregado:'#E6F5EF', rechazado:'#FEE2E2'
-    };
-    const estadoLabel = {
-      pendiente_jefe:'Pendiente revisión', enviado_repuestos:'En gestión',
-      cotizado:'Cotizado', pedido:'Pedido al proveedor',
-      entregado:'Entregado ✓', rechazado:'Rechazado'
-    };
-
-    _mecRepItems = [0];
-    cont.innerHTML = `
-      ${solicitudes.length ? `<div style="margin-bottom:20px">
-        <div class="seccion-titulo" style="margin-bottom:10px">Mis solicitudes</div>
-        ${solicitudes.map(s => {
-          const o = ordenes.find(ord=>ord.id===s.orden_id)||{};
-          const color = estadoColor[s.estado]||'#6B7280';
-          const bg = estadoBg[s.estado]||'#F3F4F6';
-          const puedeRecibir = s.estado === 'enviado';
-          return `<div style="border:1px solid var(--gris-borde);border-radius:8px;padding:12px;margin-bottom:8px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${puedeRecibir?'10px':'0'}">
-              <div>
-                <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px">${o.placa||'—'}</div>
-                <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${formatTS(s.creado_en)}</div>
-              </div>
-              <span style="font-size:11px;font-weight:700;color:${color};background:${bg};padding:3px 12px;border-radius:99px;text-transform:uppercase">${estadoLabel[s.estado]||s.estado}</span>
-            </div>
-            ${puedeRecibir ? `<button class="btn btn-success btn-sm" style="width:100%" onclick="marcarRepuestoRecibido(${s.id})">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
-              Confirmar recibido
-            </button>` : ''}
-          </div>`;
-        }).join('')}
-      </div>` : ''}
-      <div class="seccion-titulo" style="margin-bottom:10px">Nueva solicitud</div>
-      ${!oids.length ? '<div style="font-size:13px;color:var(--gris-mid);padding:12px 0">No tenés órdenes activas asignadas.</div>' : `
-        <div class="field" style="margin-bottom:12px"><label>Orden de trabajo *</label>
-          <select id="mec-rep-orden">
-            <option value="">— Seleccioná la orden —</option>
-            ${ordenes.map(o=>`<option value="${o.id}">${o.placa} · ${o.propietario||'—'}</option>`).join('')}
-          </select>
-        </div>
-        <div id="mec-rep-items">${renderMecRepItem(0)}</div>
-        <button class="btn btn-ghost btn-sm" onclick="agregarMecRepItem()" style="margin-top:4px;margin-bottom:16px">+ Agregar pieza</button>
-        <div class="btn-row"><button class="btn btn-primary" onclick="enviarMecRepuestos()">Enviar solicitud</button></div>
-      `}`;
   } catch(e) { cont.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
 }
 

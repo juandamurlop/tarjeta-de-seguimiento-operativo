@@ -1,0 +1,12 @@
+/* =====================================================
+   FREIMANAUTOS -- Hoja de estilos principal
+   Los estilos estan divididos en modulos tematicos.
+   Edita el archivo correspondiente, no este.
+===================================================== */
+
+@import url('base.css');
+@import url('layout.css');
+@import url('components.css');
+@import url('ordenes.css');
+@import url('cotizaciones.css');
+@import url('vistas.css');

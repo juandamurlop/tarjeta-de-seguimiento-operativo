@@ -1,0 +1,20 @@
+# Configuración con credenciales — usa config.example.js como plantilla
+js/config.js
+
+# Dependencias (cuando se agregue package.json)
+node_modules/
+
+# Variables de entorno
+.env
+.env.local
+.env.production
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/settings.json
+*.suo
+*.user

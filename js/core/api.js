@@ -1,10 +1,10 @@
 // ═══════════════════════════════════════════════════════════
-// CONEXIÓN A SUPABASE
+// CONEXIÓN A SUPABASE — valores definidos en js/config.js
 // ═══════════════════════════════════════════════════════════
-const SUPABASE_URL = 'https://xjavnpwuhpmvpjdbjdeg.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqYXZucHd1aHBtdnBqZGJqZGVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4Njc5MDcsImV4cCI6MjA5MjQ0MzkwN30.07f6cGVrFhtm-B-I7iBLaHnPSuozFDpEf9vOHrliGRs';
-const BUCKET = 'fotos-etapas';
-const N8N_WEBHOOK = 'https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa';
+const SUPABASE_URL = CONFIG.SUPABASE_URL;
+const SUPABASE_KEY = CONFIG.SUPABASE_KEY;
+const BUCKET       = CONFIG.BUCKET;
+const N8N_WEBHOOK  = CONFIG.N8N_WEBHOOK_ETAPA;
 const API_METHODS = new Set(['GET', 'POST', 'PATCH', 'DELETE']);
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_UPLOAD_MIME = new Set([
@@ -115,7 +115,7 @@ function normalizarStoragePath(file, path) {
     .map(p => p.replace(/[^a-zA-Z0-9._-]/g, '_'))
     .join('/');
   if (!limpio || limpio.includes('..')) throw new Error('Ruta de archivo invalida');
-  return limpio.replace(/\.[^.\/]+$/, `.${ext}`);
+  return limpio.replace(/\.[^./]+$/, `.${ext}`);
 }
 
 // ═══════════════════════════════════════════════════════════
