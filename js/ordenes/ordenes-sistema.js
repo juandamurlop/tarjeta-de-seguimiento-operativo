@@ -1702,6 +1702,11 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
     const _baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
     const _logoUrl  = _baseUrl + 'icons/Logo_Fondo_Taller.png';
 
+    // Orden de trabajo de ASEGURADORA: muestra solo el total (precio_venta_cliente
+    // que fija el jefe), sin detalle de procesos ni repuestos. Los demás tipos de
+    // cliente (particular/empresa/flotilla) llevan el detalle completo.
+    const esAseg = orden.tipo_cliente === 'aseguradora';
+
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1791,7 +1796,7 @@ tr:nth-child(even) td{background:#F9FAFB}
         <div><div class="lbl">Carrocería</div><div style="font-weight:600;color:#374151">${escapeHtml(orden.tipo_carroceria||'—')}</div></div>
       </div>
       ${orden.vin ? `<div style="padding-top:6px;border-top:1px solid #E5E7EB"><div class="lbl">VIN / No. Chasis</div><div style="font-family:monospace;font-size:8.5px;color:#374151;letter-spacing:.5px">${escapeHtml(orden.vin)}</div></div>` : ''}
-      ${orden.descripcion_general ? `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #E5E7EB"><div class="lbl">Descripción</div><div style="font-size:8.5px;line-height:1.5;color:#374151">${escapeHtml(orden.descripcion_general)}</div></div>` : ''}
+      ${!esAseg && orden.descripcion_general ? `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #E5E7EB"><div class="lbl">Descripción</div><div style="font-size:8.5px;line-height:1.5;color:#374151">${escapeHtml(orden.descripcion_general)}</div></div>` : ''}
     </div>
   </div>
 
@@ -1826,6 +1831,14 @@ tr:nth-child(even) td{background:#F9FAFB}
 </div>
 
 <!-- 4. TRABAJOS (tabla) + TOTALES (derecha) -->
+${esAseg ? `
+<div style="border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;margin-bottom:6px">
+  <div class="sh">4. Total</div>
+  <div style="padding:22px 16px;display:flex;flex-direction:column;align-items:center;gap:8px">
+    <div style="font-size:9px;color:#6B7280;text-transform:uppercase;letter-spacing:1px">Total a pagar</div>
+    <div style="font-size:26px;font-weight:900;color:#111;font-family:'Courier New',monospace">${orden.precio_venta_cliente ? fmt(orden.precio_venta_cliente) : '$ ____________'}</div>
+  </div>
+</div>` : `
 <div style="display:grid;grid-template-columns:1fr 175px;gap:0;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;margin-bottom:6px">
   <div style="border-right:1px solid #E5E7EB">
     <div class="sh">4. Descripción de trabajos</div>
@@ -1873,13 +1886,13 @@ tr:nth-child(even) td{background:#F9FAFB}
       ${!conPrecios ? `<div style="margin-top:6px;padding:4px 5px;border:0.8px solid #111;font-size:8.5px;font-weight:700;display:flex;justify-content:space-between"><span>M.O. sin IVA</span><span class="money">${fmt(totalManoObra)}</span></div>` : ''}
     </div>
   </div>
-</div>
+</div>`}
 
 <!-- 5. REPUESTOS + FIRMAS -->
 <div style="display:grid;grid-template-columns:1fr 175px;gap:0;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden">
   <div style="border-right:1px solid #E5E7EB">
     <div class="sh">5. Repuestos / Materiales</div>
-    <table>
+    ${esAseg ? `<div style="padding:18px 14px;font-size:9px;color:#6B7280;text-align:center;line-height:1.6">Trabajos y repuestos incluidos en el <b>Total a pagar</b>.</div>` : `<table>
       <thead><tr>
         <th style="width:18px;text-align:center">#</th>
         <th style="width:55px">Código</th>
@@ -1904,7 +1917,7 @@ tr:nth-child(even) td{background:#F9FAFB}
         }).join('') : ''}
         ${Array.from({length:Math.max(0,2-solicitudes.length)},(_,i)=>`<tr><td style="color:#ddd;text-align:center;font-size:8px">${solicitudes.length+i+1}</td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}
       </tbody>
-    </table>
+    </table>`}
     ${novedades.length ? `<div style="border-top:0.8px solid #ccc;padding:3px 7px;background:#FFF5F5"><b style="font-size:7px;text-transform:uppercase;color:#991B1B">Novedades:</b> ${novedades.map(n=>'<span style="font-size:8px;margin-left:6px">'+escapeHtml(n.tipo||'—')+': '+escapeHtml(n.motivo||'—')+'</span>').join('')}</div>` : ''}
   </div>
   <!-- 6. FIRMAS -->
