@@ -279,6 +279,18 @@ async function abrirOrden(id) {
               })()}
             </div>
           </div>
+          ${orden.tipo_cliente === 'aseguradora' && esJefe() ? `
+          <div class="sidebar-card">
+            <div class="sidebar-card-header" style="background:#ECFDF5;color:#047857">Precio venta a cliente</div>
+            <div class="sidebar-card-body">
+              <div style="font-size:11px;color:var(--gris-mid);margin-bottom:8px">Es el total que verá la <strong>aseguradora</strong> en la orden de trabajo (sin detalle de procesos). Solo lo ven jefe y gerente.</div>
+              <div style="display:flex;gap:6px">
+                <input id="precio-venta-${orden.id}" type="number" min="0" step="1000" placeholder="0" value="${orden.precio_venta_cliente||''}" style="flex:1;min-width:0;padding:7px 9px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:13px;font-family:'DM Mono',monospace">
+                <button class="btn btn-primary btn-sm" onclick="guardarPrecioVentaCliente(${orden.id})">Guardar</button>
+              </div>
+              ${orden.precio_venta_cliente ? `<div style="font-size:12px;color:var(--verde);font-weight:600;margin-top:8px">Total a cliente: ${new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(orden.precio_venta_cliente)}</div>` : ''}
+            </div>
+          </div>` : ''}
           <div class="sidebar-card">
             <div class="sidebar-card-header">Fotos recientes</div>
             <div class="sidebar-card-body">

@@ -24,3 +24,9 @@ create index if not exists idx_tecnicos_externos_placa  on tecnicos_externos (pl
 -- Permitir lectura/escritura con la API (PostgREST). Si usas RLS, agrega las
 -- políticas correspondientes; si tus otras tablas no usan RLS, no hace falta.
 -- alter table tecnicos_externos enable row level security;
+
+
+-- 2) Precio de venta al cliente (solo aseguradoras)
+--    Lo fija el jefe/gerente. Es el total que se imprime en la orden de
+--    trabajo de aseguradora (sin mostrar el detalle de procesos).
+alter table ordenes add column if not exists precio_venta_cliente numeric;

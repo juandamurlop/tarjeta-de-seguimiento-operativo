@@ -303,6 +303,19 @@ async function cambiarEstado(v) {
   } catch(e) { toast('Error: ' + e.message, 'err'); }
 }
 
+// Precio de venta al cliente (solo aseguradoras). Lo fija el jefe/gerente y es
+// el total que se imprime en la orden de trabajo de aseguradora (sin detalle).
+async function guardarPrecioVentaCliente(ordenId) {
+  const el = document.getElementById(`precio-venta-${ordenId}`);
+  const val = (el && el.value !== '') ? parseFloat(el.value) : null;
+  try {
+    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { precio_venta_cliente: val });
+    if (ordenActual && ordenActual.id === ordenId) ordenActual.precio_venta_cliente = val;
+    toast('Precio de venta guardado ✓');
+    abrirOrden(ordenId);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
 async function recibirVehiculo(ordenId) {
   // Abre el formulario completo PRE-LLENADO con lo agendado, para completar
   // kilometraje, inventario, daños, etc. Al guardar, activa la orden (PATCH).
