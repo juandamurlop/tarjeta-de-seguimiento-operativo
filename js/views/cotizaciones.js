@@ -399,8 +399,8 @@ function _cotActualizarTotales() {
   const mo  = _calcTbody('cot-mo-tbody');
   const dtoTotal = rep.descuento + mo.descuento;
   const total    = rep.subtotal  + mo.subtotal;
-  const conIva   = document.getElementById('cn-iva-check')?.checked || false;
-  const iva      = conIva ? Math.round(total * 0.19) : 0;
+  const conIva   = true; // el IVA siempre se incluye en las cotizaciones
+  const iva      = Math.round(total * 0.19);
   const totalIva = total + iva;
   const _txt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   _txt('cn-sub-rep',   formatCOP(rep.subtotal));
@@ -575,7 +575,7 @@ async function generarPdfCotizacion(cotId, accion = 'descargar') {
     const grRep = _gross(repuestos), grMo = _gross(moItems);
     const descTot = _desc(repuestos) + _desc(moItems);
     const base  = grRep + grMo - descTot;                          // subtotal neto
-    const _ivaV = (cot.iva || 0) > 0 ? Math.round(base * 0.19) : 0;  // IVA 19% si aplica
+    const _ivaV = Math.round(base * 0.19);  // IVA 19% siempre incluido
     const _tot  = base + _ivaV;
     // Ejecutivo a cargo = el perfil que CREÓ la cotización (guardado en
     // cot.tecnico). Si es una cotización antigua sin ese dato, cae al usuario
@@ -752,9 +752,8 @@ async function guardarNuevaCotizacion(conPdf = false) {
     const moItems    = _cotLeerItems('cot-mo-tbody');
     const totalRep   = repItems.reduce((s, i) => s + i.total, 0);
     const totalMo    = moItems.reduce((s, i)  => s + i.total, 0);
-    const conIva     = document.getElementById('cn-iva-check')?.checked || false;
     const subtotal   = totalRep + totalMo;
-    const iva        = conIva ? Math.round(subtotal * 0.19) : 0;
+    const iva        = Math.round(subtotal * 0.19); // IVA siempre incluido
     const totalFinal = subtotal + iva;
 
     const camposBase = {
