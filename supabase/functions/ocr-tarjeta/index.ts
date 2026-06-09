@@ -39,9 +39,12 @@ Deno.serve(async (req) => {
     const prompt =
       "Eres un extractor de datos de TARJETAS DE PROPIEDAD de vehículos de Colombia. " +
       "Lee la imagen y devuelve SOLO un JSON válido con estas claves (string; vacío si no aparece): " +
-      "placa, marca, linea, modelo, color, vin, propietario. " +
+      "placa, marca, linea, modelo, color, vin, propietario, documento, tipo_documento. " +
       "'modelo' es el AÑO del vehículo. 'linea' es la referencia/línea. " +
-      "La placa en mayúsculas. No agregues texto fuera del JSON.";
+      "'documento' es el número de identificación del propietario SOLO DÍGITOS (sin puntos, " +
+      "comas ni guiones; si es NIT incluye el dígito de verificación sin el guion). " +
+      "'tipo_documento' es 'CC' si el propietario es una persona (cédula), o 'NIT' si es una " +
+      "empresa/persona jurídica. La placa en mayúsculas. No agregues texto fuera del JSON.";
 
     const dataUrl = `data:${tipo || "image/jpeg"};base64,${imagen}`;
 

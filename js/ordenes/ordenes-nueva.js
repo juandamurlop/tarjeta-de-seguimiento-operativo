@@ -306,13 +306,22 @@ async function ocrTarjetaPropiedad(input) {
       if (el && !el.value) { el.value = parsed.propietario; encontrados.push('propietario'); }
     }
 
-    // Cédula / NIT del propietario (extraída de la tarjeta)
-    const cedulaParsed = parsed.cedula_nit || parsed.cedula || parsed.documento;
-    if (cedulaParsed) {
+    // Documento del propietario (cédula o NIT) extraído de la tarjeta.
+    const docParsed = parsed.documento || parsed.cedula_nit || parsed.cedula;
+    const esNit = (parsed.tipo_documento || '').toUpperCase() === 'NIT';
+    if (docParsed) {
       const tipo = document.getElementById('n-tipo-cliente')?.value;
       const cedId = tipo === 'aseguradora' ? 'n-cedula-aseg' : 'n-cedula-cliente';
       const cedEl = document.getElementById(cedId);
-      if (cedEl && !cedEl.value) { cedEl.value = cedulaParsed; encontrados.push('cédula'); }
+      if (cedEl && !cedEl.value) { cedEl.value = docParsed; encontrados.push(esNit ? 'NIT' : 'cédula'); }
+      // Si la tarjeta es de una empresa (NIT), ajustar el modo persona/empresa.
+      if (esNit) {
+        const radioEmp = document.querySelector('input[name="n-tipo-persona"][value="empresa"]');
+        if (radioEmp && typeof toggleTipoPersonaNueva === 'function') {
+          radioEmp.checked = true;
+          toggleTipoPersonaNueva('empresa');
+        }
+      }
     }
 
     // Si encontró placa, buscar historial
@@ -1011,6 +1020,9 @@ async function crearOrden() {
     color: document.getElementById('n-color')?.value || null,
     propietario: document.getElementById('n-propietario')?.value || null,
     telefono: document.getElementById('n-telefono')?.value || null,
+    // Dirección del cliente (Particular usa n-direccion; Aseguradora, naseg-dir).
+    direccion: (document.getElementById('n-direccion')?.value.trim()
+             || document.getElementById('naseg-dir')?.value.trim() || null),
     tipo_cliente: (() => {
       const persona = document.querySelector('input[name="n-tipo-persona"]:checked')?.value || 'natural';
       if (persona === 'empresa') return 'empresa';

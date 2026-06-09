@@ -1786,6 +1786,7 @@ tr:nth-child(even) td{background:#F9FAFB}
       <div style="margin-bottom:6px"><div class="lbl">Nombre</div><div class="val" style="font-size:10px">${escapeHtml(orden.propietario)||'—'}</div></div>
       <div style="margin-bottom:6px"><div class="lbl">Teléfono</div><div class="val" style="font-size:9.5px">${escapeHtml(orden.telefono)||'—'}</div></div>
       <div style="margin-bottom:6px"><div class="lbl">Email</div><div style="font-size:8.5px;color:#374151;word-break:break-all">${escapeHtml(orden.correo_cliente||orden.email||'—')}</div></div>
+      ${orden.direccion ? `<div style="margin-bottom:6px"><div class="lbl">Dirección</div><div style="font-size:8.5px;color:#374151">${escapeHtml(orden.direccion)}</div></div>` : ''}
       <div${orden.aseguradora?' style="margin-bottom:6px"':''}><div class="lbl">Tipo de cliente</div><div style="font-weight:600;color:#374151">${escapeHtml(orden.tipo_cliente)||'Particular'}</div></div>
       ${orden.aseguradora ? `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #E5E7EB"><div class="lbl">Aseguradora</div><div class="val" style="color:#1a1a1a;font-size:9.5px">${escapeHtml(orden.aseguradora)}</div></div>` : ''}
     </div>

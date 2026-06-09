@@ -30,3 +30,7 @@ create index if not exists idx_tecnicos_externos_placa  on tecnicos_externos (pl
 --    Lo fija el jefe/gerente. Es el total que se imprime en la orden de
 --    trabajo de aseguradora (sin mostrar el detalle de procesos).
 alter table ordenes add column if not exists precio_venta_cliente numeric;
+
+
+-- 3) Dirección del cliente en la orden (Bloque B)
+alter table ordenes add column if not exists direccion text;
