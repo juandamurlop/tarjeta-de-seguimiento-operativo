@@ -51,48 +51,40 @@ let fotosIngresoPendientes = [];
 let aprobEtapaId = null;
 let todasCotizaciones = [];
 
+// Servicios con `externo: true` → el técnico se escribe a mano (campo de texto)
+// porque suele ser una persona externa que no está en la base de datos.
+// Los demás usan la lista desplegable de técnicos del taller.
 const CATALOGO = {
   latoneria: {
     nombre: 'Latonería', clase: 'latoneria',
     etapas: [
-      { key: 'lat_desarmado', nombre: 'Desarmado', esDesarmado: true },
-      { key: 'lat_tapiceria', nombre: 'Tapicería' },
-      { key: 'lat_latoneria', nombre: 'Latonería' },
-      { key: 'lat_blindaje',  nombre: 'Blindaje' },
-      { key: 'lat_vidrieria', nombre: 'Vidriería' },
-      { key: 'lat_alistador', nombre: 'Alistador' },
-      { key: 'lat_armado',    nombre: 'Armado', esArmado: true },
-      { key: 'lat_tot',       nombre: 'T.O.T', tot: true },
+      { key: 'lat_desarmado',  nombre: 'Desarmado', esDesarmado: true },
+      { key: 'lat_reparacion', nombre: 'Reparación' },
+      { key: 'lat_armado',     nombre: 'Armado', esArmado: true },
     ]
   },
-
-
-
-
   pintura: {
     nombre: 'Pintura', clase: 'pintura',
     etapas: [
-      { key: 'pin_alistador', nombre: 'Alistador' },
+      { key: 'pin_alistador', nombre: 'Alistador', esAlistador: true },
       { key: 'pin_pintor',    nombre: 'Pintor' },
-      { key: 'pin_tot',       nombre: 'T.O.T', tot: true },
+      { key: 'pin_brillador', nombre: 'Brillador', esBrillador: true },
     ]
   },
   mecanica: {
-    nombre: 'Mecánica', clase: 'mecanica',
+    nombre: 'Mecánica', clase: 'mecanica', externo: true,
     etapas: [
-      { key: 'mec_mecanica',  nombre: 'Mecánica' },
-      { key: 'mec_electrica', nombre: 'Eléctrica' },
-      { key: 'mec_tot',       nombre: 'T.O.T', tot: true },
+      { key: 'mec_mecanica',    nombre: 'Mecánica' },
+      { key: 'mec_electronica', nombre: 'Electrónica' },
     ]
   },
   adicionales: {
-    nombre: 'Adicionales', clase: 'adicionales',
+    nombre: 'Adicionales', clase: 'adicionales', externo: true,
     etapas: [
-      { key: 'adi_polarizados', nombre: 'Polarizados' },
-      { key: 'adi_radio',       nombre: 'Radio' },
-      { key: 'adi_lavado',      nombre: 'Lavado' },
-      { key: 'adi_tot',         nombre: 'T.O.T', tot: true },
-      { key: 'adi_otro',        nombre: 'Otro', otro: true },
+      { key: 'adi_alineacion', nombre: 'Alineación' },
+      { key: 'adi_polarizado', nombre: 'Polarizado' },
+      { key: 'adi_lavado',     nombre: 'Lavado' },
+      { key: 'adi_tot',        nombre: 'TOT' },
     ]
   }
 };

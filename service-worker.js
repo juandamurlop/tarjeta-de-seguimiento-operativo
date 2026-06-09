@@ -1,5 +1,7 @@
 const CACHE_NAME = 'freimanautos-pwa-v210';
 
+// Lista alineada con lo que carga index.html tras la reestructuración de
+// carpetas (css/main.css importa el resto; js dividido en core/ordenes/views).
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -95,7 +97,25 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // STALE-WHILE-REVALIDATE para assets locales GET (HTML/CSS/JS):
+  // El documento HTML (navegación) va NETWORK-FIRST: tras un deploy —sobre todo
+  // si cambió la estructura de archivos— el index.html siempre será el actual y
+  // referenciará los .js/.css correctos. Evita servir una mezcla vieja/nueva
+  // (causa del error "Cannot access 'API_METHODS' before initialization").
+  // Si no hay red, cae a la caché.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).then(response => {
+        if (response && response.status === 200 && response.type !== 'opaque') {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(request).then(c => c || caches.match('/index.html')))
+    );
+    return;
+  }
+
+  // STALE-WHILE-REVALIDATE para assets locales GET (CSS/JS):
   // responde al instante desde la caché (rápido) y, en paralelo, baja la
   // versión nueva para actualizar la caché de cara a la próxima carga.
   // Equilibrio ideal: rápido como cache-first y se actualiza solo.

@@ -1177,31 +1177,36 @@ function buildChecklist(containerId, servicios, existentes) {
       const checked = !!ex;
       const dis = iniciada ? 'disabled' : '';
       const mecSelected = ex?.mecanico_id ?? '';
-      const extraHtml = (et.tot || et.otro) ? `<div class="extra-input${checked ? ' show' : ''}" id="extra-${et.key}">
-        <input type="text" placeholder="${et.tot ? '¿Quién es el tercero?' : 'Especifica cuál...'}" style="font-size:13px;margin-top:4px">
-      </div>` : '';
+      const esExterno = !!srv.externo;
+      const extraHtml = '';
       const mecsFiltrados = mecElegibles;
-      // Para "Desarmado": al cambiar técnico, auto-rellena "Armado" con el mismo
-      const onChangeArmado = et.esDesarmado
-        ? `onchange="_autoFillArmado(this.value,'${containerId}')"`
+      // Autoselección: "Armado" replica su técnico en Desarmado/Reparación;
+      // "Alistador" lo replica en "Brillador".
+      const autoChange = et.esArmado
+        ? `onchange="_autoFillLatoneria(this.value,'${containerId}')"`
+        : et.esAlistador
+        ? `onchange="_autoFillPinturaBrillador(this.value,'${containerId}')"`
         : '';
-      const mecHtml = !iniciada ? `<div class="mec-select-wrap" id="mec-${et.key}" style="margin-top:6px;display:${checked ? 'block' : 'none'}">
-        <select id="mec-sel-${et.key}" style="font-size:13px" ${onChangeArmado}>
-          <option value="">— Asignar técnico * —</option>
-          ${mecsFiltrados.map(m => `<option value="${m.id}" ${m.id == mecSelected ? ' selected' : ''}>${escapeHtml(m.nombre)}</option>`).join('')}
-        </select>
-      </div>` : `<div style="font-size:11px;color:var(--gris-mid);margin-top:4px">Técnico ya asignado</div>`;
-      const camposHtml = !iniciada ? `
-        <div class="etapa-extra-campos" id="campos-${et.key}" style="display:${checked ? 'block' : 'none'};margin-top:8px;padding:10px;background:var(--gris-bg);border-radius:6px;border:1px solid var(--gris-borde)">
-          <div style="display:grid;grid-template-columns:1fr 80px 110px;gap:8px">
-            <div><label style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gris-mid);display:block;margin-bottom:3px">Descripción</label>
-              <textarea id="desc-et-${et.key}" placeholder="Detalle del trabajo a realizar..." style="width:100%;padding:7px 9px;border:1.5px solid var(--gris-borde);border-radius:5px;font-size:12px;min-height:72px;resize:vertical;box-sizing:border-box;line-height:1.4;font-family:inherit">${ex?.descripcion||''}</textarea></div>
-            <div><label style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gris-mid);display:block;margin-bottom:3px"># Horas</label>
-              <input id="piezas-et-${et.key}" type="number" min="0" step="0.5" placeholder="0" style="width:100%;padding:7px 9px;border:1.5px solid var(--gris-borde);border-radius:5px;font-size:12px" value="${ex?.horas_estimadas||''}"></div>
-            <div><label style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gris-mid);display:block;margin-bottom:3px">Valor COP</label>
-              <input id="valor-et-${et.key}" type="number" min="0" step="1000" placeholder="0" style="width:100%;padding:7px 9px;border:1.5px solid var(--gris-borde);border-radius:5px;font-size:12px" value="${ex?.valor||''}"></div>
-          </div>
-        </div>` : '';
+      let mecHtml;
+      if (iniciada) {
+        mecHtml = `<div style="font-size:11px;color:var(--gris-mid);margin-top:4px">Técnico ya asignado</div>`;
+      } else if (esExterno) {
+        // Mecánica / Adicionales: el técnico suele ser externo (no está en la
+        // base de datos), por eso se escribe el nombre a mano.
+        mecHtml = `<div class="mec-select-wrap" id="mec-${et.key}" style="margin-top:6px;display:${checked ? 'block' : 'none'}">
+          <input type="text" id="tec-txt-${et.key}" placeholder="Nombre del técnico (externo) *" value="${ex?.tercero ? escapeHtml(ex.tercero) : ''}" style="font-size:13px;width:100%;padding:7px 9px;border:1.5px solid var(--gris-borde);border-radius:5px;box-sizing:border-box">
+        </div>`;
+      } else {
+        mecHtml = `<div class="mec-select-wrap" id="mec-${et.key}" style="margin-top:6px;display:${checked ? 'block' : 'none'}">
+          <select id="mec-sel-${et.key}" style="font-size:13px" ${autoChange}>
+            <option value="">— Asignar técnico * —</option>
+            ${mecsFiltrados.map(m => `<option value="${m.id}" ${m.id == mecSelected ? ' selected' : ''}>${escapeHtml(m.nombre)}</option>`).join('')}
+          </select>
+        </div>`;
+      }
+      // Al seleccionar una etapa solo se asigna el técnico. Las horas y el valor
+      // de la mano de obra se ingresan después, en el detalle de cada etapa.
+      const camposHtml = '';
       return `<div class="check-item">
         <input type="checkbox" id="chk-${et.key}" value="${et.key}" ${checked ? 'checked' : ''} ${dis}
           onchange="onChkChange('${et.key}', this.checked)">
@@ -1230,26 +1235,38 @@ function onChkChange(key, checked) {
   const camposDiv = document.getElementById('campos-' + key);
   if (camposDiv) camposDiv.style.display = checked ? 'block' : 'none';
 
-  // Si se selecciona "Desarmado", marcar "Armado" automáticamente al final
-  if (key === 'lat_desarmado' && checked) {
-    const chkArm = document.getElementById('chk-lat_armado');
-    if (chkArm && !chkArm.checked && !chkArm.disabled) {
-      chkArm.checked = true;
-      onChkChange('lat_armado', true);
-    }
+  // Latonería: al marcar "Armado" se marcan también Desarmado y Reparación
+  // (son el mismo flujo y normalmente el mismo técnico).
+  if (key === 'lat_armado' && checked) {
+    ['lat_desarmado', 'lat_reparacion'].forEach(k => {
+      const c = document.getElementById('chk-' + k);
+      if (c && !c.checked && !c.disabled) { c.checked = true; onChkChange(k, true); }
+    });
+  }
+  // Pintura: al marcar "Alistador" se marca también "Brillador".
+  if (key === 'pin_alistador' && checked) {
+    const c = document.getElementById('chk-pin_brillador');
+    if (c && !c.checked && !c.disabled) { c.checked = true; onChkChange('pin_brillador', true); }
   }
 }
 
-// Auto-rellena el técnico de "Armado" con el mismo de "Desarmado"
-function _autoFillArmado(mecId, containerId) {
-  const armSel = document.getElementById('mec-sel-lat_armado');
-  if (!armSel) return;
-  const chkArm = document.getElementById('chk-lat_armado');
-  if (!chkArm?.checked) return;
-  // Pre-llena si Armado no tiene técnico asignado aún
-  if (!armSel.value || armSel.value === '') {
-    armSel.value = mecId;
-  }
+// Latonería: asignar técnico a "Armado" lo replica en Desarmado y Reparación,
+// y marca las tres etapas si no estaban marcadas.
+function _autoFillLatoneria(mecId, containerId) {
+  ['lat_desarmado', 'lat_reparacion', 'lat_armado'].forEach(k => {
+    const chk = document.getElementById('chk-' + k);
+    if (chk && !chk.checked && !chk.disabled) { chk.checked = true; onChkChange(k, true); }
+    const sel = document.getElementById('mec-sel-' + k);
+    if (sel && !sel.disabled && mecId) sel.value = mecId;
+  });
+}
+
+// Pintura: asignar técnico a "Alistador" lo replica en "Brillador".
+function _autoFillPinturaBrillador(mecId, containerId) {
+  const chk = document.getElementById('chk-pin_brillador');
+  if (chk && !chk.checked && !chk.disabled) { chk.checked = true; onChkChange('pin_brillador', true); }
+  const sel = document.getElementById('mec-sel-pin_brillador');
+  if (sel && !sel.disabled && mecId) sel.value = mecId;
 }
 
 function recogerChecklist(containerId) {
@@ -1262,21 +1279,30 @@ function recogerChecklist(containerId) {
       if (et) { srvKey = sk; etDef = et; break; }
     }
     if (!etDef) return;
-    const inp = document.querySelector(`#extra-${key} input`);
+    const tecTxt   = document.getElementById(`tec-txt-${key}`);
     const mecSel   = document.getElementById(`mec-sel-${key}`);
-    const descEl   = document.getElementById(`desc-et-${key}`);
-    const piezasEl = document.getElementById(`piezas-et-${key}`);
-    const valorEl  = document.getElementById(`valor-et-${key}`);
-    result.push({ 
-      key, servicio: srvKey, nombre: etDef.nombre, 
-      tercero:     inp?.value?.trim() || null, 
-      mecanico_id: mecSel?.value ? parseInt(mecSel.value) : null,
-      descripcion: descEl?.value?.trim() || null,
-      horas_estimadas: piezasEl?.value ? parseFloat(piezasEl.value) : null,
-      valor:       valorEl?.value ? parseFloat(valorEl.value) : null
+    result.push({
+      key, servicio: srvKey, nombre: etDef.nombre,
+      tercero:     tecTxt?.value?.trim() || null,
+      mecanico_id: mecSel?.value ? parseInt(mecSel.value) : null
     });
   });
   return result;
+}
+
+// Guarda el nombre de los técnicos externos (Mecánica/Adicionales) en su propia
+// tabla, ligados a la placa y la orden, para llevar historial. Si la tabla aún
+// no existe en la base de datos, falla en silencio sin romper el guardado.
+async function _guardarTecnicosExternos(etapas, ordenId, placa) {
+  const externos = etapas.filter(et => et.tercero && (et.servicio === 'mecanica' || et.servicio === 'adicionales'));
+  for (const et of externos) {
+    try {
+      await api('/tecnicos_externos', 'POST', {
+        nombre: et.tercero, servicio: et.servicio, etapa: et.nombre,
+        placa: placa || null, orden_id: ordenId || null
+      }, { Prefer: 'return=minimal' });
+    } catch (e) { console.warn('No se pudo registrar técnico externo:', e?.message); }
+  }
 }
 
 async function guardarEtapasNueva() {
@@ -1284,17 +1310,12 @@ async function guardarEtapasNueva() {
   if (!etapas.length) { toast('Selecciona al menos una etapa', 'err'); return; }
   const sinMec = etapas.filter(et => !et.mecanico_id && !et.tercero);
   if (sinMec.length) { toast(`Asigna un mecánico a: ${sinMec.map(e => e.nombre).join(', ')}`, 'err'); return; }
-  const sinValor = etapas.filter(et => et.valor == null || et.valor === '');
-  if (sinValor.length) { toast(`Ingresa el valor de: ${sinValor.map(e => e.nombre).join(', ')}`, 'err'); return; }
   try {
     for (const et of etapas) {
       const mec = mecanicos.find(m => m.id === et.mecanico_id);
       await api('/etapas', 'POST', {
         orden_id: modalOrdenId, servicio: et.servicio, etapa_key: et.key, etapa: et.nombre,
-        tercero: et.tercero || null, mecanico_id: et.mecanico_id || null, tecnico: mec?.nombre || null,
-        descripcion: et.descripcion || null,
-        horas_estimadas: et.horas_estimadas || null,
-        valor: et.valor || null
+        tercero: et.tercero || null, mecanico_id: et.mecanico_id || null, tecnico: mec?.nombre || null
       }, { Prefer: 'return=minimal' });
     }
     toast('Etapas guardadas ✓');
@@ -1303,6 +1324,7 @@ async function guardarEtapasNueva() {
     const ordenData = await api(`/ordenes?id=eq.${modalOrdenId}`).catch(() => []);
     if (ordenData?.[0]) {
       const ord = ordenData[0];
+      await _guardarTecnicosExternos(etapas, ord.id, ord.placa);
       const primerasPorSrv = {};
       etapas.forEach(et => { if (!primerasPorSrv[et.servicio]) primerasPorSrv[et.servicio] = et; });
       for (const et of Object.values(primerasPorSrv)) {
@@ -1360,19 +1382,15 @@ async function confirmarAgregarEtapas() {
   if (!etapas.length) { toast('Selecciona al menos una etapa', 'err'); return; }
   const sinMec = etapas.filter(et => !et.mecanico_id && !et.tercero);
   if (sinMec.length) { toast(`Asigna un mecánico a: ${sinMec.map(e => e.nombre).join(', ')}`, 'err'); return; }
-  const sinValor = etapas.filter(et => et.valor == null || et.valor === '');
-  if (sinValor.length) { toast(`Ingresa el valor de: ${sinValor.map(e => e.nombre).join(', ')}`, 'err'); return; }
   try {
     for (const et of etapas) {
       const mec = mecanicos.find(m => m.id === et.mecanico_id);
       await api('/etapas', 'POST', { 
         orden_id: ordenActual.id, servicio: et.servicio, etapa_key: et.key, etapa: et.nombre, 
-        tercero: et.tercero || null, mecanico_id: et.mecanico_id || null, tecnico: mec?.nombre || null,
-        descripcion: et.descripcion || null,
-        horas_estimadas: et.horas_estimadas || null,
-        valor: et.valor || null
+        tercero: et.tercero || null, mecanico_id: et.mecanico_id || null, tecnico: mec?.nombre || null
       }, { Prefer: 'return=minimal' });
     }
+    await _guardarTecnicosExternos(etapas, ordenActual.id, ordenActual.placa);
     toast('Etapas agregadas ✓');
     cerrarModalAgregar();
     if (ordenActual) abrirOrden(ordenActual.id);
