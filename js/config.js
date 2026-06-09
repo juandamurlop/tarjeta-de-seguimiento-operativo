@@ -11,10 +11,10 @@ const CONFIG = {
   SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqYXZucHd1aHBtdnBqZGJqZGVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4Njc5MDcsImV4cCI6MjA5MjQ0MzkwN30.07f6cGVrFhtm-B-I7iBLaHnPSuozFDpEf9vOHrliGRs',
   BUCKET: 'fotos-etapas',
 
-  // Webhooks n8n (notificaciones Telegram / PDF).
-  // TODO: reemplazar por las URLs reales de n8n. Mientras tanto, las
-  // notificaciones quedan inactivas, pero la app funciona normalmente.
-  N8N_WEBHOOK_ETAPA:    'https://n8n.invalid/webhook/notificar-etapa',
-  N8N_WEBHOOK_PDF:      'https://n8n.invalid/webhook/cotizacion-pdf',
-  N8N_WEBHOOK_REPUESTO: 'https://n8n.invalid/webhook/notificar-etapa',
+  // Webhooks n8n. ETAPA y REPUESTO usan el mismo flujo "notificar-etapa"
+  // (notificaciones por Telegram). PDF ("cotizacion-pdf") quedó definido pero
+  // hoy NO se usa (el PDF se genera dentro de la app); se deja por si acaso.
+  N8N_WEBHOOK_ETAPA:    'https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa',
+  N8N_WEBHOOK_PDF:      'https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/cotizacion-pdf',
+  N8N_WEBHOOK_REPUESTO: 'https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa',
 };
