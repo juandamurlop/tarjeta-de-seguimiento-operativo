@@ -449,8 +449,9 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
   else if (e.inicio && !e.fin && esPausado)
     acc = `<span style="font-size:12px;color:#D97706;font-weight:600;display:flex;align-items:center;gap:5px">
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-      Esperando repuesto...
-    </span>`;
+      En pausa
+    </span>
+    <button class="btn btn-success btn-sm" data-eid="${eid}" onclick="reanudarEtapa(+this.dataset.eid)">▶ Reanudar</button>`;
   else if (e.inicio && !e.fin) {
     // Si fue reabierta por rechazo, mostrar aviso
     const avisoRechazo = fueRechazada
@@ -459,7 +460,8 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
           Etapa rechazada — corrígela y finaliza de nuevo
           ${ultimaAprob?.observacion ? `<span style="font-weight:400;color:#B91C1C;display:block;margin-top:3px">"${escapeHtml(ultimaAprob.observacion)}"</span>` : ''}
         </div>` : '';
-    acc = avisoRechazo + `<button class="btn btn-danger btn-sm" data-eid="${eid}" data-nombre="${escapeHtml(nombre)}" data-srv="${escapeHtml(e.servicio||'')}" onclick="finalizarEtapa(+this.dataset.eid,this.dataset.nombre,this.dataset.srv)">${fueRechazada ? '■ Reenviar a calidad' : '■ Finalizar'}</button>`;
+    acc = avisoRechazo + `<button class="btn btn-danger btn-sm" data-eid="${eid}" data-nombre="${escapeHtml(nombre)}" data-srv="${escapeHtml(e.servicio||'')}" onclick="finalizarEtapa(+this.dataset.eid,this.dataset.nombre,this.dataset.srv)">${fueRechazada ? '■ Reenviar a calidad' : '■ Finalizar'}</button>
+    <button class="btn btn-ghost btn-sm" data-eid="${eid}" onclick="_mostrarPausa(+this.dataset.eid)" style="color:#92400E;border-color:#FCD34D;background:#FFFBEB">⏸ Pausar</button>`;
   } else if (e.fin) {
     const esRechazada = fueRechazada;
     const aprobBtn = esRechazada
@@ -603,40 +605,18 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
             <div class="upload-prog" id="prog-${k}"></div>
           </div>
         </div>
+        ${eNovs.length || (e.inicio && !e.fin) ? `
         <div class="novedad-section">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${eNovs.length?'8px':'0'}">
-            <div class="novedad-section-titulo" style="margin:0">Novedades</div>
-            <button class="btn btn-ghost btn-xs" onclick="_toggleNovForm(${eid})" style="font-size:11px">+ Agregar</button>
-          </div>
-          ${eNovs.length ? `<div id="nlist-${eid}" style="margin-bottom:8px">${novsHtml}</div>` : `<div id="nlist-${eid}"></div>`}
-          <div id="nov-form-${eid}" style="display:none;border-top:1px solid var(--gris-borde);padding-top:10px;margin-top:${eNovs.length?'8px':'0'}">
-            <div class="grid-2" style="margin-top:4px">
-              <div class="field"><label>Tipo</label>
-                <select id="ntype-${eid}">
-                  <option value="Detenido">Detenido</option>
-                  <option value="Reproceso">Reproceso</option>
-                  <option value="Garantia">Garantía</option>
-                </select>
-              </div>
-              <div class="field"><label>Responsable</label>
-                <select id="nresp-${eid}">
-                  <option value="S.C.">Servicio al Cliente</option>
-                  <option value="A.S.">Asesor de Servicio</option>
-                  <option value="C.P.">Control de Producción</option>
-                  <option value="A">Almacén</option>
-                </select>
-              </div>
-              <div class="field full"><label>Motivo</label>
-                <textarea id="nmot-${eid}" placeholder="Describe la novedad..." style="min-height:52px"></textarea>
-              </div>
-            </div>
-            <div class="field" style="margin-top:8px"><label style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--gris-mid)">Valor adicional COP</label><input id="nvalor-${eid}" type="number" step="1000" min="0" placeholder="0 (opcional)"></div>
-            <div class="btn-row" style="margin-top:8px">
-              <button class="btn btn-ghost btn-xs" onclick="_toggleNovForm(${eid})">Cancelar</button>
-              <button class="btn btn-danger btn-sm" onclick="guardarNovedad(${eid})">Guardar novedad</button>
+          ${eNovs.length ? `<div class="novedad-section-titulo" style="margin:0 0 8px">Historial de pausas</div><div id="nlist-${eid}">${novsHtml}</div>` : ''}
+          <div id="pausa-form-${eid}" style="display:none;margin-top:${eNovs.length?'10px':'0'};${eNovs.length?'border-top:1px solid var(--gris-borde);padding-top:10px;':''}">
+            <label style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--gris-mid)">Motivo de la pausa</label>
+            <textarea id="pausa-motivo-${eid}" placeholder="¿Por qué se pausa la etapa?" style="width:100%;min-height:44px;margin-top:5px;resize:vertical;box-sizing:border-box"></textarea>
+            <div class="btn-row" style="margin-top:8px;justify-content:flex-end">
+              <button class="btn btn-ghost btn-xs" onclick="_ocultarPausa(${eid})">Cancelar</button>
+              <button class="btn btn-primary btn-sm" onclick="confirmarPausa(${eid})">⏸ Confirmar pausa</button>
             </div>
           </div>
-        </div>
+        </div>` : ''}
         ${ultimaAprob ? `
         <div class="aprob-box ${ultimaAprob.estado==='rechazado'?'rechazado':''}" style="margin-top:14px">
           <div class="aprob-box-top">
@@ -653,6 +633,45 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
 function togglePanel(id) {
   const el = document.getElementById(id);
   if (el) el.classList.toggle('open');
+}
+
+// ── Pausa / Reanudar de etapa ───────────────────────────────
+function _mostrarPausa(eid) {
+  const f = document.getElementById('pausa-form-' + eid);
+  if (f) { f.style.display = 'block'; document.getElementById('pausa-motivo-' + eid)?.focus(); }
+}
+function _ocultarPausa(eid) {
+  const f = document.getElementById('pausa-form-' + eid);
+  if (f) f.style.display = 'none';
+}
+
+// Pausa la etapa (detiene el cronómetro) y registra el motivo en el historial.
+async function confirmarPausa(eid) {
+  const motivo = document.getElementById('pausa-motivo-' + eid)?.value?.trim() || 'Pausa manual';
+  try {
+    await api(`/etapas?id=eq.${eid}`, 'PATCH', { pausado: true, pausa_inicio: new Date().toISOString() });
+    if (ordenActual) {
+      await api('/novedades', 'POST', {
+        orden_id: ordenActual.id, etapa_id: eid, tipo: 'Detenido', motivo,
+        responsable: sesion?.nombre || '—', desde: new Date().toISOString()
+      }, { Prefer: 'return=minimal' }).catch(() => {});
+    }
+    toast('Etapa pausada ⏸');
+    if (ordenActual) abrirOrden(ordenActual.id);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// Reanuda la etapa: suma el tiempo que estuvo en pausa para no contarlo como trabajo.
+async function reanudarEtapa(eid) {
+  try {
+    const prev = await api(`/etapas?id=eq.${eid}&select=pausa_inicio,tiempo_pausado_min`).then(r => r?.[0]).catch(() => null);
+    const min = prev?.pausa_inicio ? Math.max(0, Math.round((Date.now() - new Date(prev.pausa_inicio)) / 60000)) : 0;
+    await api(`/etapas?id=eq.${eid}`, 'PATCH', {
+      pausado: false, pausa_inicio: null, tiempo_pausado_min: (prev?.tiempo_pausado_min || 0) + min
+    });
+    toast('Etapa reanudada ▶');
+    if (ordenActual) abrirOrden(ordenActual.id);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
 async function eliminarEtapa(eid, nombre) {
