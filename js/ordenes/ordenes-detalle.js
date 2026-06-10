@@ -251,13 +251,18 @@ async function abrirOrden(id) {
             <div class="sidebar-card-header" style="background:var(--azul-light);color:var(--azul)">Valor total de la orden</div>
             <div class="sidebar-card-body">
               ${(() => {
-                const totalEtapas = etapas.reduce((s,e) => s + (e.valor||0), 0);
-                if (!totalEtapas) return '<div style="font-size:13px;color:var(--gris-mid)">Sin valores en etapas.</div>';
-                const fmt = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n);
-                const filas = etapas.filter(e=>e.valor).map(e =>
-                  '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--gris-borde)"><span style="color:var(--gris-mid)">' + escapeHtml(e.etapa||'') + '</span><span style="font-weight:600">' + fmt(e.valor) + '</span></div>'
+                const fmt = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
+                const subtotal = etapas.reduce((s,e) => s + (e.valor_venta||0), 0);
+                if (!subtotal) return '<div style="font-size:13px;color:var(--gris-mid)">Sin precio de venta en etapas aún.</div>';
+                const iva = Math.round(subtotal * 0.19);
+                const total = subtotal + iva;
+                const filas = etapas.filter(e=>e.valor_venta).map(e =>
+                  '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--gris-borde)"><span style="color:var(--gris-mid)">' + escapeHtml(e.etapa||'') + '</span><span style="font-weight:600">' + fmt(e.valor_venta) + '</span></div>'
                 ).join('');
-                return filas + '<div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:2px solid var(--azul-mid)"><span style="font-size:13px;font-weight:700;color:var(--azul)">Total</span><span style="font-size:15px;font-weight:700;color:var(--azul)">' + fmt(totalEtapas) + '</span></div>';
+                return filas +
+                  '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0 2px"><span style="color:var(--gris-mid)">Subtotal</span><span style="font-weight:600">' + fmt(subtotal) + '</span></div>' +
+                  '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--gris-mid)">IVA (19%)</span><span style="font-weight:600">' + fmt(iva) + '</span></div>' +
+                  '<div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:8px;border-top:2px solid var(--azul-mid)"><span style="font-size:13px;font-weight:700;color:var(--azul)">Total con IVA</span><span style="font-size:15px;font-weight:700;color:var(--azul)">' + fmt(total) + '</span></div>';
               })()}
             </div>
           </div>
@@ -558,7 +563,7 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
                 <div style="font-size:14px;font-weight:700;padding:6px 0;color:var(--texto)">${e.horas_adicionales||'—'}</div>
               </div>
               <div class="field etapa-campo-sm">
-                <label style="display:flex;align-items:center;gap:4px">Valor COP <span style="color:var(--gris-mid);font-size:10px">🔒</span></label>
+                <label style="display:flex;align-items:center;gap:4px">Precio técnico <span style="color:var(--gris-mid);font-size:10px">🔒</span></label>
                 <div style="font-size:13px;font-weight:700;padding:6px 0;color:var(--verde)">${fmt(e.valor)}</div>
               </div>
               ${esJefe() ? `<div class="field etapa-campo-sm" style="display:flex;align-items:flex-end;padding-bottom:4px">
@@ -572,9 +577,12 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
               <div class="field etapa-campo-sm"><label>${lbl2}</label>
                 <input id="ha-${k}" type="number" step="${e.servicio==='pintura'?'1':'0.5'}" value="${e.horas_adicionales||''}" placeholder="0">
               </div>
-              <div class="field etapa-campo-sm"><label>Valor COP</label>
+              <div class="field etapa-campo-sm"><label>Precio técnico</label>
                 <input id="val-${k}" type="number" step="1000" value="${e.valor||''}" placeholder="0" style="font-weight:600;color:var(--verde)">
               </div>
+              ${esJefe() ? `<div class="field etapa-campo-sm"><label>Precio venta</label>
+                <input id="vv-${k}" type="number" step="1000" value="${e.valor_venta||''}" placeholder="0" style="font-weight:600;color:var(--azul-mid)">
+              </div>` : ''}
               <div class="field etapa-campo-sm" style="display:flex;align-items:flex-end;padding-bottom:4px">
                 ${esJefe()
                   ? `<button class="btn btn-primary btn-sm" onclick="guardarCamposEtapaJefe(${eid},'${k}')">Guardar</button>`
@@ -757,9 +765,10 @@ async function guardarCamposEtapaJefe(eid, k) {
   const hf  = parseFloat(document.getElementById(`hf-${k}`)?.value) || null;
   const ha  = parseFloat(document.getElementById(`ha-${k}`)?.value) || null;
   const val = parseFloat(document.getElementById(`val-${k}`)?.value) || null;
+  const vv  = parseFloat(document.getElementById(`vv-${k}`)?.value) || null; // precio venta
   const guardar = async () => {
     try {
-      await api(`/etapas?id=eq.${eid}`, 'PATCH', { horas_facturadas: hf, horas_adicionales: ha, valor: val });
+      await api(`/etapas?id=eq.${eid}`, 'PATCH', { horas_facturadas: hf, horas_adicionales: ha, valor: val, valor_venta: vv });
       toast('Guardado ✓');
       if (ordenActual) abrirOrden(ordenActual.id);
     } catch(e) { toast('Error: ' + e.message, 'err'); }
