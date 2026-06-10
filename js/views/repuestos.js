@@ -272,19 +272,32 @@ async function enviarSolicitudRepuesto(ordenId, etapaId) {
   try {
     const orden = await api(`/ordenes?id=eq.${ordenId}&select=placa,marca,linea,modelo,vin`).then(r=>r?.[0]).catch(()=>null);
 
-    // Crear cabecera de la solicitud (primer ítem en campos legacy para compatibilidad)
-    const solicitudRes = await api('/solicitudes_repuesto', 'POST', {
-      orden_id:           ordenId,
-      etapa_id:           etapaId || null,
-      solicitado_por:     sesion.nombre,
-      perfil_solicitante: sesion.perfil,
-      repuesto:           items[0].repuesto,
-      unidades:           items[0].unidades,
-      observaciones:      items[0].observaciones,
-      estado:             'pendiente_jefe'
-    }, { Prefer: 'return=representation' });
+    // Si ya hay una solicitud de esta orden/etapa que el perfil de repuestos AÚN
+    // no cotizó (pendiente_jefe o enviado_repuestos), se agregan los repuestos a
+    // ESA misma solicitud en vez de crear otra. Si ya está cotizada o más
+    // adelante, se crea una nueva.
+    const _filtroEtapa = etapaId ? `&etapa_id=eq.${etapaId}` : '&etapa_id=is.null';
+    const _existentes = await api(`/solicitudes_repuesto?orden_id=eq.${ordenId}${_filtroEtapa}&estado=in.(pendiente_jefe,enviado_repuestos)&order=creado_en.desc&limit=1&select=id`).catch(() => []) || [];
+    let solicitudId = _existentes?.[0]?.id || null;
+    const fusionada = !!solicitudId;
 
-    const solicitudId = solicitudRes?.[0]?.id;
+    if (!solicitudId) {
+      // Crear cabecera nueva (primer ítem en campos legacy para compatibilidad)
+      const solicitudRes = await api('/solicitudes_repuesto', 'POST', {
+        orden_id:           ordenId,
+        etapa_id:           etapaId || null,
+        solicitado_por:     sesion.nombre,
+        perfil_solicitante: sesion.perfil,
+        repuesto:           items[0].repuesto,
+        unidades:           items[0].unidades,
+        observaciones:      items[0].observaciones,
+        estado:             'pendiente_jefe'
+      }, { Prefer: 'return=representation' });
+      solicitudId = solicitudRes?.[0]?.id;
+    } else {
+      // Agregar a la existente: refrescar "actualizado_en" para que vuelva arriba.
+      await api(`/solicitudes_repuesto?id=eq.${solicitudId}`, 'PATCH', { actualizado_en: new Date().toISOString() }).catch(() => {});
+    }
 
     // Crear los ítems en solicitud_items (todos)
     if (solicitudId) {
@@ -304,9 +317,13 @@ async function enviarSolicitudRepuesto(ordenId, etapaId) {
     const debePausar = otroProceso !== 'si'; // pausa si respondió "No"
     if (debePausar) {
       if (etapaId) {
-        await api(`/etapas?id=eq.${etapaId}`, 'PATCH', {
-          pausado: true, pausa_inicio: new Date().toISOString()
-        }).catch(() => {});
+        // No reiniciar la pausa si ya estaba pausada (p. ej. por la solicitud anterior).
+        const _et = await api(`/etapas?id=eq.${etapaId}&select=pausado`).then(r => r?.[0]).catch(() => null);
+        if (_et && !_et.pausado) {
+          await api(`/etapas?id=eq.${etapaId}`, 'PATCH', {
+            pausado: true, pausa_inicio: new Date().toISOString()
+          }).catch(() => {});
+        }
       } else {
         // Sin etapa específica: buscar etapas activas de este mecánico en esta orden y pausarlas
         const activas = await api(`/etapas?orden_id=eq.${ordenId}&fin=is.null&pausado=eq.false&inicio=not.is.null&select=id`).catch(()=>[]) || [];
@@ -332,7 +349,10 @@ async function enviarSolicitudRepuesto(ordenId, etapaId) {
     }).catch(() => {});
 
     document.getElementById('modal-sol-multi')?.remove();
-    toast(`${items.length > 1 ? items.length + ' repuestos solicitados' : 'Solicitud enviada'} ✓${pausaMensaje}`);
+    const _accion = fusionada
+      ? 'Agregado a la solicitud en curso'
+      : (items.length > 1 ? items.length + ' repuestos solicitados' : 'Solicitud enviada');
+    toast(`${_accion} ✓${pausaMensaje}`);
 
     if (typeof actualizarBadgeRepuestos === 'function') actualizarBadgeRepuestos();
     if (typeof cargarEtapasMecanico === 'function') cargarEtapasMecanico();
