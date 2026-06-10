@@ -330,16 +330,6 @@ async function abrirOrden(id) {
                   : 'Sin pulmón activo'}
             </div>
           </div>
-          ${orden.tipo_cliente === 'aseguradora' ? `
-          <div class="sidebar-card" id="datos-aseg-card-${orden.id}">
-            <div class="sidebar-card-header" style="background:#EDE9FE;color:#5B21B6;display:flex;align-items:center;gap:6px">
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              Datos Aseguradora
-            </div>
-            <div class="sidebar-card-body">
-              ${typeof renderDatosAseguradora === 'function' ? renderDatosAseguradora(orden) : ''}
-            </div>
-          </div>` : ''}
           ${orden.aseguradora ? `
           <div class="sidebar-card">
             <div class="sidebar-card-header" style="background:#F5F3FF;color:#6D28D9;display:flex;align-items:center;gap:6px">
@@ -347,7 +337,18 @@ async function abrirOrden(id) {
               Seguimiento Aseguradora
             </div>
             <div class="sidebar-card-body">
-              ${typeof renderSeccionAseguradora === 'function' ? renderSeccionAseguradora(orden) : ''}
+              ${(() => {
+                const ingreso = orden.ingreso_en || orden.creado_en;
+                let diasPulmon = '—';
+                if (orden.pulmon_desde) {
+                  const ref = orden.pulmon_fin ? new Date(orden.pulmon_fin) : new Date();
+                  diasPulmon = Math.max(0, Math.floor((ref - new Date(orden.pulmon_desde)) / 86400000)) + ' día(s)';
+                }
+                return `<div class="det-datos-filas">
+                  <div class="det-dato-fila"><span class="det-dato-lbl">Día de ingreso</span><span class="det-dato-val">${ingreso ? formatFecha(ingreso) : '—'}</span></div>
+                  <div class="det-dato-fila"><span class="det-dato-lbl">Días en pulmón</span><span class="det-dato-val">${diasPulmon}</span></div>
+                </div>`;
+              })()}
             </div>
           </div>` : ''}
           ${esJefe() ? `

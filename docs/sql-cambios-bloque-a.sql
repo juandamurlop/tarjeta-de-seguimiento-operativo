@@ -34,3 +34,9 @@ alter table ordenes add column if not exists precio_venta_cliente numeric;
 
 -- 3) Dirección del cliente en la orden (Bloque B)
 alter table ordenes add column if not exists direccion text;
+
+
+-- 4) Precio de venta real por etapa (modelo de 2 precios)
+--    etapas.valor       = precio TÉCNICO (interno, lo ve el técnico, para pagarle).
+--    etapas.valor_venta = precio VENTA real (el que va en la orden de trabajo).
+alter table etapas add column if not exists valor_venta numeric;

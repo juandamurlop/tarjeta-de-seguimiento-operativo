@@ -1324,9 +1324,12 @@ function buildChecklist(containerId, servicios, existentes) {
           </select>
         </div>`;
       }
-      // Al seleccionar una etapa solo se asigna el técnico. Las horas y el valor
-      // de la mano de obra se ingresan después, en el detalle de cada etapa.
-      const camposHtml = '';
+      // Al seleccionar una etapa se asigna el técnico y se escribe QUÉ se va a
+      // hacer (descripción). Los precios se ponen luego en el detalle de la etapa.
+      const camposHtml = !iniciada ? `
+        <div id="campos-${et.key}" style="display:${checked ? 'block' : 'none'};margin-top:6px">
+          <textarea id="desc-et-${et.key}" placeholder="¿Qué se va a hacer en este proceso?" style="width:100%;padding:7px 9px;border:1.5px solid var(--gris-borde);border-radius:5px;font-size:12px;min-height:48px;resize:vertical;box-sizing:border-box;line-height:1.4;font-family:inherit">${ex?.descripcion ? escapeHtml(ex.descripcion) : ''}</textarea>
+        </div>` : '';
       return `<div class="check-item">
         <input type="checkbox" id="chk-${et.key}" value="${et.key}" ${checked ? 'checked' : ''} ${dis}
           onchange="onChkChange('${et.key}', this.checked)">
@@ -1401,10 +1404,12 @@ function recogerChecklist(containerId) {
     if (!etDef) return;
     const tecTxt   = document.getElementById(`tec-txt-${key}`);
     const mecSel   = document.getElementById(`mec-sel-${key}`);
+    const descEl   = document.getElementById(`desc-et-${key}`);
     result.push({
       key, servicio: srvKey, nombre: etDef.nombre,
       tercero:     tecTxt?.value?.trim() || null,
-      mecanico_id: mecSel?.value ? parseInt(mecSel.value) : null
+      mecanico_id: mecSel?.value ? parseInt(mecSel.value) : null,
+      descripcion: descEl?.value?.trim() || null
     });
   });
   return result;
@@ -1435,7 +1440,8 @@ async function guardarEtapasNueva() {
       const mec = mecanicos.find(m => m.id === et.mecanico_id);
       await api('/etapas', 'POST', {
         orden_id: modalOrdenId, servicio: et.servicio, etapa_key: et.key, etapa: et.nombre,
-        tercero: et.tercero || null, mecanico_id: et.mecanico_id || null, tecnico: mec?.nombre || null
+        tercero: et.tercero || null, mecanico_id: et.mecanico_id || null, tecnico: mec?.nombre || null,
+        descripcion: et.descripcion || null
       }, { Prefer: 'return=minimal' });
     }
     toast('Etapas guardadas ✓');
@@ -1507,7 +1513,8 @@ async function confirmarAgregarEtapas() {
       const mec = mecanicos.find(m => m.id === et.mecanico_id);
       await api('/etapas', 'POST', { 
         orden_id: ordenActual.id, servicio: et.servicio, etapa_key: et.key, etapa: et.nombre, 
-        tercero: et.tercero || null, mecanico_id: et.mecanico_id || null, tecnico: mec?.nombre || null
+        tercero: et.tercero || null, mecanico_id: et.mecanico_id || null, tecnico: mec?.nombre || null,
+        descripcion: et.descripcion || null
       }, { Prefer: 'return=minimal' });
     }
     await _guardarTecnicosExternos(etapas, ordenActual.id, ordenActual.placa);
