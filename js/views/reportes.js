@@ -702,7 +702,7 @@ async function generarReporte(tipo, fechaIni, fechaFin, formato) {
     const [
       etapas, ordenes, novedades,
       ordenesEntregadas, ordenesIngresadas,
-      solicitudesRep, cotizaciones, flotillas
+      solicitudesRep, cotizaciones, flotillas, cotsCliente
     ] = await Promise.all([
       api(`/etapas?fin=gte.${desdeISO}&fin=lte.${hastaISO}&select=id,orden_id,etapa,etapa_key,servicio,tecnico,mecanico_id,inicio,fin,valor,horas_facturadas,horas_adicionales,horas_estimadas,tiempo_pausado_min`).catch(()=>[]) || [],
       api(`/ordenes?or=(creado_en.gte.${desdeISO},entregada_en.gte.${desdeISO})&select=id,placa,marca,linea,propietario,aseguradora,tipo_cliente,estado,creado_en,entregada_en,fecha_entrega_1,fecha_entrega_2`).catch(()=>[]) || [],
@@ -711,10 +711,11 @@ async function generarReporte(tipo, fechaIni, fechaFin, formato) {
       api(`/ordenes?creado_en=gte.${desdeISO}&creado_en=lte.${hastaISO}&select=id,placa,marca,linea,propietario,aseguradora,tipo_cliente,creado_en,estado,pulmon,pulmon_desde,pulmon_fin,pulmon_tipo`).catch(()=>[]) || [],
       api(`/solicitudes_repuesto?creado_en=gte.${desdeISO}&creado_en=lte.${hastaISO}&select=id,orden_id,etapa_id,repuesto,unidades,estado,tiempo_espera_min,creado_en`).catch(()=>[]) || [],
       api(`/cotizaciones_repuesto?select=id,solicitud_id,opcion,precio_costo,precio_venta_jefe,estado_opcion`).catch(()=>[]) || [],
-      api(`/flotillas?select=id,nombre&order=nombre.asc`).catch(()=>[]) || []
+      api(`/flotillas?select=id,nombre&order=nombre.asc`).catch(()=>[]) || [],
+      api(`/cotizaciones?created_at=gte.${desdeISO}&created_at=lte.${hastaISO}&select=id,estado,total_general,orden_id,created_at`).catch(()=>[]) || []
     ]);
 
-    const datos = _calcularMetricas(etapas, ordenes, novedades, ordenesEntregadas, ordenesIngresadas, solicitudesRep, cotizaciones, flotillas, desdeISO, hastaISO);
+    const datos = _calcularMetricas(etapas, ordenes, novedades, ordenesEntregadas, ordenesIngresadas, solicitudesRep, cotizaciones, flotillas, desdeISO, hastaISO, cotsCliente);
 
     if (formato === 'pdf') _generarPDF(datos, tituloReporte, subtitulo);
     else _cargarSheetJS(() => _generarExcel(datos, tituloReporte));
@@ -969,7 +970,7 @@ async function generarReporteMecanico(mecId, fechaIni, fechaFin, formato) {
 }
 
 // ─── Motor de cálculo de métricas ───────────────────────────
-function _calcularMetricas(etapas, ordenes, novedades, ordenesEntregadas, ordenesIngresadas, solicitudesRep, cotizaciones, flotillas, desdeISO, hastaISO) {
+function _calcularMetricas(etapas, ordenes, novedades, ordenesEntregadas, ordenesIngresadas, solicitudesRep, cotizaciones, flotillas, desdeISO, hastaISO, cotsCliente = []) {
   const minToHrs = ms => Math.round(ms / 3600000 * 10) / 10;
   const fmt      = n  => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '$0';
   const hrStr    = m  => { const h=Math.floor(m/60); return h>0?`${h}h ${m%60}m`:`${m%60}m`; };
@@ -1094,6 +1095,13 @@ function _calcularMetricas(etapas, ordenes, novedades, ordenesEntregadas, ordene
     }
   });
   const margenRep = totalCostoRep > 0 ? Math.round(((totalVentaRep-totalCostoRep)/totalCostoRep)*100) : 0;
+
+  // ── Cotizaciones al cliente → conversión a orden ──
+  const cotsClienteTotal     = cotsCliente.length;
+  const cotsClienteValor     = cotsCliente.reduce((s,c) => s + (c.total_general||0), 0);
+  const cotsConvertidas      = cotsCliente.filter(c => c.orden_id != null).length;
+  const cotsValorConvertido  = cotsCliente.filter(c => c.orden_id != null).reduce((s,c) => s + (c.total_general||0), 0);
+  const cotsTasaConversion   = cotsClienteTotal > 0 ? Math.round((cotsConvertidas/cotsClienteTotal)*100) : 0;
 
   // ── Análisis por tipo de cliente ──
   const valPorOrden = {};
@@ -1240,6 +1248,8 @@ function _calcularMetricas(etapas, ordenes, novedades, ordenesEntregadas, ordene
       solicitudesRep:         solicitudesRep.length,
       tiempoEsperaPromedio,
       totalCostoRep, totalVentaRep, margenRep,
+      // cotizaciones al cliente
+      cotsClienteTotal, cotsClienteValor, cotsConvertidas, cotsValorConvertido, cotsTasaConversion,
       // totales economicos
       totalMOmasRep:          totalIngresos + totalVentaRep,
       // pulmón
@@ -1387,6 +1397,34 @@ function _generarPDF(d, titulo, subtitulo) {
       <div class="kpi-lbl">Órdenes ingresadas al período</div>
     </div>
   </div>`}
+
+  <!-- COTIZACIONES → ÓRDENES -->
+  ${resumen.cotsClienteTotal > 0 ? `
+  <div class="section">
+    <div class="section-title">Cotizaciones al cliente · conversión a orden</div>
+    <div class="kpi-row">
+      <div class="kpi" style="border-top-color:#1E3A5F">
+        <div class="kpi-val" style="color:#1E3A5F">${resumen.cotsClienteTotal}</div>
+        <div class="kpi-lbl">Cotizaciones del período</div>
+        <div class="kpi-sub">Valor cotizado: ${fmt(resumen.cotsClienteValor)}</div>
+      </div>
+      <div class="kpi" style="border-top-color:#059669">
+        <div class="kpi-val" style="color:#059669">${resumen.cotsConvertidas}</div>
+        <div class="kpi-lbl">Convertidas en orden</div>
+        <div class="kpi-sub">Valor: ${fmt(resumen.cotsValorConvertido)}</div>
+      </div>
+      <div class="kpi" style="border-top-color:${resumen.cotsTasaConversion>=50?'#059669':resumen.cotsTasaConversion>=25?'#D97706':'#DC2626'}">
+        <div class="kpi-val" style="color:${resumen.cotsTasaConversion>=50?'#059669':resumen.cotsTasaConversion>=25?'#D97706':'#DC2626'}">${resumen.cotsTasaConversion}%</div>
+        <div class="kpi-lbl">Tasa de conversión</div>
+        <div class="kpi-sub">Cotización que se vuelve trabajo</div>
+      </div>
+      <div class="kpi" style="border-top-color:#7C3AED">
+        <div class="kpi-val" style="color:#7C3AED">${resumen.cotsClienteTotal - resumen.cotsConvertidas}</div>
+        <div class="kpi-lbl">Sin convertir aún</div>
+        <div class="kpi-sub">Pendientes o rechazadas</div>
+      </div>
+    </div>
+  </div>` : ''}
 
   <!-- PANEL PULMÓN -->
   ${resumen.ordenesConPulmon > 0 ? `
@@ -1710,6 +1748,11 @@ function _generarExcel(d, titulo) {
     ['Tasa de cumplimiento (%)', resumen.tasaCumplimiento !== null ? resumen.tasaCumplimiento : 'Sin datos'],
     ['Solicitudes de repuesto', resumen.solicitudesRep],
     ['Espera promedio por repuesto (min)', resumen.tiempoEsperaPromedio],
+    ['Cotizaciones al cliente', resumen.cotsClienteTotal],
+    ['Valor cotizado (COP)', resumen.cotsClienteValor],
+    ['Cotizaciones convertidas en orden', resumen.cotsConvertidas],
+    ['Valor convertido (COP)', resumen.cotsValorConvertido],
+    ['Tasa de conversión cotización→orden (%)', resumen.cotsTasaConversion],
     ['Órdenes que pasaron por pulmón', resumen.ordenesConPulmon],
     ['Tiempo promedio en pulmón (hrs)', resumen.promedioPulmonHrs],
     ['Tiempo máximo en pulmón (hrs)', resumen.maxPulmonHrs],
