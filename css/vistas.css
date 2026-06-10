@@ -148,6 +148,19 @@
   }
 }
 
+/* Popups de alerta ("Etapa sin movimiento"): en celular, banner compacto a
+   todo el ancho en vez de cajas de 300px que tapan el contenido. */
+@media (max-width: 600px) {
+  .alerta-popup-etapa {
+    left: 8px !important;
+    right: 8px !important;
+    top: 8px;
+    max-width: none !important;
+    min-width: 0 !important;
+    padding: 9px 11px !important;
+  }
+}
+
 /* Tabla de órdenes en móvil: ocultar columnas menos importantes */
 @media (max-width: 768px) {
   .ordenes-tabla thead th:nth-child(4),
