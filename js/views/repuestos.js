@@ -524,8 +524,17 @@ async function _verSolicitud(id) {
         </div>`).join('')
       : `<div style="padding:6px 0;font-size:14px">${escapeHtml(s.repuesto || '—')} <span style="color:var(--gris-mid)">x${s.unidades||1}</span>${s.observaciones ? `<div style="font-size:12px;color:var(--gris-mid);font-style:italic">${escapeHtml(s.observaciones)}</div>` : ''}</div>`;
 
+    const _esRep = (typeof sesion !== 'undefined') && sesion?.perfil === 'repuestos';
+    const _esJefeRol = (typeof esJefe === 'function') && esJefe();
     let accion = '';
-    if (s.estado === 'pendiente_jefe') accion = `
+    if (_esRep) {
+      // Acciones del perfil de repuestos (cotizar / confirmar pedido)
+      if (s.estado === 'enviado_repuestos' || s.estado === 'cotizado')
+        accion = `<button class="btn btn-primary btn-sm" data-sol-id="${s.id}" style="margin-top:12px" onclick="_cerrarVerSolicitud();_abrirCotizarPorId(this)">${s.estado === 'enviado_repuestos' ? '+ Cotizar' : 'Ver / editar cotizaciones'}</button>`;
+      else if (s.estado === 'pedido' && !s.pedido_proveedor_confirmado)
+        accion = `<button class="btn btn-success btn-sm" style="margin-top:12px" onclick="marcarRepuestoSolicitadoProveedor(${s.id});_cerrarVerSolicitud()">Confirmar pedido al proveedor</button>`;
+    } else if (_esJefeRol) {
+      if (s.estado === 'pendiente_jefe') accion = `
       <div style="background:var(--gris-bg);border-radius:8px;padding:10px 12px;margin:12px 0">
         <div style="font-size:11px;font-weight:600;color:var(--gris-mid);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Nota para repuestos (opcional)</div>
         <textarea id="nota-jefe-${s.id}" style="width:100%;min-height:50px;font-size:13px;border:1px solid var(--gris-borde);border-radius:6px;padding:6px 10px;resize:vertical;box-sizing:border-box">${escapeHtml(s.nota_jefe || '')}</textarea>
@@ -534,9 +543,10 @@ async function _verSolicitud(id) {
         <button class="btn btn-success btn-sm" onclick="jefeProcesarSolicitud(${s.id},'aprobar',${s.etapa_id||'null'});_cerrarVerSolicitud()">✓ Aprobar y enviar</button>
         <button class="btn btn-danger btn-sm" onclick="jefeProcesarSolicitud(${s.id},'rechazar',${s.etapa_id||'null'});_cerrarVerSolicitud()">✕ Rechazar</button>
       </div>`;
-    else if (s.estado === 'cotizado') accion = `<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="_cerrarVerSolicitud();abrirModalPrecioVenta(${s.id})">Definir precio y ordenar</button>`;
-    else if (s.estado === 'pedido') accion = `<button class="btn btn-success btn-sm" style="margin-top:12px" onclick="jefeConfirmarLlegada(${s.id});_cerrarVerSolicitud()">✓ Llegó al taller</button>`;
-    else if (s.estado === 'recibido_taller') accion = `<button class="btn btn-success btn-sm" style="margin-top:12px" onclick="jefeConfirmarEntrega(${s.id},${s.etapa_id||'null'});_cerrarVerSolicitud()">✓ Entregar al técnico</button>`;
+      else if (s.estado === 'cotizado') accion = `<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="_cerrarVerSolicitud();abrirModalPrecioVenta(${s.id})">Definir precio y ordenar</button>`;
+      else if (s.estado === 'pedido') accion = `<button class="btn btn-success btn-sm" style="margin-top:12px" onclick="jefeConfirmarLlegada(${s.id});_cerrarVerSolicitud()">✓ Llegó al taller</button>`;
+      else if (s.estado === 'recibido_taller') accion = `<button class="btn btn-success btn-sm" style="margin-top:12px" onclick="jefeConfirmarEntrega(${s.id},${s.etapa_id||'null'});_cerrarVerSolicitud()">✓ Entregar al técnico</button>`;
+    }
 
     const div = document.createElement('div');
     div.id = 'modal-ver-solicitud';
@@ -901,7 +911,7 @@ async function cargarSolicitudesRepuestos() {
   try {
     const sols = await api('/solicitudes_repuesto?estado=in.(enviado_repuestos,cotizado,pedido,recibido_taller,entregado)&order=creado_en.desc&select=*').catch(()=>[]) || [];
     const oids = [...new Set(sols.map(s=>s.orden_id).filter(Boolean))];
-    const ords = oids.length ? await api(`/ordenes?id=in.(${oids.join(',')})&select=id,placa,marca,linea,modelo,vin`).catch(()=>[]) || [] : [];
+    const ords = oids.length ? await api(`/ordenes?id=in.(${oids.join(',')})&select=id,placa,marca,linea,modelo,vin,propietario`).catch(()=>[]) || [] : [];
     const om = {}; ords.forEach(o=>{ om[o.id]=o; });
 
     // Cargar ítems de solicitud_items para todas las solicitudes
@@ -969,41 +979,24 @@ async function cargarSolicitudesRepuestos() {
           const timerSolicitud2 = _tiempoDesde(s.creado_en, ' desde solicitud');
           const timerEstado2    = _tiempoDesde(s.actualizado_en || s.creado_en, ' en estado');
 
-          return `<div class="card" data-id="${s.id}" style="padding:12px">
-            ${_barraEstado(s.estado)}
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
-              <div style="flex:1;min-width:0">
-                <div title="${escapeHtml(items.length > 1 ? items.map(i=>i.repuesto).join(', ') : (s.repuesto||''))}" style="font-weight:700;font-size:13px;margin-bottom:2px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${items.length > 1 ? `${items.length} repuestos` : escapeHtml(s.repuesto)}</div>
-                <div style="font-size:12px;color:var(--azul);font-family:'DM Mono',monospace">
-                  ${escapeHtml(o.placa||'—')} · ${formatOT(s.orden_id)}
-                </div>
-                <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(s.solicitado_por||'')} · ${formatTS(s.creado_en)}</div>
-                <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
-                  ${timerSolicitud2}
-                  <span style="color:var(--gris-mid);font-size:11px">|</span>
-                  ${timerEstado2}
-                </div>
-                ${timerProv}
-              </div>
-              <span class="badge ${eb.cls}">${eb.txt}</span>
+          const repNames = items.length ? items.map(i => i.repuesto) : [s.repuesto].filter(Boolean);
+          const repResumen = repNames.slice(0, 2).map(escapeHtml).join(', ') + (repNames.length > 2 ? ` <span style="color:var(--gris-mid);font-weight:400">+${repNames.length - 2} más</span>` : '');
+          let accionBtns = '';
+          if (s.estado === 'enviado_repuestos' || s.estado === 'cotizado') accionBtns = `<button class="btn btn-primary btn-xs" data-sol-id="${s.id}" onclick="_abrirCotizarPorId(this)">${s.estado === 'enviado_repuestos' ? '+ Cotizar' : 'Cotizaciones'}</button>`;
+          else if (s.estado === 'pedido' && !s.pedido_proveedor_confirmado) accionBtns = `<button class="btn btn-success btn-xs" onclick="marcarRepuestoSolicitadoProveedor(${s.id})">Confirmar pedido</button>`;
+          else if (s.estado === 'pedido' && s.pedido_proveedor_confirmado) accionBtns = `<span style="font-size:11px;color:#059669;font-weight:600;align-self:center">✓ Pedido confirmado</span>`;
+
+          return `<div class="card" data-id="${s.id}" style="padding:12px;display:flex;flex-direction:column;gap:7px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:15px;color:#111;letter-spacing:.5px">${escapeHtml(o.placa||'—')}</span>
+              <span class="badge ${eb.cls}" style="flex-shrink:0">${eb.txt}</span>
             </div>
-            ${itemsHtml}
-            ${s.nota_jefe ? `<div style="font-size:12px;background:var(--gris-bg);padding:6px 10px;border-radius:6px;border-left:3px solid var(--azul);margin-top:6px">${escapeHtml(s.nota_jefe)}</div>` : ''}
-            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-              ${s.estado === 'enviado_repuestos' || s.estado === 'cotizado'
-                ? `<button class="btn btn-primary btn-sm" data-sol-id="${s.id}" onclick="_abrirCotizarPorId(this)">
-                    ${s.estado==='enviado_repuestos' ? '+ Cotizar' : 'Ver / editar cotizaciones'}
-                  </button>`
-                : ''}
-              ${s.estado === 'pedido' && !s.pedido_proveedor_confirmado
-                ? `<button class="btn btn-success btn-sm" onclick="marcarRepuestoSolicitadoProveedor(${s.id})"
-                    style="display:flex;align-items:center;gap:5px">
-                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
-                    Confirmar pedido al proveedor
-                  </button>`
-                : s.estado === 'pedido' && s.pedido_proveedor_confirmado
-                ? `<span style="font-size:12px;color:#059669;font-weight:600">✓ Pedido confirmado al proveedor</span>`
-                : ''}
+            <div style="font-size:12px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(o.propietario||'Cliente —')} · ${formatOT(s.orden_id)}</div>
+            <div title="${escapeHtml(repNames.join(', '))}" style="font-size:13px;font-weight:600;color:#1E293B;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${repResumen || '—'}</div>
+            ${_barraEstado(s.estado)}
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:2px">
+              <button class="btn btn-ghost btn-xs" onclick="_verSolicitud(${s.id})">Ver detalle</button>
+              ${accionBtns}
             </div>
           </div>`;
         }).join('')}
