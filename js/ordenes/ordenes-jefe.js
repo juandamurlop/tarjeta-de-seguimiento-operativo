@@ -474,10 +474,6 @@ function montarJefe() {
       </div>
 
       ${_grupoHeader('informes','Informes')}
-        <button class="nav-item" id="nav-dashboard" onclick="navJefe('dashboard')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-          <span class="nav-label">Dashboard mes actual</span>
-        </button>
         <button class="nav-item" id="nav-metas" onclick="navJefe('metas')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <span class="nav-label">Metas</span>
