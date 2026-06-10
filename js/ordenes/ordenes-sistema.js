@@ -1889,7 +1889,7 @@ ${esAseg ? `
       <tbody>
         ${etapas.map((e,i) => `<tr>
           <td style="color:#aaa;text-align:center;font-size:8px">${i+1}</td>
-          <td style="font-weight:600">${escapeHtml(e.etapa||e.nombre||'—')}</td>
+          <td style="font-weight:600">${escapeHtml(e.etapa||e.nombre||'—')}${e.descripcion ? `<div style="font-weight:400;font-size:8px;color:#555;margin-top:1px;line-height:1.3">${escapeHtml(e.descripcion)}</div>` : ''}</td>
           <td style="font-size:8px;color:${srvColor[e.servicio]||'#374151'};font-weight:700">${srvNombres[e.servicio]||e.servicio||'—'}</td>
           <td>${escapeHtml(e.tecnico||'—')}</td>
           <td style="text-align:center;font-family:monospace;font-size:8px">${e.horas_facturadas||'—'}</td>
