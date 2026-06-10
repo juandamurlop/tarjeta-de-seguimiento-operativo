@@ -64,6 +64,7 @@ async function montarIngresoVehiculos() {
       </button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${chips}</div>
+    <div id="ingveh-grupos" style="display:none;margin-bottom:14px"></div>
     <div style="margin-bottom:14px">
       <input type="text" id="flot-buscar" placeholder="Buscar por placa, propietario o cédula..."
         style="width:100%;max-width:420px;padding:9px 14px;border:1px solid var(--gris-borde);border-radius:8px;font-size:14px"
@@ -117,7 +118,43 @@ function _aplicarFiltroVeh() {
   const base = _filtroTipoVeh === 'todos'
     ? _vehiculosActual
     : _vehiculosActual.filter(v => (v.tipo_cliente || 'particular') === _filtroTipoVeh);
+  _renderGruposBar();
   renderVehiculosUnif(base);
+}
+
+// Barra de grupos (flotillas/empresas) con botón Editar — solo visible cuando
+// el filtro activo es "Flotillas" o "Empresas".
+function _renderGruposBar() {
+  const cont = document.getElementById('ingveh-grupos');
+  if (!cont) return;
+  const conteo = {};
+  _vehiculosActual.forEach(v => {
+    if (v.flotilla_id) conteo['f'+v.flotilla_id] = (conteo['f'+v.flotilla_id]||0)+1;
+    if (v.empresa_id)  conteo['e'+v.empresa_id]  = (conteo['e'+v.empresa_id]||0)+1;
+  });
+  const card = (nombre, sub, n, onEdit, color) => `
+    <div style="display:flex;align-items:center;gap:10px;border:1px solid var(--gris-borde);border-left:3px solid ${color};border-radius:9px;padding:8px 12px;background:#fff">
+      <div style="min-width:0">
+        <div style="font-weight:700;font-size:13px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${escapeHtml(nombre)}</div>
+        <div style="font-size:11px;color:var(--gris-mid)">${sub}${sub?' · ':''}${n} veh.</div>
+      </div>
+      <button class="btn btn-ghost btn-xs" style="flex-shrink:0" onclick="${onEdit}">✎ Editar</button>
+    </div>`;
+
+  if (_filtroTipoVeh === 'flotilla' && _flotillas.length) {
+    cont.style.display = 'block';
+    cont.innerHTML = `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-mid);margin-bottom:8px">Flotillas registradas</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${_flotillas.map(f =>
+        card(f.nombre||'Sin nombre', f.nit?('NIT '+escapeHtml(f.nit)):'', conteo['f'+f.id]||0, `abrirModalEditarFlotilla(${f.id})`, '#7C3AED')).join('')}</div>`;
+  } else if (_filtroTipoVeh === 'empresa' && _empresasVeh.length) {
+    cont.style.display = 'block';
+    cont.innerHTML = `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-mid);margin-bottom:8px">Empresas registradas</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${_empresasVeh.map(e =>
+        card(e.nombre||'Sin nombre', e.nit?('NIT '+escapeHtml(e.nit)):'', conteo['e'+e.id]||0, `abrirModalEditarEmpresaVeh(${e.id})`, '#0891B2')).join('')}</div>`;
+  } else {
+    cont.style.display = 'none';
+    cont.innerHTML = '';
+  }
 }
 
 // Render de la lista unificada (incluye columna "Tipo")
@@ -664,6 +701,57 @@ async function abrirModalNuevaEmpresaVeh() {
     }
     toast('Empresa creada ✓');
   } catch(e) { toast('Error creando empresa: ' + e.message, 'err'); }
+}
+
+// Editar datos de una empresa desde la barra de grupos
+function abrirModalEditarEmpresaVeh(id) {
+  const e = _empresasVeh.find(x => x.id == id) || {};
+  document.getElementById('modal-empresa-veh')?.remove();
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'modal-empresa-veh';
+  modal.style.zIndex = '1100';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:460px;width:95%">
+      <div class="modal-header">
+        <h2 style="font-size:16px">Editar empresa</h2>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-empresa-veh').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="grid-2" style="gap:12px">
+          <div class="field full"><label>Nombre <span style="color:var(--rojo)">*</span></label><input id="ev-nombre" value="${escapeHtml(e.nombre||'')}" placeholder="Empresa S.A.S."></div>
+          <div class="field"><label>NIT</label><input id="ev-nit" value="${escapeHtml(e.nit||'')}" placeholder="900.123.456-7"></div>
+          <div class="field"><label>Teléfono</label><input id="ev-telefono" value="${escapeHtml(e.telefono||'')}" placeholder="6011234567" type="tel"></div>
+          <div class="field full"><label>Contacto</label><input id="ev-contacto" value="${escapeHtml(e.contacto_nombre||'')}" placeholder="Nombre del contacto"></div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--gris-borde)">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-empresa-veh').remove()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarEmpresaVeh(${id})">Guardar cambios</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  requestAnimationFrame(() => modal.classList.add('show'));
+  modal.addEventListener('click', ev => { if (ev.target === modal) modal.remove(); });
+  setTimeout(() => document.getElementById('ev-nombre')?.focus(), 100);
+}
+
+async function guardarEmpresaVeh(id) {
+  const nombre = document.getElementById('ev-nombre')?.value.trim();
+  if (!nombre) { toast('El nombre es obligatorio', 'err'); document.getElementById('ev-nombre')?.focus(); return; }
+  const datos = {
+    nombre,
+    nit:             document.getElementById('ev-nit')?.value.trim() || null,
+    telefono:        document.getElementById('ev-telefono')?.value.trim() || null,
+    contacto_nombre: document.getElementById('ev-contacto')?.value.trim() || null
+  };
+  try {
+    await api(`/empresas?id=eq.${id}`, 'PATCH', datos, { Prefer: 'return=minimal' });
+    document.getElementById('modal-empresa-veh')?.remove();
+    await _cargarCatalogosVeh();
+    _renderGruposBar();
+    toast('Empresa actualizada ✓');
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
 }
 
 function cerrarModalVehiculo() {
