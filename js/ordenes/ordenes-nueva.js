@@ -1284,96 +1284,106 @@ function modalBack() {
 
 const ROLES_EXCLUIR = ['taller', 'repuestos', 'Asesor Previsora'];
 
-function buildChecklist(containerId, servicios, existentes) {
+// ── Agregar procesos UNO POR UNO (permite repetir el mismo proceso) ──────────
+let _etapasPend = [];
+
+function buildChecklist(containerId, servicios, _existentes) {
+  _etapasPend = [];
   const container = document.getElementById(containerId);
   if (!container) return;
-  const mecElegibles = mecanicos.filter(m => !ROLES_EXCLUIR.includes(m.rol));
-  container.innerHTML = servicios.map(srvKey => {
+  const srvList = (servicios && servicios.length) ? servicios : Object.keys(CATALOGO);
+  const opciones = srvList.map(srvKey => {
     const srv = CATALOGO[srvKey];
     if (!srv) return '';
-    const items = srv.etapas.map(et => {
-      const ex = existentes.find(e => e.etapa_key === et.key);
-      const iniciada = !!ex?.inicio;
-      const checked = !!ex;
-      const dis = iniciada ? 'disabled' : '';
-      const mecSelected = ex?.mecanico_id ?? '';
-      const esExterno = !!srv.externo;
-      const extraHtml = '';
-      const mecsFiltrados = mecElegibles;
-      let mecHtml;
-      if (iniciada) {
-        mecHtml = `<div style="font-size:11px;color:var(--gris-mid);margin-top:4px">Técnico ya asignado</div>`;
-      } else if (esExterno) {
-        // Mecánica / Adicionales: el técnico suele ser externo (no está en la
-        // base de datos), por eso se escribe el nombre a mano.
-        mecHtml = `<div class="mec-select-wrap" id="mec-${et.key}" style="margin-top:6px;display:${checked ? 'block' : 'none'}">
-          <input type="text" id="tec-txt-${et.key}" placeholder="Nombre del técnico (externo) *" value="${ex?.tercero ? escapeHtml(ex.tercero) : ''}" style="font-size:13px;width:100%;padding:7px 9px;border:1.5px solid var(--gris-borde);border-radius:5px;box-sizing:border-box">
-        </div>`;
-      } else {
-        mecHtml = `<div class="mec-select-wrap" id="mec-${et.key}" style="margin-top:6px;display:${checked ? 'block' : 'none'}">
-          <select id="mec-sel-${et.key}" style="font-size:13px">
-            <option value="">— Asignar técnico * —</option>
-            ${mecsFiltrados.map(m => `<option value="${m.id}" ${m.id == mecSelected ? ' selected' : ''}>${escapeHtml(m.nombre)}</option>`).join('')}
-          </select>
-        </div>`;
-      }
-      // Al seleccionar una etapa se asigna el técnico y se escribe QUÉ se va a
-      // hacer (descripción). Los precios se ponen luego en el detalle de la etapa.
-      const camposHtml = !iniciada ? `
-        <div id="campos-${et.key}" style="display:${checked ? 'block' : 'none'};margin-top:6px">
-          <textarea id="desc-et-${et.key}" placeholder="¿Qué se va a hacer en este proceso?" style="width:100%;padding:7px 9px;border:1.5px solid var(--gris-borde);border-radius:5px;font-size:12px;min-height:48px;resize:vertical;box-sizing:border-box;line-height:1.4;font-family:inherit">${ex?.descripcion ? escapeHtml(ex.descripcion) : ''}</textarea>
-        </div>` : '';
-      return `<div class="check-item">
-        <input type="checkbox" id="chk-${et.key}" value="${et.key}" ${checked ? 'checked' : ''} ${dis}
-          onchange="onChkChange('${et.key}', this.checked)">
-        <div style="flex:1">
-          <div class="check-item-label">${et.nombre}${iniciada ? ' <span style="font-size:10px;color:var(--gris-mid)">(ya iniciada)</span>' : ''}</div>
-          ${extraHtml}${mecHtml}${camposHtml}
+    return `<optgroup label="${escapeHtml(srv.nombre)}">` +
+      srv.etapas.map(et => `<option value="${srvKey}|${et.key}">${escapeHtml(et.nombre)}</option>`).join('') +
+      `</optgroup>`;
+  }).join('');
+  container.innerHTML = `
+    <div style="background:var(--gris-bg);border:1px solid var(--gris-borde);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div class="field" style="margin:0 0 8px"><label>Proceso</label>
+        <select id="ag-proceso" onchange="_agProcesoChange()"><option value="">— Elegir proceso —</option>${opciones}</select>
+      </div>
+      <div id="ag-tecnico-wrap" class="field" style="margin:0 0 8px;display:none"></div>
+      <div class="field" style="margin:0 0 10px"><label>Descripción <span style="color:var(--gris-mid);font-size:11px">(qué se va a hacer)</span></label>
+        <textarea id="ag-desc" placeholder="Detalle del trabajo en este proceso..." style="width:100%;min-height:44px;resize:vertical;box-sizing:border-box"></textarea>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" style="width:100%" onclick="_agAgregarPend()">+ Agregar a la lista</button>
+    </div>
+    <div id="ag-pend-lista"></div>`;
+  _renderPendLista();
+}
+
+// Muestra el campo de técnico según el proceso elegido: lista para internos,
+// texto para Mecánica/Adicionales (que suelen ser externos).
+function _agProcesoChange() {
+  const wrap = document.getElementById('ag-tecnico-wrap');
+  if (!wrap) return;
+  const val = document.getElementById('ag-proceso')?.value || '';
+  if (!val) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const srvKey = val.split('|')[0];
+  const srv = CATALOGO[srvKey];
+  wrap.style.display = 'block';
+  if (srv?.externo) {
+    wrap.innerHTML = `<label>Técnico (externo)</label><input type="text" id="ag-tec" placeholder="Nombre del técnico">`;
+  } else {
+    const mecs = mecanicos.filter(m => !ROLES_EXCLUIR.includes(m.rol));
+    wrap.innerHTML = `<label>Técnico</label><select id="ag-tec"><option value="">— Asignar técnico —</option>` +
+      mecs.map(m => `<option value="${m.id}">${escapeHtml(m.nombre)}</option>`).join('') + `</select>`;
+  }
+}
+
+// Agrega el proceso actual a la lista de pendientes (en orden).
+function _agAgregarPend() {
+  const val = document.getElementById('ag-proceso')?.value || '';
+  if (!val) { toast('Elige un proceso', 'err'); return; }
+  const [srvKey, key] = val.split('|');
+  const srv = CATALOGO[srvKey];
+  const etDef = srv?.etapas.find(e => e.key === key);
+  if (!etDef) return;
+  const esExterno = !!srv.externo;
+  const tecEl = document.getElementById('ag-tec');
+  const mecanico_id = (!esExterno && tecEl?.value) ? parseInt(tecEl.value) : null;
+  const tercero = (esExterno && tecEl?.value?.trim()) ? tecEl.value.trim() : null;
+  if (!mecanico_id && !tercero) { toast('Asigna un técnico', 'err'); return; }
+  _etapasPend.push({
+    servicio: srvKey, key, nombre: etDef.nombre,
+    mecanico_id, tercero,
+    descripcion: document.getElementById('ag-desc')?.value?.trim() || null
+  });
+  const selP = document.getElementById('ag-proceso'); if (selP) selP.value = '';
+  const wrap = document.getElementById('ag-tecnico-wrap'); if (wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
+  const desc = document.getElementById('ag-desc'); if (desc) desc.value = '';
+  _renderPendLista();
+}
+
+function _agQuitarPend(i) { _etapasPend.splice(i, 1); _renderPendLista(); }
+
+function _renderPendLista() {
+  const cont = document.getElementById('ag-pend-lista');
+  if (!cont) return;
+  if (!_etapasPend.length) {
+    cont.innerHTML = '<div style="font-size:12px;color:var(--gris-mid);text-align:center;padding:10px">Aún no agregaste procesos. Elige uno arriba y dale "Agregar a la lista".</div>';
+    return;
+  }
+  const srvColor = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
+  cont.innerHTML = `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gris-mid);margin-bottom:6px">Procesos a agregar (${_etapasPend.length})</div>` +
+    _etapasPend.map((e, i) => {
+      const tecNombre = e.tercero || (mecanicos.find(m => m.id === e.mecanico_id)?.nombre) || 'Sin técnico';
+      return `<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--gris-borde);border-radius:7px;padding:8px 10px;margin-bottom:6px">
+        <span style="font-size:11px;font-weight:700;color:${srvColor[e.servicio]||'#475569'};min-width:16px">${i+1}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px">${escapeHtml(e.nombre)} <span style="font-size:11px;color:var(--gris-mid);font-weight:400">· ${escapeHtml(tecNombre)}</span></div>
+          ${e.descripcion ? `<div style="font-size:11px;color:var(--gris-mid);white-space:pre-wrap">${escapeHtml(e.descripcion)}</div>` : ''}
         </div>
+        <button type="button" class="btn btn-ghost btn-xs" style="color:var(--rojo)" onclick="_agQuitarPend(${i})">✕</button>
       </div>`;
     }).join('');
-    const cls = srv.clase;
-    return `<div class="etapas-grupo">
-      <span class="etapas-grupo-label badge-${cls}" style="background:var(--${cls === 'latoneria' ? 'rojo' : cls === 'pintura' ? 'amarillo' : cls === 'mecanica' ? 'azul' : 'verde'}-bg);color:${cls === 'latoneria' ? '#991B1B' : cls === 'pintura' ? 'var(--amarillo)' : cls === 'mecanica' ? 'var(--azul)' : 'var(--verde)'}">${srv.nombre}</span>
-      ${items}
-    </div>`;
-  }).join('');
 }
 
-function onChkChange(key, checked) {
-  const extra = document.getElementById('extra-' + key);
-  if (extra) extra.classList.toggle('show', checked);
-  const mecDiv = document.getElementById('mec-' + key);
-  if (mecDiv) {
-    mecDiv.classList.toggle('show', checked);
-    mecDiv.style.display = checked ? 'block' : 'none';
-  }
-  const camposDiv = document.getElementById('campos-' + key);
-  if (camposDiv) camposDiv.style.display = checked ? 'block' : 'none';
-  // Cada proceso se marca de forma individual (sin autoselección).
-}
-
-function recogerChecklist(containerId) {
-  const result = [];
-  document.querySelectorAll(`#${containerId} input[type=checkbox]:checked:not(:disabled)`).forEach(chk => {
-    const key = chk.value;
-    let srvKey = null, etDef = null;
-    for (const [sk, sv] of Object.entries(CATALOGO)) {
-      const et = sv.etapas.find(e => e.key === key);
-      if (et) { srvKey = sk; etDef = et; break; }
-    }
-    if (!etDef) return;
-    const tecTxt   = document.getElementById(`tec-txt-${key}`);
-    const mecSel   = document.getElementById(`mec-sel-${key}`);
-    const descEl   = document.getElementById(`desc-et-${key}`);
-    result.push({
-      key, servicio: srvKey, nombre: etDef.nombre,
-      tercero:     tecTxt?.value?.trim() || null,
-      mecanico_id: mecSel?.value ? parseInt(mecSel.value) : null,
-      descripcion: descEl?.value?.trim() || null
-    });
-  });
-  return result;
+// La lista a guardar es la de pendientes, en el orden en que se agregaron.
+function recogerChecklist(_containerId) {
+  return _etapasPend.slice();
 }
 
 // Guarda el nombre de los técnicos externos (Mecánica/Adicionales) en su propia
