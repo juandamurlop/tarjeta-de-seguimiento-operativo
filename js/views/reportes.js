@@ -124,6 +124,7 @@ async function montarReportes() {
           <button class="rep-opcion" onclick="_repSelAlcance('operarios',this)">Por operario</button>
           <button class="rep-opcion" onclick="_repSelAlcance('aseguradora',this)">Por aseguradora</button>
           <button class="rep-opcion" onclick="_repSelAlcance('servicio',this)">Por servicio</button>
+          <button class="rep-opcion" onclick="_repSelAlcance('pagos',this)">Pagos a técnicos</button>
         </div>
         <!-- Campos condicionales de alcance -->
         <div id="rep-campos-operarios" style="display:none;margin-top:12px">
@@ -150,6 +151,15 @@ async function montarReportes() {
             <select id="rep-srv-sel" style="width:100%">
               <option value="">— Selecciona un servicio —</option>
               ${srvOpts}
+            </select>
+          </div>
+        </div>
+        <div id="rep-campos-pagos" style="display:none;margin-top:12px">
+          <div class="field" style="margin:0;max-width:320px">
+            <label style="font-size:11px">Técnico <span style="color:var(--gris-mid);font-weight:400">(opcional — vacío = todos)</span></label>
+            <select id="rep-pago-mec-sel" style="width:100%">
+              <option value="">— Todos los técnicos —</option>
+              ${mecOpts}
             </select>
           </div>
         </div>
@@ -201,7 +211,7 @@ function _repSelAlcance(a, btn) {
   _repAlcance = a;
   document.querySelectorAll('#rep-alcance-btns .rep-opcion').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  ['operarios','aseguradora','servicio'].forEach(k => {
+  ['operarios','aseguradora','servicio','pagos'].forEach(k => {
     const el = document.getElementById('rep-campos-' + k);
     if (el) el.style.display = (k === a) ? 'block' : 'none';
   });
@@ -247,6 +257,11 @@ function _repGenerar(formato) {
     const iniS = ini || new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().split('T')[0];
     const finS = fin || ahora.toISOString().split('T')[0];
     generarReporteServicio(srv, iniS, finS, formato);
+  } else if (a === 'pagos') {
+    const mecId = document.getElementById('rep-pago-mec-sel')?.value || null;
+    const iniP = ini || new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().split('T')[0];
+    const finP = fin || ini || ahora.toISOString().split('T')[0];
+    generarReportePagosTecnicos(mecId, iniP, finP, formato);
   }
 }
 
@@ -656,6 +671,158 @@ async function generarReporteServicio(servicio, fechaIni, fechaFin, formato) {
     <tbody>${opHtml}</tbody></table></div>
     <div class="section"><div class="section-title">Etapas con mayor duración promedio (cuellos de botella)</div>${cuelloHtml}</div>
     <div class="footer">${_RPT_EMPRESA.nombre} · NIT ${_RPT_EMPRESA.nit} · Reporte generado el ${new Date().toLocaleString('es-CO')}</div>
+    </div></body></html>`;
+
+    const win = window.open('', '_blank');
+    if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 800); }
+    toast('PDF generado ✓');
+  } catch(e) { toast('Error: ' + e.message, 'err'); console.error(e); }
+}
+
+// ─── Reporte de PAGOS por técnico ────────────────────────────
+// Suma el "precio técnico" (etapas.valor — lo que el jefe le paga al técnico)
+// de cada trabajo TERMINADO en el período, con detalle por orden/vehículo para
+// que cada técnico compare con su propio registro. NO usa valor_venta.
+async function generarReportePagosTecnicos(mecId, fechaIni, fechaFin, formato) {
+  toast('Generando reporte de pagos...');
+  try {
+    const desde    = new Date(fechaIni + 'T00:00:00');
+    const hasta    = new Date(fechaFin + 'T23:59:59');
+    const desdeISO = desde.toISOString();
+    const hastaISO = hasta.toISOString();
+    const fd   = d => d.toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
+    const fmt  = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '$0';
+    const fmtF = iso => iso ? new Date(iso).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const ot   = id => (typeof formatOT === 'function') ? formatOT(id) : ('OT-' + id);
+
+    const filtroMec = mecId ? `&mecanico_id=eq.${mecId}` : '';
+    const etapas = await api(
+      `/etapas?fin=gte.${desdeISO}&fin=lte.${hastaISO}${filtroMec}&select=id,orden_id,etapa,servicio,tecnico,mecanico_id,valor,fin&order=fin.asc`
+    ).catch(()=>[]) || [];
+    if (!etapas.length) { toast('Sin trabajos terminados en el período', 'warn'); return; }
+
+    // Datos de vehículo/orden
+    const ordenIds = [...new Set(etapas.map(e => e.orden_id).filter(Boolean))];
+    const ordenes  = ordenIds.length
+      ? await api(`/ordenes?id=in.(${ordenIds.join(',')})&select=id,placa,marca,linea,propietario`).catch(()=>[]) || []
+      : [];
+    const ordMap = {}; ordenes.forEach(o => ordMap[o.id] = o);
+    // Nombres de técnicos internos
+    const mecs = await api('/mecanicos?select=id,nombre').catch(()=>[]) || [];
+    const mecMap = {}; mecs.forEach(m => mecMap[m.id] = m.nombre);
+
+    // Agrupar por técnico (interno por mecanico_id; externo por nombre de texto)
+    const tecMap = {};
+    etapas.forEach(e => {
+      const nombre = (e.mecanico_id && mecMap[e.mecanico_id]) || e.tecnico || `Técnico #${e.mecanico_id||'?'}`;
+      const key = e.mecanico_id ? 'm'+e.mecanico_id : 't'+(e.tecnico||'?');
+      if (!tecMap[key]) tecMap[key] = { nombre, etapas:[], total:0 };
+      tecMap[key].etapas.push(e);
+      tecMap[key].total += (e.valor||0);
+    });
+    const tecnicos    = Object.values(tecMap).sort((a,b) => b.total - a.total);
+    const granTotal   = tecnicos.reduce((s,t) => s + t.total, 0);
+    const totalEtapas = etapas.length;
+
+    const titulo    = mecId ? `Pago a técnico — ${tecnicos[0]?.nombre || ''}` : 'Pagos a técnicos';
+    const subtitulo = `Período: ${fd(desde)} al ${fd(hasta)}`;
+
+    // ── EXCEL ──
+    if (formato === 'excel') {
+      _cargarSheetJS(() => {
+        const wb = XLSX.utils.book_new();
+        const ws1 = XLSX.utils.aoa_to_sheet([
+          [titulo],[subtitulo],['Generado:', new Date().toLocaleString('es-CO')],[],
+          ['Técnico','Trabajos','Total a pagar (COP)'],
+          ...tecnicos.map(t => [t.nombre, t.etapas.length, t.total]),
+          [],['TOTAL GENERAL', totalEtapas, granTotal]
+        ]);
+        ws1['!cols'] = [{wch:26},{wch:10},{wch:20}];
+        XLSX.utils.book_append_sheet(wb, ws1, 'Resumen pagos');
+
+        const hdr = ['Técnico','Placa','Vehículo','OT','Proceso','Servicio','Fecha','Precio técnico (COP)'];
+        const rows = [];
+        tecnicos.forEach(t => t.etapas.forEach(e => {
+          const o = ordMap[e.orden_id] || {};
+          rows.push([t.nombre, o.placa||'—', [o.marca,o.linea].filter(Boolean).join(' ')||'—', ot(e.orden_id), e.etapa||'—', e.servicio||'—', fmtF(e.fin), e.valor||0]);
+        }));
+        const ws2 = XLSX.utils.aoa_to_sheet([hdr, ...rows]);
+        ws2['!cols'] = [{wch:22},{wch:10},{wch:20},{wch:10},{wch:22},{wch:14},{wch:14},{wch:18}];
+        XLSX.utils.book_append_sheet(wb, ws2, 'Detalle por trabajo');
+
+        XLSX.writeFile(wb, `Pagos_tecnicos_${fechaIni}_${fechaFin}.xlsx`);
+        toast('Excel generado ✓');
+      });
+      return;
+    }
+
+    // ── PDF ──
+    const col = '#1E3A5F';
+    const resumenHtml = tecnicos.map(t => `<tr>
+      <td><strong>${escapeHtml(t.nombre)}</strong></td>
+      <td>${t.etapas.length}</td>
+      <td style="font-family:monospace;text-align:right;font-weight:700">${fmt(t.total)}</td>
+    </tr>`).join('');
+
+    const bloquesTec = tecnicos.map(t => {
+      const filas = t.etapas.map(e => {
+        const o = ordMap[e.orden_id] || {};
+        return `<tr>
+          <td style="font-family:monospace;font-weight:700">${escapeHtml(o.placa||'—')}</td>
+          <td>${escapeHtml([o.marca,o.linea].filter(Boolean).join(' ')||'—')}</td>
+          <td style="font-family:monospace">${ot(e.orden_id)}</td>
+          <td>${escapeHtml(e.etapa||'—')}</td>
+          <td>${fmtF(e.fin)}</td>
+          <td style="font-family:monospace;text-align:right">${fmt(e.valor)}</td>
+        </tr>`;
+      }).join('');
+      return `<div class="section">
+        <div class="tec-head"><span>${escapeHtml(t.nombre)}</span><span>${t.etapas.length} trabajos · <strong>${fmt(t.total)}</strong></span></div>
+        <table><thead><tr><th>Placa</th><th>Vehículo</th><th>OT</th><th>Proceso</th><th>Fecha</th><th style="text-align:right">Precio técnico</th></tr></thead>
+        <tbody>${filas}</tbody>
+        <tfoot><tr class="subtotal"><td colspan="5" style="text-align:right">Subtotal ${escapeHtml(t.nombre)}</td><td style="text-align:right;font-family:monospace">${fmt(t.total)}</td></tr></tfoot>
+        </table>
+      </div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${titulo}</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a2e;font-size:12px;line-height:1.5}
+    .page{max-width:960px;margin:0 auto;padding:32px 36px}
+    .rpt-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid ${col};padding-bottom:16px;margin-bottom:24px}
+    .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px}
+    .kpi{border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;border-top:3px solid}
+    .kpi-val{font-size:20px;font-weight:800;margin-bottom:3px}.kpi-lbl{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px}
+    .section{margin-bottom:22px;page-break-inside:avoid}
+    .section-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e5e7eb;padding-bottom:7px;margin-bottom:12px;color:${col}}
+    .tec-head{display:flex;justify-content:space-between;align-items:center;background:${col};color:#fff;padding:8px 12px;border-radius:6px 6px 0 0;font-size:13px;font-weight:700}
+    table{width:100%;border-collapse:collapse;font-size:11px}
+    th{padding:7px 10px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0;background:#f8fafc}
+    td{padding:6px 10px;border-bottom:1px solid #f1f5f0}
+    tfoot .subtotal td{font-weight:800;background:#f8fafc;border-top:2px solid #e2e8f0}
+    .footer{margin-top:30px;border-top:1px solid #e2e8f0;padding-top:10px;font-size:9px;color:#aaa;text-align:center}
+    @media print{.page{padding:18px 22px}}</style></head><body><div class="page">
+    <div class="rpt-header">
+      <div><div style="font-size:22px;font-weight:800;color:${col};letter-spacing:1px">${_RPT_EMPRESA.nombre}</div>
+        <div style="font-size:10px;color:#888;margin-top:3px">${_RPT_EMPRESA.slogan} · NIT ${_RPT_EMPRESA.nit}</div></div>
+      <div style="text-align:right">
+        <div style="font-size:16px;font-weight:800;color:${col}">${titulo}</div>
+        <div style="font-size:11px;color:#555;margin-top:3px">${subtitulo}</div>
+        <div style="font-size:10px;color:#999;margin-top:3px">Generado: ${new Date().toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi" style="border-top-color:${col}"><div class="kpi-val" style="color:${col}">${tecnicos.length}</div><div class="kpi-lbl">Técnicos</div></div>
+      <div class="kpi" style="border-top-color:#2563EB"><div class="kpi-val" style="color:#2563EB">${totalEtapas}</div><div class="kpi-lbl">Trabajos terminados</div></div>
+      <div class="kpi" style="border-top-color:#059669"><div class="kpi-val" style="color:#059669;font-size:16px">${fmt(granTotal)}</div><div class="kpi-lbl">Total a pagar</div></div>
+    </div>
+    ${tecnicos.length > 1 ? `<div class="section"><div class="section-title">Resumen por técnico</div>
+      <table><thead><tr><th>Técnico</th><th>Trabajos</th><th style="text-align:right">Total a pagar</th></tr></thead>
+      <tbody>${resumenHtml}</tbody>
+      <tfoot><tr class="subtotal"><td style="text-align:right">TOTAL GENERAL</td><td>${totalEtapas}</td><td style="text-align:right;font-family:monospace">${fmt(granTotal)}</td></tr></tfoot>
+      </table></div>` : ''}
+    <div class="section-title">Detalle por técnico (trazabilidad por vehículo)</div>
+    ${bloquesTec}
+    <div class="footer">${_RPT_EMPRESA.nombre} · NIT ${_RPT_EMPRESA.nit} · Precio técnico = valor que asigna el Jefe de Taller a cada proceso · ${new Date().toLocaleString('es-CO')}</div>
     </div></body></html>`;
 
     const win = window.open('', '_blank');
