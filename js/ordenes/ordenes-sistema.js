@@ -2179,11 +2179,14 @@ function _mostrarPopupAlerta(etapa, orden, minutos, nivel) {
   const existentes = document.querySelectorAll('.alerta-popup-etapa');
   if (existentes.length >= 3) return;
 
+  // Colores de la paleta general (sin naranja): ámbar = aviso (<1h),
+  // rojo = urgente (>1h).
   const colores = {
-    amarillo: { bg: '#FFF8E1', border: '#F59E0B', icon: '#F59E0B', texto: '#78350F' },
-    naranja:  { bg: '#FFF3E0', border: '#EA580C', icon: '#EA580C', texto: '#7C2D12' }
+    amarillo: { bg: 'var(--amarillo-bg)', border: 'var(--amarillo)', icon: 'var(--amarillo)', texto: '#78350F' },
+    naranja:  { bg: 'var(--rojo-bg)',     border: 'var(--rojo)',     icon: 'var(--rojo)',     texto: '#7F1D1D' }
   };
   const c      = colores[nivel] || colores.amarillo;
+  const AUTO_CIERRE_MS = 30000;
   const placa  = orden.placa || '—';
   const etNom  = etapa.etapa || etapa.servicio || 'Etapa';
   const tec    = etapa.tecnico || 'Sin técnico';
@@ -2194,7 +2197,7 @@ function _mostrarPopupAlerta(etapa, orden, minutos, nivel) {
   div.style.cssText = `
     position:fixed;top:16px;right:16px;z-index:10000;
     background:${c.bg};border:1.5px solid ${c.border};border-radius:12px;
-    padding:12px 14px;min-width:240px;max-width:300px;
+    padding:12px 14px 14px;min-width:240px;max-width:300px;overflow:hidden;
     box-shadow:0 4px 20px rgba(0,0,0,.15);
     font-family:'DM Sans',sans-serif;font-size:13px;color:${c.texto};
     animation:slideInRight .25s ease-out;
@@ -2222,12 +2225,24 @@ function _mostrarPopupAlerta(etapa, orden, minutos, nivel) {
       <button onclick="_alertaVerOrden(${etapa.orden_id})" style="flex:1;background:${c.border};color:white;border:none;border-radius:7px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Ver orden</button>
       <button onclick="_alertaMarcarRevisado(${etapa.id},this)" style="flex:1;background:none;border:1.5px solid ${c.border};color:${c.texto};border-radius:7px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Marcar revisado</button>
     </div>
+    <div class="alerta-bar" style="position:absolute;left:0;bottom:0;height:3px;width:0;background:${c.border};opacity:.7"></div>
   `;
 
   document.body.appendChild(div);
 
-  // Auto-cerrar tras 30 segundos
-  setTimeout(() => { if (div.parentNode) div.remove(); }, 30000);
+  // Barra de progreso: se rellena durante el tiempo de vida y, al llenarse,
+  // el aviso se cierra (indica visualmente cuándo va a desaparecer).
+  const bar = div.querySelector('.alerta-bar');
+  if (bar) {
+    bar.style.transition = 'none';
+    bar.style.width = '0%';
+    void bar.offsetWidth; // reflow para reiniciar la animación
+    bar.style.transition = `width ${AUTO_CIERRE_MS}ms linear`;
+    bar.style.width = '100%';
+  }
+
+  // Auto-cerrar al completarse la barra
+  setTimeout(() => { if (div.parentNode) div.remove(); }, AUTO_CIERRE_MS);
 }
 
 function _alertaVerOrden(ordenId) {
