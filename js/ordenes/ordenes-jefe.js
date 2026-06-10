@@ -465,11 +465,7 @@ function montarJefe() {
         </button>
         <button class="nav-item" id="nav-vehiculos" onclick="navJefe('vehiculos')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="14" height="10" rx="2"/><circle cx="12" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg>
-          <span class="nav-label">Ingreso Particular</span>
-        </button>
-        <button class="nav-item" id="nav-flotillas" onclick="navJefe('flotillas')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-          <span class="nav-label">Ingreso Flotilla</span>
+          <span class="nav-label">Ingreso de vehículos</span>
         </button>
       </div>
 
@@ -753,9 +749,10 @@ function navJefe(pag) {
       break;
     case 'vehiculos':
       pagId = 'pag-vehiculos';
-      titulo = 'Ingreso Particular';
+      titulo = 'Ingreso de vehículos';
       setTimeout(() => {
-        if (typeof montarIngresoParticular === 'function') montarIngresoParticular();
+        if (typeof montarIngresoVehiculos === 'function') montarIngresoVehiculos();
+        else if (typeof montarIngresoParticular === 'function') montarIngresoParticular();
         else if (typeof cargarVehiculos === 'function') cargarVehiculos();
       }, 50);
       break;

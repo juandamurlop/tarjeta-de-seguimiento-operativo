@@ -3,55 +3,70 @@
 // ═══════════════════════════════════════════════════════════
 
 // ── Estado del módulo ────────────────────────────────────
-let _flotillas       = [];
-let _flotillaActual  = null;
-let _vehiculosActual = [];
-let _vehiculoEditar  = null;
+let _flotillas        = [];
+let _flotillaActual   = null;
+let _vehiculosActual  = [];
+let _vehiculoEditar   = null;
 let _vehiculoFotoFile = null;
+// Ingreso unificado de vehículos
+let _empresasVeh      = [];   // catálogo de empresas
+let _aseguradorasVeh  = [];   // catálogo de aseguradoras
+let _flotMapVeh       = {};   // id → nombre flotilla
+let _empMapVeh        = {};   // id → nombre empresa
+let _ingTipoVeh       = 'particular'; // tipo seleccionado en el modal
+let _filtroTipoVeh    = 'todos';      // filtro de la lista
+
+const _TIPO_VEH = {
+  particular:  { lbl:'Cliente',     color:'#2563EB', bg:'#EFF6FF' },
+  flotilla:    { lbl:'Flotilla',    color:'#7C3AED', bg:'#F5F3FF' },
+  empresa:     { lbl:'Empresa',     color:'#0891B2', bg:'#ECFEFF' },
+  aseguradora: { lbl:'Aseguradora', color:'#D97706', bg:'#FFFBEB' }
+};
 
 // ═══════════════════════════════════════════════════════════
-// INGRESO PARTICULAR — registro de vehículos de clientes independientes
-// (pestaña "Ingreso Particular" del menú Registro → pag-vehiculos)
+// INGRESO DE VEHÍCULOS (unificado) — un solo apartado para registrar
+// vehículos de cualquier tipo de cliente (particular, flotilla, empresa,
+// aseguradora). El tipo se elige DENTRO del formulario de registro.
+// (menú Registro → pag-vehiculos)
 // ═══════════════════════════════════════════════════════════
-async function montarIngresoParticular() {
+async function montarIngresoVehiculos() {
   const pag = document.getElementById('pag-vehiculos');
   if (!pag) return;
+  _flotillaActual = null;
+
+  // Pre-cargar catálogos para los selectores del formulario
+  await _cargarCatalogosVeh();
+
+  const chips = [
+    ['todos','Todos','#475569'],
+    ['particular','Clientes','#2563EB'],
+    ['flotilla','Flotillas','#7C3AED'],
+    ['empresa','Empresas','#0891B2'],
+    ['aseguradora','Aseguradoras','#D97706']
+  ].map(([k,l,c]) => `
+    <button class="ingveh-chip${_filtroTipoVeh===k?' active':''}" data-k="${k}" onclick="_filtrarTipoVeh('${k}')"
+      style="--cc:${c}">${l}</button>`).join('');
 
   pag.innerHTML = `
-    <div style="margin-bottom:20px">
-      <div style="font-size:18px;font-weight:700;color:var(--texto);margin-bottom:4px">Ingreso particular</div>
-      <div style="font-size:13px;color:var(--gris-mid)">Registra un vehículo de un cliente independiente (no pertenece a flotilla ni empresa).</div>
-    </div>
-
-    <!-- CARD: VEHÍCULO PARTICULAR -->
-    <div class="dash-panel" style="max-width:420px;margin-bottom:30px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="width:44px;height:44px;background:var(--azul-bg,#EBF2FF);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <svg width="22" height="22" fill="none" stroke="var(--azul)" stroke-width="1.8" viewBox="0 0 24 24">
-            <path d="M19 17H5v-5l2.5-5h9L19 12v5z"/>
-            <circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/>
-            <path d="M5 12h14"/>
-          </svg>
-        </div>
-        <div>
-          <div style="font-size:15px;font-weight:700;color:var(--texto)">Vehículo particular</div>
-          <div style="font-size:12px;color:var(--gris-mid)">Cliente independiente</div>
-        </div>
+    <style>
+      .ingveh-chip{padding:7px 14px;border:1px solid var(--gris-borde);background:#fff;border-radius:99px;font-size:12.5px;font-weight:600;color:var(--gris-mid);cursor:pointer;white-space:nowrap;transition:all .15s}
+      .ingveh-chip.active{background:var(--cc);border-color:var(--cc);color:#fff}
+      .ingveh-chip:hover:not(.active){color:var(--texto);border-color:var(--cc)}
+    </style>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--texto);margin-bottom:4px">Ingreso de vehículos</div>
+        <div style="font-size:13px;color:var(--gris-mid)">Registra un vehículo (sin orden de trabajo). Elige el tipo de cliente al registrar.</div>
       </div>
-      <div style="font-size:12px;color:var(--gris-mid);line-height:1.65;margin-bottom:18px">
-        Vehículo de un cliente que no pertenece a ninguna empresa ni grupo. Se guarda para agilizar ingresos futuros.
-      </div>
-      <button class="btn btn-primary" style="width:100%" onclick="abrirModalRegistrarVehiculo(null)">
+      <button class="btn btn-primary" onclick="abrirModalRegistrarVehiculo(null)">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        Registrar vehículo particular
+        Registrar vehículo
       </button>
     </div>
-
-    <!-- Lista de vehículos particulares registrados -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <div style="font-size:14px;font-weight:700;color:var(--texto)">Vehículos particulares registrados</div>
-      <input type="text" id="flot-buscar" placeholder="Buscar por placa, nombre o cédula..."
-        style="padding:8px 14px;border:1px solid var(--gris-borde);border-radius:8px;font-size:13px;width:280px"
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${chips}</div>
+    <div style="margin-bottom:14px">
+      <input type="text" id="flot-buscar" placeholder="Buscar por placa, propietario o cédula..."
+        style="width:100%;max-width:420px;padding:9px 14px;border:1px solid var(--gris-borde);border-radius:8px;font-size:14px"
         oninput="filtrarVehiculosFlotilla(this.value)">
     </div>
     <div id="flotilla-vehiculos-lista">
@@ -59,7 +74,117 @@ async function montarIngresoParticular() {
     </div>
   `;
 
-  await cargarVehiculosFlotilla(null);
+  await _cargarTodosVehiculos();
+}
+// Alias de compatibilidad (el menú viejo llamaba a esta)
+async function montarIngresoParticular() { return montarIngresoVehiculos(); }
+
+// Carga catálogos (flotillas, empresas, aseguradoras) para los selectores
+async function _cargarCatalogosVeh() {
+  const [flot, emp, aseg] = await Promise.all([
+    api('/flotillas?order=nombre.asc').catch(() => []) || [],
+    api('/empresas?order=nombre.asc').catch(() => []) || [],
+    api('/aseguradoras?activo=eq.true&order=nombre.asc').catch(() => []) || []
+  ]);
+  _flotillas       = flot || [];
+  _empresasVeh     = emp  || [];
+  _aseguradorasVeh = aseg || [];
+  _flotMapVeh = {}; _flotillas.forEach(f => _flotMapVeh[f.id] = f.nombre);
+  _empMapVeh  = {}; _empresasVeh.forEach(e => _empMapVeh[e.id] = e.nombre);
+}
+
+// Carga TODOS los vehículos registrados (cualquier tipo)
+async function _cargarTodosVehiculos() {
+  const lista = document.getElementById('flotilla-vehiculos-lista');
+  if (!lista) return;
+  try {
+    _vehiculosActual = await api('/vehiculos?order=fecha_ingreso.desc').catch(() => []) || [];
+    _aplicarFiltroVeh();
+  } catch (e) {
+    lista.innerHTML = `<div class="empty-state">Error: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function _filtrarTipoVeh(tipo) {
+  _filtroTipoVeh = tipo;
+  document.querySelectorAll('.ingveh-chip').forEach(b => b.classList.toggle('active', b.dataset.k === tipo));
+  const buscador = document.getElementById('flot-buscar');
+  if (buscador) buscador.value = '';
+  _aplicarFiltroVeh();
+}
+
+function _aplicarFiltroVeh() {
+  const base = _filtroTipoVeh === 'todos'
+    ? _vehiculosActual
+    : _vehiculosActual.filter(v => (v.tipo_cliente || 'particular') === _filtroTipoVeh);
+  renderVehiculosUnif(base);
+}
+
+// Render de la lista unificada (incluye columna "Tipo")
+function renderVehiculosUnif(vehiculos) {
+  const lista = document.getElementById('flotilla-vehiculos-lista');
+  if (!lista) return;
+  if (!vehiculos.length) {
+    lista.innerHTML = `
+      <div class="empty-state">
+        <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:10px;color:var(--gris-mid)"><path d="M14 16H9m10 0h3v-3.15a1 1 0 00-.84-.99L16 11l-2.7-3.6a1 1 0 00-.8-.4H5.24a2 2 0 00-1.8 1.1l-.8 1.63A6 6 0 002 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>
+        <div style="font-weight:600;margin-bottom:4px">No hay vehículos${_filtroTipoVeh!=='todos'?' de este tipo':''} registrados</div>
+        <div style="font-size:13px;color:var(--gris-mid)">Usa "Registrar vehículo" para agregar uno</div>
+      </div>`;
+    return;
+  }
+  const badgeTipo = v => {
+    const t = _TIPO_VEH[v.tipo_cliente || 'particular'] || _TIPO_VEH.particular;
+    let sub = '';
+    if (v.tipo_cliente === 'flotilla'    && v.flotilla_id) sub = _flotMapVeh[v.flotilla_id] || '';
+    if (v.tipo_cliente === 'empresa'     && v.empresa_id)  sub = _empMapVeh[v.empresa_id] || '';
+    if (v.tipo_cliente === 'aseguradora' && v.aseguradora) sub = v.aseguradora;
+    return `<span style="display:inline-block;background:${t.bg};color:${t.color};border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700">${t.lbl}</span>${sub?`<div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(sub)}</div>`:''}`;
+  };
+  lista.innerHTML = `
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:760px">
+        <thead>
+          <tr style="background:var(--gris-bg);border-bottom:2px solid var(--gris-borde)">
+            <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">Placa</th>
+            <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">Vehículo</th>
+            <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">Propietario</th>
+            <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">Tipo</th>
+            <th style="padding:10px 12px;text-align:center;font-size:11px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${vehiculos.map(v => `
+            <tr class="row-hover" style="border-bottom:1px solid var(--gris-borde)">
+              <td style="padding:11px 12px">
+                <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;letter-spacing:2px;color:var(--texto)">${escapeHtml(v.placa||'—')}</span>
+                ${v.foto_tarjeta_url ? `<br><a href="${escapeHtml(v.foto_tarjeta_url)}" target="_blank" style="font-size:10px;color:var(--azul)">ver tarjeta</a>` : ''}
+              </td>
+              <td style="padding:11px 12px">
+                <div style="font-weight:600">${[v.marca, v.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'}</div>
+                <div style="font-size:11px;color:var(--gris-mid)">${[v.modelo, v.color].filter(Boolean).map(escapeHtml).join(' · ') || ''}</div>
+              </td>
+              <td style="padding:11px 12px">
+                <div>${escapeHtml(v.propietario||'—')}</div>
+                ${v.telefono ? `<div style="font-size:11px;color:var(--gris-mid)">${escapeHtml(v.telefono)}</div>` : ''}
+              </td>
+              <td style="padding:11px 12px">${badgeTipo(v)}</td>
+              <td style="padding:11px 12px;text-align:center">
+                <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+                  <button class="btn btn-sm btn-primary" data-vid="${v.id}" onclick="crearOrdenDesdeVehiculo(this.dataset.vid)">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                    Orden
+                  </button>
+                  <button class="btn btn-sm btn-ghost" data-vid="${v.id}" onclick="abrirModalEditarVehiculo(this.dataset.vid)">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  ${v.placa ? `<button class="btn btn-sm btn-ghost" onclick="abrirPopupConsumibles('${escapeHtml(v.placa)}',${v.km||v.kilometraje||0})" title="Consumibles & Docs" style="font-size:14px;padding:4px 6px">🔧</button>` : ''}
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -291,14 +416,21 @@ function renderVehiculosFlotilla(vehiculos) {
 }
 
 function filtrarVehiculosFlotilla(q) {
-  if (!q) { renderVehiculosFlotilla(_vehiculosActual); return; }
-  const ql = q.toLowerCase();
-  renderVehiculosFlotilla(_vehiculosActual.filter(v =>
+  // En la pantalla unificada (existen los chips de tipo) se respeta el filtro
+  // de tipo y se usa la tabla con columna "Tipo".
+  const enUnif = !!document.querySelector('.ingveh-chip');
+  let base = _vehiculosActual;
+  if (enUnif && _filtroTipoVeh !== 'todos') {
+    base = base.filter(v => (v.tipo_cliente || 'particular') === _filtroTipoVeh);
+  }
+  const ql = (q || '').toLowerCase();
+  const filtered = !ql ? base : base.filter(v =>
     (v.placa||'').toLowerCase().includes(ql) ||
     (v.propietario||'').toLowerCase().includes(ql) ||
     (v.cedula_nit||'').toLowerCase().includes(ql) ||
     (v.marca||'').toLowerCase().includes(ql)
-  ));
+  );
+  (enUnif ? renderVehiculosUnif : renderVehiculosFlotilla)(filtered);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -350,39 +482,81 @@ function crearOrdenDesdeVehiculo(vehiculoId) {
 // ═══════════════════════════════════════════════════════════
 // MODAL — REGISTRAR / EDITAR VEHÍCULO
 // ═══════════════════════════════════════════════════════════
-function abrirModalRegistrarVehiculo(flotillaId) {
+async function abrirModalRegistrarVehiculo(flotillaId) {
   _vehiculoEditar = null;
+  if (!_empresasVeh.length && !_aseguradorasVeh.length) await _cargarCatalogosVeh();
   _abrirModalVehiculo(flotillaId, null);
 }
 
-function abrirModalEditarVehiculo(vehiculoId) {
+async function abrirModalEditarVehiculo(vehiculoId) {
   const v = _vehiculosActual.find(x => x.id == vehiculoId);
   if (!v) { toast('Vehículo no encontrado', 'err'); return; }
   _vehiculoEditar = v;
+  if (!_empresasVeh.length && !_aseguradorasVeh.length) await _cargarCatalogosVeh();
   _abrirModalVehiculo(v.flotilla_id, v);
+}
+
+// Cambia el tipo de cliente del formulario y muestra el campo de grupo acorde.
+function _setTipoVehiculo(tipo) {
+  _ingTipoVeh = tipo;
+  document.querySelectorAll('.tcv-btn').forEach(b => {
+    const on = b.dataset.t === tipo;
+    b.classList.toggle('active', on);
+  });
+  ['flotilla','empresa','aseguradora'].forEach(k => {
+    const blk = document.getElementById('vf-blk-' + k);
+    if (blk) blk.style.display = (k === tipo) ? 'block' : 'none';
+  });
 }
 
 function _abrirModalVehiculo(flotillaId, vehiculo) {
   document.getElementById('modal-vehiculo-flot')?.remove();
   const v = vehiculo || {};
   const titulo = vehiculo ? 'Editar vehículo' : 'Registrar vehículo';
-  const flotOpts = [
-    `<option value="">— Sin flotilla —</option>`,
-    ...(_flotillas || []).map(f =>
-      `<option value="${f.id}" ${f.id == flotillaId ? 'selected' : ''}>${escapeHtml(f.nombre||'')}</option>`)
-  ].join('');
+  const initTipo = v.tipo_cliente || (flotillaId ? 'flotilla' : 'particular');
+  _ingTipoVeh = initTipo;
+
+  const flotSel = v.flotilla_id || flotillaId;
+  const flotOpts = [`<option value="">— Selecciona flotilla —</option>`,
+    ...(_flotillas || []).map(f => `<option value="${f.id}" ${f.id == flotSel ? 'selected' : ''}>${escapeHtml(f.nombre||'')}</option>`)].join('');
+  const empOpts = [`<option value="">— Selecciona empresa —</option>`,
+    ...(_empresasVeh || []).map(e => `<option value="${e.id}" ${e.id == v.empresa_id ? 'selected' : ''}>${escapeHtml(e.nombre||'')}</option>`)].join('');
+  const asegOpts = [`<option value="">— Selecciona aseguradora —</option>`,
+    ...(_aseguradorasVeh || []).map(a => `<option value="${escapeHtml(a.nombre)}" ${a.nombre === v.aseguradora ? 'selected' : ''}>${escapeHtml(a.nombre||'')}</option>`)].join('');
+
+  const tipoBtn = (t, lbl) => {
+    const c = _TIPO_VEH[t];
+    return `<button type="button" class="tcv-btn${t===initTipo?' active':''}" data-t="${t}" onclick="_setTipoVehiculo('${t}')" style="--cc:${c.color}">${lbl}</button>`;
+  };
 
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.id = 'modal-vehiculo-flot';
   modal.style.zIndex = '1000';
   modal.innerHTML = `
+    <style>
+      .tcv-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}
+      .tcv-btn{padding:9px 6px;border:1.5px solid var(--gris-borde);background:#fff;border-radius:9px;font-size:12.5px;font-weight:700;color:var(--gris-mid);cursor:pointer;transition:all .15s}
+      .tcv-btn.active{background:var(--cc);border-color:var(--cc);color:#fff}
+      .tcv-btn:hover:not(.active){border-color:var(--cc);color:var(--texto)}
+    </style>
     <div class="modal" style="max-width:640px;width:95%">
       <div class="modal-header">
         <h2 style="font-size:16px">${titulo}</h2>
         <button class="btn btn-ghost btn-sm" onclick="cerrarModalVehiculo()">✕</button>
       </div>
       <div class="modal-body" style="max-height:80vh;overflow-y:auto">
+
+        <!-- SELECTOR DE TIPO DE CLIENTE -->
+        <div style="margin-bottom:16px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-mid);margin-bottom:8px">Tipo de cliente</div>
+          <div class="tcv-row">
+            ${tipoBtn('particular','Cliente')}
+            ${tipoBtn('flotilla','Flotilla')}
+            ${tipoBtn('empresa','Empresa')}
+            ${tipoBtn('aseguradora','Aseguradora')}
+          </div>
+        </div>
 
         <!-- OCR Tarjeta -->
         <div style="background:var(--azul-bg,#EBF2FF);border:1.5px dashed var(--azul);border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
@@ -442,9 +616,19 @@ function _abrirModalVehiculo(flotillaId, vehiculo) {
             <label>Teléfono <span style="font-weight:400;font-size:11px;color:var(--gris-mid)">(opcional)</span></label>
             <input id="vf-telefono" value="${escapeHtml(v.telefono||'')}" placeholder="3001234567" type="tel">
           </div>
-          <div class="field full">
-            <label>Flotilla / Empresa</label>
+
+          <!-- CAMPOS SEGÚN TIPO -->
+          <div class="field full" id="vf-blk-flotilla" style="display:${initTipo==='flotilla'?'block':'none'}">
+            <label>Flotilla <button type="button" onclick="abrirModalNuevaFlotilla()" style="background:none;border:none;color:var(--azul);font-size:11px;font-weight:700;cursor:pointer;padding:0">+ Nueva flotilla</button></label>
             <select id="vf-flotilla">${flotOpts}</select>
+          </div>
+          <div class="field full" id="vf-blk-empresa" style="display:${initTipo==='empresa'?'block':'none'}">
+            <label>Empresa <button type="button" onclick="abrirModalNuevaEmpresaVeh()" style="background:none;border:none;color:var(--azul);font-size:11px;font-weight:700;cursor:pointer;padding:0">+ Nueva empresa</button></label>
+            <select id="vf-empresa">${empOpts}</select>
+          </div>
+          <div class="field full" id="vf-blk-aseguradora" style="display:${initTipo==='aseguradora'?'block':'none'}">
+            <label>Aseguradora</label>
+            <select id="vf-aseguradora">${asegOpts}</select>
           </div>
         </div>
       </div>
@@ -460,6 +644,26 @@ function _abrirModalVehiculo(flotillaId, vehiculo) {
   requestAnimationFrame(() => modal.classList.add('show'));
   modal.addEventListener('click', e => { if (e.target === modal) cerrarModalVehiculo(); });
   setTimeout(() => { document.getElementById('vf-placa')?.focus(); }, 100);
+}
+
+// Crear empresa rápida desde el formulario de vehículo
+async function abrirModalNuevaEmpresaVeh() {
+  const nombre = prompt('Nombre de la empresa:');
+  if (!nombre || !nombre.trim()) return;
+  const nit = prompt('NIT (opcional):') || null;
+  try {
+    const res = await api('/empresas?select=id,nombre', 'POST',
+      { nombre: nombre.trim(), nit: nit ? nit.trim() : null, activo: true },
+      { Prefer: 'return=representation' });
+    const nueva = res?.[0];
+    await _cargarCatalogosVeh();
+    const sel = document.getElementById('vf-empresa');
+    if (sel) {
+      sel.innerHTML = [`<option value="">— Selecciona empresa —</option>`,
+        ..._empresasVeh.map(e => `<option value="${e.id}" ${nueva && e.id === nueva.id ? 'selected' : ''}>${escapeHtml(e.nombre||'')}</option>`)].join('');
+    }
+    toast('Empresa creada ✓');
+  } catch(e) { toast('Error creando empresa: ' + e.message, 'err'); }
 }
 
 function cerrarModalVehiculo() {
@@ -558,7 +762,11 @@ async function guardarVehiculo() {
   if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
 
   try {
+    // Asociación según el tipo de cliente elegido en el formulario
+    const tipo = _ingTipoVeh || 'particular';
     const flotillaVal = document.getElementById('vf-flotilla')?.value;
+    const empresaVal  = document.getElementById('vf-empresa')?.value;
+    const asegVal     = document.getElementById('vf-aseguradora')?.value;
     const datos = {
       placa,
       marca:       document.getElementById('vf-marca')?.value.trim() || null,
@@ -569,7 +777,10 @@ async function guardarVehiculo() {
       propietario,
       cedula_nit:  document.getElementById('vf-cedula')?.value.trim() || null,
       telefono:    document.getElementById('vf-telefono')?.value.trim() || null,
-      flotilla_id: flotillaVal ? parseInt(flotillaVal) : null
+      tipo_cliente: tipo,
+      flotilla_id: tipo === 'flotilla'    && flotillaVal ? parseInt(flotillaVal) : null,
+      empresa_id:  tipo === 'empresa'     && empresaVal  ? parseInt(empresaVal)  : null,
+      aseguradora: tipo === 'aseguradora' && asegVal     ? asegVal               : null
     };
 
     if (_vehiculoFotoFile) {
@@ -589,7 +800,9 @@ async function guardarVehiculo() {
 
     _vehiculoFotoFile = null;
     cerrarModalVehiculo();
-    await cargarVehiculosFlotilla(_flotillaActual?.id || null);
+    // Refrescar según la pantalla en la que estemos
+    if (document.querySelector('.ingveh-chip')) await _cargarTodosVehiculos();
+    else await cargarVehiculosFlotilla(_flotillaActual?.id || null);
 
   } catch (e) {
     toast('Error guardando: ' + e.message, 'err');
@@ -659,14 +872,27 @@ async function guardarFlotilla(flotillaId) {
     activa:    true
   };
   try {
+    let nuevaId = flotillaId;
     if (flotillaId) {
       await api(`/flotillas?id=eq.${flotillaId}`, 'PATCH', datos, { Prefer: 'return=minimal' });
       toast('Flotilla actualizada ✓');
     } else {
-      await api('/flotillas', 'POST', datos, { Prefer: 'return=minimal' });
+      const res = await api('/flotillas?select=id', 'POST', datos, { Prefer: 'return=representation' });
+      nuevaId = res?.[0]?.id;
       toast('Flotilla creada ✓');
     }
     cerrarModalFlotilla();
-    await montarFlotillas();
+    // Si se creó desde el modal de vehículo, refrescar ese selector;
+    // si no, refrescar la pantalla de flotillas/vehículos.
+    const selFlot = document.getElementById('vf-flotilla');
+    if (selFlot) {
+      await _cargarCatalogosVeh();
+      selFlot.innerHTML = [`<option value="">— Selecciona flotilla —</option>`,
+        ..._flotillas.map(f => `<option value="${f.id}" ${nuevaId && f.id === nuevaId ? 'selected' : ''}>${escapeHtml(f.nombre||'')}</option>`)].join('');
+    } else if (document.querySelector('.ingveh-chip')) {
+      await montarIngresoVehiculos();
+    } else {
+      await montarFlotillas();
+    }
   } catch(e) { toast('Error: ' + e.message, 'err'); console.error(e); }
 }
