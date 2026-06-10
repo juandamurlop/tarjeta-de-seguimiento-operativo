@@ -5,6 +5,7 @@ function resetNuevaOrden() {
   const fields = ['n-placa', 'n-marca', 'n-linea', 'n-modelo', 'n-color', 'n-propietario', 'n-telefono', 'n-km', 'n-fecha1', 'n-fecha2', 'n-inv-obs', 'n-cedula-cliente', 'n-vin', 'n-correo-cliente', 'n-direccion', 'n-descripcion-general'];
   fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   _toggleOcrBtn(false); // ocultar OCR al limpiar el formulario
+  _mostrarFormVehiculo(false); // solo el buscador visible al abrir
   const aseguradora = document.getElementById('n-aseguradora');
   const dano = document.getElementById('n-dano');
   const tipoCliente = document.getElementById('n-tipo-cliente');
@@ -132,6 +133,16 @@ function _toggleOcrBtn(mostrar) {
   if (b) b.style.display = mostrar ? 'flex' : 'none';
 }
 
+// Muestra u oculta el resto del formulario (datos del vehículo + descripción).
+// Al abrir Nueva orden solo se ve el buscador; estas secciones aparecen cuando
+// la búsqueda se resuelve: placa conocida (con datos) o placa nueva (vacía).
+function _mostrarFormVehiculo(mostrar) {
+  ['no-sec-vehiculo', 'no-sec-descripcion'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = mostrar ? '' : 'none';
+  });
+}
+
 const _SUG_GRUPO = 'padding:4px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-mid);background:var(--gris-bg)';
 
 // Busca por PLACA o por NOMBRE (cliente/empresa/flotilla). Muestra coincidencias
@@ -248,6 +259,7 @@ function seleccionarPlaca(placa, datos) {
   const input = document.getElementById('n-placa');
   if (input) input.value = placa;
   cerrarSugerenciasPlaca();
+  _mostrarFormVehiculo(true); // placa conocida → mostrar el formulario con datos
   // Pre-llenar campos del vehículo
   const campos = { 'n-marca': datos.marca, 'n-linea': datos.linea, 'n-modelo': datos.modelo, 'n-color': datos.color };
   Object.entries(campos).forEach(([id, val]) => {
@@ -340,6 +352,7 @@ async function buscarPorPlaca() {
         resultDiv.style.display = 'block';
       }
       _toggleOcrBtn(false); // hay datos registrados → no hace falta OCR
+      _mostrarFormVehiculo(true); // placa conocida → abrir el formulario
     }
 
     if (ordenes?.length) {
@@ -361,6 +374,7 @@ async function buscarPorPlaca() {
       }
       if (histDiv) histDiv.style.display = 'none';
       _toggleOcrBtn(true); // placa no registrada → ofrecer OCR
+      _mostrarFormVehiculo(true); // placa nueva → abrir el formulario vacío
     }
   } catch(e) { if (resultDiv) resultDiv.style.display = 'none'; }
 }
@@ -374,6 +388,7 @@ async function ocrTarjetaPropiedad(input) {
 
   try {
     const parsed = await ocrLeerTarjeta(file);
+    _mostrarFormVehiculo(true); // al escanear, abrir el formulario para revisar/llenar
 
     const mapa = {
       'n-placa':  parsed.placa?.toUpperCase(),

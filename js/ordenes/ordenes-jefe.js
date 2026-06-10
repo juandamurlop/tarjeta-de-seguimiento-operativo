@@ -342,6 +342,8 @@ async function recibirVehiculo(ordenId) {
     set('n-telefono', orden.telefono);
     set('n-cedula-cliente', orden.cedula_cliente);
     set('n-correo-cliente', orden.correo_cliente);
+    set('n-direccion', orden.direccion);
+    if (typeof _mostrarFormVehiculo === 'function') _mostrarFormVehiculo(true); // ya tiene datos → mostrar
 
     // Tipo de cliente
     const tipo  = orden.tipo_cliente || 'particular';
