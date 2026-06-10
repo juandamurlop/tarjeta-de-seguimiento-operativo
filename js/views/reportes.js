@@ -20,6 +20,94 @@ function _cargarSheetJS(cb) {
   s.onload = cb; document.head.appendChild(s);
 }
 
+// ExcelJS: permite incrustar imágenes (gráficas) dentro del .xlsx
+function _cargarExcelJS(cb) {
+  if (window.ExcelJS) { cb(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+  s.onload = cb;
+  s.onerror = () => toast('No se pudo cargar el motor de Excel', 'err');
+  document.head.appendChild(s);
+}
+
+// ════════════════════════════════════════════════════════════
+// GRÁFICAS — dibujadas en canvas → PNG. Se reutilizan en el PDF
+// (como <img>) y en el Excel (ExcelJS addImage).
+// ════════════════════════════════════════════════════════════
+const _CHART_COL = ['#2A5298','#0D7A4E','#92400E','#C0392B','#7C3AED','#0891B2','#D97706','#475569'];
+function _fmtCorto(n){ n = n||0; if (n>=1e6) return '$'+(n/1e6).toFixed(n>=1e7?0:1)+'M'; if (n>=1e3) return '$'+Math.round(n/1e3)+'k'; return '$'+Math.round(n); }
+function _cap(s){ s = String(s||''); return s.charAt(0).toUpperCase()+s.slice(1); }
+function _roundRect(x,X,Y,W,H,r){ r=Math.min(r,W/2,H/2); if(r<0)r=0; x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+W,Y,X+W,Y+H,r); x.arcTo(X+W,Y+H,X,Y+H,r); x.arcTo(X,Y+H,X,Y,r); x.arcTo(X,Y,X+W,Y,r); x.closePath(); }
+function _newCanvas(W,H){ const S=2; const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S; const x=cv.getContext('2d'); x.scale(S,S); x.fillStyle='#fff'; x.fillRect(0,0,W,H); return {cv,x}; }
+function _chartTitulo(x,t){ x.fillStyle='#1E3A5F'; x.font='bold 16px Arial'; x.textAlign='left'; x.fillText(t,16,26); }
+
+function _chartDonutPNG(titulo, items, opts={}) {
+  const W=opts.w||640, H=opts.h||300; const {cv,x}=_newCanvas(W,H); _chartTitulo(x,titulo);
+  const total=items.reduce((s,i)=>s+i.value,0)||1;
+  const cx=120, cy=165, r=82, ir=48; let a=-Math.PI/2;
+  items.forEach(it=>{ const ang=(it.value/total)*Math.PI*2; x.beginPath(); x.moveTo(cx,cy); x.arc(cx,cy,r,a,a+ang); x.closePath(); x.fillStyle=it.color; x.fill(); a+=ang; });
+  x.beginPath(); x.arc(cx,cy,ir,0,Math.PI*2); x.fillStyle='#fff'; x.fill();
+  x.fillStyle='#1E3A5F'; x.font='bold 20px Arial'; x.textAlign='center'; x.fillText(total, cx, cy+2);
+  x.fillStyle='#64748b'; x.font='10px Arial'; x.fillText(opts.centroLbl||'total', cx, cy+17);
+  x.textAlign='left'; let ly=72;
+  items.forEach(it=>{ const pct=Math.round(it.value/total*100); x.fillStyle=it.color; _roundRect(x,250,ly-10,13,13,3); x.fill(); x.fillStyle='#374151'; x.font='13px Arial'; x.fillText(`${it.label}  ${it.value} (${pct}%)`, 272, ly+1); ly+=26; });
+  return cv.toDataURL('image/png');
+}
+
+function _chartBarsHPNG(titulo, items, opts={}) {
+  const W=opts.w||640, rowH=29, padT=48, padB=14, padL=150, padR=84;
+  const H=padT+items.length*rowH+padB; const {cv,x}=_newCanvas(W,H); _chartTitulo(x,titulo);
+  const max=Math.max(1,...items.map(i=>i.value)); const barMaxW=W-padL-padR;
+  items.forEach((it,i)=>{ const y=padT+i*rowH;
+    x.fillStyle='#374151'; x.font='12px Arial'; x.textAlign='right';
+    let lbl=it.label||'—'; if(lbl.length>20) lbl=lbl.slice(0,19)+'…'; x.fillText(lbl, padL-8, y+16);
+    const bw=Math.max(2,(it.value/max)*barMaxW); x.fillStyle=it.color||'#2A5298'; _roundRect(x,padL,y+3,bw,17,4); x.fill();
+    x.fillStyle='#374151'; x.font='bold 11px Arial'; x.textAlign='left'; x.fillText(opts.fmt?opts.fmt(it.value):String(it.value), padL+bw+6, y+16);
+  });
+  return cv.toDataURL('image/png');
+}
+
+function _chartBarsVPNG(titulo, items, opts={}) {
+  const W=opts.w||640, H=opts.h||300; const {cv,x}=_newCanvas(W,H); _chartTitulo(x,titulo);
+  const padL=24,padR=24,padT=54,padB=48; const plotW=W-padL-padR, plotH=H-padT-padB;
+  const max=Math.max(1,...items.map(i=>i.value)); const n=items.length, gap=26, bw=(plotW-gap*(n-1))/n;
+  // eje base
+  x.strokeStyle='#E5E7EB'; x.beginPath(); x.moveTo(padL,padT+plotH); x.lineTo(W-padR,padT+plotH); x.stroke();
+  items.forEach((it,i)=>{ const bh=(it.value/max)*plotH; const bx=padL+i*(bw+gap), by=padT+plotH-bh;
+    x.fillStyle=it.color||'#2A5298'; _roundRect(x,bx,by,bw,bh,4); x.fill();
+    x.fillStyle='#374151'; x.font='bold 12px Arial'; x.textAlign='center'; x.fillText(opts.fmt?opts.fmt(it.value):String(it.value), bx+bw/2, by-6);
+    x.fillStyle='#64748b'; x.font='11px Arial'; let lbl=it.label||''; if(lbl.length>16) lbl=lbl.slice(0,15)+'…'; x.fillText(lbl, bx+bw/2, padT+plotH+18);
+  });
+  return cv.toDataURL('image/png');
+}
+
+// Construye las gráficas del reporte general a partir de las métricas
+function _chartsReporte(d) {
+  const { resumen={}, tecnicos=[], tiposCliente=[] } = d || {};
+  const charts = [];
+  try {
+    if (tiposCliente.length) {
+      const items = tiposCliente.map((t,i)=>({ label:_cap(t.tipo), value:t.ordenes||0, color:_CHART_COL[i%_CHART_COL.length] }));
+      if (items.some(i=>i.value>0)) charts.push({ titulo:'Órdenes por tipo de cliente', png:_chartDonutPNG('Órdenes por tipo de cliente', items, {centroLbl:'órdenes'}), w:640, h:300 });
+    }
+    if (tecnicos.length) {
+      const top = [...tecnicos].sort((a,b)=>(b.ingresos||0)-(a.ingresos||0)).slice(0,8).map(t=>({ label:t.tecnico, value:t.ingresos||0, color:'#2A5298' }));
+      if (top.some(t=>t.value>0)) charts.push({ titulo:'Ingresos por técnico', png:_chartBarsHPNG('Ingresos por técnico (mano de obra)', top, {fmt:_fmtCorto}), w:640, h:48+top.length*29+14 });
+    }
+    const fin = [
+      { label:'M. obra',    value:resumen.totalIngresos||0,  color:'#2A5298' },
+      { label:'Venta rep.', value:resumen.totalVentaRep||0,  color:'#0891B2' },
+      { label:'Costo rep.', value:resumen.totalCostoRep||0,  color:'#C0392B' }
+    ];
+    if (fin.some(f=>f.value>0)) charts.push({ titulo:'Facturación del período', png:_chartBarsVPNG('Facturación del período (COP)', fin, {fmt:_fmtCorto}), w:640, h:300 });
+    if ((resumen.ordenesATiempo||0)+(resumen.ordenesTarde||0) > 0) {
+      const items=[{label:'A tiempo',value:resumen.ordenesATiempo||0,color:'#0D7A4E'},{label:'Tarde',value:resumen.ordenesTarde||0,color:'#C0392B'}];
+      charts.push({ titulo:'Cumplimiento de entregas', png:_chartDonutPNG('Cumplimiento de entregas', items, {centroLbl:'entregas'}), w:640, h:300 });
+    }
+  } catch(e) { console.warn('[charts] error:', e); }
+  return charts;
+}
+
 // ─── Montar sección de reportes en el jefe ──────────────────
 async function montarReportes() {
   const cont = document.getElementById('reportes-contenido');
@@ -885,7 +973,7 @@ async function generarReporte(tipo, fechaIni, fechaFin, formato) {
     const datos = _calcularMetricas(etapas, ordenes, novedades, ordenesEntregadas, ordenesIngresadas, solicitudesRep, cotizaciones, flotillas, desdeISO, hastaISO, cotsCliente);
 
     if (formato === 'pdf') _generarPDF(datos, tituloReporte, subtitulo);
-    else _cargarSheetJS(() => _generarExcel(datos, tituloReporte));
+    else _cargarExcelJS(() => _generarExcel(datos, tituloReporte));
 
   } catch(e) {
     toast('Error generando reporte: ' + e.message, 'err');
@@ -1437,6 +1525,15 @@ function _generarPDF(d, titulo, subtitulo) {
   const { resumen, servicios, tecnicos, cuellos, ordenesDetalle, ordenesIngresadas, novedades,
           topRepuestos, tiposCliente, rankingAseguradoras, rankingFlotillas, fmt, hrStr } = d;
 
+  const charts = _chartsReporte(d);
+  const graficasHtml = charts.length ? `
+  <div class="section">
+    <div class="section-title">Gráficas del período</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      ${charts.map(c => `<img src="${c.png}" alt="${c.titulo}" style="width:100%;border:1px solid #e5e7eb;border-radius:8px">`).join('')}
+    </div>
+  </div>` : '';
+
   const fmtFecha = iso => iso ? new Date(iso).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'}) : '—';
   const fmtHora  = iso => iso ? new Date(iso).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}) : '—';
   const pctColor = p => p==null?'#666':p>=100?'#059669':p>=80?'#D97706':'#DC2626';
@@ -1564,6 +1661,9 @@ function _generarPDF(d, titulo, subtitulo) {
       <div class="kpi-lbl">Órdenes ingresadas al período</div>
     </div>
   </div>`}
+
+  <!-- GRÁFICAS -->
+  ${graficasHtml}
 
   <!-- COTIZACIONES → ÓRDENES -->
   ${resumen.cotsClienteTotal > 0 ? `
@@ -1888,13 +1988,38 @@ function _generarPDF(d, titulo, subtitulo) {
 
 // ─── Generador Excel con SheetJS ────────────────────────────
 function _generarExcel(d, titulo) {
+  if (!window.ExcelJS) { _cargarExcelJS(() => _generarExcel(d, titulo)); return; }
   const { resumen, servicios, tecnicos, cuellos, ordenesDetalle, ordenesIngresadas, novedades,
-          topRepuestos, tiposCliente, rankingAseguradoras, rankingFlotillas, fmt } = d;
-  const wb = XLSX.utils.book_new();
+          topRepuestos, tiposCliente, rankingAseguradoras, rankingFlotillas } = d;
   const fmtFecha = iso => iso ? new Date(iso).toLocaleDateString('es-CO') : '—';
 
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Freimanautos';
+  const hoja = (name, aoa, widths) => {
+    const ws = wb.addWorksheet(name);
+    if (widths) ws.columns = widths.map(w => ({ width: w }));
+    aoa.forEach(r => ws.addRow(r));
+    ws.getRow(1).font = { bold: true };
+    return ws;
+  };
+
+  // Hoja 0: Gráficas (imágenes incrustadas)
+  const charts = _chartsReporte(d);
+  if (charts.length) {
+    const wsG = wb.addWorksheet('Gráficas');
+    wsG.getColumn(1).width = 2;
+    let row = 1;
+    charts.forEach(c => {
+      try {
+        const imgId = wb.addImage({ base64: c.png.split(',')[1], extension: 'png' });
+        wsG.addImage(imgId, { tl: { col: 1, row }, ext: { width: c.w, height: c.h } });
+        row += Math.ceil(c.h / 18) + 2;
+      } catch (e) { console.warn('[xlsx img]', e); }
+    });
+  }
+
   // Hoja 1: Resumen ejecutivo
-  const ws1 = XLSX.utils.aoa_to_sheet([
+  hoja('Resumen', [
     ['REPORTE OPERATIVO — FREIMANAUTOS · NIT 800.012.186'],
     [titulo], ['Generado:', new Date().toLocaleString('es-CO')], [],
     ['MÉTRICAS CLAVE', ''],
@@ -1933,36 +2058,28 @@ function _generarExcel(d, titulo) {
     ['— Reprocesos', resumen.novPorTipo.Reproceso||0],
     ['— Garantías', resumen.novPorTipo.Garantia||0],
     ['Órdenes con novedades', resumen.ordenesConNovedades],
-  ]);
-  ws1['!cols'] = [{wch:38},{wch:22}];
-  XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
+  ], [38, 22]);
 
   // Hoja 2: Servicios
-  const ws2 = XLSX.utils.aoa_to_sheet([
+  hoja('Por Servicio', [
     ['Servicio','Etapas','Ingresos (COP)','Hrs prom/etapa (neto)','Más lenta (h)','Más rápida (h)','Hrs total neto'],
     ...servicios.map(s => [s.nombre,s.etapas,s.ingresos,s.horasPromedio,s.etapaMasLenta,s.etapaMasRapida,s.horasTotal])
-  ]);
-  ws2['!cols'] = [{wch:18},{wch:10},{wch:18},{wch:20},{wch:16},{wch:16},{wch:14}];
-  XLSX.utils.book_append_sheet(wb, ws2, 'Por Servicio');
+  ], [18,10,18,20,16,16,14]);
 
   // Hoja 3: Técnicos — con tiempo neto, pausas y calidad
-  const ws3 = XLSX.utils.aoa_to_sheet([
+  hoja('Técnicos', [
     ['Técnico','Etapas completadas','T. Neto (h)','T. Bruto (h)','Pausado (min)','T. Estimado (h)','Eficiencia (%)','Prom/etapa (h)','Ingresos (COP)','H. Adicionales','Reprocesos','Garantías','Detenidos','Servicio top'],
     ...tecnicos.map(t => [t.tecnico,t.completadas,t.horasNetas,t.horasBrutas,t.minutosPausados,t.horasEstimadas,t.eficiencia,t.promedioHrEtapa,t.ingresos,t.horasAdicionales,t.reprocesos,t.garantias,t.detenidos,t.servicioTop])
-  ]);
-  ws3['!cols'] = [{wch:20},{wch:18},{wch:12},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:18},{wch:14},{wch:12},{wch:10},{wch:10},{wch:14}];
-  XLSX.utils.book_append_sheet(wb, ws3, 'Técnicos');
+  ], [20,18,12,12,14,14,14,14,18,14,12,10,10,14]);
 
   // Hoja 4: Cuellos de botella
-  const ws4 = XLSX.utils.aoa_to_sheet([
+  hoja('Cuellos de Botella', [
     ['Etapa','Servicio','Veces ejecutada','Hrs promedio (neto)'],
     ...cuellos.map(c => [c.etapa,c.servicio,c.veces,c.horaPromedio])
-  ]);
-  ws4['!cols'] = [{wch:24},{wch:16},{wch:18},{wch:18}];
-  XLSX.utils.book_append_sheet(wb, ws4, 'Cuellos de Botella');
+  ], [24,16,18,18]);
 
   // Hoja 5: Por tipo de cliente + aseguradoras + flotillas
-  const ws5 = XLSX.utils.aoa_to_sheet([
+  hoja('Por Tipo Cliente', [
     ['TIPO DE CLIENTE','Órdenes','Valor MO (COP)'], [],
     ...tiposCliente.map(t => [t.tipo, t.ordenes, t.valor]),
     [],
@@ -1975,12 +2092,10 @@ function _generarExcel(d, titulo) {
     [],
     ['FLOTILLAS / EMPRESAS','Órdenes','Valor MO (COP)'], [],
     ...rankingFlotillas.map(f => [f.nombre, f.ordenes, f.valor])
-  ]);
-  ws5['!cols'] = [{wch:28},{wch:12},{wch:20}];
-  XLSX.utils.book_append_sheet(wb, ws5, 'Por Tipo Cliente');
+  ], [28,12,20]);
 
   // Hoja 6: Repuestos
-  const ws6 = XLSX.utils.aoa_to_sheet([
+  hoja('Repuestos', [
     ['REPUESTOS MÁS SOLICITADOS','Veces'], [],
     ...topRepuestos.map(r => [r.repuesto, r.veces]),
     [], ['RESUMEN COSTOS',''],
@@ -1989,41 +2104,33 @@ function _generarExcel(d, titulo) {
     ['Costo proveedor (COP)', resumen.totalCostoRep],
     ['Precio venta cliente (COP)', resumen.totalVentaRep],
     ['Margen bruto (%)', resumen.margenRep],
-  ]);
-  ws6['!cols'] = [{wch:34},{wch:20}];
-  XLSX.utils.book_append_sheet(wb, ws6, 'Repuestos');
+  ], [34,20]);
 
   // Hoja 7: Detalle órdenes
-  if (ordenesDetalle.length) {
-    const ws7 = XLSX.utils.aoa_to_sheet([
-      ['Placa','Vehículo','Propietario','Aseguradora','Ingreso','Entrega','Ciclo (hrs)','Días vs prometido','Novedades'],
-      ...ordenesDetalle.map(o => [o.placa,o.vehiculo,o.propietario,o.aseguradora,fmtFecha(o.ingreso),fmtFecha(o.entrega),o.duracionHrs,o.diasVsPromesa,o.novedades])
-    ]);
-    ws7['!cols'] = [{wch:10},{wch:18},{wch:20},{wch:16},{wch:12},{wch:12},{wch:12},{wch:16},{wch:10}];
-    XLSX.utils.book_append_sheet(wb, ws7, 'Órdenes Entregadas');
-  }
+  if (ordenesDetalle.length) hoja('Órdenes Entregadas', [
+    ['Placa','Vehículo','Propietario','Aseguradora','Ingreso','Entrega','Ciclo (hrs)','Días vs prometido','Novedades'],
+    ...ordenesDetalle.map(o => [o.placa,o.vehiculo,o.propietario,o.aseguradora,fmtFecha(o.ingreso),fmtFecha(o.entrega),o.duracionHrs,o.diasVsPromesa,o.novedades])
+  ], [10,18,20,16,12,12,12,16,10]);
 
   // Hoja 8: Novedades
-  if (novedades.length) {
-    const ws8 = XLSX.utils.aoa_to_sheet([
-      ['Tipo','Motivo','Responsable','Fecha'],
-      ...novedades.map(n => [n.tipo,n.motivo||'—',n.responsable||'—',fmtFecha(n.creado_en)])
-    ]);
-    ws8['!cols'] = [{wch:14},{wch:40},{wch:20},{wch:14}];
-    XLSX.utils.book_append_sheet(wb, ws8, 'Novedades');
-  }
+  if (novedades.length) hoja('Novedades', [
+    ['Tipo','Motivo','Responsable','Fecha'],
+    ...novedades.map(n => [n.tipo,n.motivo||'—',n.responsable||'—',fmtFecha(n.creado_en)])
+  ], [14,40,20,14]);
 
   // Hoja 9: Órdenes ingresadas
-  if (ordenesIngresadas.length) {
-    const ws9 = XLSX.utils.aoa_to_sheet([
-      ['Placa','Vehículo','Propietario','Aseguradora','Tipo cliente','Fecha ingreso','Estado'],
-      ...ordenesIngresadas.map(o => [o.placa,[o.marca,o.linea].filter(Boolean).join(' ')||'—',o.propietario||'—',o.aseguradora||'Particular',o.tipo_cliente||'—',fmtFecha(o.creado_en),o.estado||'—'])
-    ]);
-    ws9['!cols'] = [{wch:10},{wch:18},{wch:20},{wch:16},{wch:14},{wch:14},{wch:10}];
-    XLSX.utils.book_append_sheet(wb, ws9, 'Órdenes Ingresadas');
-  }
+  if (ordenesIngresadas.length) hoja('Órdenes Ingresadas', [
+    ['Placa','Vehículo','Propietario','Aseguradora','Tipo cliente','Fecha ingreso','Estado'],
+    ...ordenesIngresadas.map(o => [o.placa,[o.marca,o.linea].filter(Boolean).join(' ')||'—',o.propietario||'—',o.aseguradora||'Particular',o.tipo_cliente||'—',fmtFecha(o.creado_en),o.estado||'—'])
+  ], [10,18,20,16,14,14,10]);
 
   const nombre = titulo.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g,'').replace(/\s+/g,'_').slice(0,60)+'.xlsx';
-  XLSX.writeFile(wb, nombre);
-  toast('Excel generado ✓');
+  wb.xlsx.writeBuffer().then(buf => {
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = nombre;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast('Excel generado ✓');
+  }).catch(e => { toast('Error generando Excel: ' + e.message, 'err'); console.error(e); });
 }
