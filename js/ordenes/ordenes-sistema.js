@@ -1502,6 +1502,7 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
     };
 
     const totalManoObra = etapas.reduce((s,e) => s+(e.valor||0), 0);
+    const totalVenta = etapas.reduce((s,e) => s+(e.valor_venta||0), 0); // precio venta real (cliente)
     const totalHorasFact = etapas.reduce((s,e) => s+(e.horas_facturadas||0), 0);
     const totalHorasAdi  = etapas.reduce((s,e) => s+(e.horas_adicionales||0), 0);
 
@@ -1857,9 +1858,19 @@ tr:nth-child(even) td{background:#F9FAFB}
 ${esAseg ? `
 <div style="border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;margin-bottom:6px">
   <div class="sh">4. Total</div>
-  <div style="padding:22px 16px;display:flex;flex-direction:column;align-items:center;gap:8px">
-    <div style="font-size:9px;color:#6B7280;text-transform:uppercase;letter-spacing:1px">Total a pagar</div>
-    <div style="font-size:26px;font-weight:900;color:#111;font-family:'Courier New',monospace">${orden.precio_venta_cliente ? fmt(orden.precio_venta_cliente) : '$ ____________'}</div>
+  <div style="padding:16px;display:flex;flex-direction:column;align-items:center;gap:4px">
+    ${(() => {
+      const base = orden.precio_venta_cliente || 0;
+      if (!base) return '<div style="font-size:9px;color:#6B7280;text-transform:uppercase;letter-spacing:1px">Total a pagar</div><div style="font-size:26px;font-weight:900;color:#111;font-family:\'Courier New\',monospace">$ ____________</div>';
+      const iva = Math.round(base * 0.19);
+      const fmtP = n => '$ ' + new Intl.NumberFormat('es-CO',{minimumFractionDigits:0}).format(n);
+      return `<div style="width:100%;max-width:240px;font-size:9px;color:#374151">
+        <div style="display:flex;justify-content:space-between;padding:2px 0"><span>Subtotal</span><span class="money">${fmtP(base)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:2px 0"><span>IVA (19%)</span><span class="money">${fmtP(iva)}</span></div>
+      </div>
+      <div style="font-size:9px;color:#6B7280;text-transform:uppercase;letter-spacing:1px;margin-top:6px">Total a pagar</div>
+      <div style="font-size:24px;font-weight:900;color:#111;font-family:'Courier New',monospace">${fmtP(base + iva)}</div>`;
+    })()}
   </div>
 </div>` : `
 <div style="display:grid;grid-template-columns:1fr 175px;gap:0;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden;margin-bottom:6px">
@@ -1882,8 +1893,8 @@ ${esAseg ? `
           <td style="font-size:8px;color:${srvColor[e.servicio]||'#374151'};font-weight:700">${srvNombres[e.servicio]||e.servicio||'—'}</td>
           <td>${escapeHtml(e.tecnico||'—')}</td>
           <td style="text-align:center;font-family:monospace;font-size:8px">${e.horas_facturadas||'—'}</td>
-          <td style="text-align:right;font-family:monospace">${fmt(e.valor)}</td>
-          <td style="text-align:right;font-family:monospace;font-weight:700">${fmt(e.valor)}</td>
+          <td style="text-align:right;font-family:monospace">${fmt(e.valor_venta)}</td>
+          <td style="text-align:right;font-family:monospace;font-weight:700">${fmt(e.valor_venta)}</td>
         </tr>`).join('')}
         ${Array.from({length:Math.max(0,3-etapas.length)},(_,i)=>`<tr><td style="color:#ddd;text-align:center;font-size:8px">${etapas.length+i+1}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}
       </tbody>
@@ -1894,19 +1905,19 @@ ${esAseg ? `
     <div class="sh">Totales</div>
     <div style="padding:6px 8px">
       <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid #ddd;font-size:8.5px">
-        <span>Subtotal trabajos</span><span class="money">$</span>
+        <span>Subtotal trabajos</span><span class="money">${conPrecios ? fmt(totalVenta) : '$'}</span>
       </div>
       <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid #ddd;font-size:8.5px">
         <span>Subtotal repuestos</span><span class="money">${conPrecios && totalRepuestos > 0 ? fmt(totalRepuestos) : '$'}</span>
       </div>
       <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid #ddd;font-size:8.5px">
-        <span>IVA (19%)</span><span class="money">$</span>
+        <span>IVA (19%)</span><span class="money">${conPrecios ? ('$ '+new Intl.NumberFormat('es-CO',{minimumFractionDigits:0}).format(Math.round((totalVenta+totalRepuestos)*0.19))) : '$'}</span>
       </div>
       <div style="display:flex;justify-content:space-between;padding:6px 5px;font-size:10px;font-weight:800;background:#111;color:#fff;margin-top:5px">
         <span>TOTAL A PAGAR</span>
-        <span class="money">${conPrecios ? (() => { const s=totalManoObra+totalRepuestos; return '$ '+new Intl.NumberFormat('es-CO',{minimumFractionDigits:0}).format(s+Math.round(s*.19)); })() : '$'}</span>
+        <span class="money">${conPrecios ? (() => { const s=totalVenta+totalRepuestos; return '$ '+new Intl.NumberFormat('es-CO',{minimumFractionDigits:0}).format(s+Math.round(s*.19)); })() : '$'}</span>
       </div>
-      ${!conPrecios ? `<div style="margin-top:6px;padding:4px 5px;border:0.8px solid #111;font-size:8.5px;font-weight:700;display:flex;justify-content:space-between"><span>M.O. sin IVA</span><span class="money">${fmt(totalManoObra)}</span></div>` : ''}
+      ${!conPrecios ? `<div style="margin-top:6px;padding:4px 5px;border:0.8px solid #111;font-size:8.5px;font-weight:700;display:flex;justify-content:space-between"><span>Subtotal trabajos</span><span class="money">${fmt(totalVenta)}</span></div>` : ''}
     </div>
   </div>
 </div>`}
