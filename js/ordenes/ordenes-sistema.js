@@ -2200,8 +2200,8 @@ function _mostrarPopupAlerta(etapa, orden, minutos, nivel) {
     padding:12px 14px 14px;min-width:240px;max-width:300px;overflow:hidden;
     box-shadow:0 4px 20px rgba(0,0,0,.15);
     font-family:'DM Sans',sans-serif;font-size:13px;color:${c.texto};
-    animation:slideInRight .25s ease-out;
-    transition:top .2s;
+    opacity:0;transform:translateX(24px);will-change:opacity,transform;
+    transition:opacity .3s var(--ease-out,ease), transform .3s var(--ease-out,ease), top .25s var(--ease-out,ease);
   `;
 
   // Desplazar hacia abajo si ya hay otros popups
@@ -2216,7 +2216,7 @@ function _mostrarPopupAlerta(etapa, orden, minutos, nivel) {
         <svg width="15" height="15" fill="none" stroke="${c.icon}" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         Etapa sin movimiento ${_fmtMin(minutos)}
       </div>
-      <button onclick="this.closest('.alerta-popup-etapa').remove()" style="background:none;border:none;cursor:pointer;color:${c.texto};opacity:.6;font-size:16px;line-height:1;padding:0;flex-shrink:0">×</button>
+      <button onclick="_cerrarPopupAlerta(this.closest('.alerta-popup-etapa'))" style="background:none;border:none;cursor:pointer;color:${c.texto};opacity:.6;font-size:16px;line-height:1;padding:0;flex-shrink:0">×</button>
     </div>
     <div style="margin-top:6px;font-size:12px;opacity:.85">
       <strong>${placa}</strong> · ${etNom} · ${tec}
@@ -2225,29 +2225,46 @@ function _mostrarPopupAlerta(etapa, orden, minutos, nivel) {
       <button onclick="_alertaVerOrden(${etapa.orden_id})" style="flex:1;background:${c.border};color:white;border:none;border-radius:7px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Ver orden</button>
       <button onclick="_alertaMarcarRevisado(${etapa.id},this)" style="flex:1;background:none;border:1.5px solid ${c.border};color:${c.texto};border-radius:7px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Marcar revisado</button>
     </div>
-    <div class="alerta-bar" style="position:absolute;left:0;bottom:0;height:3px;width:0;background:${c.border};opacity:.7"></div>
+    <div class="alerta-bar" style="position:absolute;left:0;bottom:0;height:3px;width:100%;transform:scaleX(0);transform-origin:left center;background:${c.border};opacity:.7;will-change:transform"></div>
   `;
 
   document.body.appendChild(div);
 
-  // Barra de progreso: se rellena durante el tiempo de vida y, al llenarse,
-  // el aviso se cierra (indica visualmente cuándo va a desaparecer).
+  // Aparecer animado (fade + slide): se dispara en el siguiente frame para
+  // que la transición arranque desde el estado inicial (opacity:0).
+  requestAnimationFrame(() => {
+    div.style.opacity = '1';
+    div.style.transform = 'translateX(0)';
+  });
+
+  // Barra de progreso fluida: anima transform:scaleX (acelerado por GPU) en
+  // vez de width, así no se ve "trabada". Al llenarse, el aviso se cierra.
   const bar = div.querySelector('.alerta-bar');
   if (bar) {
     bar.style.transition = 'none';
-    bar.style.width = '0%';
+    bar.style.transform = 'scaleX(0)';
     void bar.offsetWidth; // reflow para reiniciar la animación
-    bar.style.transition = `width ${AUTO_CIERRE_MS}ms linear`;
-    bar.style.width = '100%';
+    bar.style.transition = `transform ${AUTO_CIERRE_MS}ms linear`;
+    bar.style.transform = 'scaleX(1)';
   }
 
-  // Auto-cerrar al completarse la barra
-  setTimeout(() => { if (div.parentNode) div.remove(); }, AUTO_CIERRE_MS);
+  // Auto-cerrar (animado) al completarse la barra
+  setTimeout(() => _cerrarPopupAlerta(div), AUTO_CIERRE_MS);
+}
+
+// Cierra un popup de alerta con animación de salida (fade + slide) antes de
+// quitarlo del DOM.
+function _cerrarPopupAlerta(el) {
+  if (!el || el._cerrando) return;
+  el._cerrando = true;
+  el.style.opacity = '0';
+  el.style.transform = 'translateX(24px)';
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 300);
 }
 
 function _alertaVerOrden(ordenId) {
-  // Cerrar popup y abrir el detalle de la orden
-  document.querySelectorAll('.alerta-popup-etapa').forEach(p => p.remove());
+  // Cerrar popups (animado) y abrir el detalle de la orden
+  document.querySelectorAll('.alerta-popup-etapa').forEach(p => _cerrarPopupAlerta(p));
   if (ordenId && typeof abrirOrden === 'function') abrirOrden(ordenId);
 }
 
@@ -2307,8 +2324,7 @@ function _mostrarPopupCita(o) {
 
 function _alertaMarcarRevisado(etapaId, btn) {
   _alertasRevisadas.add(etapaId);
-  const popup = btn.closest('.alerta-popup-etapa');
-  if (popup) popup.remove();
+  _cerrarPopupAlerta(btn.closest('.alerta-popup-etapa'));
 }
 
 function _actualizarListaCritica(criticas) {
