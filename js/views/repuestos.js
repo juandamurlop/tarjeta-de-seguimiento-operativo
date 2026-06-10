@@ -21,9 +21,9 @@ function _barraEstado(estadoActual) {
       const done = i < idx, active = i === idx;
       const col = done ? '#059669' : active ? '#2563EB' : '#D1D5DB';
       return `<div style="display:flex;align-items:center;flex-shrink:0">
-        <div style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0"></div>
-        <div style="font-size:8.5px;color:${col};margin:0 3px;white-space:nowrap;font-weight:${active?'700':'400'}">${labels[i]}</div>
-        ${i < pasos.length-1 ? `<div style="width:10px;height:1px;background:${done?'#059669':'#E5E7EB'}"></div>` : ''}
+        <div style="width:6px;height:6px;border-radius:50%;background:${col};flex-shrink:0"></div>
+        <div style="font-size:7.5px;color:${col};margin:0 2px;white-space:nowrap;font-weight:${active?'700':'400'}">${labels[i]}</div>
+        ${i < pasos.length-1 ? `<div style="width:6px;height:1px;background:${done?'#059669':'#E5E7EB'}"></div>` : ''}
       </div>`;
     }).join('')}
   </div>`;
@@ -406,7 +406,7 @@ async function cargarRepuestosJefe() {
     }
 
     cont.innerHTML = `<div style="padding:20px">${barraHtml}
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;align-items:start">
         ${solicitudes.map(s => {
           const o   = om[s.orden_id]||{};
           const est = estMap[s.estado]||{txt:s.estado,cls:''};
@@ -444,7 +444,7 @@ async function cargarRepuestosJefe() {
             ${_barraEstado(s.estado)}
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px">
               <div style="min-width:0">
-                <div style="font-weight:700;font-size:13.5px;margin-bottom:2px;line-height:1.3">
+                <div title="${escapeHtml(items.length > 1 ? items.map(i=>i.repuesto).join(', ') : (s.repuesto||''))}" style="font-weight:700;font-size:13px;margin-bottom:2px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
                   ${items.length > 1 ? `${items.length} repuestos solicitados` : escapeHtml(s.repuesto)}
                 </div>
                 <div style="font-size:11px;color:var(--gris-mid)">${escapeHtml(s.solicitado_por)} · ${formatTS(s.creado_en)}</div>
@@ -461,7 +461,7 @@ async function cargarRepuestosJefe() {
               </div>
               <span class="badge ${est.cls}">${est.txt}</span>
             </div>
-            ${itemsHtml}
+            ${items.length > 1 ? itemsHtml : ''}
             ${s.estado==='pendiente_jefe' ? `
               <div style="background:var(--gris-bg);border-radius:8px;padding:10px 12px;margin-bottom:10px">
                 <div style="font-size:11px;font-weight:600;color:var(--gris-mid);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Nota para repuestos (opcional)</div>
@@ -896,7 +896,7 @@ async function cargarSolicitudesRepuestos() {
 
     cont.innerHTML = `<div style="padding:20px">
       <div style="font-size:16px;font-weight:700;margin-bottom:16px">Solicitudes de repuestos</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;align-items:start">
         ${sols.map(s => {
           const o = om[s.orden_id] || {};
           const items = todosItems.filter(i => i.solicitud_id === s.id);
@@ -934,7 +934,7 @@ async function cargarSolicitudesRepuestos() {
             ${_barraEstado(s.estado)}
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
               <div style="flex:1;min-width:0">
-                <div style="font-weight:700;font-size:13.5px;margin-bottom:2px;line-height:1.3">${items.length > 1 ? `${items.length} repuestos` : escapeHtml(s.repuesto)}</div>
+                <div title="${escapeHtml(items.length > 1 ? items.map(i=>i.repuesto).join(', ') : (s.repuesto||''))}" style="font-weight:700;font-size:13px;margin-bottom:2px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${items.length > 1 ? `${items.length} repuestos` : escapeHtml(s.repuesto)}</div>
                 <div style="font-size:12px;color:var(--azul);font-family:'DM Mono',monospace">
                   ${escapeHtml(o.placa||'—')} · ${formatOT(s.orden_id)}
                 </div>
