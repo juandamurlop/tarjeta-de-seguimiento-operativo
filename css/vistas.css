@@ -48,15 +48,15 @@
 /* Grid superior: placa | tipo-cliente | km */
 .no-top-grid {
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-columns: 1.2fr 1fr 0.8fr;
   gap: 14px;
   align-items: start;
 }
 
-/* Fila de 4 botones tipo cliente */
+/* Tipo de cliente: 2x2 (dos líneas) */
 .no-tipo-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
