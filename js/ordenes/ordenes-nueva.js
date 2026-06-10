@@ -1300,13 +1300,6 @@ function buildChecklist(containerId, servicios, existentes) {
       const esExterno = !!srv.externo;
       const extraHtml = '';
       const mecsFiltrados = mecElegibles;
-      // Autoselección: "Armado" replica su técnico en Desarmado/Reparación;
-      // "Alistador" lo replica en "Brillador".
-      const autoChange = et.esArmado
-        ? `onchange="_autoFillLatoneria(this.value,'${containerId}')"`
-        : et.esAlistador
-        ? `onchange="_autoFillPinturaBrillador(this.value,'${containerId}')"`
-        : '';
       let mecHtml;
       if (iniciada) {
         mecHtml = `<div style="font-size:11px;color:var(--gris-mid);margin-top:4px">Técnico ya asignado</div>`;
@@ -1318,7 +1311,7 @@ function buildChecklist(containerId, servicios, existentes) {
         </div>`;
       } else {
         mecHtml = `<div class="mec-select-wrap" id="mec-${et.key}" style="margin-top:6px;display:${checked ? 'block' : 'none'}">
-          <select id="mec-sel-${et.key}" style="font-size:13px" ${autoChange}>
+          <select id="mec-sel-${et.key}" style="font-size:13px">
             <option value="">— Asignar técnico * —</option>
             ${mecsFiltrados.map(m => `<option value="${m.id}" ${m.id == mecSelected ? ' selected' : ''}>${escapeHtml(m.nombre)}</option>`).join('')}
           </select>
@@ -1357,39 +1350,7 @@ function onChkChange(key, checked) {
   }
   const camposDiv = document.getElementById('campos-' + key);
   if (camposDiv) camposDiv.style.display = checked ? 'block' : 'none';
-
-  // Latonería: al marcar "Armado" se marcan también Desarmado y Reparación
-  // (son el mismo flujo y normalmente el mismo técnico).
-  if (key === 'lat_armado' && checked) {
-    ['lat_desarmado', 'lat_reparacion'].forEach(k => {
-      const c = document.getElementById('chk-' + k);
-      if (c && !c.checked && !c.disabled) { c.checked = true; onChkChange(k, true); }
-    });
-  }
-  // Pintura: al marcar "Alistador" se marca también "Brillador".
-  if (key === 'pin_alistador' && checked) {
-    const c = document.getElementById('chk-pin_brillador');
-    if (c && !c.checked && !c.disabled) { c.checked = true; onChkChange('pin_brillador', true); }
-  }
-}
-
-// Latonería: asignar técnico a "Armado" lo replica en Desarmado y Reparación,
-// y marca las tres etapas si no estaban marcadas.
-function _autoFillLatoneria(mecId, containerId) {
-  ['lat_desarmado', 'lat_reparacion', 'lat_armado'].forEach(k => {
-    const chk = document.getElementById('chk-' + k);
-    if (chk && !chk.checked && !chk.disabled) { chk.checked = true; onChkChange(k, true); }
-    const sel = document.getElementById('mec-sel-' + k);
-    if (sel && !sel.disabled && mecId) sel.value = mecId;
-  });
-}
-
-// Pintura: asignar técnico a "Alistador" lo replica en "Brillador".
-function _autoFillPinturaBrillador(mecId, containerId) {
-  const chk = document.getElementById('chk-pin_brillador');
-  if (chk && !chk.checked && !chk.disabled) { chk.checked = true; onChkChange('pin_brillador', true); }
-  const sel = document.getElementById('mec-sel-pin_brillador');
-  if (sel && !sel.disabled && mecId) sel.value = mecId;
+  // Cada proceso se marca de forma individual (sin autoselección).
 }
 
 function recogerChecklist(containerId) {
