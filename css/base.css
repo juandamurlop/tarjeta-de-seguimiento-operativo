@@ -10,7 +10,7 @@
   --azul-light:  #EBF2FF;
   --azul-hover:  #162d4a;
   --neon:        56, 189, 248;   /* RGB del acento neón del sidebar (sky) */
-  --neon-naranja: 251, 146, 60;  /* RGB del neón naranja (notificaciones) */
+  --neon-naranja: 56, 189, 248;  /* Resaltado de notificaciones: azul de la marca (antes naranja) */
   --blanco:      #FFFFFF;
   --gris-bg:     #F4F5F7;
   --gris-borde:  #E1E5EC;
