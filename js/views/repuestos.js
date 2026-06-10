@@ -16,14 +16,14 @@ function _barraEstado(estadoActual) {
   const pasos  = ['pendiente_jefe','enviado_repuestos','cotizado','pedido','recibido_taller','entregado'];
   const labels = ['Solicitado','Repuestos','Cotizado','Pedido','En taller','Entregado'];
   const idx = pasos.indexOf(estadoActual);
-  return `<div style="display:flex;align-items:center;gap:0;margin:8px 0;overflow-x:auto">
+  return `<div style="display:flex;align-items:center;gap:0;margin:0 0 8px;overflow-x:auto">
     ${pasos.map((p, i) => {
       const done = i < idx, active = i === idx;
       const col = done ? '#059669' : active ? '#2563EB' : '#D1D5DB';
       return `<div style="display:flex;align-items:center;flex-shrink:0">
-        <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></div>
-        <div style="font-size:9px;color:${col};margin:0 4px;white-space:nowrap;font-weight:${active?'700':'400'}">${labels[i]}</div>
-        ${i < pasos.length-1 ? `<div style="width:20px;height:1px;background:${done?'#059669':'#E5E7EB'}"></div>` : ''}
+        <div style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0"></div>
+        <div style="font-size:8.5px;color:${col};margin:0 3px;white-space:nowrap;font-weight:${active?'700':'400'}">${labels[i]}</div>
+        ${i < pasos.length-1 ? `<div style="width:10px;height:1px;background:${done?'#059669':'#E5E7EB'}"></div>` : ''}
       </div>`;
     }).join('')}
   </div>`;
@@ -406,7 +406,7 @@ async function cargarRepuestosJefe() {
     }
 
     cont.innerHTML = `<div style="padding:20px">${barraHtml}
-      <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start">
         ${solicitudes.map(s => {
           const o   = om[s.orden_id]||{};
           const est = estMap[s.estado]||{txt:s.estado,cls:''};
@@ -440,14 +440,14 @@ async function cargarRepuestosJefe() {
           const timerSolicitud  = _tiempoDesde(s.creado_en, ' desde solicitud');
           const timerEstado     = _tiempoDesde(s.actualizado_en || s.creado_en, ' en estado');
 
-          return `<div class="card" data-id="${s.id}" style="padding:16px">
+          return `<div class="card" data-id="${s.id}" style="padding:12px">
             ${_barraEstado(s.estado)}
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px">
-              <div>
-                <div style="font-weight:700;font-size:15px;margin-bottom:2px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px">
+              <div style="min-width:0">
+                <div style="font-weight:700;font-size:13.5px;margin-bottom:2px;line-height:1.3">
                   ${items.length > 1 ? `${items.length} repuestos solicitados` : escapeHtml(s.repuesto)}
                 </div>
-                <div style="font-size:12px;color:var(--gris-mid)">${escapeHtml(s.solicitado_por)} · ${formatTS(s.creado_en)}</div>
+                <div style="font-size:11px;color:var(--gris-mid)">${escapeHtml(s.solicitado_por)} · ${formatTS(s.creado_en)}</div>
                 ${o.placa ? `<div style="font-size:12px;color:var(--azul);margin-top:2px;font-family:'DM Mono',monospace">
                   ${escapeHtml(o.placa)} · ${formatOT(s.orden_id)}
                   ${o.vin ? `· <span style="color:var(--gris-mid)">VIN: ${escapeHtml(o.vin)}</span>` : ''}
@@ -896,7 +896,7 @@ async function cargarSolicitudesRepuestos() {
 
     cont.innerHTML = `<div style="padding:20px">
       <div style="font-size:16px;font-weight:700;margin-bottom:16px">Solicitudes de repuestos</div>
-      <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start">
         ${sols.map(s => {
           const o = om[s.orden_id] || {};
           const items = todosItems.filter(i => i.solicitud_id === s.id);
@@ -930,11 +930,11 @@ async function cargarSolicitudesRepuestos() {
           const timerSolicitud2 = _tiempoDesde(s.creado_en, ' desde solicitud');
           const timerEstado2    = _tiempoDesde(s.actualizado_en || s.creado_en, ' en estado');
 
-          return `<div class="card" data-id="${s.id}" style="padding:16px">
+          return `<div class="card" data-id="${s.id}" style="padding:12px">
             ${_barraEstado(s.estado)}
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
               <div style="flex:1;min-width:0">
-                <div style="font-weight:700;font-size:14px;margin-bottom:2px">${items.length > 1 ? `${items.length} repuestos` : escapeHtml(s.repuesto)}</div>
+                <div style="font-weight:700;font-size:13.5px;margin-bottom:2px;line-height:1.3">${items.length > 1 ? `${items.length} repuestos` : escapeHtml(s.repuesto)}</div>
                 <div style="font-size:12px;color:var(--azul);font-family:'DM Mono',monospace">
                   ${escapeHtml(o.placa||'—')} · ${formatOT(s.orden_id)}
                 </div>
