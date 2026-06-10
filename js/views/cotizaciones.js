@@ -1053,7 +1053,7 @@ async function aprobarCotizacion(id) {
     await api(`/cotizaciones?id=eq.${id}`, 'PATCH', { estado: 'aprobada' });
     const cot = todasCotizaciones.find(c => c.id === id);
     if (cot) await crearOrdenDesdeCotizacion(cot);
-    toast('Cotización aprobada y orden creada ✓');
+    toast('Cotización aprobada y orden lista ✓');
     cargarCotizaciones();
   } catch(e) { toast('Error: ' + e.message, 'err'); }
 }
@@ -1118,6 +1118,34 @@ async function crearOrdenDesdeCotizacion(cot) {
     if (rp) lineasDesc.push(`Repuestos: ${rp}`);
   }
   const descripcionGeneral = lineasDesc.join('\n') || null;
+
+  // ¿Ya existe una orden de trabajo ABIERTA para esta placa? (el vehículo
+  // ingresó por una revisión y ya tiene OT). En ese caso NO creamos una orden
+  // duplicada: enlazamos la cotización a la orden existente y le sumamos lo
+  // cotizado (mano de obra + repuestos) a su descripción. Si no existe, se
+  // crea una orden nueva (flujo normal: lo cotizado se hereda en la orden).
+  if (cot.placa && !cot.orden_id) {
+    const abiertas = await api(
+      `/ordenes?placa=eq.${encodeURIComponent(cot.placa)}&estado=not.in.(Entregada,Archivada)&select=id,descripcion_general&order=creado_en.desc`
+    ).catch(() => []) || [];
+    if (abiertas.length) {
+      const ot = abiertas[0];
+      const etiqueta = (typeof formatOT === 'function') ? formatOT(ot.id) : ('OT-' + ot.id);
+      const enlazar = confirm(
+        `Ya existe una orden de trabajo abierta para la placa ${cot.placa} (${etiqueta}).\n\n` +
+        `• Aceptar = ENLAZAR esta cotización a esa orden (se le suma lo cotizado).\n` +
+        `• Cancelar = crear una orden NUEVA.`
+      );
+      if (enlazar) {
+        const descPrev = ot.descripcion_general ? ot.descripcion_general + '\n' : '';
+        const patch = { cotizacion_url: cot.url_pdf || null, cotizacion_id: cot.id };
+        if (descripcionGeneral) patch.descripcion_general = descPrev + descripcionGeneral;
+        await api(`/ordenes?id=eq.${ot.id}`, 'PATCH', patch);
+        await api(`/cotizaciones?id=eq.${cot.id}`, 'PATCH', { orden_id: ot.id });
+        return ot.id;
+      }
+    }
+  }
 
   // Construir body con todos los campos disponibles en la cotización
   const body = {

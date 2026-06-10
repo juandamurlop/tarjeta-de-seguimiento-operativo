@@ -97,14 +97,24 @@ async function abrirOrden(id) {
       _resumen[s].n++;
       _resumen[s].total += (e.valor_venta || 0);
     });
-    const boxesHtml = Object.keys(_resumen).length
-      ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
-        Object.entries(_resumen).map(([s,r]) =>
-          '<div style="flex:1;min-width:110px;background:' + (_srvBg[s]||'#F1F5F9') + ';border:1px solid ' + (_srvColor[s]||'#CBD5E1') + '55;border-radius:8px;padding:7px 10px">' +
-            '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:' + (_srvColor[s]||'#475569') + '">' + (_srvNombres[s]||s) + ' · ' + r.n + '</div>' +
-            '<div style="font-size:14px;font-weight:800;color:#1E293B;font-family:\'DM Mono\',monospace">' + _fmtCOP(r.total) + '</div>' +
-          '</div>').join('') +
-        '</div>'
+    // Siempre 3 recuadros en horizontal: los servicios presentes ocupan su
+    // espacio y, si hay menos de 3, se rellena con recuadros vacíos para que
+    // la fila respete siempre las 3 columnas (placeholder gris punteado).
+    const _entriesResumen = Object.entries(_resumen);
+    const boxesHtml = _entriesResumen.length
+      ? (() => {
+          const cajas = _entriesResumen.map(([s,r]) =>
+            '<div style="background:' + (_srvBg[s]||'#F1F5F9') + ';border:1px solid ' + (_srvColor[s]||'#CBD5E1') + '55;border-radius:8px;padding:7px 10px">' +
+              '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:' + (_srvColor[s]||'#475569') + '">' + (_srvNombres[s]||s) + ' · ' + r.n + '</div>' +
+              '<div style="font-size:14px;font-weight:800;color:#1E293B;font-family:\'DM Mono\',monospace">' + _fmtCOP(r.total) + '</div>' +
+            '</div>');
+          // Rellenar hasta completar la última fila de 3
+          const faltan = (3 - (cajas.length % 3)) % 3;
+          for (let k = 0; k < faltan; k++) {
+            cajas.push('<div style="border:1px dashed #D7DCE5;border-radius:8px;background:#FAFBFC"></div>');
+          }
+          return '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">' + cajas.join('') + '</div>';
+        })()
       : '';
 
     const serviciosHtml = etapasOrden.length

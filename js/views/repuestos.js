@@ -15,17 +15,22 @@ function _tiempoDesde(isoStr, sufijo = '') {
 function _barraEstado(estadoActual) {
   const pasos  = ['pendiente_jefe','enviado_repuestos','cotizado','pedido','recibido_taller','entregado'];
   const labels = ['Solicitado','Repuestos','Cotizado','Pedido','En taller','Entregado'];
-  const idx = pasos.indexOf(estadoActual);
-  return `<div style="display:flex;align-items:center;gap:0;margin:0 0 8px;overflow-x:auto">
-    ${pasos.map((p, i) => {
-      const done = i < idx, active = i === idx;
-      const col = done ? '#059669' : active ? '#2563EB' : '#D1D5DB';
-      return `<div style="display:flex;align-items:center;flex-shrink:0">
-        <div style="width:6px;height:6px;border-radius:50%;background:${col};flex-shrink:0"></div>
-        <div style="font-size:7.5px;color:${col};margin:0 2px;white-space:nowrap;font-weight:${active?'700':'400'}">${labels[i]}</div>
-        ${i < pasos.length-1 ? `<div style="width:6px;height:1px;background:${done?'#059669':'#E5E7EB'}"></div>` : ''}
-      </div>`;
-    }).join('')}
+  const idx = Math.max(0, pasos.indexOf(estadoActual));
+  const completo = estadoActual === 'entregado';
+  // Color del paso ACTIVO (el resto de la barra va en gris).
+  const colAct = completo ? '#059669' : '#2563EB';
+  // Barra segmentada: completados/activo en color, pendientes en gris.
+  const segmentos = pasos.map((p, i) => {
+    const done = i < idx, active = i === idx;
+    const bg = done ? '#059669' : active ? colAct : '#E5E7EB';
+    return `<div style="flex:1;height:6px;border-radius:99px;background:${bg}"></div>`;
+  }).join('');
+  return `<div style="margin:2px 0 8px">
+    <div style="display:flex;align-items:center;gap:3px">${segmentos}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:5px">
+      <span style="font-size:11px;font-weight:700;color:${colAct};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${labels[idx] || '—'}</span>
+      <span style="font-size:10px;font-weight:600;color:#9CA3AF;flex-shrink:0">${idx + 1}/${pasos.length}</span>
+    </div>
   </div>`;
 }
 

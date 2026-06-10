@@ -46,10 +46,22 @@ function safeUrl(url) {
   if (!lower.startsWith('http://') && !lower.startsWith('https://')) return '#';
   return url.trim();
 }
-function toast(msg, tipo = 'ok') {
+function toast(msg, tipo = 'ok', duracion = 3000) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.className = 'show ' + tipo;
-  setTimeout(() => t.className = '', 3000);
+  if (!t) return;
+  t.innerHTML = '<span class="toast-msg"></span><span class="toast-bar"></span>';
+  t.querySelector('.toast-msg').textContent = msg;
+  t.className = 'show ' + tipo;
+  // Barra de progreso: arranca en 0 y se rellena hasta 100% durante la duración;
+  // al llenarse, el toast se oculta.
+  const bar = t.querySelector('.toast-bar');
+  bar.style.transition = 'none';
+  bar.style.width = '0%';
+  void bar.offsetWidth; // forzar reflow para reiniciar la animación
+  bar.style.transition = `width ${duracion}ms linear`;
+  bar.style.width = '100%';
+  clearTimeout(t._toastTimer);
+  t._toastTimer = setTimeout(() => { t.className = ''; }, duracion);
 }
 
 // Comprime/reduce una imagen antes de enviarla al OCR (mucho más rápido:

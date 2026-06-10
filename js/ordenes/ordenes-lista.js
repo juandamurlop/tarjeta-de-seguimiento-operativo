@@ -250,5 +250,14 @@ function dragEnd(e) {
 // DETALLE DE ORDEN
 // ============================================================
 function volverALista() {
-  if (esJefe()) navJefe('ordenes');
+  // "Volver" regresa a la página DESDE donde se abrió la orden (dashboard,
+  // calendario, repuestos, aseguradoras, etc.), no siempre a Órdenes.
+  // navJefe guarda en sessionStorage 'ultima_pag_jefe' la última página real
+  // (excluye 'detalle' y 'nueva'), así que ahí está el origen.
+  const prev = sessionStorage.getItem('ultima_pag_jefe') || 'ordenes';
+  if (typeof navJefe === 'function' && (esJefe() || sesion?.permisos)) {
+    navJefe(prev);
+  } else {
+    navJefe('ordenes');
+  }
 }
