@@ -78,60 +78,41 @@ async function abrirOrden(id) {
     const tiempoEtapa = activa ? durHumana(ahora - new Date(activa.inicio)) : (comp===total&&total>0?'Completada':'Sin iniciar');
     const tiempoTotal = primera ? durHumana(ahora - new Date(primera.inicio)) : '—';
 
-    // Servicios
-    const porServicio = {};
-    etapas.forEach(e=>{ const s=e.servicio||'sin_servicio'; if(!porServicio[s])porServicio[s]=[]; porServicio[s].push(e); });
+    // Etapas en ORDEN DE INSERCIÓN (no agrupadas por servicio): se respeta el
+    // orden en que se agregaron.
     const hayActiva = etapas.some(x=>x.inicio&&!x.fin);
-    // Orden de servicios persistido en localStorage
-    const ordenSrvKey = 'srv_orden_' + id;
-    let ordenSrv = [];
-    try { ordenSrv = JSON.parse(localStorage.getItem(ordenSrvKey) || '[]'); } catch(ee) {}
-    const srvKeys = Object.keys(porServicio);
-    const srvKeysSorted = ordenSrv.length
-      ? [...ordenSrv.filter(k => srvKeys.includes(k)), ...srvKeys.filter(k => !ordenSrv.includes(k))]
-      : srvKeys;
+    const etapasOrden = [...etapas].sort((a,b) =>
+      (new Date(a.creado_en||0) - new Date(b.creado_en||0)) || ((a.id||0) - (b.id||0)));
 
-    const serviciosHtml = srvKeysSorted.length
-      ? '<div id="srv-drag-container">' +
-        srvKeysSorted.map((srvKey) => {
-          const ets = porServicio[srvKey];
-          const srv = CATALOGO[srvKey];
-          const srvNombre = srv ? srv.nombre : srvKey;
-          const srvClase  = srv ? srv.clase : 'latoneria';
-          const compS = ets.filter(e => e.fin).length;
-          const etapaOrdenKey = 'etapa_orden_' + id + '_' + srvKey;
-          let etapaOrden = [];
-          try { etapaOrden = JSON.parse(localStorage.getItem(etapaOrdenKey) || '[]'); } catch(ee) {}
-          const etsSorted = etapaOrden.length
-            ? [...etapaOrden.map(eid2 => ets.find(e => e.id === eid2)).filter(Boolean),
-               ...ets.filter(e => !etapaOrden.includes(e.id))]
-            : ets;
-          const etapsHtml = '<div class="etapas-drag-container" id="edc-' + srvKey + '">' +
-            etsSorted.map(e => {
-              const eHtml = renderEtapa(e, fotosEt, novedades, hayActiva, aprobaciones);
-              return eHtml.replace(
-                '<div class="etapa-card">',
-                '<div class="etapa-card" draggable="true" data-eid="' + e.id + '" ' +
-                  'ondragstart="etapaDragStart(event,' + e.id + ',\'' + srvKey + '\')" ' +
-                  'ondragover="etapaDragOver(event)" ' +
-                  'ondragleave="etapaDragLeave(event)" ' +
-                  'ondrop="etapaDragDrop(event,' + e.id + ',\'' + srvKey + '\',' + id + ')" ' +
-                  'ondragend="etapaDragEnd(event)">'
-              );
-            }).join('') + '</div>';
-          return '<div class="srv-panel" draggable="true" data-srv="' + srvKey + '" ' +
-            'ondragstart="srvDragStart(event,\'' + srvKey + '\')" ' +
-            'ondragover="srvDragOver(event)" ' +
-            'ondragleave="srvDragLeave(event)" ' +
-            'ondrop="srvDragDrop(event,\'' + srvKey + '\',' + id + ')" ' +
-            'ondragend="srvDragEnd(event)">' +
-            '<div class="srv-panel-header ' + srvClase + '">' +
-              '<span class="srv-drag-handle" onclick="event.stopPropagation()" title="Arrastrar servicio">⠮⠮</span>' +
-              '<span class="srv-panel-titulo ' + srvClase + '" onclick="togglePanel(\'sp-' + srvKey + '\')" style="cursor:pointer;flex:1">' + srvNombre + '</span>' +
-              '<span style="font-size:11px;font-family:\'DM Mono\',monospace;opacity:0.7;cursor:pointer" onclick="togglePanel(\'sp-' + srvKey + '\')"> ' + compS + '/' + ets.length + ' ▾</span>' +
-            '</div>' +
-            '<div class="srv-panel-body open" id="sp-' + srvKey + '">' + etapsHtml + '</div>' +
-          '</div>';
+    const _srvNombres = { latoneria:'Latonería', pintura:'Pintura', mecanica:'Mecánica', adicionales:'Adicionales' };
+    const _srvColor   = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
+    const _srvBg      = { latoneria:'#FEF2F2', pintura:'#FFFBEB', mecanica:'#EFF6FF', adicionales:'#ECFDF5' };
+    const _fmtCOP = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
+
+    // Cuadritos de resumen por servicio (precio VENTA real)
+    const _resumen = {};
+    etapas.forEach(e => {
+      const s = e.servicio || 'otros';
+      if (!_resumen[s]) _resumen[s] = { n:0, total:0 };
+      _resumen[s].n++;
+      _resumen[s].total += (e.valor_venta || 0);
+    });
+    const boxesHtml = Object.keys(_resumen).length
+      ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
+        Object.entries(_resumen).map(([s,r]) =>
+          '<div style="flex:1;min-width:110px;background:' + (_srvBg[s]||'#F1F5F9') + ';border:1px solid ' + (_srvColor[s]||'#CBD5E1') + '55;border-radius:8px;padding:7px 10px">' +
+            '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:' + (_srvColor[s]||'#475569') + '">' + (_srvNombres[s]||s) + ' · ' + r.n + '</div>' +
+            '<div style="font-size:14px;font-weight:800;color:#1E293B;font-family:\'DM Mono\',monospace">' + _fmtCOP(r.total) + '</div>' +
+          '</div>').join('') +
+        '</div>'
+      : '';
+
+    const serviciosHtml = etapasOrden.length
+      ? boxesHtml + '<div id="etapas-lista">' +
+        etapasOrden.map(e => {
+          const s = e.servicio || 'otros';
+          const lbl = '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:' + (_srvColor[s]||'#475569') + ';margin:0 0 4px 2px">' + (_srvNombres[s]||s) + '</div>';
+          return '<div style="margin-bottom:12px">' + lbl + renderEtapa(e, fotosEt, novedades, hayActiva, aprobaciones) + '</div>';
         }).join('') + '</div>'
       : '<div class="empty-state">' +
           `<div class="empty-state-icon">${ico('wrench', 32)}</div>` +
