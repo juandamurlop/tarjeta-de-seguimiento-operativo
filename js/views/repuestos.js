@@ -428,11 +428,11 @@ async function cargarRepuestosJefe() {
       : [];
 
     if (!solicitudes.length) {
-      cont.innerHTML = `<div style="padding:20px">${barraHtml}<div class="empty-state"><p>Sin solicitudes</p></div></div>`;
+      renderSinParpadeo(cont, `<div style="padding:20px">${barraHtml}<div class="empty-state"><p>Sin solicitudes</p></div></div>`);
       return;
     }
 
-    cont.innerHTML = `<div style="padding:20px">${barraHtml}
+    renderSinParpadeo(cont, `<div style="padding:20px">${barraHtml}
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;align-items:stretch">
         ${solicitudes.map(s => {
           const o   = om[s.orden_id]||{};
@@ -492,7 +492,7 @@ async function cargarRepuestosJefe() {
           </div>`;
         }).join('')}
       </div>
-    </div>`;
+    </div>`);
 
     // Resaltar en naranja las solicitudes nuevas desde la última vez vista
     if (typeof destellarPendientes === 'function') destellarPendientes('repuestos-jefe', cont, '.card[data-id]');
@@ -960,7 +960,7 @@ async function cargarSolicitudesRepuestos() {
     });
 
     if (!sols.length) {
-      cont.innerHTML = `<div style="padding:20px"><div style="font-size:16px;font-weight:700;margin-bottom:16px">Solicitudes</div><div class="empty-state"><p>Sin solicitudes asignadas</p></div></div>`;
+      renderSinParpadeo(cont, `<div style="padding:20px"><div style="font-size:16px;font-weight:700;margin-bottom:16px">Solicitudes</div><div class="empty-state"><p>Sin solicitudes asignadas</p></div></div>`);
       return;
     }
 
@@ -972,7 +972,7 @@ async function cargarSolicitudesRepuestos() {
       entregado:         { cls:'badge-completada', txt:'Entregado' }
     };
 
-    cont.innerHTML = `<div style="padding:20px">
+    renderSinParpadeo(cont, `<div style="padding:20px">
       <div style="font-size:16px;font-weight:700;margin-bottom:16px">Solicitudes de repuestos</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;align-items:stretch">
         ${sols.map(s => {
@@ -1030,7 +1030,7 @@ async function cargarSolicitudesRepuestos() {
           </div>`;
         }).join('')}
       </div>
-    </div>`;
+    </div>`);
 
     iniciarPollingRepuestos(() => {
       if (!document.getElementById('rep-contenido')) { detenerPollingRepuestos(); return; }
