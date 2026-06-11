@@ -322,6 +322,18 @@ async function mecSubirFotos(input, eid, nombre, oid) {
   if (prog) prog.textContent = '';
   input.value = '';
   toast(`${sub} foto(s) subida(s) ✓`);
+  // Si la etapa aún no estaba "iniciada", marcarla EN PROCESO al documentar
+  // trabajo (subir fotos), para que el cliente vea el avance aunque el técnico
+  // no haya pulsado "Iniciar". Solo si no hay otra etapa activa en la orden.
+  if (sub > 0) {
+    try {
+      const et = await api(`/etapas?id=eq.${eid}&select=inicio,fin`).then(r => r?.[0]).catch(() => null);
+      if (et && !et.inicio && !et.fin) {
+        const otras = await api(`/etapas?orden_id=eq.${oid}&inicio=not.is.null&fin=is.null&select=id`).catch(() => []) || [];
+        if (!otras.length) await api(`/etapas?id=eq.${eid}`, 'PATCH', { inicio: new Date().toISOString() });
+      }
+    } catch(e) {}
+  }
   abrirMecDetalle(eid, oid);
 }
 
