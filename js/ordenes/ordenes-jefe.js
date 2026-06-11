@@ -699,7 +699,7 @@ function navJefe(pag) {
       titulo = 'Gestión Operativa';
       if (window._kpiInterval) clearInterval(window._kpiInterval);
       setTimeout(() => { if (typeof cargarKPITaller === 'function') cargarKPITaller(); }, 50);
-      window._kpiInterval = setInterval(() => { if (typeof cargarKPITaller === 'function') cargarKPITaller(); }, 60000);
+      window._kpiInterval = setInterval(() => { if (typeof cargarKPITaller === 'function') cargarKPITaller(); }, 30000);
       break;
     case 'mecanicos':
       pagId = 'pag-mecanicos';

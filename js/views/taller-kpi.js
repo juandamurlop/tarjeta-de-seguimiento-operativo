@@ -24,6 +24,37 @@ function _kpiSemaforo(val, umbralRojo, umbralAmarillo) {
   return 'verde';
 }
 
+// ── Animación "en vivo": los números cuentan hacia su valor y hacen flash
+// cuando cambian. renderSinParpadeo reusa los nodos del DOM, así que guardamos
+// el valor previo en el propio nodo (node._kpiPrev). ──
+function _kpiCountUp(node, from, to) {
+  const dur = 650, t0 = performance.now();
+  const ease = x => 1 - Math.pow(1 - x, 3);
+  (function step(t) {
+    const p = Math.min(1, (t - t0) / dur);
+    node.textContent = String(Math.round(from + (to - from) * ease(p)));
+    if (p < 1) requestAnimationFrame(step);
+  })(t0);
+}
+function _kpiFlash(node) {
+  const card = node.closest('.kpi-card, .kpi-res-item, .kpi-valor-taller') || node;
+  card.classList.remove('kpi-flash'); void card.offsetWidth; card.classList.add('kpi-flash');
+}
+function _kpiAnimarNumeros() {
+  document.querySelectorAll('#taller-kpi-contenido .kpi-card-num, #taller-kpi-contenido .kpi-res-num, #taller-kpi-contenido .kpi-vt-num').forEach(node => {
+    const txt = (node.textContent || '').trim();
+    if (/^\d+$/.test(txt)) {
+      const target = parseInt(txt, 10);
+      const prev = (typeof node._kpiPrev === 'number') ? node._kpiPrev : 0;
+      if (prev !== target) { _kpiCountUp(node, prev, target); if (node._kpiPrev !== undefined) _kpiFlash(node); }
+      node._kpiPrev = target;
+    } else {
+      if (node._kpiPrev !== undefined && node._kpiPrev !== txt) _kpiFlash(node);
+      node._kpiPrev = txt;
+    }
+  });
+}
+
 // ── Modal de drilldown ───────────────────────────────────
 // Mini-estadística del "pulso del día"
 function _pulsoStat(label, val, color) {
@@ -381,7 +412,7 @@ async function cargarKPITaller() {
         <div class="kpi-header">
           <div style="display:flex;align-items:center;gap:12px">
             <div style="font-weight:700;font-size:16px;color:var(--texto)">Gestión Operativa</div>
-            <div style="font-size:11px;color:var(--gris-mid);background:var(--gris-bg);padding:3px 10px;border-radius:99px;border:1px solid var(--gris-borde)">Actualizado ${hora}</div>
+            <div class="kpi-live" style="font-size:11px;color:var(--gris-texto);background:var(--gris-bg);padding:3px 10px 3px 9px;border-radius:99px;border:1px solid var(--gris-borde)"><span class="kpi-live-dot"></span>EN VIVO · ${hora}</div>
           </div>
           <button class="btn btn-ghost btn-sm" onclick="cargarKPITaller()">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
@@ -534,6 +565,9 @@ async function cargarKPITaller() {
         </div>
 
       </div>`);
+
+    // Animar números (cuenta + flash en los que cambiaron) tras cada refresco.
+    _kpiAnimarNumeros();
 
   } catch (err) {
     if (cont) cont.innerHTML = `<div class="empty-state" style="padding:40px">
