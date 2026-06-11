@@ -66,6 +66,28 @@ function navMec(pag) {
   closeSidebar();
 }
 
+// Estado del repuesto en lenguaje simple para el técnico, con mini barra de
+// progreso para que entienda en qué punto va su solicitud.
+function _repuestoEstadoTecnico(sol) {
+  const MAP = {
+    pendiente_jefe:    { txt: 'Solicitado',        sub: 'Esperando que el jefe lo apruebe',         step: 1 },
+    enviado_repuestos: { txt: 'En cotización',     sub: 'Repuestos está buscando el precio',        step: 2 },
+    cotizado:          { txt: 'Cotizado',          sub: 'Esperando que el jefe apruebe el precio',  step: 3 },
+    pedido:            { txt: 'Pedido',            sub: 'Pedido al proveedor, viene en camino',     step: 4 },
+    recibido_taller:   { txt: '¡Llegó al taller!', sub: 'Pídeselo al jefe para continuar',          step: 5 }
+  };
+  const m = MAP[sol.estado] || MAP.pendiente_jefe;
+  const total = 5;
+  const segs = Array.from({ length: total }, (_, i) =>
+    `<div style="flex:1;height:5px;border-radius:99px;background:${i < m.step ? '#D97706' : '#FDE68A'}"></div>`
+  ).join('');
+  return `<div style="width:100%;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:7px 10px">
+    <div style="font-size:12.5px;font-weight:700;color:#92400E;display:flex;align-items:center;gap:5px">📦 Repuesto: ${m.txt}</div>
+    <div style="font-size:11px;color:#B45309;margin-top:1px">${m.sub} · paso ${m.step}/${total}</div>
+    <div style="display:flex;gap:3px;margin-top:6px">${segs}</div>
+  </div>`;
+}
+
 async function cargarEtapasMecanico() {
   const cont = document.getElementById('mec-contenido');
   if (!cont) return;
@@ -113,12 +135,9 @@ async function cargarEtapasMecanico() {
         if (!e.inicio && !hayActiva)
           acc = `<button class="btn btn-success btn-sm" data-eid="${e.id}" data-etapa="${escapeHtml(e.etapa || '')}" data-oid="${oid}" onclick="event.stopPropagation();mecIniciarEtapa(+this.dataset.eid,this.dataset.etapa,+this.dataset.oid)">▶ Iniciar</button>`;
         else if (e.inicio && !e.fin && esPausado) {
-          const hayRepuestoPendiente = solicitudes.some(s => s.orden_id == oid && s.etapa_id == e.id && ['pendiente_jefe','enviado_repuestos','cotizado','pedido','recibido_taller'].includes(s.estado));
-          acc = hayRepuestoPendiente
-            ? `<span style="font-size:12px;color:#D97706;font-weight:600;display:flex;align-items:center;gap:4px">
-                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                Esperando repuesto
-              </span>`
+          const solPend = solicitudes.find(s => s.orden_id == oid && s.etapa_id == e.id && ['pendiente_jefe','enviado_repuestos','cotizado','pedido','recibido_taller'].includes(s.estado));
+          acc = solPend
+            ? _repuestoEstadoTecnico(solPend)
             : `<button class="btn btn-success btn-sm" onclick="event.stopPropagation();mecReanudarEtapa(${e.id},${oid})">▶ Reanudar</button>`;
         } else if (e.inicio && !e.fin) {
           const avisoRechazo = fueRechazada
