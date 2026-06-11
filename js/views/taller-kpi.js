@@ -303,7 +303,9 @@ async function cargarKPITaller() {
     // activas (estado=Activa & pulmon=false) y pulmón interno.
     const enTaller = capActivas.length;
     const enPulmon = capPulmonInt.length;
-    const pctOcup  = Math.min(100, Math.round(enTaller / CAP * 100));
+    // Cupos ocupados = activas + pulmón interno (igual que el sidebar "X de 34").
+    const cuposOcupados = enTaller + enPulmon;
+    const pctOcup  = Math.min(100, Math.round(cuposOcupados / CAP * 100));
     const ingresosHoy = ordenesActivas.filter(o => _localDay(o.ingreso_en) === _hoyKey).length
                       + entregadasRecientes.filter(o => _localDay(o.ingreso_en) === _hoyKey).length;
     const entregasHoy = entregadasRecientes.filter(o => _localDay(o.entregada_en) === _hoyKey).length;
@@ -387,7 +389,7 @@ async function cargarKPITaller() {
           <div style="font-size:9.5px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Ocupación del taller</div>
           <div style="display:flex;align-items:center;gap:9px">
             <div style="flex:1;height:10px;background:var(--gris-bg);border-radius:99px;overflow:hidden"><div style="height:100%;width:${pctOcup}%;background:${pctOcup >= 90 ? '#DC2626' : pctOcup >= 70 ? '#D97706' : '#059669'};border-radius:99px;transition:width .4s var(--ease-out)"></div></div>
-            <span style="font-size:14px;font-weight:800;white-space:nowrap">${enTaller}/${CAP}</span>
+            <span style="font-size:14px;font-weight:800;white-space:nowrap">${cuposOcupados}/${CAP}</span>
           </div>
         </div>
         ${_pulsoStat('En pulmón', enPulmon, '#D97706')}
