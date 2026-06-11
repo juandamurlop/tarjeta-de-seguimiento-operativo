@@ -133,14 +133,18 @@ async function cargarKPITaller() {
   try {
     const _hace14d = new Date(ahora - 14 * 86400000).toISOString();
     const _inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString();
-    const [ordenesActivas, todasEtapas, solicitudesRep, mecanicosData, entregadasRecientes, cotsPendientes, cotsMes] = await Promise.all([
+    const [ordenesActivas, todasEtapas, solicitudesRep, mecanicosData, entregadasRecientes, cotsPendientes, cotsMes, capActivas, capPulmonInt] = await Promise.all([
       api('/ordenes?estado=eq.Activa&order=creado_en.asc').catch(() => []),
       api('/etapas?select=id,orden_id,etapa,servicio,mecanico_id,tecnico,creado_en,inicio,fin,pausado,tiempo_pausado_min,valor_venta&order=creado_en.asc').catch(() => []),
       api('/solicitudes_repuesto?estado=not.in.(entregado,rechazado)&order=creado_en.asc').catch(() => []),
       api('/mecanicos?activo=eq.true&order=nombre.asc').catch(() => []),
       api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${_hace14d}&select=id,placa,ingreso_en,entregada_en,fecha_entrega_1,creado_en`).catch(() => []),
       api('/cotizaciones?estado=eq.pendiente&select=id').catch(() => []),
-      api(`/cotizaciones?created_at=gte.${_inicioMes}&select=id,orden_id`).catch(() => [])
+      api(`/cotizaciones?created_at=gte.${_inicioMes}&select=id,orden_id`).catch(() => []),
+      // MISMAS consultas que el sidebar (_refrescarCapacidad) para que la
+      // "Ocupación del taller" coincida exactamente con la capacidad del sidebar.
+      api('/ordenes?estado=eq.Activa&pulmon=eq.false&select=id').catch(() => []),
+      api('/ordenes?pulmon=eq.true&pulmon_tipo=eq.interno&select=id').catch(() => [])
     ]);
 
     const etapasActivas = todasEtapas.filter(e => e.inicio && !e.fin);
@@ -295,10 +299,10 @@ async function cargarKPITaller() {
     const _localDay = iso => { if (!iso) return null; const x = new Date(iso); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`; };
     const _hoyKey = _localDay(new Date());
 
-    // Pulso del día
-    const enTaller = ordenesActivas.filter(o => !o.pulmon).length;
-    // Solo pulmón interno cuenta como "físicamente en el taller"; el externo está fuera.
-    const enPulmon = ordenesActivas.filter(o => o.pulmon && o.pulmon_tipo !== 'externo').length;
+    // Pulso del día — MISMOS números que la capacidad del sidebar:
+    // activas (estado=Activa & pulmon=false) y pulmón interno.
+    const enTaller = capActivas.length;
+    const enPulmon = capPulmonInt.length;
     const pctOcup  = Math.min(100, Math.round(enTaller / CAP * 100));
     const ingresosHoy = ordenesActivas.filter(o => _localDay(o.ingreso_en) === _hoyKey).length
                       + entregadasRecientes.filter(o => _localDay(o.ingreso_en) === _hoyKey).length;
