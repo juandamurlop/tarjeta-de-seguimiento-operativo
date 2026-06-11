@@ -101,12 +101,15 @@ async function cargarKPITaller() {
 
   try {
     const _hace14d = new Date(ahora - 14 * 86400000).toISOString();
-    const [ordenesActivas, todasEtapas, solicitudesRep, mecanicosData, entregadasRecientes] = await Promise.all([
+    const _inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString();
+    const [ordenesActivas, todasEtapas, solicitudesRep, mecanicosData, entregadasRecientes, cotsPendientes, cotsMes] = await Promise.all([
       api('/ordenes?estado=eq.Activa&order=creado_en.asc').catch(() => []),
-      api('/etapas?select=id,orden_id,etapa,servicio,mecanico_id,tecnico,creado_en,inicio,fin,pausado,tiempo_pausado_min&order=creado_en.asc').catch(() => []),
+      api('/etapas?select=id,orden_id,etapa,servicio,mecanico_id,tecnico,creado_en,inicio,fin,pausado,tiempo_pausado_min,valor_venta&order=creado_en.asc').catch(() => []),
       api('/solicitudes_repuesto?estado=not.in.(entregado,rechazado)&order=creado_en.asc').catch(() => []),
       api('/mecanicos?activo=eq.true&order=nombre.asc').catch(() => []),
-      api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${_hace14d}&select=id,placa,ingreso_en,entregada_en,fecha_entrega_1,creado_en`).catch(() => [])
+      api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${_hace14d}&select=id,placa,ingreso_en,entregada_en,fecha_entrega_1,creado_en`).catch(() => []),
+      api('/cotizaciones?estado=eq.pendiente&select=id').catch(() => []),
+      api(`/cotizaciones?created_at=gte.${_inicioMes}&select=id,orden_id`).catch(() => [])
     ]);
 
     const etapasActivas = todasEtapas.filter(e => e.inicio && !e.fin);
@@ -304,6 +307,50 @@ async function cargarKPITaller() {
       .map(o => ({ ...o, dias: Math.ceil((new Date(o.fecha_entrega_1) - hoy) / 86400000) }))
       .filter(o => o.dias <= 2).sort((a, b) => a.dias - b.dias);
 
+    // ── Valor actualmente EN EL TALLER: suma del precio de venta de los
+    // procesos de las órdenes activas (o el total manual de la orden si existe).
+    const _fmtCOP = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
+    const totalValorTaller = ordenesActivas.reduce((s, o) => {
+      const etsVal = todasEtapas.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
+      return s + (o.precio_venta_cliente && o.precio_venta_cliente > 0 ? o.precio_venta_cliente : etsVal);
+    }, 0);
+    const valorTallerHtml = `
+      <div class="kpi-valor-taller">
+        <div>
+          <div class="kpi-vt-lbl">💰 Valor en el taller</div>
+          <div class="kpi-vt-sub">Suma de los procesos de las ${ordenesActivas.length} órdenes activas</div>
+        </div>
+        <div class="kpi-vt-num">${_fmtCOP(totalValorTaller)}</div>
+      </div>`;
+
+    // ── Capacidad y comercial (datos reales) ──
+    const _manana = new Date(hoy); _manana.setDate(_manana.getDate() + 1);
+    const _mananaKey = _localDay(_manana);
+    const porEntregarHoy    = ordenesActivas.filter(o => _localDay(o.fecha_entrega_1) === _hoyKey).length;
+    const porEntregarManana = ordenesActivas.filter(o => _localDay(o.fecha_entrega_1) === _mananaKey).length;
+    const cotsPend    = cotsPendientes.length;
+    const cotsConvPct = cotsMes.length ? Math.round(cotsMes.filter(c => c.orden_id != null).length / cotsMes.length * 100) : 0;
+    const ocupColor   = pctOcup >= 90 ? 'var(--rojo)' : pctOcup >= 70 ? 'var(--amarillo)' : 'var(--verde)';
+    const indicadores2Html = `
+      <div class="kpi-resumen">
+        <div class="kpi-res-item">
+          <div class="kpi-res-num" style="color:${ocupColor}">${enTaller}/${CAP}</div>
+          <div class="kpi-res-lbl">Ocupación · ${pctOcup}%</div>
+        </div>
+        <div class="kpi-res-item">
+          <div class="kpi-res-num" style="color:var(--azul)">${porEntregarHoy}</div>
+          <div class="kpi-res-lbl">Entregar hoy</div>
+        </div>
+        <div class="kpi-res-item">
+          <div class="kpi-res-num">${porEntregarManana}</div>
+          <div class="kpi-res-lbl">Entregar mañana</div>
+        </div>
+        <div class="kpi-res-item">
+          <div class="kpi-res-num" style="color:var(--amarillo)">${cotsPend}</div>
+          <div class="kpi-res-lbl">Cotiz. pendientes${cotsMes.length ? ' · ' + cotsConvPct + '% conv.' : ''}</div>
+        </div>
+      </div>`;
+
     // ── Resumen de PENDIENTES de un vistazo (chips clickeables) ──
     const _pend = [
       { n: k5Filas.length, s: 'vencida',            p: 'vencidas',            key: 'k5', sev: 'rojo' },
@@ -342,6 +389,8 @@ async function cargarKPITaller() {
           </button>
         </div>
 
+        ${valorTallerHtml}
+
         ${pendientesHtml}
 
         <div class="kpi-resumen">
@@ -362,6 +411,8 @@ async function cargarKPITaller() {
             <div class="kpi-res-lbl">Repuestos pendientes</div>
           </div>
         </div>
+
+        ${indicadores2Html}
 
         <div class="kpi-grid">
           <div class="kpi-card kpi-${k1Color}" onclick="kpiDrilldown('k1')">
