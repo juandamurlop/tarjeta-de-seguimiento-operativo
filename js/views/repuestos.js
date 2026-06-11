@@ -433,7 +433,7 @@ async function cargarRepuestosJefe() {
     }
 
     renderSinParpadeo(cont, `<div style="padding:20px">${barraHtml}
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;align-items:stretch">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;align-items:stretch">
         ${solicitudes.map(s => {
           const o   = om[s.orden_id]||{};
           const est = estMap[s.estado]||{txt:s.estado,cls:''};
@@ -974,7 +974,7 @@ async function cargarSolicitudesRepuestos() {
 
     renderSinParpadeo(cont, `<div style="padding:20px">
       <div style="font-size:16px;font-weight:700;margin-bottom:16px">Solicitudes de repuestos</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;align-items:stretch">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;align-items:stretch">
         ${sols.map(s => {
           const o = om[s.orden_id] || {};
           const items = todosItems.filter(i => i.solicitud_id === s.id);
