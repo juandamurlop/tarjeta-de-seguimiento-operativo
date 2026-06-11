@@ -529,10 +529,10 @@ function montarJefe() {
 
   // Cargar la lista de mecánicos para los selects
   cargarMecanicos().finally(() => {
-    // Al abrir la app / iniciar sesión → Gestión Operativa por defecto.
-    // En F5 dentro de la misma sesión se conserva la página (sessionStorage).
-    const ultimaPag = sessionStorage.getItem('ultima_pag_jefe') || 'taller-kpi';
-    navJefe(ultimaPag);
+    // Gestión Operativa SIEMPRE como pantalla principal al entrar (decisión del
+    // dueño: tablero de pendientes centrado y visible). No se restaura la última
+    // página, para que el jefe/gerente siempre vea primero el estado del taller.
+    navJefe('taller-kpi');
   });
   
   // Cargar capacidad al inicio
