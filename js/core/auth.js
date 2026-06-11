@@ -151,7 +151,9 @@ let _tokenRefreshInterval = null;
 
 function iniciarSesion(datos) {
   sesion = datos;
-  sessionStorage.setItem('sesion_freiman', JSON.stringify(datos));
+  // localStorage (no sessionStorage): así la sesión PERSISTE aunque se cierre
+  // y reabra la app (en PWA, cerrar = se borraba sessionStorage → se salía).
+  localStorage.setItem('sesion_freiman', JSON.stringify(datos));
   _iniciarRefreshPeriodico();
   montarApp();
 }
@@ -171,7 +173,8 @@ async function logout() {
   if (_tokenRefreshInterval) { clearInterval(_tokenRefreshInterval); _tokenRefreshInterval = null; }
   if (typeof detenerRealtime === 'function') detenerRealtime();
   if (sesion?.access_token) await supabaseSignOut(sesion.access_token);
-  sessionStorage.removeItem('sesion_freiman');
+  localStorage.removeItem('sesion_freiman');
+  sessionStorage.removeItem('sesion_freiman'); // limpiar también el viejo
   sesion = null;
   document.getElementById('app').classList.remove('show');
   document.getElementById('pantalla-login').style.display = 'flex';
@@ -181,21 +184,23 @@ async function logout() {
 
 async function checkSesionGuardada() {
   try {
-    const s = sessionStorage.getItem('sesion_freiman');
+    // Lee de localStorage; si no hay, usa el viejo sessionStorage (migración).
+    const s = localStorage.getItem('sesion_freiman') || sessionStorage.getItem('sesion_freiman');
     if (!s) return;
     sesion = JSON.parse(s);
 
-    // Renovar token si le quedan menos de 5 minutos de vida
+    // Renovar token si le quedan menos de 5 minutos de vida. Si la renovación
+    // falla (p. ej. sin internet momentáneo) NO se cierra la sesión: se entra
+    // igual y el refresco periódico lo reintenta solo. Así no saca al usuario.
     if (sesion.refresh_token && sesion.expires_at) {
       const minutosRestantes = (sesion.expires_at - Date.now()) / 60000;
-      if (minutosRestantes < 5) {
-        const ok = await refrescarToken();
-        if (!ok) { await logout(); return; }
-      }
+      if (minutosRestantes < 5) { try { await refrescarToken(); } catch(e) {} }
     }
 
+    _iniciarRefreshPeriodico(); // mantener el token vivo tras restaurar la sesión
     montarApp();
   } catch(e) {
+    localStorage.removeItem('sesion_freiman');
     sessionStorage.removeItem('sesion_freiman');
   }
 }
@@ -207,6 +212,6 @@ async function refrescarToken() {
   sesion.access_token  = data.access_token;
   sesion.refresh_token = data.refresh_token;
   sesion.expires_at    = Date.now() + (data.expires_in ?? 3600) * 1000;
-  sessionStorage.setItem('sesion_freiman', JSON.stringify(sesion));
+  localStorage.setItem('sesion_freiman', JSON.stringify(sesion));
   return true;
 }
