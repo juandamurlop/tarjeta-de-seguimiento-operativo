@@ -274,6 +274,7 @@ async function abrirMecDetalle(eid, oid) {
           <span class="novedad-fecha">${formatTS(n.creado_en)}</span>
         </div>
         <div class="novedad-motivo">${escapeHtml(n.motivo) || '—'}</div>
+        ${n.foto_url ? `<img src="${escapeHtml(n.foto_url)}" class="novedad-foto" loading="lazy" onclick="abrirLightbox(this.src)" alt="Foto de la novedad">` : ''}
       </div>`).join('')
       : '<div style="font-size:12px;color:var(--gris-mid);padding:4px 0">Sin novedades.</div>';
 
@@ -410,6 +411,13 @@ function abrirNovedadMenu(etapaId, ordenId, placa) {
           <label>Motivo *</label>
           <textarea id="_detMotivo" placeholder="Describe el motivo de la detención..." style="min-height:60px"></textarea>
         </div>
+        <div class="field" style="margin-bottom:10px">
+          <label>Foto (opcional) — la verá el cliente</label>
+          <input type="file" id="_detFotoInput" accept="image/*" style="display:none" onchange="_subirFotoDetencion(this)">
+          <div id="_detFotoZona">
+            <button type="button" class="btn btn-ghost btn-sm" style="width:100%;border:1.5px dashed var(--gris-borde)" onclick="document.getElementById('_detFotoInput').click()">📷 Adjuntar foto</button>
+          </div>
+        </div>
         <div style="display:flex;gap:8px;justify-content:flex-end">
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('_novedadMenu').remove()">Cancelar</button>
           <button class="btn btn-danger btn-sm" onclick="_confirmarDetencion(${etapaId||'null'},${ordenId})">Detener etapa</button>
@@ -421,9 +429,44 @@ function abrirNovedadMenu(etapaId, ordenId, placa) {
   document.body.appendChild(overlay);
 }
 
+// Foto opcional de la novedad/detención (URL en Storage; la BD solo guarda el link).
+let _detFotoUrl = null;
+let _detCtx = {};
+
 function _mostrarFormDetenerOtro(etapaId, ordenId) {
+  _detFotoUrl = null;
+  _detCtx = { etapaId, ordenId };
   const form = document.getElementById('_detenerOtroForm');
   if (form) { form.style.display = 'block'; document.getElementById('_detMotivo')?.focus(); }
+}
+
+// Sube la foto de la novedad COMPRIMIDA (~150-300KB) a Storage y guarda el link.
+async function _subirFotoDetencion(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const zona = document.getElementById('_detFotoZona');
+  if (zona) zona.innerHTML = '<div style="font-size:12px;color:var(--gris-mid);padding:8px 0">Subiendo foto…</div>';
+  try {
+    const comprimida = await comprimirImagenFile(file, 1400, 0.72);
+    const path = `${_detCtx.ordenId || 'sin'}/novedades/${Date.now()}.jpg`;
+    _detFotoUrl = await storageUpload(comprimida, path);
+    if (zona) zona.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px">
+        <img src="${escapeHtml(_detFotoUrl)}" style="width:54px;height:54px;object-fit:cover;border-radius:8px">
+        <span style="font-size:12px;color:var(--verde);font-weight:600">✓ Foto lista</span>
+        <button type="button" class="btn btn-ghost btn-xs" style="margin-left:auto" onclick="_quitarFotoDetencion()">Quitar</button>
+      </div>`;
+  } catch (e) {
+    _detFotoUrl = null;
+    if (zona) zona.innerHTML = `<button type="button" class="btn btn-ghost btn-sm" style="width:100%;border:1.5px dashed var(--rojo)" onclick="document.getElementById('_detFotoInput').click()">⚠ Error — reintentar</button>`;
+    toast('No se pudo subir la foto', 'err');
+  }
+}
+function _quitarFotoDetencion() {
+  _detFotoUrl = null;
+  const input = document.getElementById('_detFotoInput'); if (input) input.value = '';
+  const zona = document.getElementById('_detFotoZona');
+  if (zona) zona.innerHTML = `<button type="button" class="btn btn-ghost btn-sm" style="width:100%;border:1.5px dashed var(--gris-borde)" onclick="document.getElementById('_detFotoInput').click()">📷 Adjuntar foto</button>`;
 }
 
 async function _confirmarDetencion(etapaId, ordenId) {
@@ -434,12 +477,17 @@ async function _confirmarDetencion(etapaId, ordenId) {
       await api(`/etapas?id=eq.${etapaId}`, 'PATCH', {
         pausado: true, pausa_inicio: new Date().toISOString()
       });
-      await api('/novedades', 'POST', {
+      // foto_url solo se incluye si hay foto, para no romper si aún no se corrió
+      // el ALTER TABLE (docs/sql-novedades-foto.sql).
+      const _nov = {
         orden_id: ordenId, etapa_id: etapaId,
         tipo: 'Detenido', responsable: sesion.nombre,
         motivo, desde: new Date().toISOString()
-      }, { Prefer: 'return=minimal' }).catch(() => {});
+      };
+      if (_detFotoUrl) _nov.foto_url = _detFotoUrl;
+      await api('/novedades', 'POST', _nov, { Prefer: 'return=minimal' }).catch(() => {});
     }
+    _detFotoUrl = null;
     document.getElementById('_novedadMenu')?.remove();
     toast('Etapa pausada — ⏸ ' + motivo.slice(0, 40));
     cargarEtapasMecanico();

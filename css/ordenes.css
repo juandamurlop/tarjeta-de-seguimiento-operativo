@@ -589,6 +589,12 @@
 .novedad-tipo.garantia  { background: var(--azul-light); color: var(--azul); }
 .novedad-fecha { font-size: 10px; color: var(--gris-mid); font-family: 'DM Mono', monospace; }
 .novedad-motivo { font-size: 13px; color: var(--texto); }
+.novedad-foto {
+  margin-top: 8px; width: 100%; max-width: 220px; max-height: 180px;
+  object-fit: cover; border-radius: 8px; border: 1px solid var(--gris-borde);
+  cursor: pointer; display: block; transition: transform .15s;
+}
+.novedad-foto:hover { transform: scale(1.02); }
 .novedad-resp  { font-size: 11px; color: var(--gris-mid); margin-top: 3px; }
 
 /* APROBACION BOX */

@@ -162,6 +162,38 @@ function comprimirImagenBase64(file, maxDim = 1400, quality = 0.72) {
   });
 }
 
+// Comprime una imagen y devuelve un File JPEG liviano (~150-300KB), listo
+// para storageUpload. Reduce a maxDim px y calidad dada. Si algo falla,
+// devuelve el archivo original para no perder la foto.
+function comprimirImagenFile(file, maxDim = 1400, quality = 0.72) {
+  return new Promise((resolve) => {
+    if (!file || !/^image\//.test(file.type)) return resolve(file);
+    const reader = new FileReader();
+    reader.onerror = () => resolve(file);
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => resolve(file);
+      img.onload = () => {
+        try {
+          let w = img.naturalWidth, h = img.naturalHeight;
+          const scale = Math.min(1, maxDim / Math.max(w, h));
+          w = Math.round(w * scale); h = Math.round(h * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob((blob) => {
+            if (!blob) return resolve(file);
+            const base = (file.name || 'foto').replace(/\.[^.]+$/, '');
+            resolve(new File([blob], base + '.jpg', { type: 'image/jpeg' }));
+          }, 'image/jpeg', quality);
+        } catch (e) { resolve(file); }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 // Lee una tarjeta de propiedad con la función propia de Supabase (OpenAI
 // gpt-4o-mini, sin n8n: rápida y con la API key segura en el servidor).
 // Comprime la foto antes de enviar. Devuelve { placa, marca, linea, modelo,

@@ -500,6 +500,7 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
         <span class="novedad-fecha">${formatTS(n.creado_en)}</span>
       </div>
       <div class="novedad-motivo">${escapeHtml(n.motivo)||'—'}</div>
+      ${n.foto_url ? `<img src="${escapeHtml(n.foto_url)}" class="novedad-foto" loading="lazy" onclick="abrirLightbox(this.src)" alt="Foto de la novedad">` : ''}
       <div class="novedad-resp">Resp: ${escapeHtml(n.responsable)||'—'}</div>
       ${n.valor ? '<div style="font-size:12px;font-weight:600;color:var(--rojo);margin-top:3px;display:flex;align-items:center;gap:4px">' + ico('money',12) + ' Valor adicional: ' + new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n.valor) + '</div>' : ''}
     </div>`).join('')

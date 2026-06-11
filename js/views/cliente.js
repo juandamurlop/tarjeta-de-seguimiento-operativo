@@ -206,6 +206,7 @@ async function cargarOrdenesCliente() {
               <span class="novedad-fecha">${formatTS(n.creado_en)}</span>
             </div>
             <div class="novedad-motivo">${escapeHtml(n.motivo) || '—'}</div>
+            ${n.foto_url ? `<img src="${escapeHtml(n.foto_url)}" class="novedad-foto" loading="lazy" onclick="abrirLightbox(this.src)" alt="Foto de la novedad">` : ''}
           </div>`).join('')}
         </div>` : '';
 
