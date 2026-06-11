@@ -364,10 +364,6 @@ async function cargarKPITaller() {
     const ocupColor   = pctOcup >= 90 ? 'var(--rojo)' : pctOcup >= 70 ? 'var(--amarillo)' : 'var(--verde)';
     const indicadores2Html = `
         <div class="kpi-res-item">
-          <div class="kpi-res-num" style="color:${ocupColor}">${enTaller}/${CAP}</div>
-          <div class="kpi-res-lbl">Ocupación · ${pctOcup}%</div>
-        </div>
-        <div class="kpi-res-item">
           <div class="kpi-res-num" style="color:var(--azul)">${porEntregarHoy}</div>
           <div class="kpi-res-lbl">Entregar hoy</div>
         </div>
@@ -379,6 +375,22 @@ async function cargarKPITaller() {
           <div class="kpi-res-num" style="color:var(--amarillo)">${cotsPend}</div>
           <div class="kpi-res-lbl">Cotiz. pendientes${cotsMes.length ? ' · ' + cotsConvPct + '% conv.' : ''}</div>
         </div>`;
+
+    // Panel "Ocupación del taller" (pulso del día) — a ancho completo, arriba.
+    const pulsoHtml = `
+      <div class="card" style="padding:12px 18px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;max-width:var(--kpi-w)">
+        <div style="flex:1;min-width:180px">
+          <div style="font-size:9.5px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Ocupación del taller</div>
+          <div style="display:flex;align-items:center;gap:9px">
+            <div style="flex:1;height:10px;background:var(--gris-bg);border-radius:99px;overflow:hidden"><div style="height:100%;width:${pctOcup}%;background:${pctOcup >= 90 ? '#DC2626' : pctOcup >= 70 ? '#D97706' : '#059669'};border-radius:99px;transition:width .4s var(--ease-out)"></div></div>
+            <span style="font-size:14px;font-weight:800;white-space:nowrap">${enTaller}/${CAP}</span>
+          </div>
+        </div>
+        ${_pulsoStat('En pulmón', enPulmon, '#D97706')}
+        ${_pulsoStat('Ingresos hoy', ingresosHoy, '#2A5298')}
+        ${_pulsoStat('Entregas hoy', entregasHoy, '#059669')}
+        ${_pulsoStat('Entregas a tiempo', pctCumpl != null ? pctCumpl + '%' : '—', pctCumpl == null ? '#6B7280' : pctCumpl >= 80 ? '#059669' : pctCumpl >= 60 ? '#D97706' : '#DC2626')}
+      </div>`;
 
     // ── Resumen de PENDIENTES de un vistazo (chips clickeables) ──
     const _pend = [
@@ -421,6 +433,8 @@ async function cargarKPITaller() {
         ${valorTallerHtml}
 
         ${pendientesHtml}
+
+        ${pulsoHtml}
 
         <div class="kpi-resumen">
           <div class="kpi-res-item">
@@ -506,21 +520,6 @@ async function cargarKPITaller() {
             <div class="kpi-card-sub">${k8Filas.length ? 'Revisar prioridad' : 'Todas con actividad'}</div>
             <div class="kpi-card-link">Ver detalle →</div>
           </div>
-        </div>
-
-        <!-- PULSO DEL DÍA -->
-        <div class="card" style="padding:12px 18px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;max-width:720px">
-          <div style="flex:1;min-width:180px">
-            <div style="font-size:9.5px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Ocupación del taller</div>
-            <div style="display:flex;align-items:center;gap:9px">
-              <div style="flex:1;height:10px;background:var(--gris-bg);border-radius:99px;overflow:hidden"><div style="height:100%;width:${pctOcup}%;background:${pctOcup >= 90 ? '#DC2626' : pctOcup >= 70 ? '#D97706' : '#059669'};border-radius:99px;transition:width .4s var(--ease-out)"></div></div>
-              <span style="font-size:14px;font-weight:800;white-space:nowrap">${enTaller}/${CAP}</span>
-            </div>
-          </div>
-          ${_pulsoStat('En pulmón', enPulmon, '#D97706')}
-          ${_pulsoStat('Ingresos hoy', ingresosHoy, '#2A5298')}
-          ${_pulsoStat('Entregas hoy', entregasHoy, '#059669')}
-          ${_pulsoStat('Entregas a tiempo', pctCumpl != null ? pctCumpl + '%' : '—', pctCumpl == null ? '#6B7280' : pctCumpl >= 80 ? '#059669' : pctCumpl >= 60 ? '#D97706' : '#DC2626')}
         </div>
 
         <!-- PANELES DE CONTROL -->
