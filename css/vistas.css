@@ -617,8 +617,11 @@
 .kpi-pend-chip:hover { filter: brightness(0.97); }
 .kpi-pend-n { font-weight: 800; font-size: 14px; }
 
-/* Valor actualmente en el taller */
-.kpi-valor-taller { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: var(--kpi-w); background: linear-gradient(135deg, #1E3A5F, #2A5298); color: #fff; border-radius: var(--radio); padding: 12px 16px; box-shadow: var(--shadow-sm); }
+/* Fila superior: Valor en el taller + Ocupación del taller, lado a lado */
+.kpi-fila-top { display: flex; gap: 12px; flex-wrap: wrap; max-width: var(--kpi-w); align-items: stretch; }
+
+/* Valor actualmente en el taller (compacto, izquierda) */
+.kpi-valor-taller { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex: 1 1 250px; min-width: 230px; background: linear-gradient(135deg, #1E3A5F, #2A5298); color: #fff; border-radius: var(--radio); padding: 12px 16px; box-shadow: var(--shadow-sm); }
 .kpi-vt-lbl { font-size: 13px; font-weight: 700; }
 .kpi-vt-sub { font-size: 11px; opacity: 0.75; margin-top: 2px; }
 .kpi-vt-num { font-size: 23px; font-weight: 800; font-family: 'DM Mono', monospace; letter-spacing: -0.5px; white-space: nowrap; }

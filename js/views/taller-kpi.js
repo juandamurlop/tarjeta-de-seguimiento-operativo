@@ -384,7 +384,7 @@ async function cargarKPITaller() {
 
     // Panel "Ocupación del taller" (pulso del día) — a ancho completo, arriba.
     const pulsoHtml = `
-      <div class="card" style="padding:12px 18px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;max-width:var(--kpi-w)">
+      <div class="card" style="padding:12px 18px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;flex:2 1 360px;min-width:0">
         <div style="flex:1;min-width:180px">
           <div style="font-size:9.5px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Ocupación del taller</div>
           <div style="display:flex;align-items:center;gap:9px">
@@ -436,11 +436,12 @@ async function cargarKPITaller() {
           </button>
         </div>
 
-        ${valorTallerHtml}
+        <div class="kpi-fila-top">
+          ${valorTallerHtml}
+          ${pulsoHtml}
+        </div>
 
         ${pendientesHtml}
-
-        ${pulsoHtml}
 
         <div class="kpi-resumen">
           <div class="kpi-res-item">
