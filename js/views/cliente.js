@@ -122,22 +122,48 @@ async function cargarOrdenesCliente() {
       const comp = ets.filter(e => e.fin).length;
       const pct = total ? Math.round((comp / total) * 100) : 0;
 
+      // Proceso activo (iniciado y sin terminar) — para resaltarlo y el banner.
+      const activa = ets.find(e => e.inicio && !e.fin);
+
       const etapasHtml = ets.map(e => {
         const done = !!e.fin;
         const active = !!e.inicio && !e.fin;
+        const paus = active && e.pausado;
         const cls = done ? 'done' : active ? 'active' : 'pending';
-        return `<div class="cliente-etapa-row">
+        return `<div class="cliente-etapa-row" ${active ? 'style="background:#ECFDF5;border-radius:8px;padding:8px;margin:2px -8px"' : ''}>
           <div class="cliente-dot ${cls}"></div>
-          <div style="flex:1">
+          <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:600">${escapeHtml(e.etapa) || '—'}</div>
             <div style="font-size:11px;color:var(--gris-mid)">${escapeHtml(CATALOGO[e.servicio]?.nombre || e.servicio) || '—'}</div>
+            ${e.descripcion ? `<div style="font-size:11.5px;color:#1E40AF;background:#EFF6FF;border-radius:5px;padding:4px 8px;margin-top:4px;line-height:1.35;white-space:pre-wrap">${escapeHtml(e.descripcion)}</div>` : ''}
           </div>
-          <div style="text-align:right">
-            <span class="badge badge-${done ? 'completada' : active ? 'iniciada' : 'pendiente'}">${done ? 'Completada' : active ? 'En proceso' : 'Pendiente'}</span>
+          <div style="text-align:right;flex-shrink:0">
+            <span class="badge badge-${done ? 'completada' : active ? 'iniciada' : 'pendiente'}">${done ? 'Completada' : active ? (paus ? 'En pausa' : 'En proceso') : 'Pendiente'}</span>
             ${done ? `<div style="font-size:10px;color:var(--gris-mid);font-family:'DM Mono',monospace;margin-top:3px">${formatTS(e.fin)}</div>` : ''}
           </div>
         </div>`;
       }).join('');
+
+      // Banner prominente con "lo que está pasando AHORA" con su descripción.
+      let estadoBanner = '';
+      if ((orden.estado || '') === 'Entregada') {
+        estadoBanner = `<div style="background:#ECFDF5;border:1px solid #6EE7B7;border-radius:10px;padding:12px 14px;margin-bottom:16px"><div style="font-weight:700;color:#065F46;font-size:14px">✅ Vehículo entregado</div></div>`;
+      } else if (orden.pulmon) {
+        estadoBanner = `<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px 14px;margin-bottom:16px"><div style="font-weight:700;color:#92400E;font-size:14px">⏸ En espera de aprobación</div><div style="font-size:12px;color:#B45309;margin-top:2px">Tu vehículo está pausado pendiente de aprobación.</div></div>`;
+      } else if (activa) {
+        const paus = activa.pausado;
+        estadoBanner = `<div style="background:${paus ? '#FFFBEB' : '#ECFDF5'};border:1px solid ${paus ? '#FDE68A' : '#6EE7B7'};border-radius:10px;padding:12px 14px;margin-bottom:16px">
+          <div style="font-weight:700;color:${paus ? '#92400E' : '#065F46'};font-size:14px">🔧 ${paus ? 'En pausa' : 'En proceso ahora'}: ${escapeHtml(activa.etapa)}</div>
+          <div style="font-size:12px;color:var(--gris-mid);margin-top:2px">${escapeHtml(CATALOGO[activa.servicio]?.nombre || activa.servicio || '')}</div>
+          ${activa.descripcion ? `<div style="font-size:12.5px;color:#1E293B;margin-top:6px;line-height:1.4;white-space:pre-wrap">📝 ${escapeHtml(activa.descripcion)}</div>` : ''}
+          ${paus ? `<div style="font-size:11.5px;color:#B45309;margin-top:6px;font-weight:600">⏸ En pausa, esperando un repuesto.</div>` : ''}
+        </div>`;
+      } else if (total > 0 && comp === total) {
+        estadoBanner = `<div style="background:#ECFDF5;border:1px solid #6EE7B7;border-radius:10px;padding:12px 14px;margin-bottom:16px"><div style="font-weight:700;color:#065F46;font-size:14px">✅ Todos los procesos terminados</div><div style="font-size:12px;color:#047857;margin-top:2px">Tu vehículo está en revisión final / listo para entrega.</div></div>`;
+      } else {
+        const prox = ets.find(e => !e.inicio);
+        estadoBanner = `<div style="background:var(--gris-bg);border:1px solid var(--gris-borde);border-radius:10px;padding:12px 14px;margin-bottom:16px"><div style="font-weight:700;color:var(--texto);font-size:14px">⏳ ${prox ? 'Próximo: ' + escapeHtml(prox.etapa) : 'En cola de trabajo'}</div><div style="font-size:12px;color:var(--gris-mid);margin-top:2px">Tu vehículo está en el taller; pronto inicia el trabajo.</div></div>`;
+      }
 
       const novsHtml = novs.length ? `
         <div style="margin-top:16px;border-top:1px solid var(--gris-borde);padding-top:16px">
@@ -187,6 +213,7 @@ async function cargarOrdenesCliente() {
             </div>
             <a href="${safeUrl(orden.cotizacion_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" style="font-size:12px">Ver PDF →</a>
           </div>` : ''}
+          ${estadoBanner}
           <div class="seccion-titulo">Avance del proceso</div>
           ${etapasHtml}
           ${novsHtml}
