@@ -694,13 +694,21 @@ function _waNumero(raw) {
 
 // ── Mensaje de WhatsApp "listo para entrega" (editable por el usuario) ──
 const _WA_ENTREGA_DEFAULT = 'Hola {nombre}, le saluda {taller}. Su {vehiculo} de placa {placa} ya está LISTO para entrega. Puede pasar a recogerlo en nuestro taller. ¡Gracias por confiar en nosotros! 🚗';
+// Nombre COMPLETO del cliente en formato Tipo Título (no solo la 1ª palabra
+// ni TODO EN MAYÚSCULAS), para los mensajes de WhatsApp.
+function _nombreClienteWA(propietario) {
+  return (propietario || '').trim().toLowerCase()
+    .split(/\s+/)
+    .map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : w)
+    .join(' ');
+}
 function _waEntregaTemplate() {
   try { return localStorage.getItem('wa_entrega_msg') || _WA_ENTREGA_DEFAULT; } catch (e) { return _WA_ENTREGA_DEFAULT; }
 }
 function _waEntregaMsg(o) {
   const taller  = (typeof _cotPdfConfig === 'function' && _cotPdfConfig().nombre) || 'Freimanautos';
   const veh     = [o.marca, o.linea].filter(Boolean).join(' ') || 'vehículo';
-  const nombre  = (o.propietario || '').trim().split(' ')[0] || '';
+  const nombre  = _nombreClienteWA(o.propietario);
   return _waEntregaTemplate()
     .replace(/\{nombre\}/g, nombre)
     .replace(/\{taller\}/g, taller)
@@ -833,7 +841,7 @@ async function enviarPreliquidacionCliente(ordenId) {
     const tel = _waNumero(o.telefono);
     if (!tel) { toast('El cliente no tiene celular registrado en la orden', 'err'); return; }
     const taller = (typeof _cotPdfConfig === 'function' && _cotPdfConfig().nombre) || 'Freimanautos';
-    const nombre = (o.propietario || '').trim().split(' ')[0] || '';
+    const nombre = _nombreClienteWA(o.propietario);
     const veh    = [o.marca, o.linea].filter(Boolean).join(' ') || 'vehículo';
     const saludo = nombre ? `Hola ${nombre}, ` : 'Hola, ';
     const msg = `${saludo}le saluda ${taller}. Le compartimos la preliquidación de su ${veh} de placa ${o.placa} con el detalle de los trabajos y valores. Quedamos atentos a cualquier inquietud antes de la entrega. ¡Gracias! 📄`;
