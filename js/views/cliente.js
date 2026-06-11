@@ -99,7 +99,20 @@ async function cargarOrdenesCliente() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading-state">Cargando tu vehículo...</div>';
   try {
-    const ordenes = await api(`/ordenes?cliente_id=eq.${sesion.id}&order=creado_en.desc`) || [];
+    // Match por cliente_id Y por cédula/NIT: muchas órdenes tienen cliente_id
+    // vacío (se crean con cedula_cliente), así que filtrar solo por id dejaba
+    // al cliente sin ver sus vehículos. La cédula siempre está, así que busca
+    // por ambos para no perder ninguna orden suya.
+    const doc = String(sesion.cedula || sesion.datos?.cedula_nit || '').trim();
+    let _qs;
+    if (sesion.id != null && doc) {
+      _qs = `or=(cliente_id.eq.${sesion.id},cedula_cliente.eq.${encodeURIComponent(doc)})`;
+    } else if (doc) {
+      _qs = `cedula_cliente=eq.${encodeURIComponent(doc)}`;
+    } else {
+      _qs = `cliente_id=eq.${sesion.id}`;
+    }
+    const ordenes = await api(`/ordenes?${_qs}&order=creado_en.desc`) || [];
     if (!ordenes.length) {
       cont.innerHTML = `<div class="empty-state">
         <div class="empty-state-icon">${ico('car', 32)}</div>
