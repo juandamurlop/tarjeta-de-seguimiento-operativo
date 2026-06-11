@@ -64,6 +64,70 @@ function toast(msg, tipo = 'ok', duracion = 3000) {
   t._toastTimer = setTimeout(() => { t.className = ''; }, duracion);
 }
 
+// Respaldo del avatar: si la imagen del logo no carga (algunos Android la
+// muestran rota), se reemplaza por un círculo con la "F" de la marca.
+function _avatarOnError(img) {
+  if (!img) return;
+  img.onerror = null;
+  const d = document.createElement('div');
+  d.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#1E3A5F;color:#fff;border-radius:50%;font-weight:800;font-size:18px;font-family:\'DM Sans\',sans-serif';
+  d.textContent = 'F';
+  img.replaceWith(d);
+}
+
+// ── CÁMARA: abre la cámara trasera en vivo y devuelve la foto como File ──
+// Funciona en cualquier dispositivo/SO con cámara (no depende del atributo
+// `capture`, que algunas tablets ignoran y abren la galería). Si el navegador
+// no soporta la API o niegan el permiso, cae a elegir/tomar foto con archivo.
+function capturarFotoCamara() {
+  return new Promise((resolve) => {
+    const usarInput = () => {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*';
+      inp.setAttribute('capture', 'environment');
+      inp.style.display = 'none';
+      inp.onchange = () => { const f = inp.files && inp.files[0]; inp.remove(); resolve(f || null); };
+      document.body.appendChild(inp);
+      inp.click();
+    };
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { usarInput(); return; }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+      .then((stream) => {
+        const ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#000;display:flex;flex-direction:column';
+        ov.innerHTML = `
+          <video autoplay playsinline muted style="flex:1;width:100%;object-fit:cover;background:#000"></video>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 22px;background:#000">
+            <button id="_camCancel" style="background:none;border:1.5px solid #fff;color:#fff;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif">Cancelar</button>
+            <button id="_camShot" aria-label="Tomar foto" style="width:66px;height:66px;border-radius:50%;background:#fff;border:5px solid #25D366;cursor:pointer;flex-shrink:0"></button>
+            <div style="width:84px"></div>
+          </div>`;
+        document.body.appendChild(ov);
+        const video = ov.querySelector('video');
+        video.srcObject = stream;
+        const cerrar = () => { try { stream.getTracks().forEach(t => t.stop()); } catch (e) {} ov.remove(); };
+        ov.querySelector('#_camCancel').onclick = () => { cerrar(); resolve(null); };
+        ov.querySelector('#_camShot').onclick = () => {
+          const w = video.videoWidth || 1280, h = video.videoHeight || 720;
+          const c = document.createElement('canvas'); c.width = w; c.height = h;
+          c.getContext('2d').drawImage(video, 0, 0, w, h);
+          c.toBlob((blob) => {
+            cerrar();
+            resolve(blob ? new File([blob], 'tarjeta_' + Date.now() + '.jpg', { type: 'image/jpeg' }) : null);
+          }, 'image/jpeg', 0.9);
+        };
+      })
+      .catch(() => { usarInput(); }); // permiso negado o sin cámara → archivo
+  });
+}
+
+// Abre la cámara y pasa la foto al handler de OCR (que espera un input con
+// .files). Uso: onclick="escanearTarjetaCamara(ocrTarjetaPropiedad)".
+async function escanearTarjetaCamara(handler) {
+  const file = await capturarFotoCamara();
+  if (file && typeof handler === 'function') handler({ files: [file], value: '' });
+}
+
 // Comprime/reduce una imagen antes de enviarla al OCR (mucho más rápido:
 // menos peso para subir y para procesar). Devuelve { base64, dataUrl, mime }.
 function comprimirImagenBase64(file, maxDim = 1400, quality = 0.72) {

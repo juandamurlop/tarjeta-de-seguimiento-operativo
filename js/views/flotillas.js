@@ -602,12 +602,10 @@ function _abrirModalVehiculo(flotillaId, vehiculo) {
             <div style="font-weight:700;font-size:13px;color:var(--azul)">Leer tarjeta de propiedad</div>
             <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">Toma o sube una foto y los datos se llenarán automáticamente</div>
           </div>
-          <label class="btn btn-primary" style="cursor:pointer;white-space:nowrap">
+          <button type="button" class="btn btn-primary" style="cursor:pointer;white-space:nowrap" onclick="escanearTarjetaCamara(ocrTarjetaVehiculo)">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
             Escanear tarjeta
-            <input type="file" id="ocr-vehiculo-input" accept="image/*" capture="environment"
-              style="display:none" onchange="ocrTarjetaVehiculo(this)">
-          </label>
+          </button>
         </div>
 
         <div id="ocr-vehiculo-estado" style="display:none;margin-bottom:14px;font-size:12px;padding:8px 12px;border-radius:6px;border:1px solid var(--gris-borde);background:var(--gris-bg)"></div>
