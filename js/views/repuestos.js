@@ -180,6 +180,16 @@ async function abrirModalSolicitudRepuesto(ordenId, etapaId, placa) {
   const existing = document.getElementById('modal-sol-multi');
   if (existing) existing.remove();
 
+  // Datos del vehículo (VIN incluido) para que repuestos pueda cotizar bien.
+  const veh = await api(`/ordenes?id=eq.${ordenId}&select=placa,marca,linea,modelo,vin`).then(r=>r?.[0]).catch(()=>null);
+  const vehLinea = [veh?.marca, veh?.linea, veh?.modelo].filter(Boolean).join(' ');
+  const vinHtml = veh?.vin
+    ? `<span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--texto)">${escapeHtml(veh.vin)}</span>
+       <button type="button" title="Copiar VIN"
+         onclick="navigator.clipboard?.writeText('${escapeHtml(veh.vin).replace(/'/g,"\\x27")}');toast('VIN copiado ✓')"
+         style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px">📋</button>`
+    : `<span style="color:var(--gris-mid)">Sin VIN registrado</span>`;
+
   const div = document.createElement('div');
   div.id = 'modal-sol-multi';
   div.className = 'modal-overlay show';
@@ -190,6 +200,12 @@ async function abrirModalSolicitudRepuesto(ordenId, etapaId, placa) {
         <button class="modal-close" onclick="document.getElementById('modal-sol-multi').remove()">✕</button>
       </div>
       <div class="modal-body" style="padding-top:10px">
+
+        <!-- Datos del vehículo (visibles para repuestos) -->
+        <div style="font-size:12px;margin-bottom:10px;padding:8px 12px;background:#EEF2F7;border-radius:6px;border:1px solid var(--gris-borde);line-height:1.7">
+          ${vehLinea ? `<div>🚗 <strong>${escapeHtml(vehLinea)}</strong></div>` : ''}
+          <div>🔢 VIN: ${vinHtml}</div>
+        </div>
 
         <input type="hidden" name="sol-tipo" id="sol-tipo-taller" value="taller">
 
@@ -1083,19 +1099,52 @@ async function marcarRepuestoSolicitadoProveedor(solicitudId) {
 let _cotFilas = []; // [{id, seleccionado, proveedorId, referencia, precio, dias, esOriginal}]
 
 // Datos del vehículo disponibles para el mensaje WA (se setean en abrirModalCotizar)
-let _cotDatosVehiculo = { repuesto:'', unidades:1, placa:'', marca:'', modelo:'', anio:'', vin:'' };
+let _cotDatosVehiculo = { repuesto:'', unidades:1, placa:'', marca:'', modelo:'', anio:'', vin:'', items:[] };
 
 function _generarMensajeWA() {
   const d = _cotDatosVehiculo;
-  const vehiculo = [d.marca, d.modelo, d.anio].filter(Boolean).join(' ') || d.placa || '—';
-  const vinStr   = d.vin ? `, VIN: *${d.vin}*` : '';
-  return `Buenos días. Solicito cotización para el siguiente vehículo:\nVehículo: *${vehiculo}*${vinStr}.\n\nLos repuestos son:\n- ${d.repuesto} / unidades: (${d.unidades})\n\nQuedo atento, gracias.`;
+  const vehiculo = [d.marca, d.modelo, d.anio].filter(Boolean).join(' ') || '—';
+  const placaStr = d.placa ? `\nPlaca: *${d.placa}*` : '';
+  const vinStr   = d.vin   ? `\nVIN: *${d.vin}*`   : '';
+
+  // Lista TODOS los repuestos de la solicitud (no solo el primero).
+  const items = (d.items && d.items.length)
+    ? d.items
+    : [{ repuesto: d.repuesto, unidades: d.unidades }];
+  const lista = items
+    .filter(i => i.repuesto)
+    .map(i => {
+      const obs = i.observaciones ? ` (${i.observaciones})` : '';
+      return `• ${i.repuesto} — ${i.unidades || 1} und${obs}`;
+    })
+    .join('\n') || '• (sin detalle)';
+
+  return `Buenos días 👋\nSolicito cotización para el siguiente vehículo:\n\n🚗 Vehículo: *${vehiculo}*${placaStr}${vinStr}\n\n🔩 Repuestos:\n${lista}\n\nAgradezco me indiquen *precio*, *disponibilidad* y *tiempo de entrega*.\n¡Gracias!`;
 }
 
 function _copiarMensajeWA(filaId) {
   const msg = _generarMensajeWA();
   navigator.clipboard?.writeText(msg).then(() => toast('Mensaje copiado ✓'))
     .catch(() => { const ta = document.createElement('textarea'); ta.value = msg; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('Mensaje copiado ✓'); });
+}
+
+// Abre WhatsApp con el mensaje listo y el número del proveedor de esa fila.
+// Si la fila no tiene proveedor (o el proveedor no tiene WhatsApp), abre
+// WhatsApp igual con el mensaje cargado para elegir el contacto a mano.
+function _enviarWA(filaId) {
+  const msg = _generarMensajeWA();
+  const sel = document.getElementById(`cot-prov-${filaId}`);
+  const opt = sel?.selectedOptions?.[0];
+  let tel = (opt?.dataset?.wa || '').replace(/\D/g, '');
+  // Colombia: número local de 10 dígitos → anteponer indicativo 57.
+  if (tel.length === 10) tel = '57' + tel;
+  // Copiar también, como respaldo.
+  navigator.clipboard?.writeText(msg).catch(() => {});
+  const url = tel
+    ? `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`
+    : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+  if (!tel) toast('Ese proveedor no tiene WhatsApp guardado: se abrió con el mensaje listo para elegir contacto', 'info');
 }
 
 const _CELL = 'border:none;border-right:1px solid #E2E8F0;background:transparent;width:100%;font-size:12.5px;padding:7px 8px;outline:none;font-family:inherit';
@@ -1133,7 +1182,7 @@ function _renderFilaCot(fila, idx, provOpts) {
       </label>
     </td>
     <td style="padding:4px 6px;text-align:center;border-right:1px solid #E2E8F0;width:50px">
-      <button type="button" title="Copiar mensaje WhatsApp" onclick="_copiarMensajeWA(${fila.id})"
+      <button type="button" title="Enviar cotización por WhatsApp al proveedor" onclick="_enviarWA(${fila.id})"
         style="background:#25D366;color:#fff;border:none;border-radius:4px;padding:3px 7px;font-size:11px;cursor:pointer;font-weight:700">WA</button>
     </td>
     <td style="padding:4px 6px;text-align:center;width:28px">
@@ -1215,6 +1264,9 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
   ]);
   document.getElementById('modal-cotizar')?.remove();
 
+  // Guardar todos los ítems para que el mensaje de WhatsApp los liste completos.
+  _cotDatosVehiculo.items = solItems || [];
+
   // Score / favorito (calculado desde el historial de cotizaciones)
   const _scores = await _calcularScoresProveedores();
   const provConScore = proveedores.map(p => ({ ...p, _sc: _scores[p.id] || null }))
@@ -1228,7 +1280,7 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
       const star = p.id === favoritoId ? '★ ' : '';
       const sc   = p._sc;
       const info = sc ? ` — ${sc.estrellas}★${sc.avgDias != null ? ', ' + (Math.round(sc.avgDias*10)/10) + 'd' : ''}` : '';
-      return `<option value="${p.id}">${star}${escapeHtml(p.nombre)}${info}</option>`;
+      return `<option value="${p.id}" data-wa="${escapeHtml(p.whatsapp||'')}">${star}${escapeHtml(p.nombre)}${info}</option>`;
     }).join('');
 
   // Filas iniciales
