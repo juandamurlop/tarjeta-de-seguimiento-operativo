@@ -304,6 +304,30 @@ async function cargarKPITaller() {
       .map(o => ({ ...o, dias: Math.ceil((new Date(o.fecha_entrega_1) - hoy) / 86400000) }))
       .filter(o => o.dias <= 2).sort((a, b) => a.dias - b.dias);
 
+    // ── Resumen de PENDIENTES de un vistazo (chips clickeables) ──
+    const _pend = [
+      { n: k5Filas.length, s: 'vencida',            p: 'vencidas',            key: 'k5', sev: 'rojo' },
+      { n: k8Filas.length, s: 'sin moverse +4h',    p: 'sin moverse +4h',     key: 'k8', sev: 'rojo' },
+      { n: k4Filas.length, s: 'esperando repuesto', p: 'esperando repuesto',  key: 'k4', sev: 'amarillo' },
+      { n: k1Filas.length, s: 'sin técnico',        p: 'sin técnico',         key: 'k1', sev: 'amarillo' },
+      { n: k2Filas.length, s: 'sin iniciar',        p: 'sin iniciar',         key: 'k2', sev: 'amarillo' },
+      { n: k3Filas.length, s: 'parada',             p: 'paradas',             key: 'k3', sev: 'amarillo' }
+    ];
+    const _pendAct = _pend.filter(x => x.n > 0);
+    const _sevCol  = { rojo: { bg:'#FEF2F2', bd:'#FCA5A5', tx:'#B91C1C' }, amarillo: { bg:'#FFFBEB', bd:'#FDE68A', tx:'#92400E' } };
+    const pendientesHtml = `
+      <div class="kpi-pend-bar">
+        <div class="kpi-pend-titulo">⚠ Pendientes ahora</div>
+        <div class="kpi-pend-chips">
+          ${_pendAct.length ? _pendAct.map(x => {
+            const c = _sevCol[x.sev];
+            return `<button onclick="kpiDrilldown('${x.key}')" class="kpi-pend-chip" style="background:${c.bg};border-color:${c.bd};color:${c.tx}">
+              <span class="kpi-pend-n">${x.n}</span> ${x.n === 1 ? x.s : x.p}
+            </button>`;
+          }).join('') : `<span style="font-size:13px;font-weight:700;color:var(--verde)">Todo al día ✓</span>`}
+        </div>
+      </div>`;
+
     renderSinParpadeo(cont, `
       <div class="kpi-shell">
 
@@ -317,6 +341,8 @@ async function cargarKPITaller() {
             Actualizar
           </button>
         </div>
+
+        ${pendientesHtml}
 
         <div class="kpi-resumen">
           <div class="kpi-res-item">

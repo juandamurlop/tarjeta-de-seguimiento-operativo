@@ -606,6 +606,14 @@
 .kpi-res-num { font-size: 18px; font-weight: 800; font-family: 'DM Mono', monospace; color: var(--texto); line-height: 1; }
 .kpi-res-lbl { font-size: 9px; color: var(--gris-mid); margin-top: 2px; text-transform: uppercase; letter-spacing: .4px; }
 
+/* Barra "Pendientes ahora" — resumen urgente de un vistazo */
+.kpi-pend-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: var(--kpi-w); background: var(--gris-bg); border: 1px solid var(--gris-borde); border-radius: var(--radio); padding: 9px 12px; }
+.kpi-pend-titulo { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--gris-mid); flex-shrink: 0; }
+.kpi-pend-chips { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.kpi-pend-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid; border-radius: 99px; padding: 4px 11px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: filter .15s; }
+.kpi-pend-chip:hover { filter: brightness(0.97); }
+.kpi-pend-n { font-weight: 800; font-size: 14px; }
+
 /* Grid KPIs — 4 columnas iguales (4+4), alineadas a la izquierda */
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: var(--kpi-w); }
 
