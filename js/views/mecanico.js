@@ -213,7 +213,7 @@ async function mecFinalizarEtapa(eid, nombre, servicio, oid) {
         evento: todasComp ? 'orden_completada' : 'etapa_finalizada',
         orden: { id: oid, placa: orden.placa, propietario: orden.propietario, marca: orden.marca, linea: orden.linea, aseguradora: orden.aseguradora },
         etapa_finalizada: { id: eid, nombre, servicio: etapaActual?.servicio || servicio, tecnico: etapaActual?.tecnico || null },
-        siguiente_etapa: siguiente ? { id: siguiente.id, nombre: siguiente.etapa, servicio: siguiente.servicio, mecanico_id: siguiente.mecanico_id, tecnico: siguiente.tecnico } : null,
+        siguiente_etapa: siguiente ? { id: siguiente.id, nombre: siguiente.etapa, servicio: siguiente.servicio, mecanico_id: siguiente.mecanico_id, tecnico: siguiente.tecnico, precio_tecnico: siguiente.valor || null, precio_tecnico_fmt: siguiente.valor ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(siguiente.valor) : null } : null,
         todas_completadas: todasComp,
         link: `${window.location.origin}${window.location.pathname}`
       })
