@@ -296,7 +296,9 @@ async function enviarSolicitudRepuesto(ordenId, etapaId) {
         repuesto:           items[0].repuesto,
         unidades:           items[0].unidades,
         observaciones:      items[0].observaciones,
-        estado:             'pendiente_jefe'
+        // Auto-aprobado: va directo a Repuestos para cotizar (sin paso previo
+        // de aprobación del jefe). El jefe decide en el precio.
+        estado:             'enviado_repuestos'
       }, { Prefer: 'return=representation' });
       solicitudId = solicitudRes?.[0]?.id;
     } else {
@@ -467,11 +469,13 @@ async function cargarRepuestosJefe() {
 
           const repNames = items.length ? items.map(i => i.repuesto) : [s.repuesto].filter(Boolean);
           const repResumen = repNames.slice(0, 2).map(escapeHtml).join(', ') + (repNames.length > 2 ? ` <span style="color:var(--gris-mid);font-weight:400">+${repNames.length - 2} más</span>` : '');
+          // Un solo botón grande con "lo que toca hacer ahora" según el estado.
           let accionBtns = '';
-          if (s.estado === 'pendiente_jefe') accionBtns = `<button class="btn btn-success btn-xs" onclick="jefeProcesarSolicitud(${s.id},'aprobar',${s.etapa_id||'null'})">✓ Aprobar</button><button class="btn btn-danger btn-xs" onclick="jefeProcesarSolicitud(${s.id},'rechazar',${s.etapa_id||'null'})">✕</button>`;
-          else if (s.estado === 'cotizado') accionBtns = `<button class="btn btn-primary btn-xs" onclick="abrirModalPrecioVenta(${s.id})">Definir precio</button>`;
-          else if (s.estado === 'pedido') accionBtns = `<button class="btn btn-success btn-xs" onclick="jefeConfirmarLlegada(${s.id})">Llegó al taller</button>`;
-          else if (s.estado === 'recibido_taller') accionBtns = `<button class="btn btn-success btn-xs" onclick="jefeConfirmarEntrega(${s.id},${s.etapa_id||'null'})">Entregar</button>`;
+          if (s.estado === 'pendiente_jefe') accionBtns = `<button class="btn btn-primary btn-sm" style="flex:1" onclick="jefeProcesarSolicitud(${s.id},'aprobar',${s.etapa_id||'null'})">✓ Enviar a cotizar</button>`;
+          else if (s.estado === 'enviado_repuestos') accionBtns = `<button class="btn btn-primary btn-sm" style="flex:1" data-sol-id="${s.id}" onclick="_abrirCotizarPorId(this)">📝 Cotizar</button>`;
+          else if (s.estado === 'cotizado') accionBtns = `<button class="btn btn-primary btn-sm" style="flex:1" onclick="abrirModalPrecioVenta(${s.id})">💲 Definir precio</button>`;
+          else if (s.estado === 'pedido') accionBtns = `<button class="btn btn-success btn-sm" style="flex:1" onclick="jefeLlegadaYEntrega(${s.id},${s.etapa_id||'null'})">✓ Llegó y entregar</button>`;
+          else if (s.estado === 'recibido_taller') accionBtns = `<button class="btn btn-success btn-sm" style="flex:1" onclick="jefeConfirmarEntrega(${s.id},${s.etapa_id||'null'})">✓ Entregar al técnico</button>`;
 
           return `<div class="card" data-id="${s.id}" style="padding:12px;display:flex;flex-direction:column;gap:7px">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -548,8 +552,9 @@ async function _verSolicitud(id) {
         <button class="btn btn-success btn-sm" onclick="jefeProcesarSolicitud(${s.id},'aprobar',${s.etapa_id||'null'});_cerrarVerSolicitud()">✓ Aprobar y enviar</button>
         <button class="btn btn-danger btn-sm" onclick="jefeProcesarSolicitud(${s.id},'rechazar',${s.etapa_id||'null'});_cerrarVerSolicitud()">✕ Rechazar</button>
       </div>`;
-      else if (s.estado === 'cotizado') accion = `<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="_cerrarVerSolicitud();abrirModalPrecioVenta(${s.id})">Definir precio y ordenar</button>`;
-      else if (s.estado === 'pedido') accion = `<button class="btn btn-success btn-sm" style="margin-top:12px" onclick="jefeConfirmarLlegada(${s.id});_cerrarVerSolicitud()">✓ Llegó al taller</button>`;
+      else if (s.estado === 'enviado_repuestos') accion = `<button class="btn btn-primary btn-sm" data-sol-id="${s.id}" style="margin-top:12px" onclick="_cerrarVerSolicitud();_abrirCotizarPorId(this)">📝 Cotizar</button>`;
+      else if (s.estado === 'cotizado') accion = `<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="_cerrarVerSolicitud();abrirModalPrecioVenta(${s.id})">💲 Definir precio y ordenar</button>`;
+      else if (s.estado === 'pedido') accion = `<button class="btn btn-success btn-sm" style="margin-top:12px" onclick="jefeLlegadaYEntrega(${s.id},${s.etapa_id||'null'});_cerrarVerSolicitud()">✓ Llegó y entregar al técnico</button>`;
       else if (s.estado === 'recibido_taller') accion = `<button class="btn btn-success btn-sm" style="margin-top:12px" onclick="jefeConfirmarEntrega(${s.id},${s.etapa_id||'null'});_cerrarVerSolicitud()">✓ Entregar al técnico</button>`;
     }
 
@@ -665,6 +670,25 @@ async function jefeConfirmarEntrega(solicitudId, etapaId) {
       toast('Repuesto entregado ✓');
     }
     cargarRepuestosJefe();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// Llegó + entregado en UN solo paso (antes eran 2): marca recibido y entregado,
+// y reanuda el timer del técnico.
+async function jefeLlegadaYEntrega(solicitudId, etapaId) {
+  try {
+    await api(`/solicitudes_repuesto?id=eq.${solicitudId}`, 'PATCH', {
+      estado: 'entregado',
+      recibido_en: new Date().toISOString(),
+      nota_jefe: '✅ Repuesto llegó y fue entregado — puedes continuar con tu trabajo.'
+    });
+    if (etapaId) {
+      await _reanudarEtapa(etapaId, solicitudId);
+      toast('Repuesto entregado al técnico ✓ — ▶ Timer reanudado');
+    } else {
+      toast('Repuesto entregado ✓');
+    }
+    if (typeof cargarRepuestosJefe === 'function') cargarRepuestosJefe();
   } catch(e) { toast('Error: ' + e.message, 'err'); }
 }
 
