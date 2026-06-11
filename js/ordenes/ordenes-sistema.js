@@ -2181,9 +2181,11 @@ function _mostrarPopupAlerta(etapa, orden, minutos, nivel) {
 
   // Colores de la paleta general (sin naranja): ámbar = aviso (<1h),
   // rojo = urgente (>1h).
+  // Colores FIJOS (hex) — no usar var(--..) en estilos en línea: en algunos
+  // navegadores de PC no resolvían y el aviso salía descolorido (en Android sí).
   const colores = {
-    amarillo: { bg: 'var(--amarillo-bg)', border: 'var(--amarillo)', icon: 'var(--amarillo)', texto: '#78350F' },
-    naranja:  { bg: 'var(--rojo-bg)',     border: 'var(--rojo)',     icon: 'var(--rojo)',     texto: '#7F1D1D' }
+    amarillo: { bg: '#FEF3C7', border: '#92400E', icon: '#92400E', texto: '#78350F' },
+    naranja:  { bg: '#FDEDEB', border: '#C0392B', icon: '#C0392B', texto: '#7F1D1D' }
   };
   const c      = colores[nivel] || colores.amarillo;
   const AUTO_CIERRE_MS = 30000;
