@@ -1,4 +1,63 @@
 // ═══════════════════════════════════════════════════════════
+// ACCESO DE CLIENTE (URL aparte: ?cliente  o  ?cliente=<cédula/NIT>)
+// Reusa la pantalla de login pero en "modo cliente": sin contraseña, con
+// cédula o NIT. Si la URL trae el documento (enlace de WhatsApp), entra solo.
+// ═══════════════════════════════════════════════════════════
+function montarLoginCliente(cedula) {
+  const pl  = document.getElementById('pantalla-login');
+  const app = document.getElementById('app');
+  if (app) app.classList.remove('show');
+  if (pl)  pl.style.display = 'flex';
+
+  const logo = document.querySelector('.login-logo'); if (logo) logo.textContent = 'Freimanautos';
+  const titulo = document.querySelector('.login-titulo'); if (titulo) titulo.textContent = 'Tu vehículo';
+  const sub = document.getElementById('login-sub');
+  if (sub) sub.textContent = 'Ingresa tu cédula o NIT para ver el estado de tu vehículo';
+  const lbl = document.querySelector('label[for="login-cedula"]');
+  if (lbl) lbl.textContent = 'Cédula o NIT';
+  const passWrap = document.getElementById('login-pass-wrap');
+  if (passWrap) passWrap.style.display = 'none';
+  const btn = document.getElementById('login-btn');
+  if (btn) { btn.textContent = 'Ver mi vehículo'; btn.onclick = loginClientePortal; }
+  const inp = document.getElementById('login-cedula');
+  if (inp) inp.onkeydown = (e) => { if (e.key === 'Enter') loginClientePortal(); };
+
+  if (cedula && String(cedula).trim()) {
+    if (inp) inp.value = String(cedula).trim().replace(/\D/g, '');
+    loginClientePortal();
+  }
+}
+
+async function loginClientePortal() {
+  const doc   = (document.getElementById('login-cedula')?.value || '').trim();
+  const errEl = document.getElementById('login-error');
+  const btn   = document.getElementById('login-btn');
+  const _err  = (m) => { if (errEl) { errEl.textContent = m; errEl.classList.add('show'); } };
+  if (!doc) { _err('Ingresa tu cédula o NIT.'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Buscando...'; }
+  if (errEl) errEl.classList.remove('show');
+  try {
+    const perfil = await detectarPerfil(doc);
+    // Solo entran CLIENTES (un documento de personal no abre nada aquí).
+    if (!perfil || perfil.perfil !== 'cliente') {
+      _err('No encontramos un vehículo con ese documento. Verifica el número o comunícate con el taller.');
+      return;
+    }
+    iniciarSesion({ ...perfil, cedula: doc });
+  } catch (e) {
+    _err('Error de conexión. Intenta de nuevo.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Ver mi vehículo'; }
+  }
+}
+
+// Enlace de seguimiento para enviar al cliente por WhatsApp.
+function _linkClienteSeguimiento(cedula) {
+  if (!cedula) return '';
+  return `${location.origin}${location.pathname}?cliente=${encodeURIComponent(String(cedula).trim())}`;
+}
+
+// ═══════════════════════════════════════════════════════════
 // PERFIL CLIENTE - MIS ÓRDENES
 // ═══════════════════════════════════════════════════════════
 

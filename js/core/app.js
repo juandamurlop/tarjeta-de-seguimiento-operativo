@@ -101,6 +101,15 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
+  // Acceso de CLIENTE por URL aparte (?cliente). Con valor (?cliente=12345,
+  // como en el enlace de WhatsApp) abre el vehículo directo; sin valor muestra
+  // la pantalla para que el cliente escriba su cédula/NIT.
+  const _q = new URLSearchParams(location.search);
+  if (_q.has('cliente') && typeof montarLoginCliente === 'function') {
+    montarLoginCliente(_q.get('cliente') || '');
+    return;
+  }
+
   checkSesionGuardada();
   const lightbox = document.getElementById('lightbox');
   if (lightbox) {

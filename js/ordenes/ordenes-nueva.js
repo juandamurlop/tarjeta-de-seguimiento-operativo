@@ -751,12 +751,14 @@ function _guardarMensajeEntrega() {
 // (No envía solo: el usuario da "Enviar" — gratis, sin API de WhatsApp Business.)
 async function avisarClienteWhatsapp(ordenId) {
   try {
-    const arr = await api(`/ordenes?id=eq.${ordenId}&select=placa,marca,linea,propietario,telefono`).catch(() => []);
+    const arr = await api(`/ordenes?id=eq.${ordenId}&select=placa,marca,linea,propietario,telefono,cedula_cliente`).catch(() => []);
     const o = arr && arr[0];
     if (!o) { toast('No se encontró la orden', 'err'); return; }
     const tel = _waNumero(o.telefono);
     if (!tel) { toast('El cliente no tiene celular registrado en la orden', 'err'); return; }
-    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(_waEntregaMsg(o))}`, '_blank');
+    const _link = (typeof _linkClienteSeguimiento === 'function') ? _linkClienteSeguimiento(o.cedula_cliente) : '';
+    const _msg  = _waEntregaMsg(o) + (_link ? `\n\n📲 Mira el estado de tu vehículo aquí:\n${_link}` : '');
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(_msg)}`, '_blank');
     try { await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { entrega_avisada_en: new Date().toISOString() }); } catch (e) {}
     abrirOrden(ordenId); // refrescar para mostrar el agendamiento de la cita
   } catch (e) { toast('Error: ' + e.message, 'err'); }
@@ -835,7 +837,7 @@ async function guardarCitaEntrega(ordenId) {
 // (requisito para poder cerrar la orden).
 async function enviarPreliquidacionCliente(ordenId) {
   try {
-    const arr = await api(`/ordenes?id=eq.${ordenId}&select=placa,marca,linea,propietario,telefono`).catch(() => []);
+    const arr = await api(`/ordenes?id=eq.${ordenId}&select=placa,marca,linea,propietario,telefono,cedula_cliente`).catch(() => []);
     const o = arr && arr[0];
     if (!o) { toast('No se encontró la orden', 'err'); return; }
     const tel = _waNumero(o.telefono);
@@ -844,7 +846,8 @@ async function enviarPreliquidacionCliente(ordenId) {
     const nombre = _nombreClienteWA(o.propietario);
     const veh    = [o.marca, o.linea].filter(Boolean).join(' ') || 'vehículo';
     const saludo = nombre ? `Hola ${nombre}, ` : 'Hola, ';
-    const msg = `${saludo}le saluda ${taller}. Le compartimos la preliquidación de su ${veh} de placa ${o.placa} con el detalle de los trabajos y valores. Quedamos atentos a cualquier inquietud antes de la entrega. ¡Gracias! 📄`;
+    const _link  = (typeof _linkClienteSeguimiento === 'function') ? _linkClienteSeguimiento(o.cedula_cliente) : '';
+    const msg = `${saludo}le saluda ${taller}. Le compartimos la preliquidación de su ${veh} de placa ${o.placa} con el detalle de los trabajos y valores. Quedamos atentos a cualquier inquietud antes de la entrega. ¡Gracias! 📄` + (_link ? `\n\n📲 Mira el estado de tu vehículo aquí:\n${_link}` : '');
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
     await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { preliquidacion_enviada_en: new Date().toISOString() });
     toast('Preliquidación marcada como enviada ✓');
