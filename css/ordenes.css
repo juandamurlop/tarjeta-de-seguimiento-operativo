@@ -778,6 +778,17 @@
 .cliente-dot.pending{ background: var(--gris-borde); }
 
 /* ── Vista cliente — rediseño compacto ───────────────────────── */
+.cli-brand { display: flex; align-items: center; gap: 12px; padding: 2px 2px 16px; }
+.cli-brand-logo { width: 46px; height: 46px; object-fit: contain; flex-shrink: 0; }
+.cli-brand-name { font-size: 16px; font-weight: 800; color: var(--azul); letter-spacing: .2px; }
+.cli-brand-tag { font-size: 11.5px; color: var(--gris-mid); margin-top: 1px; }
+.cli-brand-footer {
+  display: flex; align-items: center; gap: 10px; justify-content: center;
+  margin: 22px 0 6px; padding-top: 16px; border-top: 1px solid var(--gris-borde);
+  color: var(--gris-mid); font-size: 12px; line-height: 1.4;
+}
+.cli-foot-logo { width: 30px; height: 30px; object-fit: contain; opacity: .85; flex-shrink: 0; }
+.cli-brand-footer span { font-size: 11px; font-style: italic; opacity: .85; }
 .cliente-orden-card { box-shadow: 0 1px 3px rgba(15,23,42,.06); }
 .cliente-header { padding: 16px 18px; }
 .cli-head-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; }

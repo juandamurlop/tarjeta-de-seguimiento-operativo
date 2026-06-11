@@ -9,7 +9,8 @@ function montarLoginCliente(cedula) {
   if (app) app.classList.remove('show');
   if (pl)  pl.style.display = 'flex';
 
-  const logo = document.querySelector('.login-logo'); if (logo) logo.textContent = 'Freimanautos';
+  const logo = document.querySelector('.login-logo');
+  if (logo) logo.innerHTML = `<img src="assets/icons/Logo_Fondo_Taller.png" alt="Freimanautos" style="height:72px;width:auto;object-fit:contain">`;
   const titulo = document.querySelector('.login-titulo'); if (titulo) titulo.textContent = 'Tu vehículo';
   const sub = document.getElementById('login-sub');
   if (sub) sub.textContent = 'Ingresa tu cédula o NIT para ver el estado de tu vehículo';
@@ -49,6 +50,23 @@ async function loginClientePortal() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Ver mi vehículo'; }
   }
+}
+
+// Encabezado y pie de marca para el portal del cliente.
+function _cliBrandHeader() {
+  return `<div class="cli-brand">
+    <img src="assets/icons/Logo_Fondo_Taller.png" alt="Freimanautos" class="cli-brand-logo">
+    <div class="cli-brand-txt">
+      <div class="cli-brand-name">Servicio Freimanautos</div>
+      <div class="cli-brand-tag">Seguimiento de tu vehículo en tiempo real</div>
+    </div>
+  </div>`;
+}
+function _cliBrandFooter() {
+  return `<div class="cli-brand-footer">
+    <img src="assets/icons/Logo_Fondo_Taller.png" alt="" class="cli-foot-logo">
+    <div>Un servicio de <b>Freimanautos</b><br><span>Simplemente profesional</span></div>
+  </div>`;
 }
 
 // Enlace de seguimiento para enviar al cliente por WhatsApp.
@@ -114,11 +132,11 @@ async function cargarOrdenesCliente() {
     }
     const ordenes = await api(`/ordenes?${_qs}&order=creado_en.desc`) || [];
     if (!ordenes.length) {
-      cont.innerHTML = `<div class="empty-state">
+      cont.innerHTML = _cliBrandHeader() + `<div class="empty-state">
         <div class="empty-state-icon">${ico('car', 32)}</div>
         <p style="font-size:16px;font-weight:600;color:var(--texto);margin-bottom:6px">No tienes órdenes registradas</p>
         <p>Usted no cuenta con órdenes registradas en el sistema.<br>Si crees que es un error, comunícate con el taller.</p>
-      </div>`;
+      </div>` + _cliBrandFooter();
       return;
     }
 
@@ -127,7 +145,7 @@ async function cargarOrdenesCliente() {
     const novedades = await api(`/novedades?orden_id=in.(${ids})&order=creado_en.desc`).catch(() => []) || [];
     const fotosEt = await api(`/fotos_etapas?orden_id=in.(${ids})&order=creado_en.desc&limit=12`).catch(() => []) || [];
 
-    cont.innerHTML = ordenes.map(orden => {
+    cont.innerHTML = _cliBrandHeader() + ordenes.map(orden => {
       const ets = etapas.filter(e => e.orden_id === orden.id);
       const novs = novedades.filter(n => n.orden_id === orden.id);
       const fotos = fotosEt.filter(f => f.orden_id === orden.id).slice(0, 6);
@@ -246,8 +264,8 @@ async function cargarOrdenesCliente() {
           ${fotosHtml}
         </div>
       </div>`;
-    }).join('');
-  } catch(e) { 
-    cont.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; 
+    }).join('') + _cliBrandFooter();
+  } catch(e) {
+    cont.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
   }
 }
