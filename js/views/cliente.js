@@ -142,17 +142,18 @@ async function cargarOrdenesCliente() {
         const done = !!e.fin;
         const active = !!e.inicio && !e.fin;
         const paus = active && e.pausado;
-        const cls = done ? 'done' : active ? 'active' : 'pending';
-        return `<div class="cliente-etapa-row" ${active ? 'style="background:#ECFDF5;border-radius:8px;padding:8px;margin:2px -8px"' : ''}>
-          <div class="cliente-dot ${cls}"></div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:600">${escapeHtml(e.etapa) || '—'}</div>
-            <div style="font-size:11px;color:var(--gris-mid)">${escapeHtml(CATALOGO[e.servicio]?.nombre || e.servicio) || '—'}</div>
-            ${e.descripcion ? `<div style="font-size:11.5px;color:#1E40AF;background:#EFF6FF;border-radius:5px;padding:4px 8px;margin-top:4px;line-height:1.35;white-space:pre-wrap">${escapeHtml(e.descripcion)}</div>` : ''}
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <span class="badge badge-${done ? 'completada' : active ? 'iniciada' : 'pendiente'}">${done ? 'Completada' : active ? (paus ? 'En pausa' : 'En proceso') : 'Pendiente'}</span>
-            ${done ? `<div style="font-size:10px;color:var(--gris-mid);font-family:'DM Mono',monospace;margin-top:3px">${formatTS(e.fin)}</div>` : ''}
+        const cls = done ? 'done' : active ? (paus ? 'paused' : 'active') : 'pending';
+        const marker = done ? '✓' : '';
+        return `<div class="cli-tl-item ${cls}">
+          <div class="cli-tl-marker">${marker}</div>
+          <div class="cli-tl-content">
+            <div class="cli-tl-head">
+              <span class="cli-tl-title">${escapeHtml(e.etapa) || '—'}</span>
+              <span class="cli-tl-badge ${cls}">${done ? 'Listo' : active ? (paus ? 'En pausa' : 'En proceso') : 'Pendiente'}</span>
+            </div>
+            <div class="cli-tl-sub">${escapeHtml(CATALOGO[e.servicio]?.nombre || e.servicio) || '—'}</div>
+            ${e.descripcion ? `<div class="cli-tl-desc">${escapeHtml(e.descripcion)}</div>` : ''}
+            ${done ? `<div class="cli-tl-fecha">${formatTS(e.fin)}</div>` : ''}
           </div>
         </div>`;
       }).join('');
@@ -196,39 +197,51 @@ async function cargarOrdenesCliente() {
           <div class="fotos-grid">${fotos.map(f => `<div class="foto-thumb" data-url="${escapeHtml(f.url)}" onclick="abrirLightbox(this.dataset.url)"><img src="${escapeHtml(f.url)}" alt="" loading="lazy"></div>`).join('')}</div>
         </div>` : '';
 
+      // Pill de estado (resumen de una palabra arriba a la izquierda).
+      let pill = { txt: 'En taller', cls: 'idle' };
+      if ((orden.estado || '') === 'Entregada') pill = { txt: 'Entregado', cls: 'ok' };
+      else if (orden.pulmon) pill = { txt: 'En espera', cls: 'wait' };
+      else if (activa) pill = activa.pausado ? { txt: 'En pausa', cls: 'wait' } : { txt: 'En proceso', cls: 'go' };
+      else if (total > 0 && comp === total) pill = { txt: 'Listo p/ entrega', cls: 'ok' };
+
+      // Anillo de progreso (SVG): r=24 → circunferencia ≈ 150.8.
+      const _circ = 150.8;
+      const _off = (_circ * (1 - pct / 100)).toFixed(1);
+      const veh = [orden.marca, orden.linea, orden.modelo, orden.color].filter(Boolean).map(escapeHtml).join(' · ') || 'Sin datos';
+
       return `<div class="cliente-orden-card">
         <div class="cliente-header">
-          <div class="cliente-placa">${escapeHtml(orden.placa)}</div>
-          <div class="cliente-vehiculo">${[orden.marca, orden.linea, orden.modelo, orden.color].filter(Boolean).map(escapeHtml).join(' · ') || 'Sin datos'}</div>
-          <div style="display:flex;align-items:center;gap:10px;margin-top:12px">
-            <div style="flex:1">
-              <div style="font-size:11px;opacity:0.6;margin-bottom:4px">${comp} de ${total} etapas completadas</div>
-              <div style="height:4px;background:rgba(255,255,255,0.2);border-radius:99px;overflow:hidden">
-                <div style="height:100%;width:${pct}%;background:white;border-radius:99px;transition:width 0.4s"></div>
-              </div>
+          <div class="cli-head-top">
+            <div class="cli-head-info">
+              <span class="cli-pill cli-pill-${pill.cls}">${pill.txt}</span>
+              <div class="cliente-placa">${escapeHtml(orden.placa)}</div>
+              <div class="cliente-vehiculo">${veh}</div>
             </div>
-            <div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace">${pct}%</div>
+            <div class="cli-ring">
+              <svg viewBox="0 0 58 58" width="58" height="58">
+                <circle cx="29" cy="29" r="24" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="5"/>
+                <circle cx="29" cy="29" r="24" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"
+                  stroke-dasharray="${_circ}" stroke-dashoffset="${_off}" transform="rotate(-90 29 29)" class="cli-ring-prog"/>
+              </svg>
+              <div class="cli-ring-num">${pct}<span>%</span></div>
+            </div>
           </div>
-          ${orden.pulmon ? `<div style="margin-top:10px;background:rgba(255,255,255,0.15);border-radius:6px;padding:8px 12px;font-size:12px">⏸ En espera de aprobación — Pulmón activo desde ${formatFecha(orden.pulmon_desde)}</div>` : ''}
+          <div class="cli-head-meta">
+            <span>${ico('calendar',12)} Ingreso ${formatFecha(orden.creado_en)}</span>
+            <span>🏁 Entrega ${formatFecha(orden.fecha_entrega_1) || '—'}</span>
+            ${orden.aseguradora ? `<span>🛡 ${escapeHtml(orden.aseguradora)}</span>` : ''}
+          </div>
         </div>
         <div class="cliente-body">
-          <div class="info-chips" style="margin-bottom:16px">
-            <div class="info-chip"><div class="info-chip-label">Ingreso</div><div class="info-chip-val">${formatFecha(orden.creado_en)}</div></div>
-            <div class="info-chip"><div class="info-chip-label">Fecha entrega</div><div class="info-chip-val">${formatFecha(orden.fecha_entrega_1) || '—'}</div></div>
-            ${orden.aseguradora ? `<div class="info-chip"><div class="info-chip-label">Aseguradora</div><div class="info-chip-val">${escapeHtml(orden.aseguradora)}</div></div>` : ''}
-            <div class="info-chip"><div class="info-chip-label">Estado</div><div class="info-chip-val">${orden.estado || 'Activa'}</div></div>
-          </div>
-          ${orden.cotizacion_url ? `
-          <div style="margin-bottom:16px;padding:12px 14px;background:var(--gris-bg);border-radius:8px;border:1px solid var(--gris-borde);display:flex;align-items:center;justify-content:space-between">
-            <div>
-              <div style="font-size:12px;font-weight:600;color:var(--texto);display:flex;align-items:center;gap:5px">${ico('file',13)} Cotización</div>
-              <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">Documento de tu vehículo</div>
-            </div>
-            <a href="${safeUrl(orden.cotizacion_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" style="font-size:12px">Ver PDF →</a>
-          </div>` : ''}
           ${estadoBanner}
+          ${orden.cotizacion_url ? `
+          <a href="${safeUrl(orden.cotizacion_url)}" target="_blank" rel="noopener noreferrer" class="cli-doc-link">
+            <span class="cli-doc-ico">${ico('file',16)}</span>
+            <span style="flex:1"><b>Cotización</b><br><span style="color:var(--gris-mid);font-size:11px">Documento de tu vehículo</span></span>
+            <span class="cli-doc-cta">Ver PDF →</span>
+          </a>` : ''}
           <div class="seccion-titulo">Avance del proceso</div>
-          ${etapasHtml}
+          <div class="cli-timeline">${etapasHtml}</div>
           ${novsHtml}
           ${fotosHtml}
         </div>

@@ -339,7 +339,13 @@ async function _cargarConsumiblesSidebar(placa, kmActual) {
     });
 
     if (!alertas.length) {
-      body.innerHTML = `<div style="font-size:12px;color:var(--verde);display:flex;align-items:center;gap:5px">🟢 Todo en buen estado</div>`;
+      // Sin datos NO es lo mismo que "todo bien": si no hay ningún consumible
+      // ni documento registrado, queda PENDIENTE de cargar (no verde).
+      const sinDatos = consumibles.length === 0 && docs.length === 0;
+      body.innerHTML = sinDatos
+        ? `<div style="font-size:12px;color:var(--amarillo);display:flex;align-items:center;gap:5px">🟡 Pendiente: agregar datos</div>
+           <button class="btn btn-ghost btn-xs" style="margin-top:6px;font-size:11px;width:100%" onclick="abrirPopupConsumibles('${escapeHtml(placa)}',${kmActual})">Agregar datos →</button>`
+        : `<div style="font-size:12px;color:var(--verde);display:flex;align-items:center;gap:5px">🟢 Todo en buen estado</div>`;
     } else {
       body.innerHTML = alertas.map(a =>
         `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--gris-borde);font-size:12px">
