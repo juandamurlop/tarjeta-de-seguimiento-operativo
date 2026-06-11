@@ -799,6 +799,9 @@ async function guardarCamposEtapaJefe(eid, k) {
     try {
       await api(`/etapas?id=eq.${eid}`, 'PATCH', { horas_facturadas: hf, horas_adicionales: ha, valor: val, valor_venta: vv });
       toast('Guardado ✓');
+      // Si se asignó/cambió el PRECIO TÉCNICO, avisar al técnico a su chat
+      // PERSONAL de Telegram (no al grupo) con el valor.
+      if (val != null && (!prev || prev.valor != val)) _notificarPrecioTecnico(eid, val);
       if (ordenActual) abrirOrden(ordenActual.id);
     } catch(e) { toast('Error: ' + e.message, 'err'); }
   };
@@ -810,6 +813,35 @@ async function guardarCamposEtapaJefe(eid, k) {
   } else {
     guardar();
   }
+}
+
+// Notifica al técnico, a su chat PERSONAL de Telegram (n8n usa telegram_chat_id
+// para mandarlo solo a él, no al grupo), el precio técnico que el jefe asignó.
+async function _notificarPrecioTecnico(eid, valor) {
+  try {
+    const et = await api(`/etapas?id=eq.${eid}&select=mecanico_id,etapa,servicio,orden_id,tecnico`).then(r => r?.[0]).catch(() => null);
+    if (!et || !et.mecanico_id) return;                 // técnico externo → sin chat personal
+    const mec = await api(`/mecanicos?id=eq.${et.mecanico_id}&select=nombre,telegram_chat_id`).then(r => r?.[0]).catch(() => null);
+    if (!mec?.telegram_chat_id) return;                 // sin chat personal configurado
+    const orden = (ordenActual && ordenActual.id === et.orden_id)
+      ? ordenActual
+      : await api(`/ordenes?id=eq.${et.orden_id}&select=placa,marca,linea`).then(r => r?.[0]).catch(() => null);
+    const fmtCOP = n => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0 }).format(n || 0);
+    fetch(N8N_WEBHOOK, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        evento: 'precio_tecnico',
+        telegram_chat_id: mec.telegram_chat_id,         // PERSONAL — n8n NO lo manda al grupo
+        tecnico: mec.nombre || et.tecnico || '',
+        etapa: et.etapa || et.servicio || '',
+        placa: orden?.placa || '',
+        vehiculo: [orden?.marca, orden?.linea].filter(Boolean).join(' ') || '',
+        ot: (typeof formatOT === 'function') ? formatOT(et.orden_id) : ('OT-' + et.orden_id),
+        precio_tecnico: valor,
+        precio_tecnico_fmt: fmtCOP(valor)
+      })
+    }).catch(() => {});
+  } catch (e) { console.warn('[precio técnico] notif:', e); }
 }
 
 // ── Guardar horas+valor de una sola vez y bloquear (técnico) ─

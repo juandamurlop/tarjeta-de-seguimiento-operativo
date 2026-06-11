@@ -152,6 +152,7 @@ async function cargarEtapasMecanico() {
               ${e.fin ? ' · Fin: ' + formatTS(e.fin) : tiempoStr}
             </div>
             ${e.descripcion ? `<div style="font-size:12px;color:#1E40AF;background:#EFF6FF;border-radius:5px;padding:5px 9px;margin-top:5px;line-height:1.4;white-space:pre-wrap">${escapeHtml(e.descripcion)}</div>` : ''}
+            ${e.valor ? `<div style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--verde);font-weight:700;background:var(--verde-bg);border-radius:5px;padding:3px 9px;margin-top:5px">💵 Tu precio: ${new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(e.valor)}</div>` : ''}
             ${esPausado ? `<div style="font-size:11px;color:#D97706;margin-top:3px;font-weight:600">⏸ Etapa pausada — esperando repuesto del jefe de taller</div>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
