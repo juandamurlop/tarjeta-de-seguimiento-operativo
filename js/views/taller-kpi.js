@@ -363,7 +363,6 @@ async function cargarKPITaller() {
     const cotsConvPct = cotsMes.length ? Math.round(cotsMes.filter(c => c.orden_id != null).length / cotsMes.length * 100) : 0;
     const ocupColor   = pctOcup >= 90 ? 'var(--rojo)' : pctOcup >= 70 ? 'var(--amarillo)' : 'var(--verde)';
     const indicadores2Html = `
-      <div class="kpi-resumen">
         <div class="kpi-res-item">
           <div class="kpi-res-num" style="color:${ocupColor}">${enTaller}/${CAP}</div>
           <div class="kpi-res-lbl">Ocupación · ${pctOcup}%</div>
@@ -379,8 +378,7 @@ async function cargarKPITaller() {
         <div class="kpi-res-item">
           <div class="kpi-res-num" style="color:var(--amarillo)">${cotsPend}</div>
           <div class="kpi-res-lbl">Cotiz. pendientes${cotsMes.length ? ' · ' + cotsConvPct + '% conv.' : ''}</div>
-        </div>
-      </div>`;
+        </div>`;
 
     // ── Resumen de PENDIENTES de un vistazo (chips clickeables) ──
     const _pend = [
@@ -441,9 +439,8 @@ async function cargarKPITaller() {
             <div class="kpi-res-num" style="color:var(--amarillo)">${solicitudesRep.length}</div>
             <div class="kpi-res-lbl">Repuestos pendientes</div>
           </div>
+          ${indicadores2Html}
         </div>
-
-        ${indicadores2Html}
 
         <div class="kpi-grid">
           <div class="kpi-card kpi-${k1Color}" onclick="kpiDrilldown('k1')">

@@ -588,7 +588,7 @@
 /* ═══════════════════════════════════════════════════════════
    KPI — GESTIÓN OPERATIVA TALLER
 ═══════════════════════════════════════════════════════════ */
-.kpi-shell { --kpi-w: 720px; padding: 14px 18px; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.kpi-shell { --kpi-w: 100%; padding: 14px 18px; max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 
 /* Header — alineado al mismo ancho que el resto de bloques */
 .kpi-header {
@@ -598,7 +598,7 @@
 }
 
 /* Resumen rápido — 4 columnas iguales, alineadas a la izquierda */
-.kpi-resumen { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 1fr; gap: 10px; max-width: var(--kpi-w); }
+.kpi-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); grid-auto-rows: 1fr; gap: 8px; max-width: var(--kpi-w); }
 .kpi-res-item {
   background: #fff; border: 1px solid var(--gris-borde); border-radius: 12px;
   padding: 11px 12px; text-align: center; box-shadow: var(--shadow-sm);
@@ -624,7 +624,7 @@
 .kpi-vt-num { font-size: 23px; font-weight: 800; font-family: 'DM Mono', monospace; letter-spacing: -0.5px; white-space: nowrap; }
 
 /* Grid KPIs — 4 columnas iguales, TODAS la misma altura (grid-auto-rows:1fr) */
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 1fr; gap: 10px; max-width: var(--kpi-w); }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); grid-auto-rows: 1fr; gap: 10px; max-width: var(--kpi-w); }
 
 /* Card */
 .kpi-card {
