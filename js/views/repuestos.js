@@ -72,19 +72,15 @@ function _autoCategoria() {
   if (texto.trim()) sel.value = _detectarCategoria(texto);
 }
 
-// Marcas que circulan en Colombia (incluye chinas/indias hoy comunes).
+// Marcas de carros que circulan en Colombia (orden alfabético).
 // Si falta alguna que manejen, se agrega aquí.
 const MARCAS_VEHICULOS = [
-  // Tradicionales / japonesas / americanas / europeas presentes en CO
-  'Audi','BMW','Chevrolet','Chrysler','Citroën','Dodge','Fiat','Ford','GMC',
-  'Honda','Hyundai','Isuzu','Jeep','Kia','Land Rover','Lexus','Mazda',
-  'Mercedes-Benz','Mini','Mitsubishi','Nissan','Peugeot','Ram','Renault',
-  'Seat','Skoda','SsangYong','Subaru','Suzuki','Toyota','Volkswagen','Volvo',
-  // Chinas / indias (muy comunes hoy en Colombia)
-  'BAIC','BYD','Changan','Chery','DFSK','Dongfeng','Foton','Geely','Great Wall',
-  'Haval','JAC','Jetour','Mahindra','MG',
-  // Motos comunes en Colombia
-  'AKT','Bajaj','Hero','Honda Moto','Kawasaki','KTM','Suzuki Moto','TVS','Victory','Yamaha'
+  'Audi','BAIC','BMW','BYD','Changan','Chery','Chevrolet','Chrysler','Citroën',
+  'DFSK','Dodge','Dongfeng','Fiat','Ford','Foton','Geely','GMC','Great Wall',
+  'Haval','Honda','Hyundai','Isuzu','JAC','Jeep','Jetour','Kia','Land Rover',
+  'Lexus','Mahindra','Mazda','Mercedes-Benz','MG','Mini','Mitsubishi','Nissan',
+  'Peugeot','Ram','Renault','Seat','Skoda','SsangYong','Subaru','Suzuki',
+  'Toyota','Volkswagen','Volvo'
 ];
 
 // ── Sección activa ──────────────────────────────────────
@@ -1624,9 +1620,9 @@ function abrirModalProveedor(prov) {
   const esMulti   = p.multimarca||false;
 
   const marcasHtml = MARCAS_VEHICULOS.map(m=>`
-    <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:2px 0">
-      <input type="checkbox" name="prov-marca" value="${escapeHtml(m)}" ${selMarcas.includes(m)||esMulti?'checked':''}>
-      ${escapeHtml(m)}
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:3px 4px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+      <input type="checkbox" name="prov-marca" value="${escapeHtml(m)}" ${selMarcas.includes(m)||esMulti?'checked':''} style="flex-shrink:0;margin:0">
+      <span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(m)}</span>
     </label>`).join('');
 
   const div = document.createElement('div');
@@ -1659,7 +1655,7 @@ function abrirModalProveedor(prov) {
               Multimarca (todas)
             </label>
           </div>
-          <div id="prov-marcas-wrap" style="max-height:200px;overflow-y:auto;border:1px solid var(--gris-borde);border-radius:8px;padding:10px 14px;display:grid;grid-template-columns:1fr 1fr 1fr;${esMulti?'opacity:.4;pointer-events:none':''}">
+          <div id="prov-marcas-wrap" style="max-height:220px;overflow-y:auto;border:1px solid var(--gris-borde);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 8px;align-content:start;${esMulti?'opacity:.4;pointer-events:none':''}">
             ${marcasHtml}
           </div>
         </div>
