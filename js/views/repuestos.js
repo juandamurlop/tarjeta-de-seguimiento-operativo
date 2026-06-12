@@ -72,14 +72,19 @@ function _autoCategoria() {
   if (texto.trim()) sel.value = _detectarCategoria(texto);
 }
 
+// Marcas que circulan en Colombia (incluye chinas/indias hoy comunes).
+// Si falta alguna que manejen, se agrega aquí.
 const MARCAS_VEHICULOS = [
-  'Acura','Alfa Romeo','Audi','BMW','Bentley','Buick','Cadillac','Chevrolet',
-  'Chrysler','Citroën','Dodge','Ferrari','Fiat','Ford','GMC','Genesis',
-  'Honda','Hyundai','Infiniti','Isuzu','Jaguar','Jeep','Kia','Lamborghini',
-  'Land Rover','Lexus','Lincoln','Maserati','Mazda','Mercedes-Benz','Mini',
-  'Mitsubishi','Nissan','Peugeot','Porsche','Ram','Renault','Rolls-Royce',
-  'Seat','Skoda','Subaru','Suzuki','Tesla','Toyota','Volkswagen','Volvo',
-  'Bajaj','Hero','Yamaha','Honda Moto','Kawasaki','Suzuki Moto','KTM'
+  // Tradicionales / japonesas / americanas / europeas presentes en CO
+  'Audi','BMW','Chevrolet','Chrysler','Citroën','Dodge','Fiat','Ford','GMC',
+  'Honda','Hyundai','Isuzu','Jeep','Kia','Land Rover','Lexus','Mazda',
+  'Mercedes-Benz','Mini','Mitsubishi','Nissan','Peugeot','Ram','Renault',
+  'Seat','Skoda','SsangYong','Subaru','Suzuki','Toyota','Volkswagen','Volvo',
+  // Chinas / indias (muy comunes hoy en Colombia)
+  'BAIC','BYD','Changan','Chery','DFSK','Dongfeng','Foton','Geely','Great Wall',
+  'Haval','JAC','Jetour','Mahindra','MG',
+  // Motos comunes en Colombia
+  'AKT','Bajaj','Hero','Honda Moto','Kawasaki','KTM','Suzuki Moto','TVS','Victory','Yamaha'
 ];
 
 // ── Sección activa ──────────────────────────────────────
