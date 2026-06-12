@@ -1452,9 +1452,11 @@ function resetNuevaOrden() {
 }
 
 async function recargarListasNuevaOrden() {
-  const [aseg, flot] = await Promise.all([
+  const [aseg, flot, mecs, jefeCfg] = await Promise.all([
     api('/aseguradoras?activo=eq.true&order=nombre.asc').catch(()=>[]) || [],
-    api('/flotillas?activo=eq.true&order=nombre.asc').catch(()=>[]) || []
+    api('/flotillas?activo=eq.true&order=nombre.asc').catch(()=>[]) || [],
+    api('/mecanicos?activo=eq.true&order=nombre.asc&select=id,nombre,es_asesor').catch(()=>[]) || [],
+    api('/configuracion?clave=eq.jefe_nombre&select=valor').catch(()=>[]) || []
   ]);
   ['n-aseguradora-sel','n-flotilla-sel','n-empresa-sel'].forEach((id, i) => {
     const sel = document.getElementById(id);
@@ -1462,6 +1464,17 @@ async function recargarListasNuevaOrden() {
     if (sel) sel.innerHTML = '<option value="">— Seleccionar —</option>' +
       lista.map(x => `<option value="${x.nombre}">${x.nombre}</option>`).join('');
   });
+  // Asesor de servicio: operarios marcados como asesor + el jefe de taller
+  // (mismo criterio que las encuestas, para que coincidan).
+  const selAsesor = document.getElementById('n-asesor');
+  if (selAsesor) {
+    const asesores = mecs.filter(m => m.es_asesor);
+    const jefeNom = jefeCfg[0]?.valor;
+    selAsesor.innerHTML = '<option value="">— Seleccionar —</option>' +
+      asesores.map(m => `<option value="${m.id}">${escapeHtml(m.nombre)}</option>`).join('') +
+      (jefeNom ? `<option value="jefe">${escapeHtml(jefeNom)} (jefe)</option>` : '');
+    if (sesion?.id && asesores.some(m => Number(m.id) === Number(sesion.id))) selAsesor.value = sesion.id;
+  }
 }
 // ═══════════════════════════════════════════════════════════
 // PRELIQUIDACIÓN — PDF con resumen de la orden
