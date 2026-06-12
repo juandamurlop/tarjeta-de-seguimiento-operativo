@@ -98,8 +98,28 @@ function _detectarCategoriasProveedor(nombre) {
 function _sugerirCatProveedor() {
   const nombre = document.getElementById('prov-nombre')?.value || '';
   const cats = _detectarCategoriasProveedor(nombre);
-  document.querySelectorAll('#modal-proveedor input[name="prov-cat"]').forEach(cb => { cb.checked = cats.includes(cb.value); });
+  // Marca las detectadas (sin desmarcar las personalizadas ya elegidas).
+  document.querySelectorAll('#modal-proveedor input[name="prov-cat"]').forEach(cb => { if (cats.includes(cb.value)) cb.checked = true; });
   toast(cats.length ? 'Sugeridas: ' + cats.join(', ') : 'No detecté categoría por el nombre', cats.length ? 'ok' : 'info');
+}
+
+// Categorías personalizadas ya usadas en otros proveedores (además de las
+// estándar). Se llena en cargarProveedores.
+let _catProvExtra = [];
+// Agrega una categoría nueva (personalizada) al formulario, marcada.
+function _agregarCategoriaProv() {
+  const inp = document.getElementById('prov-cat-nueva');
+  const val = (inp?.value || '').trim();
+  if (!val) return;
+  const wrap = document.getElementById('prov-cat-wrap');
+  if (!wrap) return;
+  const existe = [...wrap.querySelectorAll('input[name="prov-cat"]')].some(cb => cb.value.toLowerCase() === val.toLowerCase());
+  if (existe) { toast('Esa categoría ya está en la lista', 'info'); if (inp) inp.value = ''; return; }
+  const lbl = document.createElement('label');
+  lbl.style.cssText = 'display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;padding:4px 2px;line-height:1.2;text-transform:none;font-weight:400;letter-spacing:normal;color:var(--texto)';
+  lbl.innerHTML = `<input type="checkbox" name="prov-cat" value="${escapeHtml(val)}" checked style="flex-shrink:0;margin:0;width:15px;height:15px"><span style="min-width:0">${escapeHtml(val)}</span>`;
+  wrap.appendChild(lbl);
+  if (inp) inp.value = '';
 }
 
 // Marcas de carros que circulan en Colombia (orden alfabético).
@@ -1619,6 +1639,8 @@ async function cargarProveedores() {
 
   try {
     const provs = await api('/proveedores?order=nombre.asc').catch(()=>[]) || [];
+    // Categorías personalizadas ya usadas (para mostrarlas en el formulario).
+    _catProvExtra = [...new Set(provs.flatMap(p => p.categorias || []).filter(c => !CATEGORIAS_REPUESTO.includes(c)))];
     const scores = await _calcularScoresProveedores();
     // Favorito = mayor puntaje con historial
     let favId = null, favPun = -1;
@@ -1685,12 +1707,19 @@ function abrirModalProveedor(prov) {
   const p = prov||{};
   const selMarcas = p.marcas||[];
   const esMulti   = p.multimarca||false;
+  const selCats   = p.categorias||[];
 
-  const marcasHtml = MARCAS_VEHICULOS.map(m=>`
-    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:3px 4px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-      <input type="checkbox" name="prov-marca" value="${escapeHtml(m)}" ${selMarcas.includes(m)||esMulti?'checked':''} style="flex-shrink:0;margin:0">
-      <span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(m)}</span>
-    </label>`).join('');
+  const _itemCheck = (name, val, checked) => `
+    <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;padding:4px 2px;line-height:1.2;text-transform:none;font-weight:400;letter-spacing:normal;color:var(--texto)">
+      <input type="checkbox" name="${name}" value="${escapeHtml(val)}" ${checked?'checked':''} style="flex-shrink:0;margin:0;width:15px;height:15px">
+      <span style="min-width:0">${escapeHtml(val)}</span>
+    </label>`;
+
+  const marcasHtml = MARCAS_VEHICULOS.map(m => _itemCheck('prov-marca', m, selMarcas.includes(m)||esMulti)).join('');
+
+  // Categorías: estándar + las que ya existan en otros proveedores + las de este.
+  const todasCats = [...new Set([...CATEGORIAS_REPUESTO, ...(_catProvExtra||[]), ...selCats])];
+  const catsHtml = todasCats.map(c => _itemCheck('prov-cat', c, selCats.includes(c))).join('');
 
   const div = document.createElement('div');
   div.id = 'modal-proveedor';
@@ -1722,21 +1751,22 @@ function abrirModalProveedor(prov) {
               Multimarca (todas)
             </label>
           </div>
-          <div id="prov-marcas-wrap" style="max-height:220px;overflow-y:auto;border:1px solid var(--gris-borde);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 8px;align-content:start;${esMulti?'opacity:.4;pointer-events:none':''}">
+          <div id="prov-marcas-wrap" style="max-height:200px;overflow-y:auto;border:1px solid var(--gris-borde);border-radius:8px;padding:8px 12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:2px 12px;align-content:start;${esMulti?'opacity:.4;pointer-events:none':''}">
             ${marcasHtml}
           </div>
         </div>
         <div class="field">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px">
             <label style="margin:0">Categorías que maneja <span style="font-weight:400;color:var(--gris-mid);font-size:11px">(para sugerirlo en esos repuestos)</span></label>
             <button type="button" class="btn btn-ghost btn-xs" style="font-size:11px;color:var(--azul)" onclick="_sugerirCatProveedor()">✨ Sugerir del nombre</button>
           </div>
-          <div style="border:1px solid var(--gris-borde);border-radius:8px;padding:10px 14px;display:grid;grid-template-columns:1fr 1fr;gap:2px">
-            ${CATEGORIAS_REPUESTO.map(c => `
-              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:2px 0">
-                <input type="checkbox" name="prov-cat" value="${escapeHtml(c)}" ${(p.categorias||[]).includes(c)?'checked':''}>
-                ${escapeHtml(c)}
-              </label>`).join('')}
+          <div id="prov-cat-wrap" style="border:1px solid var(--gris-borde);border-radius:8px;padding:8px 12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:2px 12px;align-content:start">
+            ${catsHtml}
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <input id="prov-cat-nueva" placeholder="+ Agregar otra categoría…" style="flex:1;font-size:12.5px;padding:7px 10px;border:1px solid var(--gris-borde);border-radius:6px"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();_agregarCategoriaProv();}">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="_agregarCategoriaProv()">Agregar</button>
           </div>
         </div>
         ${p.id ? `<div class="field"><label>Estado</label>
