@@ -1193,9 +1193,9 @@ async function crearOrden() {
       let sub = 0;
       for (const file of fotosIngresoPendientes) {
         try {
-          const ext = file.name.split('.').pop();
-          const path = `${ordenId}/ingreso/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-          const url = await storageUpload(file, path);
+          const comp = await comprimirImagenFile(file);
+          const path = `${ordenId}/ingreso/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+          const url = await storageUpload(comp, path);
           await api('/fotos_ingreso', 'POST', { orden_id: ordenId, url, nombre: file.name }, { Prefer: 'return=minimal' });
           sub++;
           if (prog) prog.textContent = `Subiendo fotos ${sub}/${fotosIngresoPendientes.length}...`;

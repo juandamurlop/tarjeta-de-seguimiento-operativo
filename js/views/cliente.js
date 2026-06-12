@@ -144,11 +144,13 @@ async function cargarOrdenesCliente() {
     const etapas = await api(`/etapas?orden_id=in.(${ids})&order=creado_en.asc`).catch(() => []) || [];
     const novedades = await api(`/novedades?orden_id=in.(${ids})&order=creado_en.desc`).catch(() => []) || [];
     const fotosEt = await api(`/fotos_etapas?orden_id=in.(${ids})&order=creado_en.desc&limit=12`).catch(() => []) || [];
+    const fotosIng = await api(`/fotos_ingreso?orden_id=in.(${ids})&order=creado_en.asc&limit=12`).catch(() => []) || [];
 
     cont.innerHTML = _cliBrandHeader() + ordenes.map(orden => {
       const ets = etapas.filter(e => e.orden_id === orden.id);
       const novs = novedades.filter(n => n.orden_id === orden.id);
       const fotos = fotosEt.filter(f => f.orden_id === orden.id).slice(0, 6);
+      const fotosEntrada = fotosIng.filter(f => f.orden_id === orden.id).slice(0, 6);
       const total = ets.length;
       const comp = ets.filter(e => e.fin).length;
       const pct = total ? Math.round((comp / total) * 100) : 0;
@@ -216,6 +218,12 @@ async function cargarOrdenesCliente() {
           <div class="fotos-grid">${fotos.map(f => `<div class="foto-thumb" data-url="${escapeHtml(f.url)}" onclick="abrirLightbox(this.dataset.url)"><img src="${escapeHtml(f.url)}" alt="" loading="lazy"></div>`).join('')}</div>
         </div>` : '';
 
+      const fotosIngHtml = fotosEntrada.length ? `
+        <div style="margin-top:16px;border-top:1px solid var(--gris-borde);padding-top:16px">
+          <div class="seccion-titulo">Estado de tu vehículo al ingresar</div>
+          <div class="fotos-grid">${fotosEntrada.map(f => `<div class="foto-thumb" data-url="${escapeHtml(f.url)}" onclick="abrirLightbox(this.dataset.url)"><img src="${escapeHtml(f.url)}" alt="" loading="lazy"></div>`).join('')}</div>
+        </div>` : '';
+
       // Pill de estado (resumen de una palabra arriba a la izquierda).
       let pill = { txt: 'En taller', cls: 'idle' };
       if ((orden.estado || '') === 'Entregada') pill = { txt: 'Entregado', cls: 'ok' };
@@ -263,6 +271,7 @@ async function cargarOrdenesCliente() {
           <div class="cli-timeline">${etapasHtml}</div>
           ${novsHtml}
           ${fotosHtml}
+          ${fotosIngHtml}
         </div>
       </div>`;
     }).join('') + _cliBrandFooter();

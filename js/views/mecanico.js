@@ -312,9 +312,9 @@ async function mecSubirFotos(input, eid, nombre, oid) {
   let sub = 0;
   for (const file of files) {
     try {
-      const ext = file.name.split('.').pop();
-      const path = `${oid}/etapas/${eid}_${Date.now()}.${ext}`;
-      const url = await storageUpload(file, path);
+      const comp = await comprimirImagenFile(file);
+      const path = `${oid}/etapas/${eid}_${Date.now()}.jpg`;
+      const url = await storageUpload(comp, path);
       await api('/fotos_etapas', 'POST', { etapa_id: eid, orden_id: oid, etapa_nombre: nombre, url, nombre: file.name }, { Prefer: 'return=minimal' });
       sub++;
       if (prog) prog.textContent = `Subiendo ${sub}/${files.length}...`;
