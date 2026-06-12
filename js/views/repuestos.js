@@ -1735,17 +1735,32 @@ function _parseCSVContactos(text) {
   if (idxTel < 0) idxTel = idxCont('Phone');
   if (idxTel < 0) idxTel = idxCont('Mobile');
   if (idxTel < 0) idxTel = idxCont('Tel');
+  const idxOrg   = idxExact('Organization Name');
+  const idxLabel = idxExact('Labels');
   const out = [];
   for (let i = 1; i < lineas.length; i++) {
     const cols = _csvLinea(lineas[i]);
     let nombre = idxNombre >= 0 ? (cols[idxNombre] || '').trim() : '';
     if (!nombre) nombre = [cols[idxFirst] || '', cols[idxLast] || ''].join(' ').trim();
+    if (!nombre && idxOrg >= 0) nombre = (cols[idxOrg] || '').trim();
     let tel = idxTel >= 0 ? (cols[idxTel] || '').trim() : '';
     if (tel.includes(':::')) tel = tel.split(':::')[0].trim();   // Google une varios con :::
+    const label = idxLabel >= 0 ? (cols[idxLabel] || '') : '';
     if (!nombre && !tel) continue;
-    out.push({ nombre: nombre || '(sin nombre)', telefono: tel });
+    out.push({ nombre: nombre || '(sin nombre)', telefono: tel, label });
   }
   return out;
+}
+
+// Heurística: ¿este contacto parece un proveedor de repuestos/servicios?
+// Pre-marca los probables y descarta familia/clientes/bancos. El usuario ajusta.
+const _PROV_KEYWORDS = ['repuesto','partes','autopart',' parts','planet parts','import','electric','eléctric','venelectric','latoner','latas','bomper','freno','radiador','vidrio','parabris','amortiguador','ejes','resorte','cromado','pintura','accesorio','lujos','espejo','chasis','scanner','escaner','montacoche','montacarga','elevador','hidraulic','parrilla','surticaja','plastico','filtro','dayco','suzuki','mitsub','mitsbishi','great wall','toyota nissan','japon korea','japón korea','korea','asiatica de partes','caelca','transtermo','tecniresortes','imporlatas','partcar','discolpartes','coautopartes','florida importacion','derco','ambacar','parabricentro','tuparabrisas','refaccionaria','servintec','ingecom','depolujo','jimcars','motorola','autostok','auto body','rep great wall','rep mitsubishi','banco de chasis','maderas','radiadores','almacen','almacén'];
+const _PROV_EXCLUIR = ['cepeda','freiman','cliente','client','mamá','mama','madre','mi bb','banco de','davivienda','occidente','previsora','fiducentral','fiduciar','seguros','contador','ejecutiva','asistente','asitente','drone','jardinero','licorera','krispy','cabaña','humedal','universidad','cárcel','carcel','inmuniz','computadores','construcciones','void corte','sign products','eventos','makerule','nequi','jacuzzi','luciana','nuera','starex','jeep compass','tesla'];
+function _esLikelyProveedor(nombre, label) {
+  const t = (nombre || '').toLowerCase();
+  if ((label || '').toLowerCase().includes('cliente')) return false;
+  if (_PROV_EXCLUIR.some(k => t.includes(k))) return false;
+  return _PROV_KEYWORDS.some(k => t.includes(k));
 }
 
 function _parseVCard(text) {
@@ -1795,6 +1810,9 @@ async function _procesarArchivoProveedores(input) {
     const esVcf = /\.vcf$/i.test(file.name) || /BEGIN:VCARD/i.test(text.slice(0, 200));
     _impProveedores = (esVcf ? _parseVCard(text) : _parseCSVContactos(text))
       .filter(c => _normTelImport(c.telefono)); // solo contactos con número usable
+    // Marcar probables proveedores y ponerlos primero para revisar fácil.
+    _impProveedores.forEach(c => { c.sugerido = _esLikelyProveedor(c.nombre, c.label); });
+    _impProveedores.sort((a, b) => (b.sugerido ? 1 : 0) - (a.sugerido ? 1 : 0));
     _renderImpLista();
   } catch (e) {
     if (cont) cont.innerHTML = `<div style="color:var(--rojo);font-size:12px">No se pudo leer el archivo: ${escapeHtml(e.message)}</div>`;
@@ -1808,18 +1826,22 @@ function _renderImpLista() {
     cont.innerHTML = '<div style="color:var(--gris-mid);font-size:12px">No se encontraron contactos con número en el archivo.</div>';
     return;
   }
+  const nSug = _impProveedores.filter(c => c.sugerido).length;
   cont.innerHTML = `
+    <div style="background:#EEF2F7;border-radius:8px;padding:8px 10px;font-size:11.5px;color:var(--azul);margin-bottom:8px">
+      Pre-marcamos <b>${nSug}</b> que parecen proveedores (resaltados). Revisa y ajusta lo que quieras.
+    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;font-weight:600">
         <input type="checkbox" id="imp-todos" onchange="_toggleImpTodos(this.checked)"> Seleccionar todos
       </label>
-      <span style="font-size:11px;color:var(--gris-mid)">${_impProveedores.length} contactos · <span id="imp-cuenta">0</span> marcados</span>
+      <span style="font-size:11px;color:var(--gris-mid)">${_impProveedores.length} contactos · <span id="imp-cuenta">${nSug}</span> marcados</span>
     </div>
     <div style="max-height:300px;overflow-y:auto;border:1px solid var(--gris-borde);border-radius:8px">
       ${_impProveedores.map((c, i) => `
-        <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--gris-borde);cursor:pointer;font-size:13px">
-          <input type="checkbox" class="imp-check" data-idx="${i}" onchange="_impActualizarCuenta()">
-          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(c.nombre)}</span>
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--gris-borde);cursor:pointer;font-size:13px;${c.sugerido ? 'background:#F0FDF4' : ''}">
+          <input type="checkbox" class="imp-check" data-idx="${i}" ${c.sugerido ? 'checked' : ''} onchange="_impActualizarCuenta()">
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(c.nombre)}${c.sugerido ? ' <span style="font-size:9px;color:#15803D;font-weight:700">● proveedor</span>' : ''}</span>
           <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gris-mid)">${escapeHtml(_normTelImport(c.telefono))}</span>
         </label>`).join('')}
     </div>
