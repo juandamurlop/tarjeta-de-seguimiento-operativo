@@ -36,6 +36,42 @@ function _barraEstado(estadoActual) {
 
 const N8N_REPUESTO = CONFIG.N8N_WEBHOOK_REPUESTO;
 
+// ── Categorías de repuesto (para rankear proveedores por tipo) ──────
+const CATEGORIAS_REPUESTO = [
+  'Frenos', 'Motor', 'Suspensión/Dirección', 'Eléctrico',
+  'Latonería/Carrocería', 'Filtros/Lubricantes', 'Transmisión',
+  'Aire acondicionado', 'Llantas', 'Otros'
+];
+// Palabras clave por categoría (orden importa: lo más específico primero).
+const _CAT_KEYWORDS = {
+  'Frenos': ['liquido de freno', 'líquido de freno', 'pastilla', 'disco de freno', 'banda de freno', 'balata', 'caliper', 'bomba de freno', 'zapata', 'freno'],
+  'Filtros/Lubricantes': ['filtro', 'aceite', 'lubricante', 'refrigerante', 'grasa', 'aditivo', 'anticongelante'],
+  'Suspensión/Dirección': ['amortiguador', 'rotula', 'rótula', 'terminal', 'barra estabilizadora', 'muñon', 'muñón', 'brazo', 'tijera', 'cremallera', 'direccion', 'dirección', 'bieleta', 'buje', 'espiral', 'resorte', 'tensor'],
+  'Motor': ['motor', 'piston', 'pistón', 'biela', 'culata', 'empaque', 'junta', 'valvula', 'válvula', 'arbol de leva', 'árbol de leva', 'correa', 'cadena de tiempo', 'bujia', 'bujía', 'inyector', 'turbo', 'bomba de agua', 'termostato', 'radiador', 'cigueñal', 'cigüeñal', 'cofre'],
+  'Eléctrico': ['bateria', 'batería', 'alternador', 'motor de arranque', 'arranque', 'sensor', 'fusible', 'rele', 'relé', 'bombillo', 'farola', 'stop', 'cableado', 'bobina', 'computador', 'modulo', 'módulo', 'switch'],
+  'Transmisión': ['caja de cambios', 'transmision', 'transmisión', 'clutch', 'croche', 'embrague', 'cardan', 'cardán', 'homocinetica', 'homocinética', 'diferencial', 'retenedor', 'cuoplin', 'cople'],
+  'Aire acondicionado': ['aire acondicionado', 'compresor', 'condensador', 'evaporador', 'gas refrigerante', 'a/c'],
+  'Latonería/Carrocería': ['guardafango', 'capó', 'capo', 'puerta', 'bumper', 'paragolpes', 'parachoque', 'espejo', 'vidrio', 'parabrisas', 'lamina', 'lámina', 'soporte', 'carroceria', 'carrocería', 'masilla', 'persiana', 'moldura'],
+  'Llantas': ['llanta', 'neumatico', 'neumático', 'rin', 'caucho']
+};
+function _detectarCategoria(texto) {
+  const t = (texto || '').toLowerCase();
+  for (const cat of Object.keys(_CAT_KEYWORDS)) {
+    if (_CAT_KEYWORDS[cat].some(k => t.includes(k))) return cat;
+  }
+  return 'Otros';
+}
+// Auto-rellena el selector de categoría según los ítems escritos, salvo que
+// el mecánico ya lo haya cambiado a mano (_catTocada).
+let _catTocada = false;
+function _autoCategoria() {
+  if (_catTocada) return;
+  const sel = document.getElementById('sol-categoria');
+  if (!sel) return;
+  const texto = [...document.querySelectorAll('[id^="si-rep-"]')].map(i => i.value).join(' ');
+  if (texto.trim()) sel.value = _detectarCategoria(texto);
+}
+
 const MARCAS_VEHICULOS = [
   'Acura','Alfa Romeo','Audi','BMW','Bentley','Buick','Cadillac','Chevrolet',
   'Chrysler','Citroën','Dodge','Ferrari','Fiat','Ford','GMC','Genesis',
@@ -111,7 +147,7 @@ function _renderFilaItem(item, num) {
   return `<tr id="si-row-${item.idx}" style="border-bottom:1px solid var(--gris-borde)">
     <td style="padding:6px 8px;text-align:center;color:var(--gris-mid);font-size:11px">${num}</td>
     <td style="padding:4px 6px">
-      <input id="si-rep-${item.idx}" type="text" placeholder="Ej: Disco de freno delantero" value=""
+      <input id="si-rep-${item.idx}" type="text" placeholder="Ej: Disco de freno delantero" value="" oninput="_autoCategoria()"
         style="width:100%;border:none;background:transparent;font-size:13px;outline:none;padding:4px 0">
     </td>
     <td style="padding:4px 6px">
@@ -177,6 +213,7 @@ function _tickTimerSol() {
 async function abrirModalSolicitudRepuesto(ordenId, etapaId, placa) {
   _solItems = [{ idx: 0, fotoUrl: null }];
   _solModalAbierto = Date.now();
+  _catTocada = false;
   const existing = document.getElementById('modal-sol-multi');
   if (existing) existing.remove();
 
@@ -228,6 +265,14 @@ async function abrirModalSolicitudRepuesto(ordenId, etapaId, placa) {
         <button type="button" class="btn btn-ghost btn-sm" onclick="_agregarSolItem()" style="margin-bottom:12px">
           + Agregar ítem
         </button>
+
+        <!-- Categoría (auto-detectada, confirmable) -->
+        <div class="field" style="margin-bottom:12px">
+          <label style="font-size:12px;color:var(--gris-mid)">Categoría <span style="font-weight:400">(para sugerir el mejor proveedor)</span></label>
+          <select id="sol-categoria" onchange="_catTocada=true" style="width:100%;padding:8px;border:1px solid var(--gris-borde);border-radius:6px;font-size:13px">
+            ${CATEGORIAS_REPUESTO.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}
+          </select>
+        </div>
 
         <!-- Timer en vivo -->
         <div style="font-size:11px;color:var(--gris-mid)">
@@ -320,6 +365,13 @@ async function enviarSolicitudRepuesto(ordenId, etapaId) {
     } else {
       // Agregar a la existente: refrescar "actualizado_en" para que vuelva arriba.
       await api(`/solicitudes_repuesto?id=eq.${solicitudId}`, 'PATCH', { actualizado_en: new Date().toISOString() }).catch(() => {});
+    }
+
+    // Guardar la categoría (para rankear proveedores por tipo). En PATCH aparte y
+    // con catch, para no romper la creación si aún no se corrió el ALTER TABLE.
+    const _categoria = document.getElementById('sol-categoria')?.value || _detectarCategoria(items.map(i => i.repuesto).join(' '));
+    if (solicitudId && _categoria) {
+      await api(`/solicitudes_repuesto?id=eq.${solicitudId}`, 'PATCH', { categoria: _categoria }, { Prefer: 'return=minimal' }).catch(() => {});
     }
 
     // Crear los ítems en solicitud_items (todos)
@@ -1220,8 +1272,17 @@ function _reRenderFilasCot() {
 // Combina velocidad de entrega (días promedio) y confianza (% de veces
 // que su cotización fue la elegida por el jefe). Devuelve por proveedor:
 // { n, elegido, avgDias, puntaje (0-100), estrellas (1-5) }.
-async function _calcularScoresProveedores() {
-  const cots = await api('/cotizaciones_repuesto?select=proveedor_id,dias_entrega,precio_venta_jefe').catch(() => []) || [];
+async function _calcularScoresProveedores(categoria) {
+  // Si hay categoría, rankea SOLO con el historial de esa categoría (a quién le
+  // compras más ese tipo). Si no hay datos de la categoría (o no existe la
+  // columna todavía), cae al ranking global. Así nunca se rompe.
+  let cots = null;
+  if (categoria) {
+    cots = await api(`/cotizaciones_repuesto?select=proveedor_id,dias_entrega,precio_venta_jefe,solicitudes_repuesto!inner(categoria)&solicitudes_repuesto.categoria=eq.${encodeURIComponent(categoria)}`).catch(() => null);
+  }
+  if (!cots || !cots.length) {
+    cots = await api('/cotizaciones_repuesto?select=proveedor_id,dias_entrega,precio_venta_jefe').catch(() => []) || [];
+  }
   const stats = {};
   cots.forEach(c => {
     if (!c.proveedor_id) return;
@@ -1267,8 +1328,9 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
   // Guardar todos los ítems para que el mensaje de WhatsApp los liste completos.
   _cotDatosVehiculo.items = solItems || [];
 
-  // Score / favorito (calculado desde el historial de cotizaciones)
-  const _scores = await _calcularScoresProveedores();
+  // Score / favorito: rankeado por la CATEGORÍA de la solicitud (a quién le
+  // compras más ese tipo); cae al global si no hay historial de la categoría.
+  const _scores = await _calcularScoresProveedores(sol?.categoria);
   const provConScore = proveedores.map(p => ({ ...p, _sc: _scores[p.id] || null }))
     .sort((a,b) => (b._sc?.puntaje || 0) - (a._sc?.puntaje || 0));
   const favorito   = provConScore.find(p => p._sc && p._sc.n > 0) || null;
@@ -1310,9 +1372,10 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
             <div style="font-size:12px;color:var(--gris-mid);margin-top:2px">
               ${vehiculoStr ? `🚗 ${escapeHtml(vehiculoStr)}` : ''} ${placa ? `· <b>${escapeHtml(placa)}</b>` : ''} ${sol ? `· ${formatOT(solicitudId)}` : ''}
             </div>
-            <div style="margin-top:4px;display:flex;align-items:center;gap:12px;font-size:11px">
+            <div style="margin-top:4px;display:flex;align-items:center;gap:12px;font-size:11px;flex-wrap:wrap">
+              ${sol?.categoria ? `<span style="background:#EEF2F7;color:var(--azul);font-weight:700;padding:2px 8px;border-radius:99px">🏷 ${escapeHtml(sol.categoria)}</span>` : ''}
               ${timerStr ? `<span>${timerStr}</span>` : ''}
-              ${favNom ? `<span style="color:#D97706;font-weight:600">★ Favorito: ${escapeHtml(favNom)}</span>` : ''}
+              ${favNom ? `<span style="color:#D97706;font-weight:600">★ Favorito${sol?.categoria ? ' en ' + escapeHtml(sol.categoria) : ''}: ${escapeHtml(favNom)}</span>` : ''}
             </div>
           </div>
           <button onclick="document.getElementById('modal-cotizar').remove()"
