@@ -51,9 +51,11 @@ let fotosIngresoPendientes = [];
 let aprobEtapaId = null;
 let todasCotizaciones = [];
 
-// Servicios con `externo: true` → el técnico se escribe a mano (campo de texto)
-// porque suele ser una persona externa que no está en la base de datos.
-// Los demás usan la lista desplegable de técnicos del taller.
+// Asignación de técnico por ETAPA (no por servicio):
+//   - TOT (adi_tot) → siempre externo: nombre a mano.
+//   - Electrónica (mec_electronica) → se pregunta si es interno (lista) o externo (texto).
+//   - El resto → lista desplegable de técnicos del taller.
+// La lógica vive en _modoTecnico() en ordenes-nueva.js.
 const CATALOGO = {
   latoneria: {
     nombre: 'Latonería', clase: 'latoneria',
@@ -72,14 +74,14 @@ const CATALOGO = {
     ]
   },
   mecanica: {
-    nombre: 'Mecánica', clase: 'mecanica', externo: true,
+    nombre: 'Mecánica', clase: 'mecanica',
     etapas: [
       { key: 'mec_mecanica',    nombre: 'Mecánica' },
       { key: 'mec_electronica', nombre: 'Electrónica' },
     ]
   },
   adicionales: {
-    nombre: 'Adicionales', clase: 'adicionales', externo: true,
+    nombre: 'Adicionales', clase: 'adicionales',
     etapas: [
       { key: 'adi_alineacion', nombre: 'Alineación' },
       { key: 'adi_polarizado', nombre: 'Polarizado' },

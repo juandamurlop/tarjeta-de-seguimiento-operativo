@@ -1,4 +1,4 @@
-const CACHE_NAME = 'freimanautos-pwa-v268';
+const CACHE_NAME = 'freimanautos-pwa-v269';
 
 // Lista alineada con lo que carga index.html tras la reestructuración de
 // carpetas (css/main.css importa el resto; js dividido en core/ordenes/views).

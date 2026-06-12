@@ -1406,23 +1406,53 @@ function buildChecklist(containerId, servicios, _existentes) {
   _renderPendLista();
 }
 
-// Muestra el campo de técnico según el proceso elegido: lista para internos,
-// texto para Mecánica/Adicionales (que suelen ser externos).
+// Lista desplegable de técnicos del taller (internos).
+function _agDropdownTecnicosHtml() {
+  const mecs = mecanicos.filter(m => !ROLES_EXCLUIR.includes(m.rol));
+  return `<select id="ag-tec"><option value="">— Asignar técnico —</option>` +
+    mecs.map(m => `<option value="${m.id}">${escapeHtml(m.nombre)}</option>`).join('') + `</select>`;
+}
+
+// Decide cómo se asigna el técnico SEGÚN LA ETAPA (no el servicio):
+//   'externo' = nombre a mano (solo TOT).
+//   'toggle'  = preguntar si es interno (lista) o externo (texto)  → Electrónica.
+//   'interno' = lista de técnicos del taller (todo lo demás).
+function _modoTecnico(key) {
+  if (key === 'adi_tot') return 'externo';
+  if (key === 'mec_electronica') return 'toggle';
+  return 'interno';
+}
+
 function _agProcesoChange() {
   const wrap = document.getElementById('ag-tecnico-wrap');
   if (!wrap) return;
   const val = document.getElementById('ag-proceso')?.value || '';
   if (!val) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
-  const srvKey = val.split('|')[0];
-  const srv = CATALOGO[srvKey];
+  const key = val.split('|')[1];
+  const modo = _modoTecnico(key);
   wrap.style.display = 'block';
-  if (srv?.externo) {
+  if (modo === 'externo') {
     wrap.innerHTML = `<label>Técnico (externo)</label><input type="text" id="ag-tec" placeholder="Nombre del técnico">`;
+  } else if (modo === 'toggle') {
+    wrap.innerHTML = `<label>Técnico de electrónica</label>
+      <div style="display:flex;gap:16px;margin:4px 0 8px;font-size:13px">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="ag-elec-tipo" value="interno" checked onchange="_agElecTipoChange()"> Interno (de la lista)</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="ag-elec-tipo" value="externo" onchange="_agElecTipoChange()"> Externo</label>
+      </div>
+      <div id="ag-tec-cont">${_agDropdownTecnicosHtml()}</div>`;
   } else {
-    const mecs = mecanicos.filter(m => !ROLES_EXCLUIR.includes(m.rol));
-    wrap.innerHTML = `<label>Técnico</label><select id="ag-tec"><option value="">— Asignar técnico —</option>` +
-      mecs.map(m => `<option value="${m.id}">${escapeHtml(m.nombre)}</option>`).join('') + `</select>`;
+    wrap.innerHTML = `<label>Técnico</label>${_agDropdownTecnicosHtml()}`;
   }
+}
+
+// Electrónica: alterna entre lista (interno) y texto (externo).
+function _agElecTipoChange() {
+  const tipo = document.querySelector('input[name="ag-elec-tipo"]:checked')?.value;
+  const cont = document.getElementById('ag-tec-cont');
+  if (!cont) return;
+  cont.innerHTML = tipo === 'externo'
+    ? `<input type="text" id="ag-tec" placeholder="Nombre del técnico externo">`
+    : _agDropdownTecnicosHtml();
 }
 
 // Agrega el proceso actual a la lista de pendientes (en orden).
@@ -1433,7 +1463,9 @@ function _agAgregarPend() {
   const srv = CATALOGO[srvKey];
   const etDef = srv?.etapas.find(e => e.key === key);
   if (!etDef) return;
-  const esExterno = !!srv.externo;
+  const modo = _modoTecnico(key);
+  let esExterno = modo === 'externo';
+  if (modo === 'toggle') esExterno = document.querySelector('input[name="ag-elec-tipo"]:checked')?.value === 'externo';
   const tecEl = document.getElementById('ag-tec');
   const mecanico_id = (!esExterno && tecEl?.value) ? parseInt(tecEl.value) : null;
   const tercero = (esExterno && tecEl?.value?.trim()) ? tecEl.value.trim() : null;
