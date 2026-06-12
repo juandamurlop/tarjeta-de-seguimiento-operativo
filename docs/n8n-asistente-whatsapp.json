@@ -1,0 +1,208 @@
+{
+  "name": "Asistente WhatsApp IA — Freimanautos",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "whatsapp-ia",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1111111-1111-1111-1111-111111111111",
+      "name": "Webhook Verificación (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-2000, 5400],
+      "webhookId": "wa-ia-verify"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query['hub.challenge'] }}",
+        "options": {}
+      },
+      "id": "a2222222-2222-2222-2222-222222222222",
+      "name": "Responder reto (challenge)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-1760, 5400]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-ia",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a3333333-3333-3333-3333-333333333333",
+      "name": "Webhook Mensajes (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-2000, 5650],
+      "webhookId": "wa-ia-eventos"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrae el mensaje entrante del cliente. Si el webhook es un estado\n// (entregado/leído) o no es texto, no devuelve nada (se ignora).\nconst body = $json.body || $json;\nconst value = (((body.entry || [])[0] || {}).changes || [])[0]?.value || {};\nconst msg = (value.messages || [])[0];\nif (!msg) { return []; }\nconst from = msg.from || '';\nconst last10 = String(from).replace(/\\D/g, '').slice(-10);\nlet texto = '';\nif (msg.type === 'text') texto = msg.text?.body || '';\nelse if (msg.type === 'interactive') texto = msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || '';\nif (!texto) { return []; }\nreturn [{ json: { from, last10, texto } }];"
+      },
+      "id": "a4444444-4444-4444-4444-444444444444",
+      "name": "Leer mensaje del cliente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1760, 5650]
+    },
+    {
+      "parameters": {
+        "url": "=https://xjavnpwuhpmvpjdbjdeg.supabase.co/rest/v1/ordenes?telefono=like.*{{ $json.last10 }}&select=id,placa,marca,linea,modelo,estado,fecha_entrega_1,etapas(etapa,servicio,inicio,fin,pausado,descripcion),novedades(tipo,motivo,creado_en)&order=creado_en.desc&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqYXZucHd1aHBtdnBqZGJqZGVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4Njc5MDcsImV4cCI6MjA5MjQ0MzkwN30.07f6cGVrFhtm-B-I7iBLaHnPSuozFDpEf9vOHrliGRs" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqYXZucHd1aHBtdnBqZGJqZGVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4Njc5MDcsImV4cCI6MjA5MjQ0MzkwN30.07f6cGVrFhtm-B-I7iBLaHnPSuozFDpEf9vOHrliGRs" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "a5555555-5555-5555-5555-555555555555",
+      "name": "Buscar orden del cliente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1520, 5650]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Personalidad del asistente (tono: usted cálido y cercano) + arma el\n// contexto real de la orden para que la IA no invente.\nconst SYSTEM = `Eres \"Asistente Freimanautos\", el asesor virtual del taller automotriz Freimanautos (Colombia). Hablas con un cliente por WhatsApp sobre SU vehículo.\n\nTONO: usted, cálido y cercano, claro y breve, como un asesor amable del taller (no como un robot). Máximo 1-2 emojis por mensaje. Sin tecnicismos innecesarios. Respuestas cortas: 2 a 4 frases.\n\nSOLO SABES lo que viene en el CONTEXTO. Si preguntan algo que NO está ahí, no lo inventes.\n\nPUEDES responder sobre: estado y avance del vehículo, en qué etapa va, novedades, fecha estimada de entrega, horario de atención y ubicación del taller.\n\nDEBES ESCALAR a un humano cuando pregunten por: precios, cotizaciones o valores; reclamos o quejas; autorizar trabajos o repuestos; cambios de cita; o si piden hablar con una persona; o cualquier tema que no puedas responder con el contexto. Para escalar, responde SOLO algo como \"Permítame y un asesor le confirma eso enseguida 🙏\" e incluye al final la marca [ESCALAR].\n\nREGLAS: no prometas fechas exactas que no estén en el contexto; no des información de otros vehículos; si no hay orden asociada, pida con amabilidad la placa o la cédula.\n\nDATOS DEL TALLER: horario Lunes a viernes 8:00am-6:00pm, sábados 8:00am-1:00pm; dirección (PON AQUÍ LA DIRECCIÓN DEL TALLER).`;\n\nconst m = $('Leer mensaje del cliente').item.json;\nconst arr = Array.isArray($json) ? $json : (Array.isArray($json.body) ? $json.body : []);\nconst o = arr[0];\nlet contexto;\nif (!o) {\n  contexto = 'No se encontró ninguna orden asociada a este número. Pida con amabilidad la placa o la cédula.';\n} else {\n  const ets = o.etapas || [];\n  const activa = ets.find(e => e.inicio && !e.fin);\n  const sig = ets.find(e => !e.inicio);\n  const total = ets.length;\n  const comp = ets.filter(e => e.fin).length;\n  const novs = (o.novedades || []).slice(0, 3).map(n => `- ${n.tipo}: ${n.motivo}`).join('\\n') || 'ninguna';\n  contexto = `Placa: ${o.placa}\\nVehículo: ${[o.marca, o.linea, o.modelo].filter(Boolean).join(' ')}\\nEstado: ${o.estado}\\nAvance: ${comp} de ${total} etapas\\nEtapa actual: ${activa ? activa.etapa + (activa.pausado ? ' (en pausa, esperando un repuesto)' : ' (en proceso)') : 'sin etapa activa por ahora'}\\nPróxima etapa: ${sig ? sig.etapa : 'no hay'}\\nFecha estimada de entrega: ${o.fecha_entrega_1 || 'sin definir'}\\nNovedades recientes:\\n${novs}`;\n}\nreturn [{ json: { from: m.from, texto: m.texto, contexto, system: SYSTEM } }];"
+      },
+      "id": "a6666666-6666-6666-6666-666666666666",
+      "name": "Armar contexto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1280, 5650]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer PEGA_TU_OPENAI_API_KEY" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-4o-mini', temperature: 0.6, messages: [ { role: 'system', content: $json.system }, { role: 'user', content: 'Contexto del cliente:\\n' + $json.contexto + '\\n\\nMensaje del cliente: ' + $json.texto } ] }) }}",
+        "options": {}
+      },
+      "id": "a7777777-7777-7777-7777-777777777777",
+      "name": "IA (OpenAI gpt-4o-mini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1040, 5650]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Toma la respuesta de la IA y detecta si pidió escalar a humano.\nconst data = $json;\nconst raw = data?.choices?.[0]?.message?.content || '';\nconst escalar = /\\[ESCALAR\\]/i.test(raw);\nlet reply = raw.replace(/\\[ESCALAR\\]/ig, '').trim();\nif (!reply) reply = 'Permítame y un asesor le escribe enseguida 🙏';\nconst ctx = $('Armar contexto').item.json;\nreturn [{ json: { reply, escalar, from: ctx.from, texto: ctx.texto } }];"
+      },
+      "id": "a8888888-8888-8888-8888-888888888888",
+      "name": "Procesar respuesta IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-800, 5650]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.escalar }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a9999999-9999-9999-9999-999999999999",
+      "name": "¿Escalar a humano?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-560, 5650]
+    },
+    {
+      "parameters": {
+        "chatId": "-5195463580",
+        "text": "=🆘 Un cliente necesita atención humana\n📱 Número: {{ $json.from }}\n💬 Preguntó: \"{{ $json.texto }}\"\nPor favor respóndale por WhatsApp.",
+        "additionalFields": {}
+      },
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "name": "Telegram — escalar al taller",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-320, 5520],
+      "webhookId": "wa-ia-escalar",
+      "credentials": {
+        "telegramApi": { "id": "LmyVHQwcEzDOBOHF", "name": "Telegram Bot" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/PEGA_TU_PHONE_NUMBER_ID/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer PEGA_TU_TOKEN_META" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $('Procesar respuesta IA').item.json.from, type: 'text', text: { body: $('Procesar respuesta IA').item.json.reply } }) }}",
+        "options": {}
+      },
+      "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      "name": "Responder al cliente (WhatsApp)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, 5650]
+    }
+  ],
+  "connections": {
+    "Webhook Verificación (GET)": {
+      "main": [[{ "node": "Responder reto (challenge)", "type": "main", "index": 0 }]]
+    },
+    "Webhook Mensajes (POST)": {
+      "main": [[{ "node": "Leer mensaje del cliente", "type": "main", "index": 0 }]]
+    },
+    "Leer mensaje del cliente": {
+      "main": [[{ "node": "Buscar orden del cliente", "type": "main", "index": 0 }]]
+    },
+    "Buscar orden del cliente": {
+      "main": [[{ "node": "Armar contexto", "type": "main", "index": 0 }]]
+    },
+    "Armar contexto": {
+      "main": [[{ "node": "IA (OpenAI gpt-4o-mini)", "type": "main", "index": 0 }]]
+    },
+    "IA (OpenAI gpt-4o-mini)": {
+      "main": [[{ "node": "Procesar respuesta IA", "type": "main", "index": 0 }]]
+    },
+    "Procesar respuesta IA": {
+      "main": [[{ "node": "¿Escalar a humano?", "type": "main", "index": 0 }]]
+    },
+    "¿Escalar a humano?": {
+      "main": [
+        [{ "node": "Telegram — escalar al taller", "type": "main", "index": 0 }],
+        [{ "node": "Responder al cliente (WhatsApp)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Telegram — escalar al taller": {
+      "main": [[{ "node": "Responder al cliente (WhatsApp)", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": { "instanceId": "12de676f4ae826ae76cc5d953c698afba99e3841341be82a8e8c212774cd0dab" }
+}
