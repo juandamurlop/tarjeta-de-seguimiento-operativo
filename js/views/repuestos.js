@@ -1331,17 +1331,24 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
   // Score / favorito: rankeado por la CATEGORÍA de la solicitud (a quién le
   // compras más ese tipo); cae al global si no hay historial de la categoría.
   const _scores = await _calcularScoresProveedores(sol?.categoria);
-  const provConScore = proveedores.map(p => ({ ...p, _sc: _scores[p.id] || null }))
-    .sort((a,b) => (b._sc?.puntaje || 0) - (a._sc?.puntaje || 0));
-  const favorito   = provConScore.find(p => p._sc && p._sc.n > 0) || null;
+  const _cat = sol?.categoria;
+  // Boost: si el proveedor está etiquetado con la categoría de la solicitud,
+  // sube en las sugerencias aunque no tenga historial todavía.
+  const provConScore = proveedores.map(p => ({
+      ...p,
+      _sc: _scores[p.id] || null,
+      _tag: !!(_cat && Array.isArray(p.categorias) && p.categorias.includes(_cat))
+    }))
+    .sort((a,b) => ((b._sc?.puntaje || 0) + (b._tag ? 15 : 0)) - ((a._sc?.puntaje || 0) + (a._tag ? 15 : 0)));
+  const favorito   = provConScore.find(p => (p._sc && p._sc.n > 0) || p._tag) || null;
   const favoritoId = favorito?.id || null;
 
-  // Opciones del select con favorito ★ y puntaje
+  // Opciones del select con favorito ★, etiqueta de categoría y puntaje
   const provOpts = '<option value="">— Seleccionar proveedor —</option>' +
     provConScore.map(p => {
       const star = p.id === favoritoId ? '★ ' : '';
       const sc   = p._sc;
-      const info = sc ? ` — ${sc.estrellas}★${sc.avgDias != null ? ', ' + (Math.round(sc.avgDias*10)/10) + 'd' : ''}` : '';
+      const info = sc ? ` — ${sc.estrellas}★${sc.avgDias != null ? ', ' + (Math.round(sc.avgDias*10)/10) + 'd' : ''}` : (p._tag ? ` — maneja ${_cat}` : '');
       return `<option value="${p.id}" data-wa="${escapeHtml(p.whatsapp||'')}">${star}${escapeHtml(p.nombre)}${info}</option>`;
     }).join('');
 
@@ -1567,7 +1574,9 @@ async function cargarProveedores() {
         </tr></thead>
         <tbody>
           ${provs.map(p=>`<tr style="border-bottom:1px solid var(--gris-borde)">
-            <td style="padding:10px 12px;font-weight:600">${escapeHtml(p.nombre)}</td>
+            <td style="padding:10px 12px;font-weight:600">${escapeHtml(p.nombre)}
+              ${(p.categorias||[]).length ? `<div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:3px">${p.categorias.slice(0,4).map(c=>`<span style="background:#EEF2F7;color:var(--azul);font-size:9px;font-weight:600;padding:1px 6px;border-radius:99px">${escapeHtml(c)}</span>`).join('')}</div>` : ''}
+            </td>
             <td style="padding:10px 12px;color:var(--gris-mid)">${escapeHtml(p.tipo_proveedor||'—')}</td>
             <td style="padding:10px 12px">${escapeHtml(p.ciudad||'—')}</td>
             <td style="padding:10px 12px;font-family:'DM Mono',monospace">${escapeHtml(p.whatsapp||'—')}</td>
@@ -1642,18 +1651,44 @@ function abrirModalProveedor(prov) {
             ${marcasHtml}
           </div>
         </div>
+        <div class="field">
+          <label>Categorías que maneja <span style="font-weight:400;color:var(--gris-mid);font-size:11px">(para sugerirlo en esos repuestos)</span></label>
+          <div style="border:1px solid var(--gris-borde);border-radius:8px;padding:10px 14px;display:grid;grid-template-columns:1fr 1fr;gap:2px">
+            ${CATEGORIAS_REPUESTO.map(c => `
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:2px 0">
+                <input type="checkbox" name="prov-cat" value="${escapeHtml(c)}" ${(p.categorias||[]).includes(c)?'checked':''}>
+                ${escapeHtml(c)}
+              </label>`).join('')}
+          </div>
+        </div>
         ${p.id ? `<div class="field"><label>Estado</label>
           <select id="prov-activo" style="width:100%">
             <option value="true"  ${p.activo!==false?'selected':''}>Activo</option>
             <option value="false" ${p.activo===false?'selected':''}>Inactivo</option>
           </select></div>` : ''}
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="document.getElementById('modal-proveedor').remove()">Cancelar</button>
-        <button class="btn btn-primary" onclick="guardarProveedor(${p.id||'null'})">Guardar</button>
+      <div class="modal-footer" style="justify-content:space-between">
+        ${p.id ? `<button class="btn btn-ghost btn-sm" style="color:var(--rojo)" onclick="eliminarProveedor(${p.id},'${escapeHtml(p.nombre||'').replace(/'/g,"\\x27")}')">🗑 Eliminar</button>` : '<span></span>'}
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="document.getElementById('modal-proveedor').remove()">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarProveedor(${p.id||'null'})">Guardar</button>
+        </div>
       </div>
     </div>`;
   document.body.appendChild(div);
+}
+
+async function eliminarProveedor(id, nombre) {
+  if (!confirm(`¿Eliminar el proveedor "${nombre}"?\nEsta acción no se puede deshacer.`)) return;
+  try {
+    await api(`/proveedores?id=eq.${id}`, 'DELETE', null, { Prefer: 'return=minimal' });
+    toast('Proveedor eliminado ✓');
+    document.getElementById('modal-proveedor')?.remove();
+    cargarProveedores();
+  } catch (e) {
+    // Si tiene cotizaciones (llave foránea), no se puede borrar → sugerir inactivar.
+    toast('No se pudo eliminar (tiene historial de cotizaciones). Mejor márcalo Inactivo.', 'err');
+  }
 }
 
 function toggleMultimarca(checked) {
@@ -1671,6 +1706,8 @@ async function guardarProveedor(id) {
   const marcas   = esMulti ? MARCAS_VEHICULOS
     : [...document.querySelectorAll('#modal-proveedor input[name="prov-marca"]:checked')].map(cb=>cb.value);
 
+  const categorias = [...document.querySelectorAll('#modal-proveedor input[name="prov-cat"]:checked')].map(cb=>cb.value);
+
   const body = {
     nombre,
     tipo_proveedor: document.getElementById('prov-tipo')?.value||null,
@@ -1682,8 +1719,14 @@ async function guardarProveedor(id) {
   };
 
   try {
+    let provId = id;
     if (id) await api(`/proveedores?id=eq.${id}`,'PATCH',body);
-    else     await api('/proveedores','POST',body,{Prefer:'return=minimal'});
+    else {
+      const res = await api('/proveedores','POST',body,{Prefer:'return=representation'});
+      provId = res?.[0]?.id;
+    }
+    // categorias en PATCH aparte (catch) para no romper si falta la columna.
+    if (provId) await api(`/proveedores?id=eq.${provId}`,'PATCH',{ categorias }).catch(()=>{});
     toast('Proveedor guardado ✓');
     document.getElementById('modal-proveedor')?.remove();
     cargarProveedores();
