@@ -693,7 +693,7 @@ function _waNumero(raw) {
 }
 
 // ── Mensaje de WhatsApp "listo para entrega" (editable por el usuario) ──
-const _WA_ENTREGA_DEFAULT = 'Hola {nombre}, le saluda {taller}. Su {vehiculo} de placa {placa} ya está LISTO para entrega. Puede pasar a recogerlo en nuestro taller. ¡Gracias por confiar en nosotros! 🚗';
+const _WA_ENTREGA_DEFAULT = '¡Hola {nombre}! 🎉 Le saluda {taller}. Tenemos buenas noticias: su {vehiculo} de placa {placa} ya está *listo* y lo dejamos en óptimas condiciones. 🚗✨\n\nCuando guste puede pasar a recogerlo. ¡Mil gracias por confiar en nosotros!';
 // Nombre COMPLETO del cliente en formato Tipo Título (no solo la 1ª palabra
 // ni TODO EN MAYÚSCULAS), para los mensajes de WhatsApp.
 function _nombreClienteWA(propietario) {
@@ -719,7 +719,7 @@ function _waEntregaMsg(o) {
 // ── Mensaje de WhatsApp "ingreso / seguimiento en tiempo real" ──
 // INTERINO: hoy abre WhatsApp con el mensaje + link y el jefe da Enviar.
 // Cuando esté la API de Meta, este mismo texto y link se mandan solos.
-const _WA_INGRESO_DEFAULT = 'Hola {nombre}, le saluda {taller}. Recibimos su {vehiculo} de placa {placa} en nuestro taller. 🚗\n\nLe compartimos un enlace para que siga el estado de la reparación y las novedades EN TIEMPO REAL:';
+const _WA_INGRESO_DEFAULT = '¡Hola {nombre}! 👋 Le saluda {taller}. Su {vehiculo} de placa {placa} ya quedó con nosotros y está en buenas manos. 🔧\n\nPara que esté pendiente sin tener que llamar, aquí puede ver *en vivo* cómo avanza su vehículo y cualquier novedad:';
 function _waIngresoTemplate() {
   try { return localStorage.getItem('wa_ingreso_msg') || _WA_INGRESO_DEFAULT; } catch (e) { return _WA_INGRESO_DEFAULT; }
 }
@@ -838,7 +838,7 @@ async function avisarClienteWhatsapp(ordenId) {
     const tel = _waNumero(o.telefono);
     if (!tel) { toast('El cliente no tiene celular registrado en la orden', 'err'); return; }
     const _link = (typeof _linkClienteSeguimiento === 'function') ? _linkClienteSeguimiento(o.cedula_cliente) : '';
-    const _msg  = _waEntregaMsg(o) + (_link ? `\n\n📲 Mira el estado de tu vehículo aquí:\n${_link}` : '');
+    const _msg  = _waEntregaMsg(o) + (_link ? `\n\n📲 Y aquí puede ver el estado de su vehículo en vivo:\n${_link}` : '');
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(_msg)}`, '_blank');
     try { await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { entrega_avisada_en: new Date().toISOString() }); } catch (e) {}
     abrirOrden(ordenId); // refrescar para mostrar el agendamiento de la cita
@@ -928,7 +928,7 @@ async function enviarPreliquidacionCliente(ordenId) {
     const veh    = [o.marca, o.linea].filter(Boolean).join(' ') || 'vehículo';
     const saludo = nombre ? `Hola ${nombre}, ` : 'Hola, ';
     const _link  = (typeof _linkClienteSeguimiento === 'function') ? _linkClienteSeguimiento(o.cedula_cliente) : '';
-    const msg = `${saludo}le saluda ${taller}. Le compartimos la preliquidación de su ${veh} de placa ${o.placa} con el detalle de los trabajos y valores. Quedamos atentos a cualquier inquietud antes de la entrega. ¡Gracias! 📄` + (_link ? `\n\n📲 Mira el estado de tu vehículo aquí:\n${_link}` : '');
+    const msg = `${saludo}le saluda ${taller}. Le compartimos la preliquidación de su ${veh} de placa ${o.placa}, con el detalle de los trabajos y valores para que la revise con calma. Si tiene cualquier duda antes de la entrega, con gusto se la aclaramos. ¡Quedamos atentos! 📄` + (_link ? `\n\n📲 Y aquí puede seguir el estado de su vehículo en vivo:\n${_link}` : '');
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
     await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { preliquidacion_enviada_en: new Date().toISOString() });
     toast('Preliquidación marcada como enviada ✓');
