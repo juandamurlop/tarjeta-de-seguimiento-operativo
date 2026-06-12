@@ -1295,13 +1295,20 @@ async function _calcularScoresProveedores(categoria) {
   Object.entries(stats).forEach(([id, s]) => {
     const avgDias = s.diasN ? s.diasSum / s.diasN : null;
     const tasaElegido = s.n ? s.elegido / s.n : 0;
+    // Velocidad de entrega (0-100) según días promedio.
     const velocidad = avgDias == null ? 55
       : avgDias <= 1 ? 100 : avgDias <= 2 ? 85 : avgDias <= 3 ? 70
       : avgDias <= 5 ? 55 : avgDias <= 7 ? 40 : 25;
+    // Confianza (0-100) = % de veces que su cotización fue la elegida.
     const confianza = tasaElegido * 100;
-    const puntaje = Math.round(velocidad * 0.6 + confianza * 0.4);
+    const bruto = velocidad * 0.6 + confianza * 0.4;
+    // Amortiguación por tamaño de muestra: con poco historial el puntaje se
+    // acerca a un valor neutro (50); con más cotizaciones refleja el desempeño
+    // real. Evita que 1 sola cotización "afortunada" dé 5 estrellas.
+    const w = s.n / (s.n + 3);
+    const puntaje = Math.round(50 + (bruto - 50) * w);
     const estrellas = Math.max(1, Math.min(5, Math.round(puntaje / 20 * 2) / 2));
-    out[id] = { n: s.n, elegido: s.elegido, avgDias, puntaje, estrellas };
+    out[id] = { n: s.n, elegido: s.elegido, avgDias, puntaje, estrellas, confiable: s.n >= 3 };
   });
   return out;
 }
@@ -1590,7 +1597,7 @@ async function cargarProveedores() {
                 return `<div style="display:flex;align-items:center;gap:6px;white-space:nowrap">
                   ${p.id === favId ? '<span title="Favorito de confianza" style="color:#D97706;font-weight:800">★</span>' : ''}
                   ${_estrellasHtml(s.estrellas)}
-                  <span style="font-size:10px;color:var(--gris-mid)">${s.avgDias != null ? (Math.round(s.avgDias*10)/10) + 'd · ' : ''}${s.elegido}/${s.n}✓</span>
+                  <span style="font-size:10px;color:var(--gris-mid)">${s.avgDias != null ? (Math.round(s.avgDias*10)/10) + 'd · ' : ''}${s.elegido}/${s.n}✓${!s.confiable ? ' · <span style="color:#B45309">poco historial</span>' : ''}</span>
                 </div>`;
               })()}
             </td>
