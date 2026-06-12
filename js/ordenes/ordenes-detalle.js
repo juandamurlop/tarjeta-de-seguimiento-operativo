@@ -386,6 +386,7 @@ async function abrirOrden(id) {
                             <span style="font-size:13px;font-weight:700;color:var(--azul)">Activa</span>
                           </div>`
                      }
+                     ${typeof _bloqueIngreso === 'function' ? _bloqueIngreso(orden) : ''}
                      <div style="display:flex;gap:6px;width:100%">
                        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},false)">📋 Sin precios</button>
                        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},true)">💰 Con precios</button>

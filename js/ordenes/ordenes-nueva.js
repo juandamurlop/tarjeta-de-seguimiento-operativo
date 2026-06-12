@@ -715,6 +715,87 @@ function _waEntregaMsg(o) {
     .replace(/\{vehiculo\}/g, veh)
     .replace(/\{placa\}/g, o.placa || '');
 }
+
+// ── Mensaje de WhatsApp "ingreso / seguimiento en tiempo real" ──
+// INTERINO: hoy abre WhatsApp con el mensaje + link y el jefe da Enviar.
+// Cuando esté la API de Meta, este mismo texto y link se mandan solos.
+const _WA_INGRESO_DEFAULT = 'Hola {nombre}, le saluda {taller}. Recibimos su {vehiculo} de placa {placa} en nuestro taller. 🚗\n\nLe compartimos un enlace para que siga el estado de la reparación y las novedades EN TIEMPO REAL:';
+function _waIngresoTemplate() {
+  try { return localStorage.getItem('wa_ingreso_msg') || _WA_INGRESO_DEFAULT; } catch (e) { return _WA_INGRESO_DEFAULT; }
+}
+function _waIngresoMsg(o) {
+  const taller  = (typeof _cotPdfConfig === 'function' && _cotPdfConfig().nombre) || 'Freimanautos';
+  const veh     = [o.marca, o.linea].filter(Boolean).join(' ') || 'vehículo';
+  const nombre  = _nombreClienteWA(o.propietario);
+  return _waIngresoTemplate()
+    .replace(/\{nombre\}/g, nombre)
+    .replace(/\{taller\}/g, taller)
+    .replace(/\{vehiculo\}/g, veh)
+    .replace(/\{placa\}/g, o.placa || '');
+}
+function editarMensajeIngreso() {
+  const prev = document.getElementById('wa-msg-modal'); if (prev) prev.remove();
+  const ov = document.createElement('div');
+  ov.id = 'wa-msg-modal';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:14px;max-width:460px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
+      <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:4px">Mensaje de ingreso al cliente</div>
+      <div style="font-size:12px;color:var(--gris-mid);margin-bottom:12px">Se envía al recibir el vehículo, con el link de seguimiento en tiempo real.</div>
+      <textarea id="wa-msg-text" rows="6" style="width:100%;border:1px solid var(--gris-borde);border-radius:8px;padding:10px;font-size:13px;font-family:inherit;resize:vertical">${escapeHtml(_waIngresoTemplate())}</textarea>
+      <div style="font-size:11px;color:var(--gris-mid);margin-top:8px;line-height:1.6">
+        Etiquetas: <code>{nombre}</code> · <code>{vehiculo}</code> · <code>{placa}</code> · <code>{taller}</code><br>
+        El link de seguimiento se agrega automáticamente al final.
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('wa-msg-modal').remove()">Cancelar</button>
+        <button class="btn btn-ghost btn-sm" onclick="localStorage.removeItem('wa_ingreso_msg');document.getElementById('wa-msg-text').value=_waIngresoTemplate()">Restaurar</button>
+        <button class="btn btn-primary btn-sm" onclick="_guardarMensajeIngreso()">Guardar</button>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+function _guardarMensajeIngreso() {
+  const v = document.getElementById('wa-msg-text')?.value.trim();
+  if (v) { try { localStorage.setItem('wa_ingreso_msg', v); } catch (e) {} }
+  document.getElementById('wa-msg-modal')?.remove();
+  toast('Mensaje guardado ✓');
+}
+
+// Abre WhatsApp con el mensaje de ingreso + link de seguimiento y marca la
+// orden como avisada de ingreso. (No envía solo: el jefe da "Enviar".)
+async function avisarIngresoCliente(ordenId) {
+  try {
+    const arr = await api(`/ordenes?id=eq.${ordenId}&select=placa,marca,linea,propietario,telefono,cedula_cliente`).catch(() => []);
+    const o = arr && arr[0];
+    if (!o) { toast('No se encontró la orden', 'err'); return; }
+    const tel = _waNumero(o.telefono);
+    if (!tel) { toast('El cliente no tiene celular registrado en la orden', 'err'); return; }
+    const _link = (typeof _linkClienteSeguimiento === 'function') ? _linkClienteSeguimiento(o.cedula_cliente) : '';
+    const _msg  = _waIngresoMsg(o) + (_link ? `\n${_link}` : '');
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(_msg)}`, '_blank');
+    try { await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { ingreso_avisado_en: new Date().toISOString() }); } catch (e) {}
+    abrirOrden(ordenId);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// Bloque del detalle: botón para enviar el link de seguimiento al ingresar.
+// Solo jefe/gerente (esJefe() ya incluye gerente).
+function _bloqueIngreso(orden) {
+  if (typeof esJefe === 'function' && !esJefe()) return '';
+  const tel = orden.telefono ? _waNumero(orden.telefono) : '';
+  const avisado = !!orden.ingreso_avisado_en;
+  let h = `<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px 12px">
+    <div style="font-size:11.5px;color:#166534;font-weight:600;margin-bottom:8px">📲 Avísale al cliente que puede seguir su vehículo en tiempo real</div>
+    <div style="display:flex;gap:6px">
+      <button class="btn" style="flex:1;background:#25D366;border-color:#25D366;color:#fff" onclick="avisarIngresoCliente(${orden.id})">${avisado ? 'Reenviar link' : 'Enviar link al cliente'} (WhatsApp)</button>
+      <button class="btn btn-ghost btn-sm" title="Editar mensaje" onclick="editarMensajeIngreso()">✏️</button>
+    </div>`;
+  if (avisado) h += `<div style="font-size:11px;color:var(--gris-mid);margin-top:6px">✓ Link enviado el ${formatTS(orden.ingreso_avisado_en)}</div>`;
+  if (!tel) h += `<div style="font-size:11px;color:var(--rojo);margin-top:6px">⚠ Esta orden no tiene celular del cliente.</div>`;
+  return h + `</div>`;
+}
 // Editor del mensaje de WhatsApp
 function editarMensajeEntrega() {
   const prev = document.getElementById('wa-msg-modal'); if (prev) prev.remove();
