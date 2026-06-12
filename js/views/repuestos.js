@@ -72,6 +72,36 @@ function _autoCategoria() {
   if (texto.trim()) sel.value = _detectarCategoria(texto);
 }
 
+// Detecta TODAS las categorías que sugiere el nombre de un proveedor (puede
+// manejar varias). Devuelve un arreglo (vacío si es un proveedor general).
+const _PROV_CAT = {
+  'Frenos': ['freno','pastilla','disco de freno','balata','zapata','caliper'],
+  'Motor': ['radiador','motor','culata','transtermo','dayco','arbol','leva','piston','valvula','válvula','correa','cadena','turbo','inyector','empaque'],
+  'Suspensión/Dirección': ['amortiguador','resorte','tecniresorte','direccion','dirección','suspension','suspensión','tijera','rotula','rótula','terminal','bieleta','buje','espiral'],
+  'Eléctrico': ['electric','eléctric','venelectric','scanner','escaner','motorola','bateria','batería','alternador','arranque','sensor','farola','bombillo','bobina'],
+  'Latonería/Carrocería': ['vidrio','parabri','latas','bomper','cromado','lujo','espejo','lamina','lámina','void','sign','carroceria','carrocería','pintura','guardafango','puerta','capo','capó','moldura','persiana','parrilla'],
+  'Filtros/Lubricantes': ['filtro','aceite','lubricante','aditivo'],
+  'Transmisión': ['transmision','transmisión','clutch','croche','embrague','cardan','cardán','homocinetic','diferencial','retenedor'],
+  'Aire acondicionado': ['aire acond','compresor','condensador','evaporador'],
+  'Llantas': ['llanta','rin ','neumatic','caucho']
+};
+function _detectarCategoriasProveedor(nombre) {
+  const t = (nombre || '').toLowerCase();
+  const cats = [];
+  for (const c of Object.keys(_PROV_CAT)) {
+    if (_PROV_CAT[c].some(k => t.includes(k))) cats.push(c);
+  }
+  return cats;
+}
+// Botón "sugerir" en el formulario de proveedor: marca las categorías que
+// sugiere el nombre.
+function _sugerirCatProveedor() {
+  const nombre = document.getElementById('prov-nombre')?.value || '';
+  const cats = _detectarCategoriasProveedor(nombre);
+  document.querySelectorAll('#modal-proveedor input[name="prov-cat"]').forEach(cb => { cb.checked = cats.includes(cb.value); });
+  toast(cats.length ? 'Sugeridas: ' + cats.join(', ') : 'No detecté categoría por el nombre', cats.length ? 'ok' : 'info');
+}
+
 // Marcas de carros que circulan en Colombia (orden alfabético).
 // Si falta alguna que manejen, se agrega aquí.
 const MARCAS_VEHICULOS = [
@@ -1198,6 +1228,39 @@ function _enviarWA(filaId) {
     : `https://wa.me/?text=${encodeURIComponent(msg)}`;
   window.open(url, '_blank');
   if (!tel) toast('Ese proveedor no tiene WhatsApp guardado: se abrió con el mensaje listo para elegir contacto', 'info');
+  // Registrar el contacto (para el fallback por tiempo). Robusto: si no existe
+  // la tabla todavía, no rompe nada.
+  const provId = sel?.value;
+  if (provId && window._cotSolicitudId) {
+    api('/contactos_repuesto', 'POST', { solicitud_id: _cotSolicitudId, proveedor_id: +provId, contactado_en: new Date().toISOString() }, { Prefer: 'return=minimal' })
+      .then(() => { _cargarContactosCot(); }).catch(() => {});
+  }
+}
+
+// Carga y muestra los proveedores ya contactados para la solicitud abierta,
+// resaltando los que llevan > umbral horas sin respuesta (fallback por tiempo).
+let _cotSolicitudId = null;
+const _COT_UMBRAL_HORAS = 3;
+async function _cargarContactosCot() {
+  const cont = document.getElementById('cot-contactos');
+  if (!cont || !_cotSolicitudId) return;
+  const ctos = await api(`/contactos_repuesto?solicitud_id=eq.${_cotSolicitudId}&order=contactado_en.asc&select=proveedor_id,contactado_en`).catch(() => []) || [];
+  if (!ctos.length) { cont.innerHTML = ''; return; }
+  // Último contacto por proveedor
+  const ult = {};
+  ctos.forEach(c => { ult[c.proveedor_id] = c.contactado_en; });
+  const nombre = id => (_provRegistry && _provRegistry[id]?.nombre) || ('Prov ' + id);
+  const chips = Object.entries(ult).map(([id, ts]) => {
+    const h = (Date.now() - new Date(ts).getTime()) / 3600000;
+    const sinResp = h >= _COT_UMBRAL_HORAS;
+    const txt = h < 1 ? 'hace ' + Math.round(h * 60) + ' min' : 'hace ' + Math.round(h) + ' h';
+    return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;padding:2px 8px;border-radius:99px;${sinResp ? 'background:#FEF3C7;color:#92400E;font-weight:700' : 'background:#EEF2F7;color:var(--azul)'}">${sinResp ? '⏰' : '✓'} ${escapeHtml(nombre(id))} · ${txt}${sinResp ? ' · sin respuesta' : ''}</span>`;
+  }).join(' ');
+  const haySinResp = Object.values(ult).some(ts => (Date.now() - new Date(ts).getTime()) / 3600000 >= _COT_UMBRAL_HORAS);
+  cont.innerHTML = `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+    <span style="font-size:10px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">Contactados:</span>${chips}
+    ${haySinResp ? '<span style="font-size:10.5px;color:#B45309">→ prueba el siguiente proveedor</span>' : ''}
+  </div>`;
 }
 
 const _CELL = 'border:none;border-right:1px solid #E2E8F0;background:transparent;width:100%;font-size:12.5px;padding:7px 8px;outline:none;font-family:inherit';
@@ -1323,6 +1386,7 @@ function _estrellasHtml(n) {
 }
 
 async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, modelo, anio, vin) {
+  _cotSolicitudId = solicitudId;
   _cotDatosVehiculo = { repuesto: repuesto||'', unidades: unidades||1, placa: placa||'', marca: marca||'', modelo: modelo||'', anio: anio||'', vin: vin||'' };
 
   const [proveedores, cots, solItems, sol] = await Promise.all([
@@ -1396,6 +1460,7 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
           <button onclick="document.getElementById('modal-cotizar').remove()"
             style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--gris-mid);padding:0 4px;line-height:1">✕</button>
         </div>
+        <div id="cot-contactos"></div>
       </div>
 
       <!-- TABLA TIPO EXCEL -->
@@ -1438,6 +1503,7 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
     const s = document.getElementById(`cot-prov-${f.id}`);
     if (s && f.proveedorId) s.value = f.proveedorId;
   });
+  _cargarContactosCot();
 }
 
 // ── Helpers para nuevo proveedor inline ──────────────────
@@ -1565,7 +1631,8 @@ async function cargarProveedores() {
     cont.innerHTML = `<div style="padding:20px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div style="font-size:16px;font-weight:700">Proveedores</div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="autoCategorizarProveedores()">🏷 Auto-categorizar</button>
           <button class="btn btn-ghost btn-sm" onclick="abrirImportarProveedores()">📥 Importar contactos</button>
           <button class="btn btn-primary btn-sm" onclick="abrirModalProveedor()">+ Nuevo proveedor</button>
         </div>
@@ -1660,7 +1727,10 @@ function abrirModalProveedor(prov) {
           </div>
         </div>
         <div class="field">
-          <label>Categorías que maneja <span style="font-weight:400;color:var(--gris-mid);font-size:11px">(para sugerirlo en esos repuestos)</span></label>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <label style="margin:0">Categorías que maneja <span style="font-weight:400;color:var(--gris-mid);font-size:11px">(para sugerirlo en esos repuestos)</span></label>
+            <button type="button" class="btn btn-ghost btn-xs" style="font-size:11px;color:var(--azul)" onclick="_sugerirCatProveedor()">✨ Sugerir del nombre</button>
+          </div>
           <div style="border:1px solid var(--gris-borde);border-radius:8px;padding:10px 14px;display:grid;grid-template-columns:1fr 1fr;gap:2px">
             ${CATEGORIAS_REPUESTO.map(c => `
               <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:2px 0">
@@ -1684,6 +1754,25 @@ function abrirModalProveedor(prov) {
       </div>
     </div>`;
   document.body.appendChild(div);
+}
+
+// Asigna categorías automáticamente (por el nombre) a los proveedores que aún
+// no tienen ninguna. No sobrescribe los que ya están categorizados.
+async function autoCategorizarProveedores() {
+  if (!confirm('¿Detectar y asignar categorías por el nombre a los proveedores que no tengan ninguna?')) return;
+  try {
+    const provs = await api('/proveedores?select=id,nombre,categorias');
+    let n = 0;
+    for (const p of provs) {
+      if (p.categorias && p.categorias.length) continue;
+      const cats = _detectarCategoriasProveedor(p.nombre);
+      if (cats.length) { await api(`/proveedores?id=eq.${p.id}`, 'PATCH', { categorias: cats }).catch(() => {}); n++; }
+    }
+    toast(`${n} proveedor(es) categorizados ✓`);
+    cargarProveedores();
+  } catch (e) {
+    toast('Primero corre el SQL de categorías (docs/sql-proveedor-categorias.sql)', 'err');
+  }
 }
 
 async function eliminarProveedor(id, nombre) {
