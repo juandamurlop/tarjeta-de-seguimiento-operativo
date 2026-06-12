@@ -1550,7 +1550,10 @@ async function cargarProveedores() {
     cont.innerHTML = `<div style="padding:20px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div style="font-size:16px;font-weight:700">Proveedores</div>
-        <button class="btn btn-primary btn-sm" onclick="abrirModalProveedor()">+ Nuevo proveedor</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="abrirImportarProveedores()">📥 Importar contactos</button>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalProveedor()">+ Nuevo proveedor</button>
+        </div>
       </div>
       ${provs.length ? `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:500px">
         <thead><tr style="background:var(--gris-bg);border-bottom:1px solid var(--gris-borde)">
@@ -1685,6 +1688,178 @@ async function guardarProveedor(id) {
     document.getElementById('modal-proveedor')?.remove();
     cargarProveedores();
   } catch(e) { toast('Error: '+e.message,'err'); }
+}
+
+// ─────────────────────────────────────────────────────────
+// IMPORTADOR DE CONTACTOS (CSV de Google / vCard de iCloud)
+// ─────────────────────────────────────────────────────────
+let _impProveedores = [];
+
+// Normaliza un teléfono: solo dígitos; quita 00 e indicativo 57 (Colombia)
+// para guardar el número de 10 dígitos (el botón WA antepone el 57 al enviar).
+function _normTelImport(raw) {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('57') && d.length === 12) d = d.slice(2);
+  return d;
+}
+
+// Parser de una línea CSV (respeta comillas y comas internas).
+function _csvLinea(linea) {
+  const out = []; let cur = ''; let q = false;
+  for (let i = 0; i < linea.length; i++) {
+    const c = linea[i];
+    if (q) {
+      if (c === '"') { if (linea[i + 1] === '"') { cur += '"'; i++; } else q = false; }
+      else cur += c;
+    } else {
+      if (c === '"') q = true;
+      else if (c === ',') { out.push(cur); cur = ''; }
+      else cur += c;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+function _parseCSVContactos(text) {
+  const lineas = text.split(/\r?\n/).filter(l => l.trim().length);
+  if (!lineas.length) return [];
+  const header = _csvLinea(lineas[0]).map(h => h.trim());
+  const idxExact = n => header.findIndex(h => h.toLowerCase() === n.toLowerCase());
+  const idxCont  = s => header.findIndex(h => h.toLowerCase().includes(s.toLowerCase()));
+  const idxNombre = idxExact('Name');
+  let idxFirst = idxExact('First Name'); if (idxFirst < 0) idxFirst = idxExact('Given Name');
+  let idxLast  = idxExact('Last Name');  if (idxLast  < 0) idxLast  = idxExact('Family Name');
+  let idxTel = header.findIndex(h => /phone.*value/i.test(h));
+  if (idxTel < 0) idxTel = idxCont('Phone');
+  if (idxTel < 0) idxTel = idxCont('Mobile');
+  if (idxTel < 0) idxTel = idxCont('Tel');
+  const out = [];
+  for (let i = 1; i < lineas.length; i++) {
+    const cols = _csvLinea(lineas[i]);
+    let nombre = idxNombre >= 0 ? (cols[idxNombre] || '').trim() : '';
+    if (!nombre) nombre = [cols[idxFirst] || '', cols[idxLast] || ''].join(' ').trim();
+    let tel = idxTel >= 0 ? (cols[idxTel] || '').trim() : '';
+    if (tel.includes(':::')) tel = tel.split(':::')[0].trim();   // Google une varios con :::
+    if (!nombre && !tel) continue;
+    out.push({ nombre: nombre || '(sin nombre)', telefono: tel });
+  }
+  return out;
+}
+
+function _parseVCard(text) {
+  const out = [];
+  text.split(/END:VCARD/i).forEach(c => {
+    if (!/BEGIN:VCARD/i.test(c)) return;
+    const fn  = (c.match(/[\r\n]FN[^:\r\n]*:(.+)/i) || [])[1];
+    const tel = (c.match(/[\r\n]TEL[^:\r\n]*:(.+)/i) || [])[1];
+    const nombre = (fn || '').trim();
+    const telefono = (tel || '').trim();
+    if (nombre || telefono) out.push({ nombre: nombre || '(sin nombre)', telefono });
+  });
+  return out;
+}
+
+function abrirImportarProveedores() {
+  document.getElementById('modal-imp-prov')?.remove();
+  const div = document.createElement('div');
+  div.id = 'modal-imp-prov';
+  div.className = 'modal-overlay show';
+  div.innerHTML = `
+    <div class="modal" style="max-width:620px;max-height:90vh;overflow-y:auto">
+      <div class="modal-header">
+        <div class="modal-titulo">Importar contactos de proveedores</div>
+        <button class="modal-close" onclick="document.getElementById('modal-imp-prov').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:12.5px;color:var(--gris-mid);margin-bottom:12px;line-height:1.5">
+          Sube el archivo de tus contactos (<b>CSV de Google</b> o <b>vCard .vcf de iCloud</b>).
+          Te mostramos la lista y tú marcas cuáles son proveedores.
+        </div>
+        <input type="file" id="imp-file" accept=".csv,.vcf,text/csv,text/vcard" onchange="_procesarArchivoProveedores(this)"
+          style="width:100%;padding:10px;border:1.5px dashed var(--gris-borde);border-radius:8px;font-size:13px;cursor:pointer">
+        <div id="imp-resultado" style="margin-top:14px"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(div);
+}
+
+async function _procesarArchivoProveedores(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const cont = document.getElementById('imp-resultado');
+  if (cont) cont.innerHTML = '<div style="font-size:12px;color:var(--gris-mid)">Leyendo archivo…</div>';
+  try {
+    const text = await file.text();
+    const esVcf = /\.vcf$/i.test(file.name) || /BEGIN:VCARD/i.test(text.slice(0, 200));
+    _impProveedores = (esVcf ? _parseVCard(text) : _parseCSVContactos(text))
+      .filter(c => _normTelImport(c.telefono)); // solo contactos con número usable
+    _renderImpLista();
+  } catch (e) {
+    if (cont) cont.innerHTML = `<div style="color:var(--rojo);font-size:12px">No se pudo leer el archivo: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function _renderImpLista() {
+  const cont = document.getElementById('imp-resultado');
+  if (!cont) return;
+  if (!_impProveedores.length) {
+    cont.innerHTML = '<div style="color:var(--gris-mid);font-size:12px">No se encontraron contactos con número en el archivo.</div>';
+    return;
+  }
+  cont.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;font-weight:600">
+        <input type="checkbox" id="imp-todos" onchange="_toggleImpTodos(this.checked)"> Seleccionar todos
+      </label>
+      <span style="font-size:11px;color:var(--gris-mid)">${_impProveedores.length} contactos · <span id="imp-cuenta">0</span> marcados</span>
+    </div>
+    <div style="max-height:300px;overflow-y:auto;border:1px solid var(--gris-borde);border-radius:8px">
+      ${_impProveedores.map((c, i) => `
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--gris-borde);cursor:pointer;font-size:13px">
+          <input type="checkbox" class="imp-check" data-idx="${i}" onchange="_impActualizarCuenta()">
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(c.nombre)}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gris-mid)">${escapeHtml(_normTelImport(c.telefono))}</span>
+        </label>`).join('')}
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-imp-prov').remove()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="confirmarImportarProveedores()">Importar marcados →</button>
+    </div>`;
+}
+
+function _toggleImpTodos(checked) {
+  document.querySelectorAll('.imp-check').forEach(ch => { ch.checked = checked; });
+  _impActualizarCuenta();
+}
+function _impActualizarCuenta() {
+  const n = document.querySelectorAll('.imp-check:checked').length;
+  const el = document.getElementById('imp-cuenta'); if (el) el.textContent = n;
+}
+
+async function confirmarImportarProveedores() {
+  const checks = [...document.querySelectorAll('.imp-check:checked')];
+  if (!checks.length) { toast('Marca al menos un proveedor', 'err'); return; }
+  const seleccion = checks.map(ch => _impProveedores[+ch.dataset.idx]).filter(Boolean);
+  // No duplicar: comparar por número con los que ya existen
+  const existentes = await api('/proveedores?select=whatsapp').catch(() => []) || [];
+  const setExist = new Set(existentes.map(p => _normTelImport(p.whatsapp)).filter(Boolean));
+  const vistos = new Set();
+  const nuevos = [];
+  seleccion.forEach(s => {
+    const t = _normTelImport(s.telefono);
+    if (!t || setExist.has(t) || vistos.has(t)) return;
+    vistos.add(t);
+    nuevos.push({ nombre: s.nombre, whatsapp: t, activo: true, marcas: [], multimarca: false });
+  });
+  if (!nuevos.length) { toast('Nada nuevo: ya existían o sin número válido', 'info'); return; }
+  try {
+    await api('/proveedores', 'POST', nuevos, { Prefer: 'return=minimal' });
+    document.getElementById('modal-imp-prov')?.remove();
+    toast(`${nuevos.length} proveedor(es) importado(s) ✓`);
+    cargarProveedores();
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
 // ─────────────────────────────────────────────────────────
