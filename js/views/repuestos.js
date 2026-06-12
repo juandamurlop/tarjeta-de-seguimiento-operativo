@@ -1749,6 +1749,7 @@ async function guardarProveedor(id) {
 // IMPORTADOR DE CONTACTOS (CSV de Google / vCard de iCloud)
 // ─────────────────────────────────────────────────────────
 let _impProveedores = [];
+let _impModoEtiqueta = false;
 
 // Normaliza un teléfono: solo dígitos; quita 00 e indicativo 57 (Colombia)
 // para guardar el número de 10 dígitos (el botón WA antepone el 57 al enviar).
@@ -1865,8 +1866,14 @@ async function _procesarArchivoProveedores(input) {
     const esVcf = /\.vcf$/i.test(file.name) || /BEGIN:VCARD/i.test(text.slice(0, 200));
     _impProveedores = (esVcf ? _parseVCard(text) : _parseCSVContactos(text))
       .filter(c => _normTelImport(c.telefono)); // solo contactos con número usable
-    // Marcar probables proveedores y ponerlos primero para revisar fácil.
-    _impProveedores.forEach(c => { c.sugerido = _esLikelyProveedor(c.nombre, c.label); });
+    // Si el archivo trae una etiqueta "Proveedor(es)" (la marcaste en Google
+    // Contactos), usamos ESA como verdad exacta. Si no, caemos a la heurística.
+    _impModoEtiqueta = _impProveedores.some(c => /proveedor/i.test(c.label || ''));
+    _impProveedores.forEach(c => {
+      c.sugerido = _impModoEtiqueta
+        ? /proveedor/i.test(c.label || '')
+        : _esLikelyProveedor(c.nombre, c.label);
+    });
     _impProveedores.sort((a, b) => (b.sugerido ? 1 : 0) - (a.sugerido ? 1 : 0));
     _renderImpLista();
   } catch (e) {
@@ -1882,9 +1889,12 @@ function _renderImpLista() {
     return;
   }
   const nSug = _impProveedores.filter(c => c.sugerido).length;
+  const hint = _impModoEtiqueta
+    ? `Detectamos tu etiqueta <b>"Proveedores"</b> y marcamos exactamente esos <b>${nSug}</b>. ✅`
+    : `Pre-marcamos <b>${nSug}</b> que parecen proveedores (resaltados). Revisa y ajusta lo que quieras.<br><span style="color:var(--gris-mid)">Tip: si etiquetas tus proveedores como "Proveedores" en Google Contactos, la próxima vez los detecto exactos.</span>`;
   cont.innerHTML = `
-    <div style="background:#EEF2F7;border-radius:8px;padding:8px 10px;font-size:11.5px;color:var(--azul);margin-bottom:8px">
-      Pre-marcamos <b>${nSug}</b> que parecen proveedores (resaltados). Revisa y ajusta lo que quieras.
+    <div style="background:#EEF2F7;border-radius:8px;padding:8px 10px;font-size:11.5px;color:var(--azul);margin-bottom:8px;line-height:1.5">
+      ${hint}
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;font-weight:600">
