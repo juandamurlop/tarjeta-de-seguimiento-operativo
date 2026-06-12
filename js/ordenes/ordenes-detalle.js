@@ -373,6 +373,7 @@ async function abrirOrden(id) {
                        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},false)">📋 Sin precios</button>
                        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},true)">💰 Con precios</button>
                      </div>
+                     ${orden.estado === 'Archivada' && esJefe() ? `<button class="btn btn-ghost btn-sm" style="width:100%;color:#DC2626;border:1px solid #FECACA" onclick="eliminarOrdenPermanente(${orden.id})">🗑️ Eliminar permanentemente</button>` : ''}
                    </div>`
                 : todasCalidadAprobada
                 ? `${_bloqueEntrega(orden)}${_bloquePreliqCierre(orden)}`
