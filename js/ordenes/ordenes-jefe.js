@@ -292,6 +292,18 @@ async function _desactivarPulmon() {
 // ============================================================
 async function cambiarEstado(v) {
   try {
+    // No permitir ENTREGAR si quedan repuestos sin completar en la orden.
+    if (v === 'Entregada') {
+      const _estadosPend = (typeof REPUESTO_ESTADOS_PENDIENTES !== 'undefined'
+        ? REPUESTO_ESTADOS_PENDIENTES
+        : ['pendiente_jefe','enviado_repuestos','cotizado','pedido','recibido_taller']).join(',');
+      const repPend = await api(`/solicitudes_repuesto?orden_id=eq.${ordenActual.id}&estado=in.(${_estadosPend})&select=repuesto,estado`).catch(() => []) || [];
+      if (repPend.length) {
+        const _lista = repPend.map(r => `${r.repuesto || 'repuesto'} (${repuestoEstadoInfo(r.estado).label})`).join(', ');
+        toast(`No puedes entregar: hay ${repPend.length} repuesto(s) sin completar → ${_lista}`, 'err');
+        return;
+      }
+    }
     const patch = { estado: v };
     if (v === 'Entregada') patch.entregada_en = new Date().toISOString();
     await api(`/ordenes?id=eq.${ordenActual.id}`, 'PATCH', patch);

@@ -613,21 +613,8 @@ async function cargarRepuestosMecanico() {
     const solicitudes = await api(`/solicitudes_repuesto?solicitado_por=eq.${encodeURIComponent(sesion.nombre)}&order=creado_en.desc&limit=80&select=*`).catch(()=>[]) || [];
     const ordenIds = [...new Set(solicitudes.map(s => s.orden_id).filter(Boolean))];
     const ordenes = ordenIds.length ? await api(`/ordenes?id=in.(${ordenIds.join(',')})&select=id,placa,propietario,marca,linea,estado`).catch(()=>[]) || [] : [];
-    const estadoColor = {
-      pendiente_jefe:'#D97706', enviado_repuestos:'#7C3AED',
-      cotizado:'#2563EB', pedido:'#0891B2',
-      recibido_taller:'#059669', entregado:'#059669', rechazado:'#DC2626'
-    };
-    const estadoBg = {
-      pendiente_jefe:'#FEF3C7', enviado_repuestos:'#EDE9FE',
-      cotizado:'#EBF2FF', pedido:'#E0F2FE',
-      recibido_taller:'#E6F5EF', entregado:'#E6F5EF', rechazado:'#FEE2E2'
-    };
-    const estadoLabel = {
-      pendiente_jefe:'Pendiente revisión', enviado_repuestos:'En gestión',
-      cotizado:'Cotizado', pedido:'Pedido al proveedor',
-      recibido_taller:'¡Llegó al taller!', entregado:'Entregado', rechazado:'Rechazado'
-    };
+    // Estados desde la fuente ÚNICA (REPUESTO_ESTADOS en utils.js): mismo nombre
+    // y color que ve el jefe en el detalle de la orden → consistencia total.
     const conteos = solicitudes.reduce((acc, s) => {
       const estado = s.estado || 'pendiente_jefe';
       acc[estado] = (acc[estado] || 0) + 1;
@@ -643,15 +630,16 @@ async function cargarRepuestosMecanico() {
       ${solicitudes.length ? solicitudes.map(s => {
         const o = ordenes.find(ord => ord.id === s.orden_id) || {};
         const estado = s.estado || 'pendiente_jefe';
-        const color = estadoColor[estado] || '#6B7280';
-        const bg = estadoBg[estado] || '#F3F4F6';
+        const _inf = repuestoEstadoInfo(estado);
+        const color = _inf.color;
+        const bg = _inf.bg;
         return `<div class="solicitud-card">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">
             <div style="min-width:0">
               <div style="font-family:'DM Mono',monospace;font-weight:800;font-size:15px">${escapeHtml(o.placa) || 'Orden #' + s.orden_id}</div>
               <div style="font-size:12px;color:var(--gris-mid);margin-top:2px">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || escapeHtml(o.propietario) || 'Sin datos'} · ${formatTS(s.creado_en)}</div>
             </div>
-            <span style="font-size:11px;font-weight:800;color:${color};background:${bg};padding:4px 10px;border-radius:99px;text-transform:uppercase;white-space:nowrap">${estadoLabel[estado] || estado}</span>
+            <span style="font-size:11px;font-weight:800;color:${color};background:${bg};padding:4px 10px;border-radius:99px;text-transform:uppercase;white-space:nowrap">${_inf.icon} ${_inf.label}</span>
           </div>
           <div style="font-weight:700;margin-bottom:4px">${escapeHtml(s.repuesto) || 'Repuesto sin nombre'}</div>
           <div style="font-size:12px;color:var(--gris-mid)">Cantidad: ${s.unidades || 1}${s.observaciones ? ' · ' + escapeHtml(s.observaciones) : ''}</div>

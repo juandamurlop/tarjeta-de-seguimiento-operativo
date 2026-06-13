@@ -278,6 +278,17 @@ async function abrirModalSolicitudRepuesto(ordenId, etapaId, placa) {
          style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px">📋</button>`
     : `<span style="color:var(--gris-mid)">Sin VIN registrado</span>`;
 
+  // Mostrar los repuestos que ESTA orden ya tiene solicitados, para no repetir.
+  const _existentesOrden = await api(`/solicitudes_repuesto?orden_id=eq.${ordenId}&order=creado_en.desc&select=repuesto,estado,unidades`).catch(() => []) || [];
+  const existentesHtml = _existentesOrden.length ? `
+    <div style="font-size:12px;margin-bottom:10px;padding:10px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px">
+      <div style="font-weight:700;color:#92400E;margin-bottom:6px">📋 Esta orden ya tiene ${_existentesOrden.length} repuesto(s) solicitado(s):</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${_existentesOrden.map(s => { const inf = repuestoEstadoInfo(s.estado); return `<span style="font-size:11px;font-weight:700;color:${inf.color};background:${inf.bg};padding:2px 8px;border-radius:99px">${escapeHtml(s.repuesto || 'repuesto')}${s.unidades > 1 ? ` ×${s.unidades}` : ''} · ${inf.icon} ${inf.label}</span>`; }).join('')}
+      </div>
+      <div style="font-size:11px;color:#92400E;margin-top:6px">Revisa que no estés pidiendo algo que ya está en proceso.</div>
+    </div>` : '';
+
   const div = document.createElement('div');
   div.id = 'modal-sol-multi';
   div.className = 'modal-overlay show';
@@ -288,6 +299,8 @@ async function abrirModalSolicitudRepuesto(ordenId, etapaId, placa) {
         <button class="modal-close" onclick="document.getElementById('modal-sol-multi').remove()">✕</button>
       </div>
       <div class="modal-body" style="padding-top:10px">
+
+        ${existentesHtml}
 
         <!-- Datos del vehículo (visibles para repuestos) -->
         <div style="font-size:12px;margin-bottom:10px;padding:8px 12px;background:#EEF2F7;border-radius:6px;border:1px solid var(--gris-borde);line-height:1.7">

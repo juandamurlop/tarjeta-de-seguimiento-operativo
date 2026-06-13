@@ -18,15 +18,22 @@ async function abrirOrden(id) {
   detalleCont.innerHTML = '<div class="loading-state">Cargando...</div>';
 
   try {
-    const [orden, etapas, fotosEt, fotosIng, novedades, aprobaciones] = await Promise.all([
+    const [orden, etapas, fotosEt, fotosIng, novedades, aprobaciones, solicitudesRep] = await Promise.all([
       api(`/ordenes?id=eq.${id}`).then(d => d[0]),
       api(`/etapas?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || [],
       api(`/fotos_etapas?orden_id=eq.${id}&order=creado_en.desc`).catch(() => []) || [],
       api(`/fotos_ingreso?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || [],
       api(`/novedades?orden_id=eq.${id}&order=creado_en.desc`).catch(() => []) || [],
-      api(`/aprobaciones_etapa?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || []
+      api(`/aprobaciones_etapa?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || [],
+      api(`/solicitudes_repuesto?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || []
     ]);
     ordenActual = orden;
+
+    // Ítems de cada solicitud de repuesto (para el panel de repuestos de la orden)
+    const _repIds = solicitudesRep.map(s => s.id).filter(Boolean);
+    const repItems = _repIds.length
+      ? (await api(`/solicitud_items?solicitud_id=in.(${_repIds.join(',')})&order=creado_en.asc`).catch(() => []) || [])
+      : [];
 
     const total = etapas.length;
     // Calidad: verificar si todas las etapas completadas tienen aprobación
@@ -255,6 +262,7 @@ async function abrirOrden(id) {
                  <div style="font-size:12px;color:#94A3B8">Las etapas de trabajo estarán disponibles cuando el vehículo llegue al taller y el jefe confirme su ingreso.</div>
                </div>`
             : serviciosHtml}
+            ${typeof _panelRepuestosOrden === 'function' ? _panelRepuestosOrden(solicitudesRep, repItems, etapas) : ''}
         </div>
         <div class="detalle-sidebar">
           <div class="sidebar-card">
@@ -714,6 +722,57 @@ function _toggleNovForm(eid) {
   const visible = form.style.display !== 'none';
   form.style.display = visible ? 'none' : 'block';
   if (!visible) setTimeout(() => document.getElementById(`nmot-${eid}`)?.focus(), 60);
+}
+
+// ============================================================
+// PANEL DE REPUESTOS DENTRO DE LA ORDEN (visible para todos los perfiles)
+// Muestra cada repuesto con su estado, mini-barra de pasos, etapa y quién lo
+// pidió. Usa la fuente única de estados (REPUESTO_ESTADOS en utils.js) para que
+// se vea igual en toda la app. Se refresca cada vez que se abre/recarga la orden.
+// ============================================================
+function _panelRepuestosOrden(solicitudes, items, etapas) {
+  solicitudes = solicitudes || [];
+  items = items || [];
+  etapas = etapas || [];
+
+  const tituloHtml = (extra) => `<div class="seccion-titulo" style="margin:18px 0 8px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <span>🔧 Repuestos de la orden</span>${extra || ''}</div>`;
+
+  if (!solicitudes.length) {
+    return tituloHtml('') + `<div style="font-size:13px;color:var(--gris-mid);background:#F8FAFC;border:1px dashed var(--gris-borde);border-radius:8px;padding:14px;text-align:center">Sin repuestos solicitados en esta orden.</div>`;
+  }
+
+  const activos     = solicitudes.filter(s => s.estado !== 'rechazado');
+  const pendientes  = activos.filter(s => REPUESTO_ESTADOS_PENDIENTES.includes(s.estado));
+  const resumen = pendientes.length
+    ? `<span style="color:#B45309;font-weight:800">⚠ ${pendientes.length} sin completar</span>`
+    : `<span style="color:#059669;font-weight:800">✓ Todos entregados</span>`;
+
+  const filas = solicitudes.map(s => {
+    const inf = repuestoEstadoInfo(s.estado);
+    const its = items.filter(i => i.solicitud_id === s.id);
+    const listaItems = its.length
+      ? its.map(i => `${escapeHtml(i.repuesto)}${i.unidades > 1 ? ` ×${i.unidades}` : ''}`).join(', ')
+      : `${escapeHtml(s.repuesto || 'Repuesto')}${s.unidades > 1 ? ` ×${s.unidades}` : ''}`;
+    const et = etapas.find(e => e.id === s.etapa_id);
+    const etLabel = et ? ((typeof CATALOGO !== 'undefined' && CATALOGO[et.servicio]?.nombre) || et.etapa || et.servicio) : null;
+    const pasos = [1, 2, 3, 4, 5, 6].map(p => {
+      const on = s.estado !== 'rechazado' && inf.paso >= p;
+      return `<span style="width:14px;height:5px;border-radius:3px;background:${on ? inf.color : '#E5E7EB'};display:inline-block"></span>`;
+    }).join('');
+    return `<div style="border:1px solid var(--gris-borde);border-left:3px solid ${inf.color};border-radius:8px;padding:10px 12px;margin-bottom:8px;background:white">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">
+        <div style="font-weight:700;font-size:13px;min-width:0">${listaItems}</div>
+        <span style="flex-shrink:0;font-size:11px;font-weight:800;color:${inf.color};background:${inf.bg};padding:3px 10px;border-radius:99px;white-space:nowrap">${inf.icon} ${inf.label}</span>
+      </div>
+      ${s.estado !== 'rechazado' ? `<div style="display:flex;align-items:center;gap:3px;margin-bottom:6px">${pasos}</div>` : ''}
+      <div style="font-size:11px;color:var(--gris-mid)">
+        ${etLabel ? `🔧 ${escapeHtml(etLabel)} · ` : ''}Pedido por ${escapeHtml(s.solicitado_por || '—')} · ${formatTS(s.creado_en)}
+      </div>
+    </div>`;
+  }).join('');
+
+  return tituloHtml(`<span style="font-size:12px;font-weight:600">${activos.length} repuesto${activos.length !== 1 ? 's' : ''} · ${resumen}</span>`) + filas;
 }
 
 // ============================================================

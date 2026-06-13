@@ -40,6 +40,28 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+// ═══════════════════════════════════════════════════════════
+// REPUESTOS — fuente ÚNICA de estados (nombre, color, icono, paso).
+// La usan el detalle de orden, el módulo de repuestos, la vista del
+// técnico y la TV, para que TODOS vean lo mismo con el mismo nombre.
+// Flujo: Solicitado → En gestión → Cotizado → Pedido → Llegó → Entregado.
+// ═══════════════════════════════════════════════════════════
+const REPUESTO_ESTADOS = {
+  pendiente_jefe:    { label: 'Solicitado', paso: 1, color: '#D97706', bg: '#FEF3C7', icon: '📝', pendiente: true },
+  enviado_repuestos: { label: 'En gestión', paso: 2, color: '#7C3AED', bg: '#EDE9FE', icon: '🔎', pendiente: true },
+  cotizado:          { label: 'Cotizado',   paso: 3, color: '#2563EB', bg: '#EBF2FF', icon: '💲', pendiente: true },
+  pedido:            { label: 'Pedido',      paso: 4, color: '#0891B2', bg: '#E0F2FE', icon: '🚚', pendiente: true },
+  recibido_taller:   { label: 'Llegó',       paso: 5, color: '#0D9488', bg: '#CCFBF1', icon: '📦', pendiente: true },
+  entregado:         { label: 'Entregado',   paso: 6, color: '#059669', bg: '#E6F5EF', icon: '✅', pendiente: false },
+  rechazado:         { label: 'Cancelado',   paso: 0, color: '#DC2626', bg: '#FEE2E2', icon: '✕',  pendiente: false },
+};
+// Estados que cuentan como "sin completar" (bloquean cerrar la orden).
+const REPUESTO_ESTADOS_PENDIENTES = ['pendiente_jefe', 'enviado_repuestos', 'cotizado', 'pedido', 'recibido_taller'];
+const TOTAL_PASOS_REPUESTO = 6;
+function repuestoEstadoInfo(estado) {
+  return REPUESTO_ESTADOS[estado] || { label: estado || '—', paso: 0, color: '#6B7280', bg: '#F3F4F6', icon: '•', pendiente: false };
+}
+
 function safeUrl(url) {
   if (!url || typeof url !== 'string') return '#';
   const lower = url.trim().toLowerCase();
