@@ -941,11 +941,12 @@ async function cargarDashboardFinanciero() {
   mostrarCargandoSiVacio(cont, '<div class="loading-state">Cargando datos financieros...</div>');
 
   try {
-    const [ordenes, etapas, repItems, solicitudes] = await Promise.all([
+    const [ordenes, etapas, cotsRep, solsRep] = await Promise.all([
       api(`/ordenes?select=id,placa,marca,linea,propietario,estado,pulmon,creado_en,entregada_en`).catch(()=>[]) || [],
       api(`/etapas?select=id,orden_id,servicio,etapa,mecanico_id,tecnico,valor,inicio,fin,horas_estimadas`).catch(()=>[]) || [],
-      api(`/repuestos_items?select=id,solicitud_id,precio_lista,cantidad`).catch(()=>[]) || [],
-      api(`/repuestos_solicitud?select=id,orden_id,estado`).catch(()=>[]) || []
+      // Sistema real de repuestos: precio de venta que fijó el jefe por solicitud.
+      api(`/cotizaciones_repuesto?select=solicitud_id,precio_venta_jefe`).catch(()=>[]) || [],
+      api(`/solicitudes_repuesto?select=id,orden_id,estado`).catch(()=>[]) || []
     ]);
 
     const fmt       = n => n!=null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
@@ -959,14 +960,16 @@ async function cargarDashboardFinanciero() {
       if (e.valor) valorMOPorOrden[e.orden_id] = (valorMOPorOrden[e.orden_id]||0) + e.valor;
     });
 
-    // ── Valores repuestos por orden ──────────────────────
-    const repPorSolicitud = {};
-    repItems.forEach(i => {
-      repPorSolicitud[i.solicitud_id] = (repPorSolicitud[i.solicitud_id]||0) + ((i.precio_lista||0)*(i.cantidad||1));
+    // ── Valores repuestos por orden (sistema real) ───────
+    // Precio de venta elegido por el jefe (precio_venta_jefe) por solicitud,
+    // contando solo repuestos ya pedidos/recibidos/entregados.
+    const ventaPorSolicitud = {};
+    cotsRep.forEach(c => {
+      if (c.precio_venta_jefe != null) ventaPorSolicitud[c.solicitud_id] = (ventaPorSolicitud[c.solicitud_id]||0) + Number(c.precio_venta_jefe);
     });
     const valorRepPorOrden = {};
-    solicitudes.filter(s=>s.estado==='conseguido'||s.estado==='aprobado').forEach(s => {
-      valorRepPorOrden[s.orden_id] = (valorRepPorOrden[s.orden_id]||0) + (repPorSolicitud[s.id]||0);
+    solsRep.filter(s => ['pedido','recibido_taller','entregado'].includes(s.estado)).forEach(s => {
+      valorRepPorOrden[s.orden_id] = (valorRepPorOrden[s.orden_id]||0) + (ventaPorSolicitud[s.id]||0);
     });
 
     // ── WIP — órdenes activas ────────────────────────────

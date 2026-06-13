@@ -601,10 +601,8 @@ async function cargarHistorialMecanico() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// SOLICITAR REPUESTOS (MECÁNICO)
+// LISTA DE REPUESTOS DEL TÉCNICO (lee solicitudes_repuesto = sistema real)
 // ═══════════════════════════════════════════════════════════
-let _mecRepItems = [0];
-
 async function cargarRepuestosMecanico() {
   const cont = document.getElementById('mec-repuestos-contenido');
   if (!cont) return;
@@ -669,69 +667,8 @@ async function cargarRepuestosMecanico() {
   } catch(e) { cont.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
 }
 
-function renderMecRepItem(idx) {
-  return `<div style="background:var(--gris-bg);border-radius:8px;padding:12px;margin-bottom:8px" id="mec-ri-${idx}">
-    ${_mecRepItems.length>1?`<div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="btn btn-ghost btn-xs" onclick="quitarMecRepItem(${idx})" style="color:var(--rojo)">✕</button></div>`:''}
-    <div style="display:grid;grid-template-columns:1fr 70px;gap:8px;margin-bottom:8px">
-      <div class="field"><label>Descripción *</label><input id="mec-rdesc-${idx}" type="text" placeholder="Nombre de la pieza"></div>
-      <div class="field"><label>Cant.</label><input id="mec-rcant-${idx}" type="number" min="1" value="1"></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <div class="field"><label>N° Parte OEM</label><input id="mec-rpart-${idx}" type="text" placeholder="Opcional"></div>
-      <div class="field"><label>Operación</label>
-        <select id="mec-roper-${idx}">
-          <option value="reemplazar">Reemplazar</option>
-          <option value="reparar">Reparar</option>
-          <option value="pintar">Pintar</option>
-          <option value="calibrar">Calibrar</option>
-          <option value="programar">Programar</option>
-        </select>
-      </div>
-    </div>
-  </div>`;
-}
-
-function agregarMecRepItem() {
-  const idx = Date.now();
-  _mecRepItems.push(idx);
-  document.getElementById('mec-rep-items')?.insertAdjacentHTML('beforeend', renderMecRepItem(idx));
-}
-
-function quitarMecRepItem(idx) {
-  _mecRepItems = _mecRepItems.filter(i=>i!==idx);
-  document.getElementById(`mec-ri-${idx}`)?.remove();
-}
-
-async function enviarMecRepuestos() {
-  const ordenId = parseInt(document.getElementById('mec-rep-orden')?.value);
-  if (!ordenId) { toast('Seleccioná una orden', 'err'); return; }
-  const items = _mecRepItems.map(idx => ({
-    descripcion: document.getElementById(`mec-rdesc-${idx}`)?.value?.trim()||'',
-    cantidad: parseInt(document.getElementById(`mec-rcant-${idx}`)?.value)||1,
-    numero_parte_oem: document.getElementById(`mec-rpart-${idx}`)?.value?.trim()||null,
-    operacion: document.getElementById(`mec-roper-${idx}`)?.value||'reemplazar'
-  }));
-  if (items.some(i=>!i.descripcion)) { toast('Completá la descripción de cada pieza', 'err'); return; }
-  try {
-    const res = await api('/repuestos_solicitud?select=id', 'POST', {
-      orden_id: ordenId, solicitado_por: sesion?.nombre||'Mecánico', estado: 'pendiente'
-    }, { Prefer: 'return=representation' });
-    const sid = res[0].id;
-    for (const item of items) {
-      await api('/repuestos_items', 'POST', { solicitud_id: sid, ...item }, { Prefer: 'return=minimal' });
-    }
-    toast('Solicitud enviada ✓');
-    _mecRepItems = [0];
-    cargarRepuestosMecanico();
-  } catch(e) { toast('Error: '+e.message, 'err'); }
-}
-async function marcarRepuestoRecibido(solicitudId) {
-  try {
-    await api(`/repuestos_solicitud?id=eq.${solicitudId}`, 'PATCH', {
-      estado: 'recibido',
-      recibido_en: new Date().toISOString()
-    });
-    toast('Repuestos confirmados como recibidos ✓');
-    cargarRepuestosMecanico();
-  } catch(e) { toast('Error: ' + e.message, 'err'); }
-}
+// (Sistema viejo de repuestos eliminado: las funciones renderMecRepItem/
+//  agregarMecRepItem/quitarMecRepItem/enviarMecRepuestos/marcarRepuestoRecibido
+//  escribían en las tablas muertas repuestos_solicitud/repuestos_items y NO
+//  estaban conectadas a ningún botón. El flujo real usa solicitudes_repuesto/
+//  solicitud_items — ver js/views/repuestos.js y el panel del detalle de orden.)
