@@ -267,7 +267,7 @@ async function guardarOperario(mecId, cedulaOriginal) {
 
   if (!nombre) { showErr('Ingresa el nombre del operario.'); return; }
   if (!cedula) { showErr('Ingresa la cédula.'); return; }
-  if (!mecId && pass && pass.length < 6) { showErr('La contraseña debe tener al menos 6 caracteres.'); return; }
+  if (!mecId && (!pass || pass.length < 6)) { showErr('Asigna una contraseña de al menos 6 caracteres (no uses la cédula).'); return; }
 
   const btn = document.getElementById('op-btn-save');
   if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
@@ -278,12 +278,11 @@ async function guardarOperario(mecId, cedulaOriginal) {
       await api(`/mecanicos?id=eq.${mecId}`, 'PATCH', { nombre, rol, es_asesor: esAsesor, telegram_chat_id: tgChatId });
       toast(`${nombre} actualizado ✓`);
     } else {
-      // Crear: primero registrar en Supabase Auth
-      const signupPass = pass.length >= 6 ? pass : cedula;
+      // Crear: primero registrar en Supabase Auth (contraseña obligatoria, ya validada arriba)
       const signupRes = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY },
-        body: JSON.stringify({ email: `${cedula}@freimanautos.com`, password: signupPass })
+        body: JSON.stringify({ email: `${cedula}@freimanautos.com`, password: pass })
       });
       const signupData = await signupRes.json().catch(() => ({}));
       if (!signupRes.ok && signupData?.msg !== 'User already registered') {
@@ -292,7 +291,7 @@ async function guardarOperario(mecId, cedulaOriginal) {
       }
       // Insertar en tabla mecanicos
       await api('/mecanicos', 'POST', { nombre, cedula, rol, es_asesor: esAsesor, activo: true, telegram_chat_id: tgChatId }, { Prefer: 'return=minimal' });
-      toast(`${nombre} creado ✓ — contraseña inicial: ${signupPass === cedula ? 'su cédula' : 'la que configuraste'}`);
+      toast(`${nombre} creado ✓ — contraseña asignada`);
     }
     document.getElementById('modal-operario')?.remove();
     cargarMecanicosVista();
