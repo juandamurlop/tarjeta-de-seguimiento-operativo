@@ -1,4 +1,4 @@
-const CACHE_NAME = 'freimanautos-pwa-v272';
+const CACHE_NAME = 'freimanautos-pwa-v273';
 
 // Lista alineada con lo que carga index.html tras la reestructuración de
 // carpetas (css/main.css importa el resto; js dividido en core/ordenes/views).
@@ -115,10 +115,29 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // STALE-WHILE-REVALIDATE para assets locales GET (CSS/JS):
-  // responde al instante desde la caché (rápido) y, en paralelo, baja la
-  // versión nueva para actualizar la caché de cara a la próxima carga.
-  // Equilibrio ideal: rápido como cache-first y se actualiza solo.
+  // CÓDIGO (JS/CSS) → NETWORK-FIRST: si hay internet, SIEMPRE la última versión
+  // (y se guarda en caché para offline). Antes era stale-while-revalidate, que
+  // servía el código VIEJO en la primera carga tras un deploy y solo se
+  // actualizaba al recargar → causaba bugs raros que "desaparecían al recargar".
+  // Si no hay red, cae a la caché.
+  let esCodigo = false;
+  try { esCodigo = /\.(?:js|css)(?:\?|$)/i.test(new URL(request.url).pathname); } catch {}
+  if (esCodigo) {
+    event.respondWith(
+      fetch(request).then(response => {
+        if (response && response.status === 200 && response.type !== 'opaque') {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // OTROS assets locales (imágenes, fuentes, manifest) → STALE-WHILE-REVALIDATE:
+  // responde al instante desde la caché y baja la versión nueva en paralelo.
+  // (Estos cambian poco y conviene que sean rápidos.)
   event.respondWith(
     caches.match(request).then(cached => {
       const red = fetch(request).then(response => {
