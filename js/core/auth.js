@@ -105,41 +105,15 @@ async function doLogin() {
   }
 }
 
-// Determina perfil y datos del usuario a partir de la cédula
+// Determina perfil y datos del usuario a partir de la cédula.
+// Usa la función segura `detectar_perfil` (SECURITY DEFINER) en vez de leer las
+// tablas directamente: así el visitante anónimo NO necesita acceso a
+// configuracion/mecanicos/roles_config/clientes (esas tablas quedan cerradas).
 async function detectarPerfil(cedula) {
-  // Gerente tiene prioridad máxima
-  const gerenteCfg = await api(`/configuracion?clave=eq.gerente_cedula`);
-  if (gerenteCfg?.[0]?.valor && gerenteCfg[0].valor === cedula) {
-    const nombreGerente = (await api(`/configuracion?clave=eq.gerente_nombre`))?.[0]?.valor || 'Gerente General';
-    return { perfil: 'gerente', nombre: nombreGerente, id: null };
-  }
-
-  const config = await api(`/configuracion?clave=eq.jefe_cedula`);
-  if (config?.[0]?.valor === cedula) {
-    const nombreJefe = (await api(`/configuracion?clave=eq.jefe_nombre`))?.[0]?.valor || 'Jefe de Taller';
-    return { perfil: 'jefe', nombre: nombreJefe, id: null };
-  }
-
-  const mecs = await api(`/mecanicos?cedula=eq.${cedula}&activo=eq.true`);
-  if (mecs?.length) {
-    const m   = mecs[0];
-    const rol = m.rol || '';
-    const perfil = rol === 'taller' ? 'taller' : rol === 'repuestos' ? 'repuestos' : 'mecanico';
-    // Cargar permisos del rol personalizado si existe en roles_config
-    let permisos = null;
-    if (perfil === 'mecanico' && rol) {
-      const rolCfg = await api(`/roles_config?nombre=eq.${encodeURIComponent(rol)}`).catch(() => null);
-      if (rolCfg?.length) permisos = rolCfg[0].permisos || null;
-    }
-    return { perfil, nombre: m.nombre, id: m.id, datos: m, permisos };
-  }
-
-  const clientes = await api(`/clientes?cedula_nit=eq.${cedula}`);
-  if (clientes?.length) {
-    return { perfil: 'cliente', nombre: clientes[0].nombre || 'Cliente', id: clientes[0].id, datos: clientes[0] };
-  }
-
-  return null;
+  const ced = String(cedula || '').trim();
+  if (!ced) return null;
+  const r = await api('/rpc/detectar_perfil', 'POST', { p_cedula: ced }).catch(() => null);
+  return r || null;
 }
 
 function mostrarErrorLogin(msg) {

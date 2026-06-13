@@ -117,20 +117,13 @@ async function cargarOrdenesCliente() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading-state">Cargando tu vehículo...</div>';
   try {
-    // Match por cliente_id Y por cédula/NIT: muchas órdenes tienen cliente_id
-    // vacío (se crean con cedula_cliente), así que filtrar solo por id dejaba
-    // al cliente sin ver sus vehículos. La cédula siempre está, así que busca
-    // por ambos para no perder ninguna orden suya.
+    // El cliente NO accede a las tablas directamente: usa la función segura
+    // `vehiculo_cliente`, que devuelve SOLO las órdenes de su documento (por
+    // cliente_id o por cedula_cliente) más etapas/novedades/fotos. Así las
+    // tablas quedan cerradas al público y el cliente sigue viendo su vehículo.
     const doc = String(sesion.cedula || sesion.datos?.cedula_nit || '').trim();
-    let _qs;
-    if (sesion.id != null && doc) {
-      _qs = `or=(cliente_id.eq.${sesion.id},cedula_cliente.eq.${encodeURIComponent(doc)})`;
-    } else if (doc) {
-      _qs = `cedula_cliente=eq.${encodeURIComponent(doc)}`;
-    } else {
-      _qs = `cliente_id=eq.${sesion.id}`;
-    }
-    const ordenes = await api(`/ordenes?${_qs}&order=creado_en.desc`) || [];
+    const _vc = await api('/rpc/vehiculo_cliente', 'POST', { p_doc: doc }).catch(() => ({})) || {};
+    const ordenes = _vc.ordenes || [];
     if (!ordenes.length) {
       cont.innerHTML = _cliBrandHeader() + `<div class="empty-state">
         <div class="empty-state-icon">${ico('car', 32)}</div>
@@ -140,11 +133,10 @@ async function cargarOrdenesCliente() {
       return;
     }
 
-    const ids = ordenes.map(o => o.id).join(',');
-    const etapas = await api(`/etapas?orden_id=in.(${ids})&order=creado_en.asc`).catch(() => []) || [];
-    const novedades = await api(`/novedades?orden_id=in.(${ids})&order=creado_en.desc`).catch(() => []) || [];
-    const fotosEt = await api(`/fotos_etapas?orden_id=in.(${ids})&order=creado_en.desc&limit=12`).catch(() => []) || [];
-    const fotosIng = await api(`/fotos_ingreso?orden_id=in.(${ids})&order=creado_en.asc&limit=12`).catch(() => []) || [];
+    const etapas = _vc.etapas || [];
+    const novedades = _vc.novedades || [];
+    const fotosEt = _vc.fotos_etapas || [];
+    const fotosIng = _vc.fotos_ingreso || [];
 
     cont.innerHTML = _cliBrandHeader() + ordenes.map(orden => {
       const ets = etapas.filter(e => e.orden_id === orden.id);

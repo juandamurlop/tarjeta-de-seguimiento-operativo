@@ -822,15 +822,17 @@ async function cargarPantallaTaller() {
     const manana = new Date(hoy); manana.setDate(manana.getDate()+1);
     const hoyISO = hoy.toISOString().split('T')[0];
 
-    const [ordenesActivas, entregadasHoy, etapasActivas, etapasTodas, aprobacionesTodas, ordenesProgramadas, ordenesPulmon] = await Promise.all([
-      api(`/ordenes?estado=eq.Activa&estado=neq.Programada&or=(pulmon.is.null,pulmon.eq.false)&order=fecha_entrega_1.asc`).catch(()=>[]) || [],
-      api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${hoy.toISOString()}&order=entregada_en.desc`).catch(()=>[]) || [],
-      api(`/etapas?fin=is.null&inicio=not.is.null&select=id,orden_id,etapa,servicio,mecanico_id,tecnico,inicio,pausado,pausa_inicio,tiempo_pausado_min`).catch(()=>[]) || [],
-      api(`/etapas?select=id,orden_id,etapa,servicio,inicio,fin,tecnico&order=creado_en.asc`).catch(()=>[]) || [],
-      api(`/aprobaciones_etapa?select=etapa_id,estado&order=creado_en.desc`).catch(()=>[]) || [],
-      api(`/ordenes?estado=eq.Programada&order=fecha_programada.asc&select=id,numero_ot,placa,marca,linea,fecha_programada`).catch(()=>[]) || [],
-      api(`/ordenes?pulmon=eq.true&order=pulmon_desde.asc&select=id,numero_ot,placa,marca,linea,propietario,pulmon_desde,pulmon_tipo`).catch(()=>[]) || []
-    ]);
+    // La pantalla de TV NO inicia sesión, así que NO accede a las tablas
+    // directamente: pide todo a la función segura `tablero_taller`, que
+    // devuelve los mismos 7 conjuntos. Así las tablas quedan cerradas al público.
+    const _tab = await api('/rpc/tablero_taller', 'POST', {}).catch(()=>({})) || {};
+    const ordenesActivas     = _tab.ordenesActivas     || [];
+    const entregadasHoy      = _tab.entregadasHoy      || [];
+    const etapasActivas      = _tab.etapasActivas      || [];
+    const etapasTodas        = _tab.etapasTodas        || [];
+    const aprobacionesTodas  = _tab.aprobacionesTodas  || [];
+    const ordenesProgramadas = _tab.ordenesProgramadas || [];
+    const ordenesPulmon      = _tab.ordenesPulmon      || [];
 
     // Tomar el estado MÁS RECIENTE por etapa (orden desc ya viene del query)
     const _ultimoEstadoEtapa = {};

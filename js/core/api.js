@@ -22,10 +22,13 @@ const ALLOWED_UPLOAD_MIME = new Set([
 // Retorna { access_token, refresh_token, expires_in } o null si falla
 async function supabaseLogin(cedula, password) {
   try {
+    // Exige contraseña real. Antes caía a `password || cedula` (la cédula como
+    // contraseña), lo que permitía entrar conociendo solo la cédula. Eliminado.
+    if (!password) return null;
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY },
-      body: JSON.stringify({ email: `${cedula}@freimanautos.com`, password: password || cedula })
+      body: JSON.stringify({ email: `${cedula}@freimanautos.com`, password })
     });
     if (!res.ok) return null;
     return await res.json();
