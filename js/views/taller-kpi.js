@@ -122,6 +122,18 @@ function _kpiAbrirOrden(ordenId) {
   if (typeof abrirOrden === 'function') abrirOrden(ordenId);
 }
 
+// Botón "Actualizar": gira el ícono una vez (feedback) y recarga.
+function _kpiActualizar(btn) {
+  const ico = btn?.querySelector('.kpi-refresh-ico');
+  if (ico) {
+    ico.classList.remove('spin');
+    void ico.offsetWidth;            // reinicia la animación si se da clic seguido
+    ico.classList.add('spin');
+    ico.addEventListener('animationend', () => ico.classList.remove('spin'), { once: true });
+  }
+  cargarKPITaller();
+}
+
 // ── Función principal ────────────────────────────────────
 async function cargarKPITaller() {
   const cont = document.getElementById('taller-kpi-contenido');
@@ -430,8 +442,8 @@ async function cargarKPITaller() {
             <div style="font-weight:700;font-size:16px;color:var(--texto)">Gestión Operativa</div>
             <div class="kpi-live" style="font-size:11px;color:var(--gris-texto);background:var(--gris-bg);padding:3px 10px 3px 9px;border-radius:99px;border:1px solid var(--gris-borde)"><span class="kpi-live-dot"></span>EN VIVO · ${hora}</div>
           </div>
-          <button class="btn btn-ghost btn-sm" onclick="cargarKPITaller()">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          <button class="btn btn-ghost btn-sm" onclick="_kpiActualizar(this)">
+            <svg class="kpi-refresh-ico" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
             Actualizar
           </button>
         </div>

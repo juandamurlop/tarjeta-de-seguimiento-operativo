@@ -657,6 +657,11 @@
 .kpi-card-sub { font-size: 9px; color: var(--gris-mid); line-height: 1.2; margin-top: 1px; }
 .kpi-card-link { font-size: 9.5px; font-weight: 600; color: var(--azul-mid); margin-top: auto; padding-top: 4px; }
 
+/* Ícono "Actualizar": gira una vuelta al refrescar */
+.kpi-refresh-ico { transform-origin: 50% 50%; }
+.kpi-refresh-ico.spin { animation: kpiSpin .6s var(--ease-out, ease); }
+@keyframes kpiSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
 /* ── Animaciones "en vivo" del tablero ── */
 @keyframes kpiEntrada { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
 .kpi-grid .kpi-card, .kpi-resumen .kpi-res-item { animation: kpiEntrada .42s var(--ease-out) both; }
