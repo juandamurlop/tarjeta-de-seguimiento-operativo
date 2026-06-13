@@ -430,6 +430,34 @@ function montarTaller() {
         .tv-badge { font-size:2.5vw !important; padding:.3vh 1vw !important; border-radius:.5vw !important; }
         .tv-watermark { width:70vw !important; height:70vw !important; }
       }
+
+      /* ── Animaciones tipo tablero de aeropuerto (fondo blanco) ── */
+      @keyframes tv-flip       { 0%{transform:perspective(20vw) rotateX(-90deg);opacity:.15} 100%{transform:perspective(20vw) rotateX(0);opacity:1} }
+      @keyframes tv-chip-sweep { 0%{transform:translateX(-130%)} 100%{transform:translateX(430%)} }
+      @keyframes tv-scan       { 0%{transform:translateX(-100%)} 60%,100%{transform:translateX(650%)} }
+      @keyframes tv-timer-pulse{ 0%,100%{opacity:1} 50%{opacity:.68} }
+
+      /* Reloj split-flap: cada dígito "voltea" al cambiar */
+      .tv-clock { display:flex;align-items:center;gap:.22vw;font-size:1.6vw; }
+      .tv-flap  { display:inline-block;background:#1E3A5F;color:#fff;font-family:'DM Mono',monospace;
+                  font-weight:700;font-size:inherit;line-height:1;padding:.5vh .55vw;border-radius:.35vw;
+                  min-width:1.3vw;text-align:center; }
+      .tv-flap.flip { animation:tv-flip .4s ease; }
+      .tv-sep   { color:#1E3A5F;font-weight:700;font-size:inherit;padding:0 .08vw; }
+
+      /* Etapa activa: destello que la recorre + punto que late */
+      .chip-active     { position:relative;overflow:hidden; }
+      .chip-active::after { content:"";position:absolute;top:0;left:0;width:35%;height:100%;
+                            background:rgba(255,255,255,.55);animation:tv-chip-sweep 1.9s linear infinite;pointer-events:none; }
+      .chip-dot.active { animation:pulse-dot 1.1s ease-in-out infinite; }
+
+      /* Cronómetro activo: latido sutil */
+      .tv-timer-val { animation:tv-timer-pulse 2.2s ease-in-out infinite; }
+
+      /* Header: barra de escaneo que recorre el borde inferior */
+      .tv-header        { position:relative;overflow:hidden; }
+      .tv-header::after { content:"";position:absolute;bottom:0;left:0;height:2px;width:15%;
+                          background:#1E40AF;opacity:.85;animation:tv-scan 6s ease-in-out infinite;pointer-events:none; }
     `;
     document.head.appendChild(st);
   }
@@ -584,11 +612,21 @@ function _tvTTSAudio(texto) {
 }
 
 function iniciarRelojTaller() {
+  let _prevReloj = [];
   function tick() {
     const reloj = document.getElementById('taller-reloj');
     const fecha  = document.getElementById('taller-fecha');
     const now    = new Date();
-    if (reloj) reloj.textContent = now.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+    if (reloj) {
+      // Reloj split-flap: cada dígito en una "ficha" que voltea solo cuando cambia.
+      const chars = now.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).split('');
+      reloj.innerHTML = chars.map((ch, i) => {
+        if (ch === ':') return `<span class="tv-sep">:</span>`;
+        const flip = _prevReloj[i] !== ch ? ' flip' : '';
+        return `<span class="tv-flap${flip}">${ch}</span>`;
+      }).join('');
+      _prevReloj = chars;
+    }
     if (fecha)  fecha.innerHTML  = now.toLocaleDateString('es-CO', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }).toUpperCase();
   }
   tick();
