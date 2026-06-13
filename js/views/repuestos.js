@@ -135,6 +135,9 @@ const MARCAS_VEHICULOS = [
 
 // ── Sección activa ──────────────────────────────────────
 let _repSeccionActual = 'solicitudes';
+// ¿Mostrar el apartado de "Entregados" (completados) expandido?
+let _repVerEntregados = false;
+function _toggleEntregados() { _repVerEntregados = !_repVerEntregados; cargarSolicitudesRepuestos(); }
 
 // ── Polling global ──────────────────────────────────────
 let _repuestosPollingInterval = null;
@@ -1107,10 +1110,14 @@ async function cargarSolicitudesRepuestos() {
       entregado:         { cls:'badge-completada', txt:'Entregado' }
     };
 
+    // Pendientes / en proceso = vista principal (recuadros). Entregados = aparte.
+    const pendientes = sols.filter(s => s.estado !== 'entregado');
+    const entregados = sols.filter(s => s.estado === 'entregado').slice(0, 40);
+
     renderSinParpadeo(cont, `<div style="padding:20px">
       <div style="font-size:16px;font-weight:700;margin-bottom:16px">Solicitudes de repuestos</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;align-items:stretch">
-        ${sols.map(s => {
+      ${pendientes.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;align-items:stretch">
+        ${pendientes.map(s => {
           const o = om[s.orden_id] || {};
           const items = todosItems.filter(i => i.solicitud_id === s.id);
           const eb = estadoBadge[s.estado] || { cls:'', txt: s.estado };
@@ -1164,7 +1171,23 @@ async function cargarSolicitudesRepuestos() {
             </div>
           </div>`;
         }).join('')}
-      </div>
+      </div>` : `<div class="empty-state" style="padding:24px 0"><p>✓ Sin solicitudes pendientes</p></div>`}
+      ${entregados.length ? `<div style="margin-top:20px;border-top:1px solid var(--gris-borde);padding-top:14px">
+        <button class="btn btn-ghost btn-sm" onclick="_toggleEntregados()" style="display:inline-flex;align-items:center;gap:6px">${_repVerEntregados ? '▾' : '▸'} Entregados · ${entregados.length}</button>
+        ${_repVerEntregados ? `<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
+          ${entregados.map(s => {
+            const o = om[s.orden_id] || {};
+            const its = todosItems.filter(i => i.solicitud_id === s.id);
+            const reps = (its.length ? its.map(i => i.repuesto) : [s.repuesto].filter(Boolean)).slice(0, 2).map(escapeHtml).join(', ');
+            return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--gris-borde);border-radius:8px;background:#F8FAFC">
+              <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:13px;color:#0F172A;min-width:64px">${escapeHtml(o.placa || '—')}</span>
+              <span style="flex:1;min-width:0;font-size:12px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${reps || '—'}</span>
+              <span class="badge badge-completada" style="flex-shrink:0">Entregado</span>
+              <button class="btn btn-ghost btn-xs" onclick="_verSolicitud(${s.id})">Ver</button>
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+      </div>` : ''}
     </div>`);
 
     iniciarPollingRepuestos(() => {
