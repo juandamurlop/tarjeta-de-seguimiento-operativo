@@ -29,9 +29,33 @@ function json(obj: unknown, status = 200) {
   });
 }
 
+// Verifica que quien llama sea un USUARIO AUTENTICADO (personal del taller),
+// no la llave 'anon' pública ni un anónimo. Evita que cualquiera de afuera
+// gaste el saldo de OpenAI. Devuelve true si el token es de un usuario real.
+async function esUsuarioAutenticado(req: Request): Promise<boolean> {
+  const SB_URL = Deno.env.get("SUPABASE_URL") || "";
+  const SB_ANON = Deno.env.get("SUPABASE_ANON_KEY") || "";
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  // Sin token, o es exactamente la llave pública anon → no autorizado.
+  if (!token || token === SB_ANON) return false;
+  try {
+    // Valida la firma del token contra Supabase Auth; solo pasa un usuario real.
+    const r = await fetch(`${SB_URL}/auth/v1/user`, {
+      headers: { apikey: SB_ANON, Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return false;
+    const u = await r.json().catch(() => null);
+    return !!(u && u.id && (u.role === "authenticated" || u.aud === "authenticated"));
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
+    if (!(await esUsuarioAutenticado(req))) return json({ error: "No autorizado" }, 401);
+
     const { imagen, tipo } = await req.json();
     if (!imagen) return json({ error: "Falta la imagen" }, 400);
     if (!OPENAI_KEY) return json({ error: "Falta el secreto OPENAI_API_KEY" }, 500);

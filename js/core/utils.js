@@ -201,12 +201,14 @@ function comprimirImagenFile(file, maxDim = 1400, quality = 0.72) {
 async function ocrLeerTarjeta(file) {
   const { base64, mime } = await comprimirImagenBase64(file);
 
+  // Manda el token del usuario logueado (no la llave publica): así la función
+  // OCR solo responde a personal autenticado y nadie de afuera gasta el saldo.
   const res = await fetch(`${SUPABASE_URL}/functions/v1/ocr-tarjeta`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       apikey: SUPABASE_KEY,
-      Authorization: 'Bearer ' + SUPABASE_KEY
+      Authorization: 'Bearer ' + (typeof _getBearer === 'function' ? _getBearer() : SUPABASE_KEY)
     },
     body: JSON.stringify({ imagen: base64, tipo: mime })
   });
