@@ -123,11 +123,29 @@ function mostrarErrorLogin(msg) {
 
 let _tokenRefreshInterval = null;
 
+// La sesión vive en sessionStorage (propia de CADA pestaña → puedes tener
+// gerente en una pestaña y repuestos en otra sin que se pisen). En localStorage
+// guardamos un respaldo de la ÚLTIMA sesión para NO sacar al usuario al cerrar y
+// reabrir la app (PWA): una pestaña nueva sin sesión propia adopta ese respaldo.
+function _guardarSesion(datos) {
+  const s = JSON.stringify(datos);
+  try { sessionStorage.setItem('sesion_freiman', s); } catch(e) {}
+  try { localStorage.setItem('sesion_freiman', s); } catch(e) {}
+}
+function _leerSesionGuardada() {
+  let s = null;
+  try { s = sessionStorage.getItem('sesion_freiman'); } catch(e) {}
+  if (!s) {
+    try { s = localStorage.getItem('sesion_freiman'); } catch(e) {}
+    // Sembrar el respaldo como sesión propia de ESTA pestaña (queda independiente).
+    if (s) { try { sessionStorage.setItem('sesion_freiman', s); } catch(e) {} }
+  }
+  return s;
+}
+
 function iniciarSesion(datos) {
   sesion = datos;
-  // localStorage (no sessionStorage): así la sesión PERSISTE aunque se cierre
-  // y reabra la app (en PWA, cerrar = se borraba sessionStorage → se salía).
-  localStorage.setItem('sesion_freiman', JSON.stringify(datos));
+  _guardarSesion(datos);
   _iniciarRefreshPeriodico();
   montarApp();
 }
@@ -158,8 +176,9 @@ async function logout() {
 
 async function checkSesionGuardada() {
   try {
-    // Lee de localStorage; si no hay, usa el viejo sessionStorage (migración).
-    const s = localStorage.getItem('sesion_freiman') || sessionStorage.getItem('sesion_freiman');
+    // Prefiere la sesión propia de esta pestaña (sessionStorage); si no hay,
+    // adopta el respaldo persistente (localStorage).
+    const s = _leerSesionGuardada();
     if (!s) return;
     sesion = JSON.parse(s);
 
@@ -186,6 +205,6 @@ async function refrescarToken() {
   sesion.access_token  = data.access_token;
   sesion.refresh_token = data.refresh_token;
   sesion.expires_at    = Date.now() + (data.expires_in ?? 3600) * 1000;
-  localStorage.setItem('sesion_freiman', JSON.stringify(sesion));
+  _guardarSesion(sesion);
   return true;
 }

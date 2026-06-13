@@ -105,6 +105,17 @@ document.addEventListener('DOMContentLoaded', function() {
   // como en el enlace de WhatsApp) abre el vehículo directo; sin valor muestra
   // la pantalla para que el cliente escriba su cédula/NIT.
   const _q = new URLSearchParams(location.search);
+
+  // Salida de emergencia: abrir la app con ?salir (o ?logout) borra la sesión
+  // guardada y vuelve al login. Útil si un equipo quedó atrapado en un perfil
+  // (p. ej. la pantalla del taller) sin botón visible para salir.
+  if (_q.has('salir') || _q.has('logout')) {
+    try { sessionStorage.removeItem('sesion_freiman'); } catch(e) {}
+    try { localStorage.removeItem('sesion_freiman'); } catch(e) {}
+    location.replace(location.pathname); // recarga sin el parámetro → muestra login
+    return;
+  }
+
   if (_q.has('cliente') && typeof montarLoginCliente === 'function') {
     montarLoginCliente(_q.get('cliente') || '');
     return;

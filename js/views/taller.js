@@ -458,6 +458,9 @@ function _mostrarPantallaActivacion() {
       </button>
       <div id="tv-voz-status" style="font-size:.65vw;color:#9CA3AF;margin-top:.5vh"></div>
       <div class="tv-activate-sub">Presiona una vez para activar el audio y comenzar</div>
+      <button onclick="logout()" style="margin-top:18px;background:none;border:1px solid #4B5563;color:#9CA3AF;font-size:13px;padding:8px 18px;border-radius:8px;cursor:pointer">
+        ← Salir / cambiar de perfil
+      </button>
     </div>`;
 }
 
