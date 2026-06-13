@@ -1067,7 +1067,10 @@ function mostrarSeccionRep(sec) {
 async function cargarSolicitudesRepuestos() {
   const cont = document.getElementById('rep-contenido');
   if (!cont) return;
-  cont.innerHTML = '<div class="loading-state">Cargando...</div>';
+  // "Cargando..." solo en la PRIMERA carga (no en cada tick del polling): así
+  // el auto-refresco no produce el flash blanco. El contenido se actualiza con
+  // renderSinParpadeo (morph del DOM) más abajo.
+  mostrarCargandoSiVacio(cont, '<div class="loading-state">Cargando...</div>');
 
   try {
     const sols = await api('/solicitudes_repuesto?estado=in.(enviado_repuestos,cotizado,pedido,recibido_taller,entregado)&order=creado_en.desc&select=*').catch(()=>[]) || [];
