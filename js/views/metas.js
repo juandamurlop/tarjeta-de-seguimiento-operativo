@@ -80,7 +80,7 @@ async function cargarDashboardMetas() {
       </div>
       ${metaMes.nota ? `
         <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:8px 12px;font-size:11px;color:#92400E;margin-bottom:10px">
-          <strong>Nota del contador:</strong> ${metaMes.nota}
+          <strong>Nota del contador:</strong> ${escapeHtml(metaMes.nota)}
         </div>` : ''}
     ` : `
       <div style="background:var(--gris-bg);border:1px dashed var(--gris-borde);border-radius:10px;padding:20px;text-align:center;color:var(--gris-mid);margin-bottom:10px">

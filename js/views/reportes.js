@@ -533,7 +533,7 @@ async function generarReporteAseguradoras(asegFiltro, fechaIni, fechaFin, format
     ].join('');
 
     const resumenHtml = resumenAseg.map((a,i) => `<tr>
-      <td><strong style="color:#7C3AED">${i+1}. ${a.nombre}</strong></td>
+      <td><strong style="color:#7C3AED">${i+1}. ${escapeHtml(a.nombre)}</strong></td>
       <td><strong>${a.total}</strong></td>
       <td style="font-family:monospace">${fmt(a.autorizado)}</td>
       <td style="font-family:monospace;color:${a.porCobrar>0?'#DC2626':'#374151'}">${a.porCobrar>0?fmt(a.porCobrar):'—'}</td>
@@ -705,7 +705,7 @@ async function generarReporteServicio(servicio, fechaIni, fechaFin, formato) {
     // PDF
     const colSrv = {latoneria:'#DC2626',pintura:'#D97706',mecanica:'#2563EB',adicionales:'#059669'}[servicio]||'#1E3A5F';
     const opHtml = operarios.map(o => `<tr>
-      <td><strong>${o.nombre}</strong></td>
+      <td><strong>${escapeHtml(o.nombre)}</strong></td>
       <td>${o.etapas}</td>
       <td style="color:#2563EB;font-weight:700">${hrStr(o.neto)}</td>
       <td>${hrStr(o.promNeto)}</td>
@@ -1735,7 +1735,7 @@ function _generarPDF(d, titulo, subtitulo) {
       <th>Hrs promedio/etapa</th><th>Más lenta</th><th>Más rápida</th><th>Hrs total neto</th>
     </tr></thead><tbody>
       ${servicios.map(s => `<tr>
-        <td><strong>${s.nombre}</strong></td>
+        <td><strong>${escapeHtml(s.nombre)}</strong></td>
         <td><span class="badge badge-blue">${s.etapas}</span></td>
         <td style="font-family:monospace">${fmt(s.ingresos)}</td>
         <td>${s.horasPromedio}h</td>
@@ -1867,7 +1867,7 @@ function _generarPDF(d, titulo, subtitulo) {
         <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Top aseguradoras</div>
         ${rankingAseguradoras.slice(0,6).map((a,i) => `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:11px">
-            <span style="font-weight:600">${i+1}. ${a.nombre}</span>
+            <span style="font-weight:600">${i+1}. ${escapeHtml(a.nombre)}</span>
             <span>${a.ordenes} órd. · <span style="font-family:monospace">${fmt(a.valor)}</span></span>
           </div>`).join('')}
       </div>` : ''}
@@ -1876,7 +1876,7 @@ function _generarPDF(d, titulo, subtitulo) {
     <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Flotillas / Empresas</div>
     <table><thead><tr><th>Empresa / Flotilla</th><th>Órdenes</th><th>Valor MO</th></tr></thead><tbody>
       ${rankingFlotillas.map((f,i) => `<tr>
-        <td><span style="font-weight:${i===0?'700':'400'};color:#7C3AED">${f.nombre}</span></td>
+        <td><span style="font-weight:${i===0?'700':'400'};color:#7C3AED">${escapeHtml(f.nombre)}</span></td>
         <td><span class="badge" style="background:#F3E8FF;color:#7C3AED">${f.ordenes}</span></td>
         <td style="font-family:monospace">${fmt(f.valor)}</td>
       </tr>`).join('')}
@@ -1964,8 +1964,8 @@ function _generarPDF(d, titulo, subtitulo) {
         const vpColor = o.diasVsPromesa==null?'#aaa':o.diasVsPromesa<=0?'#059669':'#DC2626';
         const vpLabel = o.diasVsPromesa==null?'—':o.diasVsPromesa===0?'A tiempo':o.diasVsPromesa<0?`${Math.abs(o.diasVsPromesa)}d antes`:`${o.diasVsPromesa}d tarde`;
         return `<tr>
-          <td><strong style="font-family:monospace">${o.placa}</strong></td>
-          <td>${o.vehiculo}</td><td>${o.propietario}</td><td>${o.aseguradora}</td>
+          <td><strong style="font-family:monospace">${escapeHtml(o.placa)}</strong></td>
+          <td>${escapeHtml(o.vehiculo)}</td><td>${escapeHtml(o.propietario)}</td><td>${escapeHtml(o.aseguradora)}</td>
           <td>${fmtFecha(o.ingreso)}</td><td>${fmtHora(o.entrega)}</td>
           <td>${o.duracionHrs?o.duracionHrs+'h':'—'}</td>
           <td style="color:${vpColor};font-weight:600">${vpLabel}</td>

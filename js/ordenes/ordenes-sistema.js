@@ -1461,7 +1461,7 @@ async function recargarListasNuevaOrden() {
     const sel = document.getElementById(id);
     const lista = i === 0 ? aseg : flot;
     if (sel) sel.innerHTML = '<option value="">— Seleccionar —</option>' +
-      lista.map(x => `<option value="${x.nombre}">${x.nombre}</option>`).join('');
+      lista.map(x => `<option value="${escapeHtml(x.nombre)}">${escapeHtml(x.nombre)}</option>`).join('');
   });
   // Asesor de servicio: operarios marcados como asesor + el jefe de taller
   // (mismo criterio que las encuestas, para que coincidan).

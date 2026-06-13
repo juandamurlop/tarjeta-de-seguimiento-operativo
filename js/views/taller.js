@@ -1009,7 +1009,7 @@ async function cargarPantallaTaller() {
             <div style="font-family:'DM Mono',monospace;font-size:.8vw;font-weight:700;color:#374151;letter-spacing:.04em;white-space:nowrap">${otDe(orden)}</div>
             ${orden.placa ? `<button onclick="event.stopPropagation();abrirPopupConsumibles('${orden.placa}',${orden.kilometraje||orden.km||0})" title="Consumibles & Docs" style="background:none;border:1px solid #D1D5DB;border-radius:.3vw;padding:.15vh .4vw;cursor:pointer;font-size:.65vw;color:#374151;line-height:1;flex-shrink:0" tabindex="-1">🔧</button>` : ''}
           </div>
-          ${orden.propietario ? `<div class="tv-propietario">${orden.propietario}</div>` : ''}
+          ${orden.propietario ? `<div class="tv-propietario">${escapeHtml(orden.propietario)}</div>` : ''}
           <div class="tv-vehiculo">${[orden.marca,orden.linea].filter(Boolean).join(' ')||'—'}</div>
         </td>
         <td><div class="etapas-chips">${chips}</div></td>
