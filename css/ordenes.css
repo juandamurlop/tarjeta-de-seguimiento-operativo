@@ -1035,6 +1035,12 @@
     padding-bottom: 6px;
     margin-bottom: 14px;
     gap: 6px;
+    /* Ocupar TODO el ancho disponible y no más: así el scroll ocurre DENTRO de
+       la barra (antes se desbordaba y "Archivadas" quedaba cortada). */
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex: 1 1 100%;
     /* Ocultar scrollbar pero mantener funcionalidad */
     scrollbar-width: none;
   }
