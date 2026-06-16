@@ -152,7 +152,7 @@ function montarTaller() {
 
       /* ── BODY ── */
       .tv-body {
-        flex:1;overflow:hidden;display:flex;
+        flex:1;overflow:hidden;display:flex;position:relative;
       }
       .tv-list-wrap {
         flex:1;overflow:hidden;display:flex;flex-direction:column;
@@ -499,20 +499,26 @@ function montarTaller() {
 
       /* ONDA UNIFORME: destello lento que recorre fila 1, luego fila 2, etc.
          (mismo ritmo en todos los recuadros + retardo escalonado por fila). */
+      /* Se DESACTIVAN los destellos por recuadro (se veían cortados): ahora hay
+         UNA sola onda que cruza todo el tablero (ver .tv-sweep). */
       .chip::after,
       .tv-badge::after,
       .tv-placa-box::after,
-      .tv-tec-box:not(.empty)::after,
+      .tv-tec-box::after,
       .tv-tiempo-box::after,
-      .tv-entrega-box::after {
-        animation-duration: 6s;
-        animation-delay: calc(var(--row-i, 0) * .5s);
+      .tv-entrega-box::after,
+      .tv-panel-item::after,
+      .tv-prog-item::after { display:none !important; }
+
+      /* ONDA ÚNICA: barra de luz que recorre TODO el tablero de izquierda a
+         derecha, como una sola animación continua e integrada. */
+      .tv-sweep {
+        position:absolute;top:0;bottom:0;left:0;width:13vw;
+        background:linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.5) 50%, rgba(255,255,255,0) 100%);
+        pointer-events:none;z-index:6;will-change:transform;
+        animation:tv-sweep-move 7s linear infinite;
       }
-      /* Paneles (Listos hoy / Programadas): mismo ritmo lento, escalonados por item. */
-      .tv-panel-item::after, .tv-prog-item::after {
-        animation-duration: 6s;
-        animation-delay: calc(var(--row-i, 0) * .5s);
-      }
+      @keyframes tv-sweep-move { 0%{transform:translateX(-15vw)} 100%{transform:translateX(105vw)} }
     `;
     document.head.appendChild(st);
   }
@@ -1254,6 +1260,7 @@ async function cargarPantallaTaller() {
           </div>
 
           <div class="tv-body">
+            <div class="tv-sweep"></div>
             <div class="tv-list-wrap">
               <div class="tv-table-wrap">
                 <table class="tv-table">
