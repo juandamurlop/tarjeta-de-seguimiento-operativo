@@ -220,17 +220,17 @@ function montarTaller() {
         padding:.2vh .5vw;border-radius:.3vw;
         font-size:.62vw;font-weight:700;white-space:nowrap;border:1px solid transparent;
       }
-      .chip-approved  { background:#DCFCE7;color:#15803D;border-color:#86EFAC; } /* verde oscuro = calidad aprobada */
-      .chip-done      { background:#F0FDF4;color:#16A34A;border-color:#BBF7D0; } /* verde claro = terminado, espera calidad */
-      .chip-reproceso { background:#FEF2F2;color:#DC2626;border-color:#FECACA; }
-      .chip-active    { background:#FEF3C7;color:#B45309;border-color:#FDE68A; }
-      .chip-waiting   { background:#FFFBEB;color:#D97706;border-color:#FDE68A; }
-      .chip-pending   { background:#F3F4F6;color:#6B7280;border-color:#E5E7EB; }
+      .chip-approved  { background:#DCFCE7;color:#15803D;border-color:#86EFAC; } /* verde = calidad aprobada */
+      .chip-done      { background:#CCFBF1;color:#0D9488;border-color:#5EEAD4; } /* teal = terminado, espera calidad */
+      .chip-reproceso { background:#FEE2E2;color:#DC2626;border-color:#FCA5A5; } /* rojo = reproceso */
+      .chip-active    { background:#DBEAFE;color:#1D4ED8;border-color:#93C5FD; } /* azul = en curso AHORA */
+      .chip-waiting   { background:#FEF3C7;color:#B45309;border-color:#FCD34D; } /* ambar = por iniciar */
+      .chip-pending   { background:#F3F4F6;color:#6B7280;border-color:#E5E7EB; } /* gris = sin empezar */
       .chip-dot { width:.45vw;height:.45vw;border-radius:50%;flex-shrink:0; }
       .chip-dot.approved  { background:#16A34A; }
-      .chip-dot.done      { background:#4ADE80; }
+      .chip-dot.done      { background:#14B8A6; }
       .chip-dot.reproceso { background:#EF4444; }
-      .chip-dot.active    { background:#F59E0B; }
+      .chip-dot.active    { background:#2563EB; }
       .chip-dot.waiting   { background:transparent;border:.8px solid #F59E0B; }
       .chip-dot.pending   { background:transparent;border:.8px solid #D1D5DB; }
 
