@@ -1386,6 +1386,57 @@ function _reRenderFilasCot() {
   });
 }
 
+// ── Filtro de proveedores por la MARCA del vehículo ────────────────
+// Datos del proveedor desplegable de la cotización en curso.
+let _cotProvData = { provConScore: [], vehMarca: '', favoritoId: null, cat: null };
+let _cotVerTodosProv = false;
+
+// ¿Este proveedor maneja la marca del vehículo? (sin marca del vehículo, o
+// proveedor multimarca, o sin marcas configuradas → se muestra igual.)
+function _provManejaMarca(p, vehMarca) {
+  if (!vehMarca) return true;
+  if (p.multimarca) return true;
+  const ms = Array.isArray(p.marcas) ? p.marcas : [];
+  if (!ms.length) return true; // aún sin configurar → no lo escondemos
+  const t = String(vehMarca).trim().toUpperCase();
+  return ms.some(m => String(m).trim().toUpperCase() === t);
+}
+
+// Arma las opciones del <select> de proveedor (filtradas por marca, salvo "ver todos").
+function _buildProvOpts() {
+  const { provConScore, vehMarca, favoritoId, cat } = _cotProvData;
+  const lista = _cotVerTodosProv ? provConScore : provConScore.filter(p => _provManejaMarca(p, vehMarca));
+  return '<option value="">— Seleccionar proveedor —</option>' + lista.map(p => {
+    const star = p.id === favoritoId ? '★ ' : '';
+    const sc = p._sc;
+    const info = sc
+      ? ` — ${sc.estrellas}★${sc.manual ? ' (manual)' : ''}${sc.avgDias != null ? ', ' + (Math.round(sc.avgDias*10)/10) + 'd' : ''}`
+      : (p._tag ? ` — maneja ${cat}` : '');
+    return `<option value="${p.id}" data-wa="${escapeHtml(p.whatsapp||'')}">${star}${escapeHtml(p.nombre)}${info}</option>`;
+  }).join('');
+}
+
+// Texto/enlace del filtro de marca (cuántos ocultos + alternar "ver todos").
+function _filtroMarcaHtml() {
+  const { provConScore, vehMarca } = _cotProvData;
+  if (!vehMarca) return `<span id="cot-filtro-marca"></span>`;
+  const ocultos = provConScore.filter(p => !_provManejaMarca(p, vehMarca)).length;
+  const link = `<a onclick="_toggleVerTodosProv()" style="color:var(--azul);cursor:pointer;font-weight:600">${_cotVerTodosProv ? 'filtrar por ' + escapeHtml(vehMarca) : 'ver todos'}</a>`;
+  const txt = _cotVerTodosProv
+    ? `Mostrando TODOS los proveedores`
+    : `Solo proveedores de <b>${escapeHtml(vehMarca)}</b>${ocultos ? ` · ${ocultos} oculto${ocultos > 1 ? 's' : ''}` : ''}`;
+  return `<span id="cot-filtro-marca" style="font-size:11px;color:var(--gris-mid)">${txt} · ${link}</span>`;
+}
+
+function _toggleVerTodosProv() {
+  _cotVerTodosProv = !_cotVerTodosProv;
+  const hid = document.getElementById('_cot-prov-opts');
+  if (hid) hid.value = _buildProvOpts();
+  _reRenderFilasCot();
+  const t = document.getElementById('cot-filtro-marca');
+  if (t) t.outerHTML = _filtroMarcaHtml();
+}
+
 // ── Puntaje de proveedores (desde el historial de cotizaciones) ──
 // Combina velocidad de entrega (días promedio) y confianza (% de veces
 // que su cotización fue la elegida por el jefe). Devuelve por proveedor:
@@ -1460,23 +1511,23 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
   const _cat = sol?.categoria;
   // Boost: si el proveedor está etiquetado con la categoría de la solicitud,
   // sube en las sugerencias aunque no tenga historial todavía.
-  const provConScore = proveedores.map(p => ({
-      ...p,
-      _sc: _scores[p.id] || null,
-      _tag: !!(_cat && Array.isArray(p.categorias) && p.categorias.includes(_cat))
-    }))
+  const provConScore = proveedores.map(p => {
+      const manual = (p.puntaje_manual != null && p.puntaje_manual !== '') ? Number(p.puntaje_manual) : null;
+      const auto = _scores[p.id] || null;
+      // El puntaje MANUAL manda sobre el automático cuando está definido.
+      const _sc = manual != null
+        ? { estrellas: manual, puntaje: Math.round(manual * 20), avgDias: auto?.avgDias ?? null, n: auto?.n || 0, manual: true }
+        : auto;
+      return { ...p, _sc, _tag: !!(_cat && Array.isArray(p.categorias) && p.categorias.includes(_cat)) };
+    })
     .sort((a,b) => ((b._sc?.puntaje || 0) + (b._tag ? 15 : 0)) - ((a._sc?.puntaje || 0) + (a._tag ? 15 : 0)));
-  const favorito   = provConScore.find(p => (p._sc && p._sc.n > 0) || p._tag) || null;
+  const favorito   = provConScore.find(p => (p._sc && (p._sc.manual || p._sc.n > 0)) || p._tag) || null;
   const favoritoId = favorito?.id || null;
 
-  // Opciones del select con favorito ★, etiqueta de categoría y puntaje
-  const provOpts = '<option value="">— Seleccionar proveedor —</option>' +
-    provConScore.map(p => {
-      const star = p.id === favoritoId ? '★ ' : '';
-      const sc   = p._sc;
-      const info = sc ? ` — ${sc.estrellas}★${sc.avgDias != null ? ', ' + (Math.round(sc.avgDias*10)/10) + 'd' : ''}` : (p._tag ? ` — maneja ${_cat}` : '');
-      return `<option value="${p.id}" data-wa="${escapeHtml(p.whatsapp||'')}">${star}${escapeHtml(p.nombre)}${info}</option>`;
-    }).join('');
+  // Guardar para el filtro por marca y armar las opciones (filtradas por la marca del vehículo).
+  _cotVerTodosProv = false;
+  _cotProvData = { provConScore, vehMarca: marca || '', favoritoId, cat: _cat };
+  const provOpts = _buildProvOpts();
 
   // Filas iniciales
   _cotFilas = cots.length
@@ -1515,6 +1566,7 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
             style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--gris-mid);padding:0 4px;line-height:1">✕</button>
         </div>
         <div id="cot-contactos"></div>
+        <div style="margin-top:6px">${_filtroMarcaHtml()}</div>
       </div>
 
       <!-- TABLA TIPO EXCEL -->
@@ -1800,6 +1852,13 @@ function abrirModalProveedor(prov) {
             <button type="button" class="btn btn-ghost btn-sm" onclick="_agregarCategoriaProv()">Agregar</button>
           </div>
         </div>
+        <div class="field">
+          <label>Puntaje manual <span style="font-weight:400;color:var(--gris-mid);font-size:11px">(opcional — si lo pones, manda sobre el automático)</span></label>
+          <select id="prov-puntaje" style="width:100%">
+            <option value="">Automático (por historial)</option>
+            ${[5,4.5,4,3.5,3,2.5,2,1.5,1].map(v=>`<option value="${v}" ${Number(p.puntaje_manual)===v?'selected':''}>${'★'.repeat(Math.floor(v))}${v%1?'½':''} · ${v}</option>`).join('')}
+          </select>
+        </div>
         ${p.id ? `<div class="field"><label>Estado</label>
           <select id="prov-activo" style="width:100%">
             <option value="true"  ${p.activo!==false?'selected':''}>Activo</option>
@@ -1883,8 +1942,10 @@ async function guardarProveedor(id) {
       const res = await api('/proveedores','POST',body,{Prefer:'return=representation'});
       provId = res?.[0]?.id;
     }
-    // categorias en PATCH aparte (catch) para no romper si falta la columna.
-    if (provId) await api(`/proveedores?id=eq.${provId}`,'PATCH',{ categorias }).catch(()=>{});
+    // categorias + puntaje manual en PATCH aparte (catch) para no romper si falta la columna.
+    const _ptVal = document.getElementById('prov-puntaje')?.value;
+    const puntaje_manual = _ptVal ? Number(_ptVal) : null;
+    if (provId) await api(`/proveedores?id=eq.${provId}`,'PATCH',{ categorias, puntaje_manual }).catch(()=>{});
     toast('Proveedor guardado ✓');
     document.getElementById('modal-proveedor')?.remove();
     cargarProveedores();
