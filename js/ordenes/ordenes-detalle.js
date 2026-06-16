@@ -825,7 +825,7 @@ async function finalizarEtapa(eid, nombre, servicio) {
       }) 
     }).catch(() => {});
     // Auto-actualizar consumible si el nombre de la etapa coincide — sin confirmación
-    const _kwConsumibles = { aceite: 'aceite', llantas: 'llanta', frenos: 'freno', filtro_aire: 'filtro aire', filtro_combustible: 'filtro combust', distribucion: 'distribuci', bateria: 'bater' };
+    const _kwConsumibles = { aceite: 'aceite', llantas: 'llanta', frenos: 'freno', filtro_aire: 'filtro aire', filtro_combustible: 'filtro combust', bateria: 'bater' };
     const _nombreLower = nombre.toLowerCase();
     for (const [_tipo, _kw] of Object.entries(_kwConsumibles)) {
       if (_nombreLower.includes(_kw) && ordenActual?.placa) {

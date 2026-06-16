@@ -8,14 +8,12 @@ const CONSUMIBLES_CONFIG = {
   frenos:             { label: 'Pastillas de freno',  icon: '🔴', kmDefault: 40000 },
   filtro_aire:        { label: 'Filtro de aire',      icon: '💨', kmDefault: 15000 },
   filtro_combustible: { label: 'Filtro combustible',  icon: '⛽', kmDefault: 30000 },
-  distribucion:       { label: 'Distribución',        icon: '⚙️', kmDefault: 80000 },
   bateria:            { label: 'Batería',             icon: '🔋', kmDefault: null, porFecha: true }
 };
 
 const DOCUMENTOS_CONFIG = {
   soat:          { label: 'SOAT',                icon: '📋' },
   seguro:        { label: 'Seguro todo riesgo',  icon: '🛡️' },
-  impuesto:      { label: 'Impuesto rodamiento', icon: '💰' },
   tecnomecanica: { label: 'Tecnomecánica',       icon: '🔧' }
 };
 
