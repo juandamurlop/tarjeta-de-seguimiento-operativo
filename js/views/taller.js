@@ -519,6 +519,15 @@ function montarTaller() {
         animation:tv-sweep-move 7s linear infinite;
       }
       @keyframes tv-sweep-move { 0%{transform:translateX(-15vw)} 100%{transform:translateX(105vw)} }
+
+      /* Reordenamiento: la fila actualizada VUELA por encima (elevada con
+         sombra y z-index alto) y, al insertarse, queda un instante resaltada. */
+      .tv-tbody tr { transition: background-color .8s ease; }
+      tr.tv-fly {
+        position:relative; z-index:50;
+        box-shadow:0 1.2vw 2.8vw rgba(15,23,42,.28); border-radius:.5vw;
+      }
+      tr.tv-inserted { background:rgba(37,99,235,.07); }
     `;
     document.head.appendChild(st);
   }
@@ -670,6 +679,42 @@ function _tvTTSAudio(texto) {
   } else {
     window.speechSynthesis.addEventListener('voiceschanged', _hablar, { once: true });
   }
+}
+
+// Anima el reordenamiento cuando una orden se actualiza: esa fila VUELA por
+// encima de las demás (elevada, con zoom) hasta la primera posición, hace una
+// micro-pausa y se inserta al nivel del resto; las demás bajan suaves (FLIP).
+function _tvAnimarReorden(tbody, oldTop, changedId) {
+  const rows = [...tbody.querySelectorAll('tr[id^="tv-row-"]')];
+  rows.forEach(tr => {
+    const old = oldTop[tr.id];
+    if (old == null) return; // fila nueva (ya tiene su animación de entrada)
+    const dy = old - tr.getBoundingClientRect().top;
+    const esCambiada = tr.id === `tv-row-${changedId}`;
+    if (!dy && !esCambiada) return;
+    tr.style.transition = 'none';
+    tr.style.transform = esCambiada ? `translateY(${dy}px) scale(1.06)` : `translateY(${dy}px)`;
+    if (esCambiada) tr.classList.add('tv-fly');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (esCambiada) {
+        // Vuela por encima hasta arriba MANTENIENDO el zoom
+        tr.style.transition = 'transform 1.2s cubic-bezier(.32,.66,.2,1)';
+        tr.style.transform = 'translateY(0) scale(1.06)';
+        // Micro-pausa arriba → se inserta (baja a nivel) → queda un instante resaltada
+        setTimeout(() => {
+          tr.style.transition = 'transform .6s cubic-bezier(.4,0,.2,1), box-shadow .6s ease';
+          tr.style.transform = 'scale(1)';
+          tr.classList.remove('tv-fly');
+          tr.classList.add('tv-inserted');
+          setTimeout(() => { tr.style.transition = ''; tr.style.transform = ''; tr.classList.remove('tv-inserted'); }, 1700);
+        }, 1650);
+      } else {
+        tr.style.transition = 'transform 1.05s cubic-bezier(.3,.72,.25,1)';
+        tr.style.transform = 'translateY(0)';
+        setTimeout(() => { tr.style.transition = ''; tr.style.transform = ''; }, 1100);
+      }
+    }));
+  });
 }
 
 function iniciarRelojTaller() {
@@ -1204,9 +1249,13 @@ async function cargarPantallaTaller() {
 
     // ── Ordenar: orden cambiada AL TOP primero, luego activas, luego por entrega ──
     const changedId = ordenCambiada?.id || null;
+    // La última orden actualizada queda de PRIMERA y se mantiene ahí hasta que
+    // otra cambie (el "vuelo" se anima solo cuando hay un cambio nuevo).
+    if (changedId != null) window._tvUltimaActualizada = changedId;
+    const topId = window._tvUltimaActualizada || null;
     const ordenesOrdenadas = [...ordenesEnGrid].sort((a, b) => {
-      if (a.id === changedId) return -1;
-      if (b.id === changedId) return  1;
+      if (a.id === topId) return -1;
+      if (b.id === topId) return  1;
       const aActiva = etapasActivas.some(e => e.orden_id === a.id) ? 0 : 1;
       const bActiva = etapasActivas.some(e => e.orden_id === b.id) ? 0 : 1;
       if (aActiva !== bActiva) return aActiva - bActiva;
@@ -1328,18 +1377,30 @@ async function cargarPantallaTaller() {
       // Actualizar tabla: re-render completo del tbody, animando solo filas nuevas
       const tbody = cont.querySelector('.tv-tbody');
       if (tbody) {
-        const existingIds = new Set(
-          [...tbody.querySelectorAll('tr[id^="tv-row-"]')].map(tr => parseInt(tr.id.replace('tv-row-','')))
-        );
+        // Si hubo una orden ACTUALIZADA: pausar el scroll y subir al tope para
+        // que el "vuelo" hasta la primera posición se vea completo.
+        const tw = cont.querySelector('.tv-table-wrap');
+        if (changedId != null && tw) { window._tvScrollPausado = true; tw.scrollTop = 0; }
+
+        // Posiciones ANTES del re-render (para animar el reordenamiento)
+        const prevRows = [...tbody.querySelectorAll('tr[id^="tv-row-"]')];
+        const existingIds = new Set(prevRows.map(tr => parseInt(tr.id.replace('tv-row-',''))));
+        const oldTop = {};
+        prevRows.forEach(tr => { oldTop[tr.id] = tr.getBoundingClientRect().top; });
+
         const filasHtml = ordenesOrdenadas.map(renderFila).join('');
         tbody.innerHTML = filasHtml || `<tr><td colspan="6" style="text-align:center;padding:3vh;color:#D1D5DB;font-size:.8vw;letter-spacing:.1em">SIN ÓRDENES ACTIVAS</td></tr>`;
-        // Animar solo las filas genuinamente nuevas
+
+        // Animar solo las filas genuinamente nuevas (entrada)
         ordenesOrdenadas.forEach(orden => {
           if (!existingIds.has(orden.id)) {
             const tr = document.getElementById(`tv-row-${orden.id}`);
             if (tr) { tr.classList.add('tv-row-new'); setTimeout(() => tr.classList.remove('tv-row-new'), 500); }
           }
         });
+
+        // Orden actualizada: vuela POR ENCIMA hasta la primera posición + las demás bajan
+        if (changedId != null && existingIds.has(changedId)) _tvAnimarReorden(tbody, oldTop, changedId);
       }
 
       // Panel Listos hoy: solo reemplazar si el contenido cambió (evita parpadeo)
@@ -1390,22 +1451,11 @@ async function cargarPantallaTaller() {
     // Scroll perpetuo (solo arranca si no está corriendo)
     _iniciarScrollTaller();
 
-    // ── Animación cuando hay cambio en una orden ─────────────
+    // ── Cambio en una orden ──────────────────────────────────
+    // El reordenamiento animado (la orden vuela a la primera posición) ya se
+    // hizo en el re-render del tbody. Solo reanudar el scroll al terminar.
     if (ordenCambiada) {
-      const tw = cont.querySelector('.tv-table-wrap');
-      if (tw) tw.scrollTop = 0;
-      window._tvScrollPausado = true;
-
-      setTimeout(() => {
-        const rowEl = document.getElementById(`tv-row-${ordenCambiada.id}`);
-        if (rowEl) {
-          rowEl.classList.remove('tv-row-alert');
-          void rowEl.offsetWidth;
-          rowEl.classList.add('tv-row-alert');
-          setTimeout(() => rowEl.classList.remove('tv-row-alert'), 3200);
-        }
-        setTimeout(() => { window._tvScrollPausado = false; }, 3000);
-      }, 80);
+      setTimeout(() => { window._tvScrollPausado = false; }, 4500);
     }
 
   } catch(e) {
