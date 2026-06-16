@@ -434,7 +434,6 @@ function montarTaller() {
       /* ── Animaciones tipo tablero de aeropuerto (fondo blanco) ── */
       @keyframes tv-flip       { 0%{transform:perspective(20vw) rotateX(-90deg);opacity:.15} 100%{transform:perspective(20vw) rotateX(0);opacity:1} }
       @keyframes tv-chip-sweep { 0%{transform:translateX(-130%)} 100%{transform:translateX(430%)} }
-      @keyframes tv-scan       { 0%{transform:translateX(-100%)} 60%,100%{transform:translateX(650%)} }
       @keyframes tv-timer-pulse{ 0%,100%{opacity:1} 50%{opacity:.68} }
 
       /* Reloj split-flap: cada dígito "voltea" al cambiar */
@@ -453,11 +452,6 @@ function montarTaller() {
 
       /* Cronómetro activo: latido sutil */
       .tv-timer-val { animation:tv-timer-pulse 2.2s ease-in-out infinite; }
-
-      /* Header: barra de escaneo que recorre el borde inferior */
-      .tv-header        { position:relative;overflow:hidden; }
-      .tv-header::after { content:"";position:absolute;bottom:0;left:0;height:2px;width:15%;
-                          background:#1E40AF;opacity:.85;animation:tv-scan 6s ease-in-out infinite;pointer-events:none; }
     `;
     document.head.appendChild(st);
   }
@@ -612,25 +606,33 @@ function _tvTTSAudio(texto) {
 }
 
 function iniciarRelojTaller() {
-  let _prevReloj = [];
+  // Evitar relojes duplicados (causaban "doble tic" si se montaba dos veces).
+  if (window._tallerRelojInterval) clearInterval(window._tallerRelojInterval);
+  let prev = [];
   function tick() {
     const reloj = document.getElementById('taller-reloj');
-    const fecha  = document.getElementById('taller-fecha');
-    const now    = new Date();
+    const fecha = document.getElementById('taller-fecha');
+    const now   = new Date();
     if (reloj) {
-      // Reloj split-flap: cada dígito en una "ficha" que voltea solo cuando cambia.
       const chars = now.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).split('');
-      reloj.innerHTML = chars.map((ch, i) => {
-        if (ch === ':') return `<span class="tv-sep">:</span>`;
-        const flip = _prevReloj[i] !== ch ? ' flip' : '';
-        return `<span class="tv-flap${flip}">${ch}</span>`;
-      }).join('');
-      _prevReloj = chars;
+      if (reloj.children.length !== chars.length) {
+        // Construir las fichas UNA sola vez
+        reloj.innerHTML = chars.map(ch => ch === ':' ? `<span class="tv-sep">:</span>` : `<span class="tv-flap">${ch}</span>`).join('');
+        prev = chars.slice();
+      } else {
+        // Solo actualizar (y voltear) los dígitos que cambiaron → sin repintar todo
+        chars.forEach((ch, i) => {
+          if (ch === ':' || prev[i] === ch) return;
+          const el = reloj.children[i];
+          if (el) { el.textContent = ch; el.classList.remove('flip'); void el.offsetWidth; el.classList.add('flip'); }
+        });
+        prev = chars;
+      }
     }
-    if (fecha)  fecha.innerHTML  = now.toLocaleDateString('es-CO', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }).toUpperCase();
+    if (fecha) fecha.innerHTML = now.toLocaleDateString('es-CO', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }).toUpperCase();
   }
   tick();
-  setInterval(tick, 1000);
+  window._tallerRelojInterval = setInterval(tick, 1000);
 }
 
 function _tvTimerStr(etapaOinicio) {
