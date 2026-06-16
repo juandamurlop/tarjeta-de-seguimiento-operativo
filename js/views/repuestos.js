@@ -150,6 +150,34 @@ function detenerPollingRepuestos() {
   _repuestosPollingInterval = null;
 }
 
+// Notifica a n8n un evento del flujo de repuestos (la rama del flujo en n8n
+// decide a quién avisar: jefe, grupo de repuestos, etc.). No bloquea la
+// operación, pero si el aviso NO sale, muestra una advertencia para que la
+// persona sepa que debe avisar a mano (antes los fallos eran silenciosos).
+async function _notificarRepuesto(evento, solicitudId, detalle) {
+  try {
+    const sol = await api(`/solicitudes_repuesto?id=eq.${solicitudId}&select=repuesto,orden_id`).then(r => r?.[0]).catch(() => null);
+    let placa = '', marca = '', linea = '';
+    if (sol?.orden_id) {
+      const o = await api(`/ordenes?id=eq.${sol.orden_id}&select=placa,marca,linea`).then(r => r?.[0]).catch(() => null);
+      placa = o?.placa || ''; marca = o?.marca || ''; linea = o?.linea || '';
+    }
+    const res = await fetch(N8N_REPUESTO, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        evento, solicitado_por: sesion?.nombre || '',
+        repuesto: sol?.repuesto || '', placa, marca, modelo: linea,
+        orden_id: sol?.orden_id || null, detalle: detalle || ''
+      })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return true;
+  } catch (e) {
+    if (typeof toast === 'function') toast('⚠ Se guardó, pero NO se pudo enviar el aviso por Telegram. Avisa a mano.', 'err');
+    return false;
+  }
+}
+
 // ── Registros para evitar pasar datos de DB en onclick ──
 let _solRegistry = {};
 let _provRegistry = {};
@@ -968,6 +996,8 @@ async function guardarPrecioVentaSeleccionado(solicitudId) {
       pedido_en: new Date().toISOString()
     });
     toast('Precio definido ✓ — ahora espera que llegue el repuesto');
+    // Avisar a REPUESTOS que ya pueden pedir al proveedor.
+    _notificarRepuesto('precio_aprobado', solicitudId, `Precio aprobado (venta ${formatCOP(val)}) — ya puedes pedir al proveedor.`);
     _pvCerrarModal();
     cargarRepuestosJefe();
   } catch(e) { toast('Error: ' + e.message, 'err'); }
@@ -1663,6 +1693,8 @@ async function guardarCotizaciones(solicitudId) {
       estado: 'cotizado'
     });
     toast('Cotizaciones guardadas ✓');
+    // Avisar al JEFE que hay una cotización lista para aprobar el precio.
+    _notificarRepuesto('repuesto_cotizado', solicitudId, 'Cotización lista — define el precio para continuar.');
     document.getElementById('modal-cotizar')?.remove();
     cargarSolicitudesRepuestos();
   } catch(e) { toast('Error: ' + e.message, 'err'); }
