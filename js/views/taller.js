@@ -452,6 +452,16 @@ function montarTaller() {
 
       /* Cronómetro activo: latido sutil */
       .tv-timer-val { animation:tv-timer-pulse 2.2s ease-in-out infinite; }
+
+      /* Mismo efecto de la etapa activa aplicado al RESTO del tablero:
+         destello que recorre estado / Listos hoy / Programadas, y puntos que laten. */
+      .tv-badge, .tv-panel-item, .tv-prog-item { position:relative; overflow:hidden; }
+      .tv-badge::after, .tv-panel-item::after, .tv-prog-item::after {
+        content:""; position:absolute; top:0; left:0; width:30%; height:100%;
+        background:rgba(255,255,255,.45); animation:tv-chip-sweep 3s linear infinite; pointer-events:none;
+      }
+      .tv-panel-dot, .tv-prog-dot { animation:pulse-dot 1.3s ease-in-out infinite; }
+      .tv-entrega-chip { animation:tv-timer-pulse 2.4s ease-in-out infinite; }
     `;
     document.head.appendChild(st);
   }
