@@ -1334,10 +1334,6 @@ function _renderFilaCot(fila, idx, provOpts) {
       </select>
     </td>
     <td style="padding:0;border-right:1px solid #E2E8F0">
-      <input id="cot-ref-${fila.id}" type="text" value="${escapeHtml(fila.referencia||'')}"
-        placeholder="Referencia..." style="${_CELL}">
-    </td>
-    <td style="padding:0;border-right:1px solid #E2E8F0">
       <input id="cot-precio-${fila.id}" type="number" value="${fila.precio||''}"
         placeholder="0" min="0" style="${_CELL}text-align:right;font-family:'DM Mono',monospace;font-weight:600">
     </td>
@@ -1373,7 +1369,7 @@ function _quitarFilaCot(id) {
 }
 
 function _agregarFilaCot() {
-  _cotFilas.push({ id: Date.now(), seleccionado: false, proveedorId: '', referencia: '', precio: '', dias: '', esOriginal: true });
+  _cotFilas.push({ id: Date.now(), seleccionado: false, proveedorId: '', referencia: '', precio: '', dias: '', esOriginal: false });
   _reRenderFilasCot();
 }
 
@@ -1485,9 +1481,9 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
   // Filas iniciales
   _cotFilas = cots.length
     ? cots.map(c => ({ id: c.id, proveedorId: c.proveedor_id||'', referencia: c.referencia||'', precio: c.precio_costo||'', dias: c.dias_entrega||'', esOriginal: c.es_original !== false }))
-    : [{ id: Date.now(), proveedorId: favoritoId||'', referencia:'', precio:'', dias:'', esOriginal:true },
-       { id: Date.now()+1, proveedorId:'', referencia:'', precio:'', dias:'', esOriginal:true },
-       { id: Date.now()+2, proveedorId:'', referencia:'', precio:'', dias:'', esOriginal:true }];
+    : [{ id: Date.now(), proveedorId: favoritoId||'', referencia:'', precio:'', dias:'', esOriginal:false },
+       { id: Date.now()+1, proveedorId:'', referencia:'', precio:'', dias:'', esOriginal:false },
+       { id: Date.now()+2, proveedorId:'', referencia:'', precio:'', dias:'', esOriginal:false }];
 
   // Info header
   const vehiculoStr = [marca, modelo, anio].filter(Boolean).join(' ') || placa || '';
@@ -1528,7 +1524,6 @@ async function abrirModalCotizar(solicitudId, repuesto, unidades, placa, marca, 
             <tr style="background:#F1F5F9;border-bottom:2px solid #CBD5E1">
               <th style="width:32px;padding:8px 6px;text-align:center;color:#64748B;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">#</th>
               <th style="padding:8px 8px;text-align:left;color:#64748B;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;min-width:180px">Proveedor</th>
-              <th style="padding:8px 8px;text-align:left;color:#64748B;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;min-width:100px">Referencia</th>
               <th style="padding:8px 8px;text-align:right;color:#64748B;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;min-width:110px">Valor unit. COP</th>
               <th style="padding:8px 6px;text-align:center;color:#64748B;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;width:54px">Días</th>
               <th style="padding:8px 8px;text-align:center;color:#64748B;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;width:80px">Original</th>
@@ -1626,7 +1621,6 @@ async function guardarCotizaciones(solicitudId) {
       id:          f.id,
       seleccionado: true,
       proveedorId: document.getElementById(`cot-prov-${f.id}`)?.value || null,
-      referencia:  document.getElementById(`cot-ref-${f.id}`)?.value?.trim() || null,
       precio:      parseFloat(document.getElementById(`cot-precio-${f.id}`)?.value) || 0,
       dias:        parseInt(document.getElementById(`cot-dias-${f.id}`)?.value) || null,
       esOriginal:  document.querySelector(`input[name="cot-orig-${f.id}"]:checked`)?.value !== 'no'
@@ -1644,7 +1638,6 @@ async function guardarCotizaciones(solicitudId) {
       const body = {
         proveedor_id:  f.proveedorId || null,
         precio_costo:  f.precio,
-        referencia:    f.referencia,
         dias_entrega:  f.dias,
         es_original:   f.esOriginal,
         estado_opcion: 'cotizado'
