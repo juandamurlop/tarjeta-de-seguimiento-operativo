@@ -1116,58 +1116,40 @@ async function cargarSolicitudesRepuestos() {
 
     renderSinParpadeo(cont, `<div style="padding:20px">
       <div style="font-size:16px;font-weight:700;margin-bottom:16px">Solicitudes de repuestos</div>
-      ${pendientes.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;align-items:stretch">
+      ${pendientes.length ? `<div style="display:flex;flex-direction:column;gap:6px">
         ${pendientes.map(s => {
           const o = om[s.orden_id] || {};
           const items = todosItems.filter(i => i.solicitud_id === s.id);
           const eb = estadoBadge[s.estado] || { cls:'', txt: s.estado };
-
-          // Timer del proveedor (desde pedido_en hasta ahora o recibido_en)
-          let timerProv = '';
+          const repNames = items.length ? items.map(i => i.repuesto) : [s.repuesto].filter(Boolean);
+          const repResumen = repNames.slice(0, 2).map(escapeHtml).join(', ') + (repNames.length > 2 ? ` <span style="color:var(--gris-mid);font-weight:400">+${repNames.length - 2}</span>` : '');
+          const tEstado = _tiempoDesde(s.actualizado_en || s.creado_en, ' en estado');
+          // Espera del proveedor (si ya se pidió)
+          let espera = '';
           if (s.pedido_en) {
             const finTs = s.recibido_en ? new Date(s.recibido_en) : new Date();
             const mins  = Math.round((finTs - new Date(s.pedido_en)) / 60000);
             const h = Math.floor(mins/60), m = mins%60;
-            const label = s.recibido_en ? 'Tardó' : 'Esperando';
-            timerProv = `<div style="font-size:11px;color:${s.recibido_en?'#059669':'#D97706'};margin-top:4px;font-weight:600">
-              ⏱ ${label}: ${h > 0 ? h+'h ' : ''}${m}m
-            </div>`;
+            espera = ` · ⏱ ${s.recibido_en ? 'tardó' : 'esperando'} ${h > 0 ? h+'h ' : ''}${m}m`;
           }
-
-          // Lista de ítems
-          const itemsHtml = items.length > 0
-            ? `<div style="margin:8px 0;display:flex;flex-direction:column;gap:4px">
-                ${items.map(i => `<div style="display:flex;align-items:center;gap:8px;font-size:12px">
-                  ${i.foto_url ? `<img src="${escapeHtml(i.foto_url)}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0">` : ''}
-                  <span style="font-weight:600">${escapeHtml(i.repuesto)}</span>
-                  <span style="color:var(--gris-mid)">x${i.unidades||1}</span>
-                  ${i.observaciones ? `<span style="color:var(--gris-mid);font-style:italic">${escapeHtml(i.observaciones)}</span>` : ''}
-                </div>`).join('')}
-              </div>`
-            : `<div style="font-size:13px;color:var(--gris-mid);margin-bottom:4px">${escapeHtml(s.repuesto)} · x${s.unidades||1}</div>`;
-
-          // Timers universales
-          const timerSolicitud2 = _tiempoDesde(s.creado_en, ' desde solicitud');
-          const timerEstado2    = _tiempoDesde(s.actualizado_en || s.creado_en, ' en estado');
-
-          const repNames = items.length ? items.map(i => i.repuesto) : [s.repuesto].filter(Boolean);
-          const repResumen = repNames.slice(0, 2).map(escapeHtml).join(', ') + (repNames.length > 2 ? ` <span style="color:var(--gris-mid);font-weight:400">+${repNames.length - 2} más</span>` : '');
           let accionBtns = '';
           if (s.estado === 'enviado_repuestos' || s.estado === 'cotizado') accionBtns = `<button class="btn btn-primary btn-xs" data-sol-id="${s.id}" onclick="_abrirCotizarPorId(this)">${s.estado === 'enviado_repuestos' ? '+ Cotizar' : 'Cotizaciones'}</button>`;
           else if (s.estado === 'pedido' && !s.pedido_proveedor_confirmado) accionBtns = `<button class="btn btn-success btn-xs" onclick="marcarRepuestoSolicitadoProveedor(${s.id})">Confirmar pedido</button>`;
-          else if (s.estado === 'pedido' && s.pedido_proveedor_confirmado) accionBtns = `<span style="font-size:11px;color:#059669;font-weight:600;align-self:center">✓ Pedido confirmado</span>`;
+          else if (s.estado === 'pedido' && s.pedido_proveedor_confirmado) accionBtns = `<span style="font-size:11px;color:#059669;font-weight:600;white-space:nowrap">✓ Pedido confirmado</span>`;
 
-          return `<div class="card" data-id="${s.id}" style="padding:12px;display:flex;flex-direction:column;gap:7px">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-              <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:15px;color:#111;letter-spacing:.5px">${escapeHtml(o.placa||'—')}</span>
-              <span class="badge ${eb.cls}" style="flex-shrink:0">${eb.txt}</span>
+          return `<div class="card" data-id="${s.id}" style="display:flex;align-items:center;gap:12px;padding:9px 12px">
+            <div style="min-width:80px;flex-shrink:0">
+              <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;color:#0F172A;letter-spacing:.5px">${escapeHtml(o.placa||'—')}</div>
+              <div style="font-size:10px;color:var(--gris-mid);font-family:'DM Mono',monospace">${formatOT(s.orden_id)}</div>
             </div>
-            <div style="font-size:12px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(o.propietario||'Cliente —')} · ${formatOT(s.orden_id)}</div>
-            <div title="${escapeHtml(repNames.join(', '))}" style="font-size:13px;font-weight:600;color:#1E293B;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${repResumen || '—'}</div>
-            ${_barraEstado(s.estado)}
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:2px">
-              <button class="btn btn-ghost btn-xs" onclick="_verSolicitud(${s.id})">Ver detalle</button>
+            <div style="flex:1;min-width:0">
+              <div title="${escapeHtml(repNames.join(', '))}" style="font-size:13px;font-weight:600;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${repResumen || '—'}</div>
+              <div style="font-size:11px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(o.propietario||'Cliente —')} · ${tEstado}${espera}</div>
+            </div>
+            <span class="badge ${eb.cls}" style="flex-shrink:0">${eb.txt}</span>
+            <div style="display:flex;gap:6px;flex-shrink:0">
               ${accionBtns}
+              <button class="btn btn-ghost btn-xs" onclick="_verSolicitud(${s.id})">Ver</button>
             </div>
           </div>`;
         }).join('')}
