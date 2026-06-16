@@ -34,6 +34,22 @@ function _barraEstado(estadoActual) {
   </div>`;
 }
 
+// Versión MINI de la barra (para las filas de la lista): solo los 6 segmentos
+// + el contador "X/6", sin la etiqueta (el badge ya muestra el nombre).
+function _barraEstadoMini(estadoActual) {
+  const pasos = ['pendiente_jefe','enviado_repuestos','cotizado','pedido','recibido_taller','entregado'];
+  const idx = Math.max(0, pasos.indexOf(estadoActual));
+  const colAct = estadoActual === 'entregado' ? '#059669' : '#2563EB';
+  const seg = pasos.map((p, i) => {
+    const bg = i < idx ? '#059669' : i === idx ? colAct : '#E5E7EB';
+    return `<div style="flex:1;height:5px;border-radius:99px;background:${bg}"></div>`;
+  }).join('');
+  return `<div style="display:flex;align-items:center;gap:6px">
+    <div style="display:flex;align-items:center;gap:2px;flex:1">${seg}</div>
+    <span style="font-size:10px;font-weight:700;color:${colAct};flex-shrink:0">${idx + 1}/6</span>
+  </div>`;
+}
+
 const N8N_REPUESTO = CONFIG.N8N_WEBHOOK_REPUESTO;
 
 // ── Categorías de repuesto (para rankear proveedores por tipo) ──────
@@ -1146,6 +1162,7 @@ async function cargarSolicitudesRepuestos() {
               <div title="${escapeHtml(repNames.join(', '))}" style="font-size:13px;font-weight:600;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${repResumen || '—'}</div>
               <div style="font-size:11px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(o.propietario||'Cliente —')} · ${tEstado}${espera}</div>
             </div>
+            <div style="width:118px;flex-shrink:0">${_barraEstadoMini(s.estado)}</div>
             <span class="badge ${eb.cls}" style="flex-shrink:0">${eb.txt}</span>
             <div style="display:flex;gap:6px;flex-shrink:0">
               ${accionBtns}
