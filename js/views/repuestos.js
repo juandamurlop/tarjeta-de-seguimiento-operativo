@@ -1742,6 +1742,11 @@ async function cargarProveedores() {
           <button class="btn btn-primary btn-sm" onclick="abrirModalProveedor()">+ Nuevo proveedor</button>
         </div>
       </div>
+      <div style="margin-bottom:14px">
+        <input id="prov-buscar" type="text" oninput="_filtrarProveedores(this.value)" autocomplete="off"
+          placeholder="🔎 Buscar por nombre, número o marca…"
+          style="width:100%;padding:9px 13px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;outline:none">
+      </div>
       ${provs.length ? `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:500px">
         <thead><tr style="background:var(--gris-bg);border-bottom:1px solid var(--gris-borde)">
           <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--gris-mid);text-transform:uppercase">Nombre</th>
@@ -1753,7 +1758,7 @@ async function cargarProveedores() {
           <th></th>
         </tr></thead>
         <tbody>
-          ${provs.map(p=>`<tr style="border-bottom:1px solid var(--gris-borde)">
+          ${provs.map(p=>`<tr data-buscar="${escapeHtml(((p.nombre||'')+' '+(p.whatsapp||'')+' '+(p.telefono||'')+' '+(p.marcas||[]).join(' ')+(p.multimarca?' multimarca todas':'')).toLowerCase())}" style="border-bottom:1px solid var(--gris-borde)">
             <td style="padding:10px 12px;font-weight:600">${escapeHtml(p.nombre)}
               ${(p.categorias||[]).length ? `<div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:3px">${p.categorias.slice(0,4).map(c=>`<span style="background:#EEF2F7;color:var(--azul);font-size:9px;font-weight:600;padding:1px 6px;border-radius:99px">${escapeHtml(c)}</span>`).join('')}</div>` : ''}
             </td>
@@ -1774,14 +1779,30 @@ async function cargarProveedores() {
                 </div>`;
               })()}
             </td>
-            <td style="padding:10px 12px">
+            <td style="padding:10px 12px;white-space:nowrap">
               <button class="btn btn-ghost btn-sm" data-prov-id="${p.id}" onclick="_editarProveedorPorId(this)">Editar</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--rojo)" data-prov-id="${p.id}" onclick="_eliminarProveedorPorId(this)">Eliminar</button>
             </td>
           </tr>`).join('')}
         </tbody>
       </table></div>` : '<div class="empty-state"><p>Sin proveedores registrados</p></div>'}
     </div>`;
   } catch(e) { cont.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+}
+
+// Filtra la lista de proveedores por nombre, número o marca (en vivo).
+function _filtrarProveedores(q) {
+  q = (q || '').trim().toLowerCase();
+  document.querySelectorAll('#rep-contenido tbody tr[data-buscar]').forEach(tr => {
+    tr.style.display = (!q || tr.dataset.buscar.includes(q)) ? '' : 'none';
+  });
+}
+
+// Eliminar proveedor desde el botón de la fila (usa el registry para el nombre).
+function _eliminarProveedorPorId(btn) {
+  const id = +btn.dataset.provId;
+  const p = (_provRegistry || {})[id];
+  eliminarProveedor(id, p?.nombre || '');
 }
 
 function abrirModalProveedor(prov) {
