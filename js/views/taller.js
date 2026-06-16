@@ -488,6 +488,21 @@ function montarTaller() {
         content:"";position:absolute;top:0;left:0;width:30%;height:100%;
         background:rgba(255,255,255,.55);animation:tv-chip-sweep 3.2s linear infinite;pointer-events:none;
       }
+
+      /* ONDA UNIFORME: destello lento que recorre fila 1, luego fila 2, etc.
+         (mismo ritmo en todos los recuadros + retardo escalonado por fila). */
+      .chip-active::after,
+      .tv-badge::after,
+      .tv-placa-box::after,
+      .tv-tec-box:not(.empty)::after {
+        animation-duration: 6s;
+        animation-delay: calc(var(--row-i, 0) * .5s);
+      }
+      /* Paneles (Listos hoy / Programadas): mismo ritmo lento, escalonados por item. */
+      .tv-panel-item::after, .tv-prog-item::after {
+        animation-duration: 6s;
+        animation-delay: calc(var(--row-i, 0) * .5s);
+      }
     `;
     document.head.appendChild(st);
   }
@@ -1029,7 +1044,7 @@ async function cargarPantallaTaller() {
     _tallerGridSnapshot = new Set(ordenesEnGrid.map(o => o.id));
 
     // ── Render fila de tabla ─────────────────────────────────
-    function renderFila(orden) {
+    function renderFila(orden, i) {
       const etsOrden     = etapasTodas.filter(e => e.orden_id === orden.id);
       const etapasActOrden = etapasActivas.filter(e => e.orden_id === orden.id);
       const { color: entColor, label: entLabel } = _tvEntregaInfo(orden);
@@ -1083,7 +1098,7 @@ async function cargarPantallaTaller() {
           ).join('')
         : `<div style="font-size:.7vw;color:#9CA3AF">—</div>`;
 
-      return `<tr id="tv-row-${orden.id}" onclick="_tvVerDetalle(${orden.id})" style="cursor:pointer">
+      return `<tr id="tv-row-${orden.id}" onclick="_tvVerDetalle(${orden.id})" style="cursor:pointer;--row-i:${i||0}">
         <td>
           <div style="display:flex;align-items:center;gap:.5vw;white-space:nowrap">
             <span class="tv-placa-box">
