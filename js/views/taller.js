@@ -444,14 +444,11 @@ function montarTaller() {
       .tv-flap.flip { animation:tv-flip .4s ease; }
       .tv-sep   { color:#1E3A5F;font-weight:700;font-size:inherit;padding:0 .08vw; }
 
-      /* Etapa activa: destello que la recorre + punto que late */
-      .chip-active     { position:relative;overflow:hidden; }
-      .chip-active::after { content:"";position:absolute;top:0;left:0;width:35%;height:100%;
-                            background:rgba(255,255,255,.55);animation:tv-chip-sweep 1.9s linear infinite;pointer-events:none; }
+      /* TODOS los chips de etapa con destello (no solo el activo) + punto activo que late */
+      .chip            { position:relative;overflow:hidden; }
+      .chip::after { content:"";position:absolute;top:0;left:0;width:35%;height:100%;
+                     background:rgba(255,255,255,.5);animation:tv-chip-sweep 6s linear infinite;pointer-events:none; }
       .chip-dot.active { animation:pulse-dot 1.1s ease-in-out infinite; }
-
-      /* Cronómetro activo: latido sutil */
-      .tv-timer-val { animation:tv-timer-pulse 2.2s ease-in-out infinite; }
 
       /* Mismo efecto de la etapa activa aplicado al RESTO del tablero:
          destello que recorre estado / Listos hoy / Programadas, y puntos que laten. */
@@ -461,7 +458,18 @@ function montarTaller() {
         background:rgba(255,255,255,.45); animation:tv-chip-sweep 3s linear infinite; pointer-events:none;
       }
       .tv-panel-dot, .tv-prog-dot { animation:pulse-dot 1.3s ease-in-out infinite; }
-      .tv-entrega-chip { animation:tv-timer-pulse 2.4s ease-in-out infinite; }
+
+      /* Recuadros de TIEMPO y ENTREGA (para que también les pase el destello) */
+      .tv-tiempo-box, .tv-entrega-box {
+        display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
+        border-radius:.4vw;padding:.3vh .55vw;position:relative;overflow:hidden;
+      }
+      .tv-tiempo-box  { background:#FEF3C7;border:1px solid #FDE68A; }
+      .tv-entrega-box { background:#EEF2F7;border:1px solid #DBE3EC; }
+      .tv-tiempo-box::after, .tv-entrega-box::after {
+        content:"";position:absolute;top:0;left:0;width:30%;height:100%;
+        background:rgba(255,255,255,.6);animation:tv-chip-sweep 6s linear infinite;pointer-events:none;
+      }
 
       /* Placa en recuadro NAVY (texto blanco) con destello */
       .tv-placa-box {
@@ -491,10 +499,12 @@ function montarTaller() {
 
       /* ONDA UNIFORME: destello lento que recorre fila 1, luego fila 2, etc.
          (mismo ritmo en todos los recuadros + retardo escalonado por fila). */
-      .chip-active::after,
+      .chip::after,
       .tv-badge::after,
       .tv-placa-box::after,
-      .tv-tec-box:not(.empty)::after {
+      .tv-tec-box:not(.empty)::after,
+      .tv-tiempo-box::after,
+      .tv-entrega-box::after {
         animation-duration: 6s;
         animation-delay: calc(var(--row-i, 0) * .5s);
       }
@@ -1112,10 +1122,12 @@ async function cargarPantallaTaller() {
         </td>
         <td><div class="etapas-chips">${chips}</div></td>
         <td>${tecHtml}</td>
-        <td>${timerHtml}</td>
+        <td><span class="tv-tiempo-box">${timerHtml}</span></td>
         <td>
-          <span class="tv-entrega-chip" style="color:${entColor}">${entLabel}</span>
-          ${(() => { const { hora } = _tvEntregaInfo(orden); return hora ? `<div style="font-family:'DM Mono',monospace;font-size:.6vw;color:${entColor};opacity:.65;margin-top:.15vh">${hora}</div>` : ''; })()}
+          <span class="tv-entrega-box">
+            <span class="tv-entrega-chip" style="color:${entColor}">${entLabel}</span>
+            ${(() => { const { hora } = _tvEntregaInfo(orden); return hora ? `<div style="font-family:'DM Mono',monospace;font-size:.6vw;color:${entColor};opacity:.65;margin-top:.15vh">${hora}</div>` : ''; })()}
+          </span>
         </td>
         <td>${badge}</td>
       </tr>`;
