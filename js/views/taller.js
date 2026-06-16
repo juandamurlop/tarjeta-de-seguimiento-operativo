@@ -462,6 +462,32 @@ function montarTaller() {
       }
       .tv-panel-dot, .tv-prog-dot { animation:pulse-dot 1.3s ease-in-out infinite; }
       .tv-entrega-chip { animation:tv-timer-pulse 2.4s ease-in-out infinite; }
+
+      /* Placa en recuadro NAVY (texto blanco) con destello */
+      .tv-placa-box {
+        display:inline-flex;align-items:baseline;gap:.45vw;
+        background:#1E3A5F;border-radius:.4vw;padding:.5vh .75vw;
+        position:relative;overflow:hidden;
+      }
+      .tv-placa-box .tv-placa { color:#FFFFFF; }
+      .tv-placa-ot { font-family:'DM Mono',monospace;font-size:.7vw;font-weight:700;color:#93C5FD;letter-spacing:.04em; }
+      .tv-placa-box::after {
+        content:"";position:absolute;top:0;left:0;width:30%;height:100%;
+        background:rgba(255,255,255,.35);animation:tv-chip-sweep 3.2s linear infinite;pointer-events:none;
+      }
+
+      /* Técnico en recuadro PÚRPURA con destello (vacío = gris tenue, sin brillo) */
+      .tv-tec-box {
+        display:inline-flex;align-items:center;max-width:100%;
+        background:#F3E8FF;border:1px solid #E9D5FF;color:#6B21A8;
+        border-radius:.4vw;padding:.35vh .65vw;font-size:.72vw;font-weight:600;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;
+      }
+      .tv-tec-box.empty { background:#F8FAFC;border-color:#E2E8F0;color:#94A3B8;font-weight:400; }
+      .tv-tec-box:not(.empty)::after {
+        content:"";position:absolute;top:0;left:0;width:30%;height:100%;
+        background:rgba(255,255,255,.55);animation:tv-chip-sweep 3.2s linear infinite;pointer-events:none;
+      }
     `;
     document.head.appendChild(st);
   }
@@ -1044,9 +1070,11 @@ async function cargarPantallaTaller() {
 
       // Técnico(s) — puede ser múltiple si hay simultáneas
       const tecnicos = [...new Set(etapasActOrden.map(e => e.tecnico).filter(Boolean))];
-      const tecHtml  = tecnicos.length
-        ? tecnicos.map(t => `<div class="tv-tec">${t}</div>`).join('')
-        : `<div class="tv-tec" style="color:#9CA3AF">—</div>`;
+      const tecHtml  = `<div style="display:flex;flex-direction:column;gap:.25vh;align-items:flex-start">${
+        tecnicos.length
+          ? tecnicos.map(t => `<span class="tv-tec-box">${escapeHtml(t)}</span>`).join('')
+          : `<span class="tv-tec-box empty">Sin técnico</span>`
+      }</div>`;
 
       // Timer(es)
       const timerHtml = etapasActOrden.length
@@ -1057,9 +1085,11 @@ async function cargarPantallaTaller() {
 
       return `<tr id="tv-row-${orden.id}" onclick="_tvVerDetalle(${orden.id})" style="cursor:pointer">
         <td>
-          <div style="display:flex;align-items:baseline;gap:.5vw;white-space:nowrap">
-            <div class="tv-placa">${orden.placa}</div>
-            <div style="font-family:'DM Mono',monospace;font-size:.8vw;font-weight:700;color:#374151;letter-spacing:.04em;white-space:nowrap">${otDe(orden)}</div>
+          <div style="display:flex;align-items:center;gap:.5vw;white-space:nowrap">
+            <span class="tv-placa-box">
+              <span class="tv-placa">${orden.placa}</span>
+              ${otDe(orden) ? `<span class="tv-placa-ot">${otDe(orden)}</span>` : ''}
+            </span>
             ${orden.placa ? `<button onclick="event.stopPropagation();abrirPopupConsumibles('${orden.placa}',${orden.kilometraje||orden.km||0})" title="Consumibles & Docs" style="background:none;border:1px solid #D1D5DB;border-radius:.3vw;padding:.15vh .4vw;cursor:pointer;font-size:.65vw;color:#374151;line-height:1;flex-shrink:0" tabindex="-1">🔧</button>` : ''}
           </div>
           ${orden.propietario ? `<div class="tv-propietario">${escapeHtml(orden.propietario)}</div>` : ''}
