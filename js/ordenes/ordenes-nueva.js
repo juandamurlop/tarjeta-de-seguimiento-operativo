@@ -1474,9 +1474,9 @@ function _agProcesoChange() {
     wrap.innerHTML = `<label>Técnico externo (TOT)</label>${_agExternoHtml()}`;
   } else if (modo === 'toggle') {
     wrap.innerHTML = `<label>Técnico</label>
-      <div style="display:flex;gap:16px;margin:4px 0 8px;font-size:13px">
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="ag-elec-tipo" value="interno" checked onchange="_agElecTipoChange()"> Interno (de la lista)</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="ag-elec-tipo" value="externo" onchange="_agElecTipoChange()"> TOT / Externo</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 8px;font-size:13px">
+        <label style="flex:1 1 140px;display:flex;align-items:center;gap:8px;cursor:pointer;line-height:1.25;border:1px solid var(--gris-borde);border-radius:8px;padding:9px 11px;white-space:nowrap"><input type="radio" name="ag-elec-tipo" value="interno" checked onchange="_agElecTipoChange()" style="margin:0;flex-shrink:0;width:16px;height:16px"><span>Interno (de la lista)</span></label>
+        <label style="flex:1 1 140px;display:flex;align-items:center;gap:8px;cursor:pointer;line-height:1.25;border:1px solid var(--gris-borde);border-radius:8px;padding:9px 11px;white-space:nowrap"><input type="radio" name="ag-elec-tipo" value="externo" onchange="_agElecTipoChange()" style="margin:0;flex-shrink:0;width:16px;height:16px"><span>TOT / Externo</span></label>
       </div>
       <div id="ag-tec-cont">${_agDropdownTecnicosHtml()}</div>`;
   } else {
