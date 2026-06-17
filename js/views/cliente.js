@@ -39,12 +39,25 @@ async function loginClientePortal() {
   if (errEl) errEl.classList.remove('show');
   try {
     const perfil = await detectarPerfil(doc);
-    // Solo entran CLIENTES (un documento de personal no abre nada aquí).
-    if (!perfil || perfil.perfil !== 'cliente') {
-      _err('No encontramos un vehículo con ese documento. Verifica el número o comunícate con el taller.');
+    // Si ya está reconocido como cliente, entra directo.
+    if (perfil && perfil.perfil === 'cliente') {
+      iniciarSesion({ ...perfil, cedula: doc });
       return;
     }
-    iniciarSesion({ ...perfil, cedula: doc });
+    // Un documento de PERSONAL del taller no abre el portal del cliente.
+    if (perfil && perfil.perfil) {
+      _err('Ese documento es de personal del taller, no de un cliente.');
+      return;
+    }
+    // No es personal y no quedó como "cliente" (p. ej. la cédula se agregó a la
+    // orden después). Intentamos directo con vehiculo_cliente: si tiene alguna
+    // orden con ese documento, lo dejamos entrar igual.
+    const _vc = await api('/rpc/vehiculo_cliente', 'POST', { p_doc: doc }).catch(() => ({})) || {};
+    if (Array.isArray(_vc.ordenes) && _vc.ordenes.length) {
+      iniciarSesion({ perfil: 'cliente', nombre: _vc.ordenes[0].propietario || 'Cliente', cedula: doc });
+      return;
+    }
+    _err('No encontramos un vehículo con ese documento. Verifica el número o comunícate con el taller.');
   } catch (e) {
     _err('Error de conexión. Intenta de nuevo.');
   } finally {
