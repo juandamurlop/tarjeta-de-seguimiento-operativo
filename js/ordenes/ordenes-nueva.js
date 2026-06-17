@@ -1613,13 +1613,17 @@ async function guardarEtapasNueva() {
       const fotosIng = await api(`/fotos_ingreso?orden_id=eq.${modalOrdenId}&order=creado_en.asc&limit=1`).catch(() => []) || [];
       fetch(N8N_WEBHOOK, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          evento: 'orden_creada', 
-          orden: { id: ord.id, placa: ord.placa, propietario: ord.propietario, marca: ord.marca, linea: ord.linea, modelo: ord.modelo, color: ord.color, tipo_cliente: ord.tipo_cliente, aseguradora: ord.aseguradora, nivel_dano: ord.nivel_dano, fecha_entrega_1: ord.fecha_entrega_1 }, 
-          etapas: etapas.map(et => ({ servicio: et.servicio, etapa: et.nombre, tecnico: mecanicos.find(m => m.id === et.mecanico_id)?.nombre || et.tercero || 'Sin asignar' })), 
-          foto_url: fotosIng[0]?.url || null, 
-          link: `${window.location.origin}${window.location.pathname}` 
-        }) 
+        body: JSON.stringify({
+          evento: 'orden_creada',
+          orden: { id: ord.id, placa: ord.placa, propietario: ord.propietario, marca: ord.marca, linea: ord.linea, modelo: ord.modelo, color: ord.color, tipo_cliente: ord.tipo_cliente, aseguradora: ord.aseguradora, nivel_dano: ord.nivel_dano, fecha_entrega_1: ord.fecha_entrega_1, cedula_cliente: ord.cedula_cliente },
+          etapas: etapas.map(et => ({ servicio: et.servicio, etapa: et.nombre, tecnico: mecanicos.find(m => m.id === et.mecanico_id)?.nombre || et.tercero || 'Sin asignar' })),
+          foto_url: fotosIng[0]?.url || null,
+          // Enlace de SEGUIMIENTO del cliente (?cliente=<cédula>). Si no hay cédula,
+          // cae al enlace base. Así el mensaje automático incluye el link correcto.
+          link: (typeof _linkClienteSeguimiento === 'function' && ord.cedula_cliente)
+            ? _linkClienteSeguimiento(ord.cedula_cliente)
+            : `${window.location.origin}${window.location.pathname}`
+        })
       }).catch(() => {});
     }
     cargarOrdenes(); 

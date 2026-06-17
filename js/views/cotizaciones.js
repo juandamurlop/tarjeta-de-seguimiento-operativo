@@ -1309,10 +1309,14 @@ async function crearOrdenDesdeCotizacion(cot) {
         tipo_cliente: body.tipo_cliente,
         aseguradora:  body.aseguradora,
         fecha_entrega_1: null,
+        cedula_cliente: body.cedula_cliente,
         desde_cotizacion: true
       },
       etapas: [],   // el jefe las asigna después
-      link: (typeof window !== 'undefined') ? `${window.location.origin}${window.location.pathname}` : ''
+      // Enlace de SEGUIMIENTO del cliente (?cliente=<cédula>); si no hay cédula, el base.
+      link: (typeof _linkClienteSeguimiento === 'function' && body.cedula_cliente)
+        ? _linkClienteSeguimiento(body.cedula_cliente)
+        : ((typeof window !== 'undefined') ? `${window.location.origin}${window.location.pathname}` : '')
     })
   }).catch(() => {});
 
