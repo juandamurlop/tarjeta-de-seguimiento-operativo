@@ -1412,7 +1412,7 @@ function resetNuevaOrden() {
   _ordenCompletandoId = null; // formulario fresco = crear, no completar
   ['n-placa','n-numero-ot','n-marca','n-linea','n-modelo','n-color','n-km','n-fecha1','n-fecha2',
    'n-inv-obs','n-vin','n-propietario','n-telefono','n-cedula-cliente','n-correo-cliente',
-   'n-direccion','n-propietario-aseg','n-telefono-aseg','n-cedula-aseg','n-correo-aseg',
+   'n-direccion','n-descripcion-general','n-propietario-aseg','n-telefono-aseg','n-cedula-aseg','n-correo-aseg',
    'n-aseg-nombre','n-aseg-nit','n-flot-nombre','n-flot-nit','n-flot-dir',
    'n-emp-nombre','n-emp-nit','n-empresa-tel','n-combustible-val'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
