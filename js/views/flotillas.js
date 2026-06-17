@@ -325,6 +325,7 @@ async function cargarFlotillas() {
         </div>
         ${f.direccion ? `<div style="font-size:12px;color:var(--gris-mid);margin-bottom:4px">📍 ${escapeHtml(f.direccion)}</div>` : ''}
         ${f.telefono  ? `<div style="font-size:12px;color:var(--gris-mid);margin-bottom:4px">📞 ${escapeHtml(f.telefono)}</div>` : ''}
+        ${(Array.isArray(f.personas) && f.personas.length) ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${f.personas.map(p => `<span style="background:#F5F3FF;color:#5B21B6;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px">👤 ${escapeHtml(p.nombre||'—')}${p.telefono ? ' · ' + escapeHtml(p.telefono) : ''}</span>`).join('')}</div>` : ''}
         <div style="margin-top:10px;display:flex;justify-content:flex-end">
           <span style="font-size:12px;color:var(--azul);font-weight:600">Ver vehículos →</span>
         </div>
@@ -905,9 +906,12 @@ async function guardarVehiculo() {
 function abrirModalNuevaFlotilla()          { _abrirModalFlotilla(null); }
 function abrirModalEditarFlotilla(id)       { _abrirModalFlotilla(_flotillas.find(x => x.id === id) || null); }
 
+let _flotillaPersonas = []; // personas/contactos de la flotilla del modal abierto
+
 function _abrirModalFlotilla(flotilla) {
   document.getElementById('modal-nueva-flotilla')?.remove();
   const f = flotilla || {};
+  _flotillaPersonas = Array.isArray(f.personas) ? f.personas.slice() : [];
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.id = 'modal-nueva-flotilla';
@@ -929,6 +933,16 @@ function _abrirModalFlotilla(flotilla) {
           <div class="field full"><label>Dirección</label><input id="ff-direccion" value="${escapeHtml(f.direccion||'')}" placeholder="Cra 10 #20-30"></div>
           <div class="field full"><label>Correo</label><input id="ff-email" value="${escapeHtml(f.email||'')}" placeholder="contacto@empresa.com" type="email"></div>
         </div>
+        <div style="margin-top:8px">
+          <div style="font-size:10.5px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 8px">Personas / contactos</div>
+          <div id="ff-personas-lista"></div>
+          <div class="grid-2" style="gap:8px;margin-top:8px">
+            <input id="ff-p-nombre" placeholder="Nombre de la persona">
+            <input id="ff-p-tel" placeholder="Teléfono" type="tel">
+            <input id="ff-p-correo" placeholder="Correo (opcional)" type="email" style="grid-column:1/-1">
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="_flotAgregarPersona()">+ Agregar persona</button>
+        </div>
       </div>
       <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--gris-borde)">
         <button class="btn btn-ghost" onclick="cerrarModalFlotilla()">Cancelar</button>
@@ -936,10 +950,39 @@ function _abrirModalFlotilla(flotilla) {
       </div>
     </div>`;
   document.body.appendChild(modal);
+  _flotRenderPersonas();
   requestAnimationFrame(() => modal.classList.add('show'));
   modal.addEventListener('click', e => { if (e.target === modal) cerrarModalFlotilla(); });
   setTimeout(() => { document.getElementById('ff-nombre')?.focus(); }, 100);
 }
+
+// ── Personas/contactos de la flotilla ────────────────────────────────────────
+function _flotRenderPersonas() {
+  const cont = document.getElementById('ff-personas-lista');
+  if (!cont) return;
+  if (!_flotillaPersonas.length) {
+    cont.innerHTML = '<div style="font-size:12px;color:var(--gris-mid)">Aún no agregaste personas.</div>';
+    return;
+  }
+  cont.innerHTML = _flotillaPersonas.map((p, i) => `
+    <div style="display:flex;align-items:center;gap:8px;border:1px solid var(--gris-borde);border-radius:7px;padding:6px 10px;margin-bottom:6px">
+      <div style="flex:1;min-width:0;font-size:13px"><b>${escapeHtml(p.nombre||'—')}</b>${p.telefono ? ' · ' + escapeHtml(p.telefono) : ''}${p.correo ? ' · ' + escapeHtml(p.correo) : ''}</div>
+      <button type="button" class="btn btn-ghost btn-xs" style="color:var(--rojo)" onclick="_flotQuitarPersona(${i})">✕</button>
+    </div>`).join('');
+}
+
+function _flotAgregarPersona() {
+  const nombre = document.getElementById('ff-p-nombre')?.value.trim();
+  const tel    = document.getElementById('ff-p-tel')?.value.trim();
+  const correo = document.getElementById('ff-p-correo')?.value.trim();
+  if (!nombre) { toast('Escribe el nombre de la persona', 'err'); document.getElementById('ff-p-nombre')?.focus(); return; }
+  _flotillaPersonas.push({ nombre, telefono: tel || null, correo: correo || null });
+  ['ff-p-nombre', 'ff-p-tel', 'ff-p-correo'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  _flotRenderPersonas();
+  document.getElementById('ff-p-nombre')?.focus();
+}
+
+function _flotQuitarPersona(i) { _flotillaPersonas.splice(i, 1); _flotRenderPersonas(); }
 
 function cerrarModalFlotilla() {
   const m = document.getElementById('modal-nueva-flotilla');
@@ -967,6 +1010,9 @@ async function guardarFlotilla(flotillaId) {
       nuevaId = res?.[0]?.id;
       toast('Flotilla creada ✓');
     }
+    // Guardar la lista de personas aparte (best-effort): si la columna 'personas'
+    // aún no existe en la BD, no rompe el guardado de la flotilla.
+    if (nuevaId) await api(`/flotillas?id=eq.${nuevaId}`, 'PATCH', { personas: _flotillaPersonas }, { Prefer: 'return=minimal' }).catch(() => {});
     cerrarModalFlotilla();
     // Si se creó desde el modal de vehículo, refrescar ese selector;
     // si no, refrescar la pantalla de flotillas/vehículos.
