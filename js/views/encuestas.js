@@ -337,7 +337,7 @@ const Encuestas = (() => {
               <span style="font-weight:500;color:var(--gris-mid);font-size:13px">· ${escapeHtml(o.marca || '')} ${escapeHtml(o.linea || '')}</span>
             </div>
             <div style="font-size:12px;color:var(--gris-mid);margin-top:2px">${escapeHtml(o.propietario || 'Sin propietario')} · ${escapeHtml(otDe(o))} · Entregada ${formatFecha(o.entregada_en)} ${diasTxt ? `<b>(${diasTxt})</b>` : ''}</div>
-            <div style="margin-top:6px">${badge}</div>
+            <div style="margin-top:6px">${badge}${seg.resena_enviada_en ? ` <span style="font-size:10px;color:#059669;font-weight:600">· ✅ reseña enviada</span>` : ''}</div>
             ${hist}
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0">

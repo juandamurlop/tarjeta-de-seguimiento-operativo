@@ -17,4 +17,9 @@ const CONFIG = {
   N8N_WEBHOOK_ETAPA:    'https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa',
   N8N_WEBHOOK_PDF:      'https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/cotizacion-pdf',
   N8N_WEBHOOK_REPUESTO: 'https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa',
+
+  // Enlace de reseña de Google de Freimanautos (Perfil de Empresa → "Pedir
+  // reseñas", queda tipo https://g.page/r/XXXXXXXX/review). Mientras esté VACÍO,
+  // NO se envía nada al entregar. Pega aquí el enlace cuando lo tengas.
+  RESENA_GOOGLE_URL: '',
 };

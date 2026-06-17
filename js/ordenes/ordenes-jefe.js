@@ -309,10 +309,42 @@ async function cambiarEstado(v) {
     await api(`/ordenes?id=eq.${ordenActual.id}`, 'PATCH', patch);
     ordenActual.estado = v;
     toast(`Estado: ${v} ✓`);
+    if (v === 'Entregada') _enviarResenaGoogle(ordenActual); // envío automático de la reseña
     if (filtroEstado === null) await cargarOrdenesPulmon();
     else await cargarOrdenes();
     if (ordenActual) abrirOrden(ordenActual.id);
   } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// Al ENTREGAR, dispara el envío automático de la reseña de Google por WhatsApp
+// (vía la automatización n8n). Si aún no se configuró el enlace
+// (RESENA_GOOGLE_URL en config.js), NO envía nada. Marca en el seguimiento que
+// la reseña se envió, para que el tablero de Reseñas lo refleje.
+async function _enviarResenaGoogle(orden) {
+  if (!orden) return;
+  const link = (typeof RESENA_GOOGLE_URL !== 'undefined' && RESENA_GOOGLE_URL) ? RESENA_GOOGLE_URL : '';
+  if (!link) return; // aún no hay enlace configurado → no se envía nada
+  // 1) Disparar el evento: la automatización arma el mensaje y lo manda al cliente.
+  try {
+    fetch(N8N_WEBHOOK, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        evento: 'solicitar_resena',
+        orden: { id: orden.id, placa: orden.placa, propietario: orden.propietario, telefono: orden.telefono, marca: orden.marca, linea: orden.linea },
+        resena_link: link
+      })
+    }).catch(() => {});
+  } catch (e) {}
+  // 2) Registrar en el seguimiento que ya se envió (best-effort).
+  try {
+    const o = await api(`/ordenes?id=eq.${orden.id}&select=seguimiento_resena`).then(r => r?.[0]);
+    let seg = {};
+    try { seg = typeof o?.seguimiento_resena === 'string' ? JSON.parse(o.seguimiento_resena) : (o?.seguimiento_resena || {}); } catch { seg = {}; }
+    if (!seg.resena_enviada_en) {
+      seg.resena_enviada_en = new Date().toISOString();
+      await api(`/ordenes?id=eq.${orden.id}`, 'PATCH', { seguimiento_resena: seg }).catch(() => {});
+    }
+  } catch (e) {}
 }
 
 // Precio de venta al cliente (solo aseguradoras). Lo fija el jefe/gerente y es
