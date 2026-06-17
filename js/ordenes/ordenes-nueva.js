@@ -1507,12 +1507,15 @@ function _agAgregarPend() {
   const mecanico_id = (!esExterno && tecEl?.value) ? parseInt(tecEl.value) : null;
   const tercero = (esExterno && tecEl?.value?.trim()) ? tecEl.value.trim() : null;
   const tercero_desc = esExterno ? (document.getElementById('ag-tot-desc')?.value?.trim() || null) : null;
-  if (!mecanico_id && !tercero) { toast('Asigna un técnico', 'err'); return; }
+  // Se PERMITE agregar la etapa sin técnico (queda "pendiente por asignar").
+  // El aviso visible aparece en la lista y luego en el detalle de la orden;
+  // la etapa no se podrá INICIAR hasta que se le asigne un técnico.
   _etapasPend.push({
     servicio: srvKey, key, nombre: etDef.nombre,
     mecanico_id, tercero, tercero_desc,
     descripcion: document.getElementById('ag-desc')?.value?.trim() || null
   });
+  if (!mecanico_id && !tercero) toast('Etapa agregada — falta asignar el técnico', 'warn', 3500);
   const selP = document.getElementById('ag-proceso'); if (selP) selP.value = '';
   const wrap = document.getElementById('ag-tecnico-wrap'); if (wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
   const desc = document.getElementById('ag-desc'); if (desc) desc.value = '';
@@ -1531,11 +1534,15 @@ function _renderPendLista() {
   const srvColor = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
   cont.innerHTML = `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gris-mid);margin-bottom:6px">Procesos a agregar (${_etapasPend.length})</div>` +
     _etapasPend.map((e, i) => {
-      const tecNombre = e.tercero || (mecanicos.find(m => m.id === e.mecanico_id)?.nombre) || 'Sin técnico';
-      return `<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--gris-borde);border-radius:7px;padding:8px 10px;margin-bottom:6px">
+      const sinTec = !e.mecanico_id && !e.tercero;
+      const tecNombre = e.tercero || (mecanicos.find(m => m.id === e.mecanico_id)?.nombre) || null;
+      const tecHtml = sinTec
+        ? ` <span style="font-size:10px;color:#B45309;font-weight:800;background:#FEF3C7;border:1px solid #FCD34D;padding:1px 7px;border-radius:99px">⚠ Falta técnico</span>`
+        : ` <span style="font-size:11px;color:var(--gris-mid);font-weight:400">· ${escapeHtml(tecNombre)}</span>`;
+      return `<div style="display:flex;align-items:center;gap:8px;border:1px solid ${sinTec?'#FCD34D':'var(--gris-borde)'};border-radius:7px;padding:8px 10px;margin-bottom:6px;background:${sinTec?'#FFFBEB':'white'}">
         <span style="font-size:11px;font-weight:700;color:${srvColor[e.servicio]||'#475569'};min-width:16px">${i+1}</span>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:13px">${escapeHtml(e.nombre)} <span style="font-size:11px;color:var(--gris-mid);font-weight:400">· ${escapeHtml(tecNombre)}</span>${e.tercero_desc ? ` <span style="font-size:10px;color:#7C3AED;font-weight:600;background:#F3E8FF;padding:1px 6px;border-radius:99px">${escapeHtml(e.tercero_desc)}</span>` : ''}</div>
+          <div style="font-weight:600;font-size:13px">${escapeHtml(e.nombre)}${tecHtml}${e.tercero_desc ? ` <span style="font-size:10px;color:#7C3AED;font-weight:600;background:#F3E8FF;padding:1px 6px;border-radius:99px">${escapeHtml(e.tercero_desc)}</span>` : ''}</div>
           ${e.descripcion ? `<div style="font-size:11px;color:var(--gris-mid);white-space:pre-wrap">${escapeHtml(e.descripcion)}</div>` : ''}
         </div>
         <button type="button" class="btn btn-ghost btn-xs" style="color:var(--rojo)" onclick="_agQuitarPend(${i})">✕</button>
@@ -1566,8 +1573,9 @@ async function _guardarTecnicosExternos(etapas, ordenId, placa) {
 async function guardarEtapasNueva() {
   const etapas = recogerChecklist('checklist-nuevo');
   if (!etapas.length) { toast('Selecciona al menos una etapa', 'err'); return; }
+  // Se permite guardar etapas sin técnico (quedan pendientes por asignar). No
+  // se inician hasta asignarles uno; el aviso queda visible en el detalle.
   const sinMec = etapas.filter(et => !et.mecanico_id && !et.tercero);
-  if (sinMec.length) { toast(`Asigna un mecánico a: ${sinMec.map(e => e.nombre).join(', ')}`, 'err'); return; }
   try {
     for (const et of etapas) {
       const mec = mecanicos.find(m => m.id === et.mecanico_id);
@@ -1578,7 +1586,8 @@ async function guardarEtapasNueva() {
       }, { Prefer: 'return=representation' });
       if (et.tercero_desc && _res?.[0]?.id) await api(`/etapas?id=eq.${_res[0].id}`, 'PATCH', { tercero_desc: et.tercero_desc }).catch(() => {});
     }
-    toast('Etapas guardadas ✓');
+    if (sinMec.length) toast(`Etapas guardadas ✓ — falta asignar técnico a: ${sinMec.map(e => e.nombre).join(', ')}`, 'warn', 5000);
+    else toast('Etapas guardadas ✓');
     document.getElementById('modal-servicios')?.classList.remove('show');
 
     const ordenData = await api(`/ordenes?id=eq.${modalOrdenId}`).catch(() => []);
@@ -1640,8 +1649,9 @@ function cerrarModalAgregar() {
 async function confirmarAgregarEtapas() {
   const etapas = recogerChecklist('checklist-agregar');
   if (!etapas.length) { toast('Selecciona al menos una etapa', 'err'); return; }
+  // Se permite agregar etapas sin técnico (quedan pendientes por asignar). No se
+  // inician hasta asignarles uno; el aviso queda visible en el detalle.
   const sinMec = etapas.filter(et => !et.mecanico_id && !et.tercero);
-  if (sinMec.length) { toast(`Asigna un mecánico a: ${sinMec.map(e => e.nombre).join(', ')}`, 'err'); return; }
   try {
     for (const et of etapas) {
       const mec = mecanicos.find(m => m.id === et.mecanico_id);
@@ -1653,7 +1663,8 @@ async function confirmarAgregarEtapas() {
       if (et.tercero_desc && _res?.[0]?.id) await api(`/etapas?id=eq.${_res[0].id}`, 'PATCH', { tercero_desc: et.tercero_desc }).catch(() => {});
     }
     await _guardarTecnicosExternos(etapas, ordenActual.id, ordenActual.placa);
-    toast('Etapas agregadas ✓');
+    if (sinMec.length) toast(`Etapas agregadas ✓ — falta asignar técnico a: ${sinMec.map(e => e.nombre).join(', ')}`, 'warn', 5000);
+    else toast('Etapas agregadas ✓');
     cerrarModalAgregar();
     if (ordenActual) abrirOrden(ordenActual.id);
   } catch(e) { toast('Error: ' + e.message, 'err'); }

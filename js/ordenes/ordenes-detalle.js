@@ -480,9 +480,22 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
 
   const fueRechazada = ultimaAprob?.estado === 'rechazado';
 
+  const sinTecnico = !e.mecanico_id && !e.tercero;
+
   let acc = '';
-  if (!e.inicio)
-    acc = `<button class="btn btn-success btn-sm" data-eid="${eid}" data-nombre="${escapeHtml(nombre)}" onclick="iniciarEtapa(+this.dataset.eid,this.dataset.nombre)">▶ Iniciar</button>`;
+  if (!e.inicio) {
+    if (sinTecnico) {
+      // No se puede iniciar hasta asignar un técnico. Aviso visible + botón
+      // deshabilitado que apunta al selector "Técnico asignado" de abajo.
+      acc = `<div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:7px;padding:8px 11px;font-size:12.5px;color:#92400E;font-weight:600;display:flex;align-items:center;gap:6px;width:100%;margin-bottom:8px">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Falta asignar técnico — asígnalo abajo para poder iniciar.
+        </div>
+        <button class="btn btn-success btn-sm" disabled style="opacity:.45;cursor:not-allowed" title="Asigna un técnico para poder iniciar">▶ Iniciar</button>`;
+    } else {
+      acc = `<button class="btn btn-success btn-sm" data-eid="${eid}" data-nombre="${escapeHtml(nombre)}" onclick="iniciarEtapa(+this.dataset.eid,this.dataset.nombre)">▶ Iniciar</button>`;
+    }
+  }
   else if (e.inicio && !e.fin && esPausado)
     acc = `<span style="font-size:12px;color:#D97706;font-weight:600;display:flex;align-items:center;gap:5px">
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
@@ -538,7 +551,7 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
       <div class="etapa-header" onclick="toggleEtapa('eb-${k}')">
         <div style="flex:1;min-width:0">
           <div class="etapa-nombre">${escapeHtml(nombre)}${e.tercero?` <span style="font-size:11px;color:var(--gris-mid);font-weight:400">(${escapeHtml(e.tercero)}${e.tercero_desc?' · '+escapeHtml(e.tercero_desc):''})</span>`:''}</div>
-          ${e.tecnico||e.mecanico_id ? `<div class="etapa-tecnico">${ico('user',12)} ${escapeHtml(e.tecnico)||'Asignado'}</div>` : ''}
+          ${!sinTecnico ? `<div class="etapa-tecnico">${ico('user',12)} ${escapeHtml(e.tecnico||e.tercero)||'Asignado'}</div>` : `<div class="etapa-tecnico" style="color:#B45309;font-weight:700">⚠ Falta asignar técnico</div>`}
         </div>
         <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
           ${ultimaAprob ? `<span class="badge badge-${ultimaAprob.estado}">${ultimaAprob.estado==='aprobado'?'✓ Aprobada':'✗ Rechazada'}</span>` : ''}
@@ -797,6 +810,12 @@ function _panelRepuestosOrden(solicitudes, items, etapas) {
 // ============================================================
 async function iniciarEtapa(eid, nombre) {
   try {
+    // Guardia: no iniciar sin técnico asignado (interno o externo).
+    const et = await api(`/etapas?id=eq.${eid}&select=mecanico_id,tercero`).then(r => r?.[0]).catch(() => null);
+    if (et && !et.mecanico_id && !et.tercero) {
+      toast('Asigna un técnico antes de iniciar esta etapa', 'err');
+      return;
+    }
     await api(`/etapas?id=eq.${eid}`, 'PATCH', { inicio: new Date().toISOString() });
     toast(`${nombre} iniciada ✓`);
     if (ordenActual) abrirOrden(ordenActual.id);
