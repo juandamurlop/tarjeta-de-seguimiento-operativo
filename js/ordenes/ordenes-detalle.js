@@ -35,6 +35,19 @@ async function abrirOrden(id) {
       ? (await api(`/solicitud_items?solicitud_id=in.(${_repIds.join(',')})&order=creado_en.asc`).catch(() => []) || [])
       : [];
 
+    // Valor de los REPUESTOS que entra al total de la orden: precio de venta que
+    // fijó el jefe (precio_venta_jefe), solo de los que ya están aprobados Y
+    // recibidos en el taller (recibido_taller) o entregados.
+    let valorRepuestos = 0;
+    if (_repIds.length) {
+      const _cots = await api(`/cotizaciones_repuesto?solicitud_id=in.(${_repIds.join(',')})&precio_venta_jefe=not.is.null&select=solicitud_id,precio_venta_jefe`).catch(() => []) || [];
+      const _ventaPorSol = {};
+      _cots.forEach(c => { if (c.precio_venta_jefe != null) _ventaPorSol[c.solicitud_id] = (_ventaPorSol[c.solicitud_id] || 0) + Number(c.precio_venta_jefe); });
+      valorRepuestos = solicitudesRep
+        .filter(s => s.estado === 'recibido_taller' || s.estado === 'entregado')
+        .reduce((sum, s) => sum + (_ventaPorSol[s.id] || 0), 0);
+    }
+
     const total = etapas.length;
     // Calidad: verificar si todas las etapas completadas tienen aprobación
     const _ultAprobPorEtapa = {};
@@ -270,14 +283,18 @@ async function abrirOrden(id) {
             <div class="sidebar-card-body">
               ${(() => {
                 const fmt = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
-                const subtotal = etapas.reduce((s,e) => s + (e.valor_venta||0), 0);
-                if (!subtotal) return '<div style="font-size:13px;color:var(--gris-mid)">Sin precio de venta en etapas aún.</div>';
+                const manoObra = etapas.reduce((s,e) => s + (e.valor_venta||0), 0);
+                const subtotal = manoObra + valorRepuestos;
+                if (!subtotal) return '<div style="font-size:13px;color:var(--gris-mid)">Sin precio de venta aún.</div>';
                 const iva = Math.round(subtotal * 0.19);
                 const total = subtotal + iva;
                 const filas = etapas.filter(e=>e.valor_venta).map(e =>
                   '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--gris-borde)"><span style="color:var(--gris-mid)">' + escapeHtml(e.etapa||'') + '</span><span style="font-weight:600">' + fmt(e.valor_venta) + '</span></div>'
                 ).join('');
-                return filas +
+                const filaRep = valorRepuestos
+                  ? '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--gris-borde)"><span style="color:var(--gris-mid)">🔧 Repuestos (recibidos)</span><span style="font-weight:600">' + fmt(valorRepuestos) + '</span></div>'
+                  : '';
+                return filas + filaRep +
                   '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0 2px"><span style="color:var(--gris-mid)">Subtotal</span><span style="font-weight:600">' + fmt(subtotal) + '</span></div>' +
                   '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--gris-mid)">IVA (19%)</span><span style="font-weight:600">' + fmt(iva) + '</span></div>' +
                   '<div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:8px;border-top:2px solid var(--azul-mid)"><span style="font-size:13px;font-weight:700;color:var(--azul)">Total con IVA</span><span style="font-size:15px;font-weight:700;color:var(--azul)">' + fmt(total) + '</span></div>';
