@@ -327,13 +327,35 @@ async function cotBuscarVehiculo() {
   const placa = document.getElementById('cn-placa')?.value.trim().toUpperCase();
   if (!placa) { toast('Ingresa la placa primero', 'err'); return; }
   cotChequearOrdenPlaca(); // avisar si esa placa ya tiene orden abierta
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null && String(val).trim() !== '') el.value = val; };
   try {
-    const vhs = await api(`/vehiculos?placa=eq.${placa}`) || [];
-    if (!vhs.length) { toast('Vehículo no encontrado', 'warn'); return; }
-    const v = vhs[0];
-    const mapa = { 'cn-marca': v.marca, 'cn-linea': v.linea, 'cn-ano': v.modelo, 'cn-color': v.color, 'cn-vin': v.vin };
-    Object.entries(mapa).forEach(([id, val]) => { const el = document.getElementById(id); if (el && val) el.value = val; });
-    toast('Vehículo encontrado ✓');
+    // Traer la ORDEN más reciente de esa placa (tiene datos del vehículo Y del
+    // cliente) y el registro de VEHÍCULO como respaldo para los datos del carro.
+    const [ords, vhs] = await Promise.all([
+      api(`/ordenes?placa=eq.${encodeURIComponent(placa)}&order=creado_en.desc&limit=1&select=marca,linea,modelo,color,vin,kilometraje,propietario,cedula_cliente,telefono,correo_cliente,tipo_cliente`).catch(() => []),
+      api(`/vehiculos?placa=eq.${encodeURIComponent(placa)}&limit=1`).catch(() => [])
+    ]);
+    const o = (ords || [])[0];
+    const v = (vhs || [])[0];
+    if (!o && !v) { toast('No hay datos previos de esa placa. Llena los campos manualmente.', 'warn'); return; }
+
+    // Datos del vehículo (la orden manda; si falta, el registro de vehículos).
+    set('cn-marca', o?.marca || v?.marca);
+    set('cn-linea', o?.linea || v?.linea);
+    set('cn-ano',   o?.modelo || v?.modelo);
+    set('cn-color', o?.color || v?.color);
+    set('cn-vin',   o?.vin || v?.vin);
+    set('cn-km',    o?.kilometraje);
+
+    // Datos del CLIENTE (vienen de la orden ya creada para esa placa).
+    if (o) {
+      set('cn-nombre',  o.propietario);
+      set('cn-cedula',  o.cedula_cliente);
+      set('cn-celular', o.telefono);
+      set('cn-correo',  o.correo_cliente);
+    }
+
+    toast(o ? 'Datos del vehículo y del cliente cargados ✓' : 'Datos del vehículo cargados ✓');
   } catch(e) { toast('Error al buscar: ' + e.message, 'err'); }
 }
 
