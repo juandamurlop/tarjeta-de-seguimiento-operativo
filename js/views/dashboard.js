@@ -61,7 +61,8 @@ function diasEntre(a, b) {
 async function cargarDashboardMes() {
   const cont = document.getElementById('dash-mes-contenido');
   if (!cont) return;
-  cont.innerHTML = '<div class="loading-state">Cargando...</div>';
+  if (typeof mostrarCargandoSiVacio === 'function') mostrarCargandoSiVacio(cont, '<div class="loading-state">Cargando...</div>');
+  else if (!cont.innerHTML.trim()) cont.innerHTML = '<div class="loading-state">Cargando...</div>';
 
   try {
     const ahora        = new Date();
@@ -360,7 +361,8 @@ async function cargarDashboardMes() {
 async function cargarDashboard() {
   const cont = document.getElementById('dash-contenido');
   if (!cont) return;
-  cont.innerHTML = '<div class="loading-state">Cargando...</div>';
+  if (typeof mostrarCargandoSiVacio === 'function') mostrarCargandoSiVacio(cont, '<div class="loading-state">Cargando...</div>');
+  else if (!cont.innerHTML.trim()) cont.innerHTML = '<div class="loading-state">Cargando...</div>';
 
   try {
     const ahora  = new Date();
@@ -1221,13 +1223,13 @@ function switchDashTab(tab) {
   if (tab === 'mes') {
     if (mesCont) { mesCont.style.display = ''; }
     if (btnMes)  btnMes.classList.add('active');
-    if (!mesCont?.innerHTML?.trim()) {
-      if (typeof cargarDashboardMes === 'function') cargarDashboardMes();
-    }
+    // Siempre re-consulta para reflejar cambios al instante (sin parpadeo: el
+    // loader solo aparece la primera vez, cuando el contenedor está vacío).
+    if (typeof cargarDashboardMes === 'function') cargarDashboardMes();
   } else if (tab === 'operativo') {
     if (opCont)  { opCont.style.display = ''; }
     if (btnOp)   btnOp.classList.add('active');
-    if (!opCont?.innerHTML?.trim() || opCont.innerHTML.includes('loading-state')) cargarDashboard();
+    cargarDashboard();
   } else if (tab === 'financiero') {
     if (finCont) { finCont.style.display = ''; }
     if (btnFin)  btnFin.classList.add('active');

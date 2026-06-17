@@ -45,7 +45,7 @@ async function cargarOrdenes() {
       return;
     }
     const ids = data.map(o => o.id).join(',');
-    const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico`).catch(() => []) || [];
+    const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico,valor_venta`).catch(() => []) || [];
     _ordenesTablaData = data;
     _etapasTablaData  = etapas;
     renderTablaOrdenes(data, etapas);
@@ -55,6 +55,10 @@ async function cargarOrdenes() {
 function _buildOrdenRow(o, etapas) {
   const comentario = o.descripcion_general || '';
   const etapasO  = etapas.filter(e => e.orden_id === o.id);
+  // "Sin valor": la orden no tiene precio de venta (ni en etapas ni el total de
+  // aseguradora). Solo aplica a órdenes reales (no programadas).
+  const valorVenta = etapasO.reduce((s, e) => s + (e.valor_venta || 0), 0);
+  const sinValor = o.estado !== 'Programada' && !valorVenta && !o.precio_venta_cliente;
   const total    = etapasO.length;
   const comp     = etapasO.filter(e => e.fin).length;
   const pct      = total ? Math.round((comp / total) * 100) : 0;
@@ -96,6 +100,7 @@ function _buildOrdenRow(o, etapas) {
     <td>
       <div class="ord-placa">${escapeHtml(o.placa)}</div>
       <div class="ord-ot">${otDe(o)}${contactAlert}</div>
+      ${sinValor ? `<div style="margin-top:3px"><span title="La orden no tiene precio de venta asignado" style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:.03em;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;padding:1px 6px;border-radius:99px">💲 SIN VALOR</span></div>` : ''}
     </td>
     <td>
       <div class="ord-veh-nombre">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'}</div>
