@@ -36,7 +36,10 @@ function toggleLoginPass() {
 }
 
 async function doLogin() {
-  const cedula    = document.getElementById('login-cedula').value.trim();
+  // En minúsculas: el correo de acceso y las reglas de seguridad usan el usuario
+  // en minúsculas (Supabase normaliza el correo). Así "Repuestos" y "repuestos"
+  // entran igual. Para cédulas numéricas no cambia nada.
+  const cedula    = document.getElementById('login-cedula').value.trim().toLowerCase();
   const password  = document.getElementById('login-pass')?.value || '';
 
   if (!cedula) { mostrarErrorLogin('Ingresa tu número de cédula.'); return; }
