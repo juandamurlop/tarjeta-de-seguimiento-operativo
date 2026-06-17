@@ -505,7 +505,7 @@
             <div style="display:flex;gap:8px;margin-bottom:10px">
               <div class="field" style="flex:1">
                 <label>Placa *</label>
-                <input id="cn-placa" placeholder="LUN954" style="text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:2px" oninput="this.value=this.value.toUpperCase()">
+                <input id="cn-placa" placeholder="LUN954" style="text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:2px" oninput="this.value=this.value.toUpperCase()" onblur="cotChequearOrdenPlaca()">
               </div>
               <div style="display:flex;align-items:flex-end;gap:6px">
                 <button class="btn btn-ghost" onclick="cotBuscarVehiculo()" style="height:41px;display:flex;align-items:center;gap:5px">
@@ -519,6 +519,7 @@
               </div>
             </div>
             <div id="cn-ocr-estado" style="display:none;margin-top:0;margin-bottom:10px;font-size:12px;padding:8px 12px;border-radius:6px;border:1px solid var(--gris-borde);background:var(--gris-bg)"></div>
+            <div id="cn-orden-aviso" style="display:none;margin-bottom:10px;font-size:12.5px;padding:9px 12px;border-radius:8px;font-weight:600;line-height:1.4"></div>
             <div class="grid-2">
               <div class="field"><label>Marca</label><input id="cn-marca" placeholder="Toyota"></div>
               <div class="field"><label>Línea / Modelo</label><input id="cn-linea" placeholder="Hilux"></div>

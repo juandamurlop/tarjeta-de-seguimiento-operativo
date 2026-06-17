@@ -307,6 +307,7 @@ async function cotOcrTarjetaPropiedad(input) {
       const el = document.getElementById('cn-nombre');
       if (el) { el.value = parsed.propietario; encontrados.push('propietario'); }
     }
+    if (parsed.placa) cotChequearOrdenPlaca(); // avisar si la placa ya tiene orden abierta
     if (estado) {
       if (encontrados.length) {
         estado.innerHTML = `✓ Datos extraídos: <strong>${encontrados.join(', ')}</strong>. Revisa y corrige si es necesario.`;
@@ -325,6 +326,7 @@ async function cotOcrTarjetaPropiedad(input) {
 async function cotBuscarVehiculo() {
   const placa = document.getElementById('cn-placa')?.value.trim().toUpperCase();
   if (!placa) { toast('Ingresa la placa primero', 'err'); return; }
+  cotChequearOrdenPlaca(); // avisar si esa placa ya tiene orden abierta
   try {
     const vhs = await api(`/vehiculos?placa=eq.${placa}`) || [];
     if (!vhs.length) { toast('Vehículo no encontrado', 'warn'); return; }
@@ -333,6 +335,33 @@ async function cotBuscarVehiculo() {
     Object.entries(mapa).forEach(([id, val]) => { const el = document.getElementById(id); if (el && val) el.value = val; });
     toast('Vehículo encontrado ✓');
   } catch(e) { toast('Error al buscar: ' + e.message, 'err'); }
+}
+
+// Avisa, dentro del formulario de cotización, si la placa escrita ya tiene una
+// orden de trabajo ABIERTA (no Entregada/Archivada). Así el usuario sabe que al
+// aprobar la cotización se enlazará a esa orden y no se creará una duplicada.
+async function cotChequearOrdenPlaca() {
+  const aviso = document.getElementById('cn-orden-aviso');
+  if (!aviso) return;
+  const placa = document.getElementById('cn-placa')?.value.trim().toUpperCase();
+  if (!placa) { aviso.style.display = 'none'; aviso.innerHTML = ''; return; }
+  try {
+    const abiertas = await api(
+      `/ordenes?placa=eq.${encodeURIComponent(placa)}&estado=not.in.(Entregada,Archivada)&select=id,estado&order=creado_en.desc`
+    ).catch(() => []) || [];
+    if (abiertas.length) {
+      const ot = abiertas[0];
+      const etiqueta = (typeof formatOT === 'function') ? formatOT(ot.id) : ('OT-' + ot.id);
+      aviso.style.display = 'block';
+      aviso.style.background = '#FEF3C7';
+      aviso.style.border = '1px solid #FDE68A';
+      aviso.style.color = '#92400E';
+      aviso.innerHTML = `⚠ La placa <b>${escapeHtml(placa)}</b> ya tiene una orden de trabajo abierta (${escapeHtml(etiqueta)}). Si apruebas esta cotización, se <b>enlazará a esa orden</b> — no se crea una orden duplicada.`;
+    } else {
+      aviso.style.display = 'none';
+      aviso.innerHTML = '';
+    }
+  } catch (e) { aviso.style.display = 'none'; }
 }
 
 async function cotBuscarCliente() {
@@ -1131,19 +1160,20 @@ async function crearOrdenDesdeCotizacion(cot) {
     if (abiertas.length) {
       const ot = abiertas[0];
       const etiqueta = (typeof formatOT === 'function') ? formatOT(ot.id) : ('OT-' + ot.id);
-      const enlazar = confirm(
-        `Ya existe una orden de trabajo abierta para la placa ${cot.placa} (${etiqueta}).\n\n` +
-        `• Aceptar = ENLAZAR esta cotización a esa orden (se le suma lo cotizado).\n` +
-        `• Cancelar = crear una orden NUEVA.`
+      // La placa YA tiene una orden abierta: no se crea una duplicada. Se enlaza
+      // la cotización a esa orden y se le suma lo cotizado a su descripción.
+      alert(
+        `La placa ${cot.placa} ya tiene una orden de trabajo abierta (${etiqueta}).\n\n` +
+        `Esta cotización se ENLAZARÁ a esa orden (no se crea una orden duplicada). ` +
+        `Si necesitas una orden nueva, primero cierra/entrega la orden actual.`
       );
-      if (enlazar) {
-        const descPrev = ot.descripcion_general ? ot.descripcion_general + '\n' : '';
-        const patch = { cotizacion_url: cot.url_pdf || null, cotizacion_id: cot.id };
-        if (descripcionGeneral) patch.descripcion_general = descPrev + descripcionGeneral;
-        await api(`/ordenes?id=eq.${ot.id}`, 'PATCH', patch);
-        await api(`/cotizaciones?id=eq.${cot.id}`, 'PATCH', { orden_id: ot.id });
-        return ot.id;
-      }
+      const descPrev = ot.descripcion_general ? ot.descripcion_general + '\n' : '';
+      const patch = { cotizacion_url: cot.url_pdf || null, cotizacion_id: cot.id };
+      if (descripcionGeneral) patch.descripcion_general = descPrev + descripcionGeneral;
+      await api(`/ordenes?id=eq.${ot.id}`, 'PATCH', patch);
+      await api(`/cotizaciones?id=eq.${cot.id}`, 'PATCH', { orden_id: ot.id });
+      if (typeof toast === 'function') toast(`Cotización enlazada a la orden ${etiqueta} ✓`);
+      return ot.id;
     }
   }
 
