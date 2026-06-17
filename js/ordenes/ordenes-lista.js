@@ -172,7 +172,8 @@ async function cargarOrdenesPulmon() {
       const tecnico   = activa?.tecnico || '';
       const diasPulmon = o.pulmon_desde ? Math.floor((Date.now() - new Date(o.pulmon_desde)) / 86400000) : null;
       const diasTaller = o.creado_en ? Math.floor((Date.now() - new Date(o.creado_en)) / 86400000) : 0;
-      const searchStr  = [(o.placa||''), (o.propietario||''), (tecnico||''), (o.marca||''), (o.linea||'')].join(' ').toLowerCase();
+      const comentario = o.descripcion_general || '';
+      const searchStr  = [(o.placa||''), (o.propietario||''), (tecnico||''), (o.marca||''), (o.linea||''), (comentario||'')].join(' ').toLowerCase();
       return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-search="${escapeHtml(searchStr)}">
         <td>
           <div class="ord-placa">${escapeHtml(o.placa)}</div>
@@ -181,6 +182,7 @@ async function cargarOrdenesPulmon() {
         <td>
           <div class="ord-veh-nombre">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'}</div>
           <div class="ord-veh-cliente">${escapeHtml(o.propietario || '—')}${o.modelo ? ` · ${escapeHtml(o.modelo)}` : ''}</div>
+          ${comentario ? `<div class="ord-coment" title="${escapeHtml(comentario)}" style="font-size:11px;color:#2563EB;margin-top:3px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 ${escapeHtml(comentario)}</div>` : ''}
         </td>
         <td>
           ${total > 0 ? `
