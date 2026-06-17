@@ -154,6 +154,7 @@ async function abrirOrden(id) {
     detalleCont.innerHTML = `
       <div class="detalle-grid">
         <div>
+          ${typeof _panelComentariosOrden === 'function' ? _panelComentariosOrden(novedades, orden.id) : ''}
           <div class="detalle-header-card">
             <!-- Fila placa + badges -->
             <div class="detalle-placa-row">
@@ -264,7 +265,6 @@ async function abrirOrden(id) {
               </div>
             </div>
           </div>
-          ${typeof _panelComentariosOrden === 'function' ? _panelComentariosOrden(novedades, orden.id) : ''}
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
             <div class="seccion-titulo" style="margin-bottom:0">Servicios y Etapas</div>
             ${esJefe() && orden.estado !== 'Programada' && orden.estado !== 'Entregada' && orden.estado !== 'Archivada' ? '<button class="btn btn-ghost btn-sm" onclick="abrirModalAgregar()">+ Agregar etapas</button>' : ''}
@@ -767,24 +767,41 @@ function _panelComentariosOrden(novedades, ordenId) {
     .filter(n => !n.etapa_id && (n.tipo === 'Comentario'))
     .sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
   const ultimo = coms[0];
-  const lista = coms.map(c => `<div style="border-left:3px solid #2563EB;background:#F8FAFC;border-radius:6px;padding:8px 11px;margin-bottom:6px">
+  const histHtml = coms.map(c => `<div style="border-left:3px solid #2563EB;background:#F8FAFC;border-radius:6px;padding:7px 10px;margin-bottom:6px">
       <div style="font-size:13px;color:#1E293B;white-space:pre-wrap">${escapeHtml(c.motivo || '—')}</div>
-      <div style="font-size:11px;color:var(--gris-mid);margin-top:3px">${escapeHtml(c.responsable || '—')} · ${formatTS(c.creado_en)}</div>
+      <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(c.responsable || '—')} · ${formatTS(c.creado_en)}</div>
     </div>`).join('');
+  // Barra FIJA (sticky) en la parte de arriba del detalle: muestra siempre el
+  // estado actual del carro. El editor se abre con "Actualizar" para no ocupar
+  // espacio de más.
   return `
-    <div class="seccion-titulo" style="margin:0 0 8px">📝 Estado del carro / Comentarios</div>
-    <div style="border:1px solid var(--gris-borde);border-radius:10px;padding:12px;margin-bottom:18px;background:white">
-      ${ultimo ? `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:9px 12px;margin-bottom:10px">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#2563EB;margin-bottom:2px">Estado actual</div>
-        <div style="font-size:13.5px;color:#1E293B;white-space:pre-wrap">${escapeHtml(ultimo.motivo || '—')}</div>
-        <div style="font-size:11px;color:var(--gris-mid);margin-top:3px">${escapeHtml(ultimo.responsable || '—')} · ${formatTS(ultimo.creado_en)}</div>
-      </div>` : '<div style="font-size:12px;color:var(--gris-mid);margin-bottom:8px">Aún no hay comentarios. Escribe el estado actual del carro.</div>'}
-      <textarea id="coment-orden-${ordenId}" placeholder="Escribe un comentario general del carro (ej. esperando repuesto, listo para entrega, cliente avisado...)" style="width:100%;min-height:46px;resize:vertical;box-sizing:border-box"></textarea>
-      <div class="btn-row" style="margin-top:8px;justify-content:flex-end">
-        <button class="btn btn-primary btn-sm" onclick="_guardarComentarioOrden(${ordenId})">💬 Guardar comentario</button>
+    <div class="orden-coment-bar" style="position:sticky;top:0;z-index:30;background:#fff;border:1.5px solid #BFDBFE;border-radius:10px;padding:10px 12px;margin-bottom:14px;box-shadow:0 2px 10px rgba(37,99,235,.10)">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#2563EB;margin-bottom:2px">📝 Estado del carro</div>
+          <div style="font-size:13.5px;color:${ultimo ? '#1E293B' : 'var(--gris-mid)'};white-space:pre-wrap;line-height:1.4">${ultimo ? escapeHtml(ultimo.motivo || '—') : 'Sin comentario. Toca “Actualizar” para escribir el estado del carro.'}</div>
+          ${ultimo ? `<div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(ultimo.responsable || '—')} · ${formatTS(ultimo.creado_en)}</div>` : ''}
+        </div>
+        <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="_toggleComentOrden(${ordenId})">✏ Actualizar</button>
       </div>
-      ${coms.length > 1 ? `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:12px;color:var(--gris-mid);font-weight:600">Ver historial (${coms.length})</summary><div style="margin-top:8px">${lista}</div></details>` : ''}
+      <div id="coment-orden-editor-${ordenId}" style="display:none;margin-top:10px;border-top:1px solid var(--gris-borde);padding-top:10px">
+        <textarea id="coment-orden-${ordenId}" placeholder="Escribe el estado del carro (ej. esperando repuesto, listo para entrega, cliente avisado...)" style="width:100%;min-height:46px;resize:vertical;box-sizing:border-box"></textarea>
+        <div class="btn-row" style="margin-top:8px;justify-content:flex-end;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="_toggleComentOrden(${ordenId})">Cancelar</button>
+          <button class="btn btn-primary btn-sm" onclick="_guardarComentarioOrden(${ordenId})">Guardar comentario</button>
+        </div>
+        ${coms.length ? `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:12px;color:var(--gris-mid);font-weight:600">Ver historial (${coms.length})</summary><div style="margin-top:8px">${histHtml}</div></details>` : ''}
+      </div>
     </div>`;
+}
+
+// Abre/cierra el editor del comentario general de la orden.
+function _toggleComentOrden(ordenId) {
+  const ed = document.getElementById('coment-orden-editor-' + ordenId);
+  if (!ed) return;
+  const mostrar = ed.style.display === 'none';
+  ed.style.display = mostrar ? 'block' : 'none';
+  if (mostrar) document.getElementById('coment-orden-' + ordenId)?.focus();
 }
 
 // Guarda un comentario general de la orden (sin etapa). Refresca el detalle.
