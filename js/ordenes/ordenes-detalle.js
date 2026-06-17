@@ -155,6 +155,13 @@ async function abrirOrden(id) {
       <div class="detalle-grid">
         <div>
           ${typeof _panelComentariosOrden === 'function' ? _panelComentariosOrden(orden) : ''}
+          ${(!(orden.numero_ot && String(orden.numero_ot).trim()) && orden.estado !== 'Programada') ? `
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:10px 12px;margin-bottom:14px">
+            <svg width="16" height="16" fill="none" stroke="#92400E" stroke-width="2.4" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div style="flex:1;min-width:150px;font-size:13px;color:#92400E;font-weight:700">Falta agregar el N° de orden de trabajo</div>
+            <input id="ot-num-${orden.id}" placeholder="N° de orden" autocomplete="off" style="width:130px;padding:7px 9px;border:1.5px solid #FCD34D;border-radius:7px;font-size:13px;font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')_guardarNumeroOT(${orden.id})">
+            <button class="btn btn-sm" style="background:#D97706;color:#fff;border-color:#D97706" onclick="_guardarNumeroOT(${orden.id})">Guardar</button>
+          </div>` : ''}
           <div class="detalle-header-card">
             <!-- Fila placa + badges -->
             <div class="detalle-placa-row">
@@ -781,6 +788,19 @@ function _panelComentariosOrden(orden) {
         </div>
       </div>
     </div>`;
+}
+
+// Guarda el N° de orden de trabajo (manual) de la orden. Al guardarlo, el aviso
+// de "falta agregar el N° de orden" desaparece (se vuelve a renderizar el detalle).
+async function _guardarNumeroOT(ordenId) {
+  const v = document.getElementById('ot-num-' + ordenId)?.value?.trim();
+  if (!v) { toast('Escribe el número de orden', 'err'); return; }
+  try {
+    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { numero_ot: v });
+    if (ordenActual && ordenActual.id === ordenId) ordenActual.numero_ot = v;
+    toast('N° de orden guardado ✓');
+    abrirOrden(ordenId);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
 // Abre/cierra el editor del comentario general de la orden.
