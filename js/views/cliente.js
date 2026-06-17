@@ -59,7 +59,8 @@ async function loginClientePortal() {
     }
     _err('No encontramos un vehículo con ese documento. Verifica el número o comunícate con el taller.');
   } catch (e) {
-    _err('Error de conexión. Intenta de nuevo.');
+    console.error('[loginClientePortal]', e);
+    _err('No se pudo abrir el seguimiento (' + (e?.message || 'error') + '). Intenta de nuevo.');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Ver mi vehículo'; }
   }

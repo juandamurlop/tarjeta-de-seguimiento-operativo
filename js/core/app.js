@@ -15,13 +15,19 @@ function montarApp() {
     cliente:   'Cliente'
   };
 
-  document.getElementById('sb-nombre').textContent = sesion.nombre;
-  document.getElementById('sb-avatar').innerHTML = '<img src="assets/icons/logoFreimanpfp.png" alt="F" onerror="_avatarOnError(this)" style="width:100%;height:100%;object-fit:contain;border-radius:50%">';
+  // A prueba de fallos: si falta algún elemento del shell, NO debe tumbar el
+  // arranque (antes lanzaba "Cannot set properties of null" y, en el login del
+  // cliente, se veía como "Error de conexión").
+  const _sbNom = document.getElementById('sb-nombre');
+  if (_sbNom) _sbNom.textContent = sesion.nombre || '';
+  const _sbAv = document.getElementById('sb-avatar');
+  if (_sbAv) _sbAv.innerHTML = '<img src="assets/icons/logoFreimanpfp.png" alt="F" onerror="_avatarOnError(this)" style="width:100%;height:100%;object-fit:contain;border-radius:50%">';
   // Mostrar rol específico del mecánico si existe, si no el label genérico
   const rolMostrar = (sesion.perfil === 'mecanico' && sesion.datos?.rol)
     ? sesion.datos.rol
     : (rolLabels[sesion.perfil] || sesion.perfil);
-  document.getElementById('sb-rol').textContent = rolMostrar;
+  const _sbRol = document.getElementById('sb-rol');
+  if (_sbRol) _sbRol.textContent = rolMostrar;
 
   const capEl = document.getElementById('sidebar-capacidad');
   if (capEl) capEl.style.display = esJefe() ? 'block' : 'none';
