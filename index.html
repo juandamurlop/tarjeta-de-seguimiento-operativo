@@ -35,9 +35,10 @@
     <div class="login-logo">Freimanautos · Sistema Operativo</div>
     <div class="login-titulo">Bienvenido</div>
     <div class="login-sub" id="login-sub">Ingresa tus credenciales para continuar</div>
-    <label class="login-label" for="login-cedula">Número de cédula</label>
-    <input class="login-input" id="login-cedula" type="text" placeholder="Ej: 1234567890"
-      oninput="this.value=this.value.replace(/\D/g,'')"
+    <label class="login-label" for="login-cedula">Cédula o usuario</label>
+    <input class="login-input" id="login-cedula" type="text" placeholder="Ej: 1234567890 o Repuestos"
+      autocapitalize="none" autocomplete="username"
+      oninput="this.value=this.value.replace(/[^a-zA-Z0-9]/g,'')"
       onkeydown="if(event.key==='Enter')doLogin()">
     <div id="login-pass-wrap">
       <label class="login-label" for="login-pass" style="margin-top:16px">Contraseña</label>
