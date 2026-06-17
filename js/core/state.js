@@ -97,4 +97,4 @@ const INV_LABELS = {
   herramientas: 'Herramientas', extintor: 'Extintor'
 };
 
-const CAPACIDAD_TALLER = 34;
+const CAPACIDAD_TALLER = 36;

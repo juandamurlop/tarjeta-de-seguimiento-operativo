@@ -2427,7 +2427,7 @@ async function abrirPanelCapacidad() {
   document.body.appendChild(overlay);
 
   try {
-    const TOTAL_CUPOS = 34;
+    const TOTAL_CUPOS = 36;
     const [ordenesActivas, etapasActivas, ordenesPulmon, programadas] = await Promise.all([
       api('/ordenes?estado=eq.Activa&select=id,placa,marca,linea,propietario,kilometraje,creado_en,pulmon&order=creado_en.desc').catch(() => []),
       api('/etapas?fin=is.null&inicio=not.is.null&select=id,orden_id,etapa,tecnico,inicio,tiempo_pausado_min').catch(() => []),

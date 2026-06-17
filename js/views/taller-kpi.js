@@ -307,7 +307,7 @@ async function cargarKPITaller() {
     const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 
     // ════════ DATOS DE CONTROL DE LA OPERACIÓN ════════
-    const CAP = (typeof CAPACIDAD_TALLER !== 'undefined' ? CAPACIDAD_TALLER : 34);
+    const CAP = (typeof CAPACIDAD_TALLER !== 'undefined' ? CAPACIDAD_TALLER : 36);
     const _localDay = iso => { if (!iso) return null; const x = new Date(iso); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`; };
     const _hoyKey = _localDay(new Date());
 
@@ -315,7 +315,7 @@ async function cargarKPITaller() {
     // activas (estado=Activa & pulmon=false) y pulmón interno.
     const enTaller = capActivas.length;
     const enPulmon = capPulmonInt.length;
-    // Cupos ocupados = activas + pulmón interno (igual que el sidebar "X de 34").
+    // Cupos ocupados = activas + pulmón interno (igual que el sidebar "X de 36").
     const cuposOcupados = enTaller + enPulmon;
     const pctOcup  = Math.min(100, Math.round(cuposOcupados / CAP * 100));
     const ingresosHoy = ordenesActivas.filter(o => _localDay(o.ingreso_en) === _hoyKey).length
