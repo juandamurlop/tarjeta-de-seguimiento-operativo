@@ -1368,9 +1368,18 @@ async function guardarEdicionOrden() {
     };
 
     await api(`/ordenes?id=eq.${ordenActual.id}`, 'PATCH', patch);
+    Object.assign(ordenActual, patch); // reflejar el cambio en memoria al instante
     toast('Datos actualizados ✓');
     document.getElementById('modal-editar-orden')?.classList.remove('show');
     abrirOrden(ordenActual.id); // Recargar detalle
+    // Refrescar AL INSTANTE las vistas con indicadores operativos (lista,
+    // capacidad y dashboard), para que un cambio como la fecha de entrega se
+    // refleje de una (p. ej. deja de aparecer "atrasada").
+    try { if (typeof _refrescarCapacidad === 'function') _refrescarCapacidad(); } catch (e) {}
+    try { if (typeof cargarDashboardMes === 'function') cargarDashboardMes(); } catch (e) {}
+    try { if (typeof cargarDashboard === 'function') cargarDashboard(); } catch (e) {}
+    try { if (typeof cargarKPITaller === 'function') cargarKPITaller(); } catch (e) {}
+    try { if (typeof filtroEstado !== 'undefined' && filtroEstado !== null && typeof cargarOrdenes === 'function') cargarOrdenes(); } catch (e) {}
   } catch(e) {
     toast('Error: '+e.message,'err');
   } finally {
