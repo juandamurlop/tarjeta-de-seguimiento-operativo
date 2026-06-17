@@ -520,7 +520,7 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
     <div class="etapa-card">
       <div class="etapa-header" onclick="toggleEtapa('eb-${k}')">
         <div style="flex:1;min-width:0">
-          <div class="etapa-nombre">${escapeHtml(nombre)}${e.tercero?` <span style="font-size:11px;color:var(--gris-mid);font-weight:400">(${escapeHtml(e.tercero)})</span>`:''}</div>
+          <div class="etapa-nombre">${escapeHtml(nombre)}${e.tercero?` <span style="font-size:11px;color:var(--gris-mid);font-weight:400">(${escapeHtml(e.tercero)}${e.tercero_desc?' · '+escapeHtml(e.tercero_desc):''})</span>`:''}</div>
           ${e.tecnico||e.mecanico_id ? `<div class="etapa-tecnico">${ico('user',12)} ${escapeHtml(e.tecnico)||'Asignado'}</div>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">

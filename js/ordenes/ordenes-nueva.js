@@ -1413,14 +1413,46 @@ function _agDropdownTecnicosHtml() {
     mecs.map(m => `<option value="${m.id}">${escapeHtml(m.nombre)}</option>`).join('') + `</select>`;
 }
 
-// Decide cómo se asigna el técnico SEGÚN LA ETAPA (no el servicio):
-//   'externo' = nombre a mano (solo TOT).
-//   'toggle'  = preguntar si es interno (lista) o externo (texto)  → Electrónica.
-//   'interno' = lista de técnicos del taller (todo lo demás).
+// Decide cómo se asigna el técnico SEGÚN LA ETAPA:
+//   'externo' = siempre externo, nombre a mano (TOT).
+//   'toggle'  = preguntar si es interno (lista) o externo/TOT (con descripción).
+//   Ahora TODAS las etapas permiten externo (toggle), no solo Electrónica.
 function _modoTecnico(key) {
   if (key === 'adi_tot') return 'externo';
-  if (key === 'mec_electronica') return 'toggle';
-  return 'interno';
+  return 'toggle';
+}
+
+// Carga (1 vez) datos para autocompletar: nombres de externos ya usados y las
+// categorías de descripción (predefinidas + las que ya se hayan agregado).
+async function _cargarTotData() {
+  if (window._totDataCargada) return;
+  window._totDataCargada = true;
+  try {
+    const ext = await api('/tecnicos_externos?select=nombre,descripcion&order=nombre.asc').catch(() => []) || [];
+    window._totExternos = [...new Set(ext.map(e => e.nombre).filter(Boolean))];
+    const usadas = [...new Set(ext.map(e => e.descripcion).filter(Boolean))];
+    const predef = ['Eléctrica', 'Repuestos', 'Soldadura', 'Tapicería', 'Vidrios', 'Aire acondicionado', 'Latonería', 'Pintura', 'Otro'];
+    window._totCats = [...new Set([...predef, ...usadas])];
+  } catch (e) { window._totExternos = window._totExternos || []; window._totCats = window._totCats || []; }
+  _refrescarTotDatalists();
+}
+function _refrescarTotDatalists() {
+  const dlE = document.getElementById('ag-externos-list');
+  if (dlE) dlE.innerHTML = (window._totExternos || []).map(n => `<option value="${escapeHtml(n)}">`).join('');
+  const dlC = document.getElementById('ag-cats-list');
+  if (dlC) dlC.innerHTML = (window._totCats || ['Eléctrica', 'Repuestos', 'Otro']).map(c => `<option value="${escapeHtml(c)}">`).join('');
+}
+
+// Campos del técnico EXTERNO/TOT: nombre (autocompletar) + descripción/categoría
+// (lista que se puede ampliar: si no está, se escribe y queda para la próxima).
+function _agExternoHtml() {
+  _cargarTotData();
+  const ext  = window._totExternos || [];
+  const cats = window._totCats || ['Eléctrica', 'Repuestos', 'Soldadura', 'Tapicería', 'Otro'];
+  return `<input type="text" id="ag-tec" list="ag-externos-list" placeholder="Nombre del técnico externo" autocomplete="off">
+    <datalist id="ag-externos-list">${ext.map(n => `<option value="${escapeHtml(n)}">`).join('')}</datalist>
+    <input type="text" id="ag-tot-desc" list="ag-cats-list" placeholder="Descripción / categoría (ej. Eléctrica, Repuestos…)" autocomplete="off" style="margin-top:6px">
+    <datalist id="ag-cats-list">${cats.map(c => `<option value="${escapeHtml(c)}">`).join('')}</datalist>`;
 }
 
 function _agProcesoChange() {
@@ -1432,12 +1464,12 @@ function _agProcesoChange() {
   const modo = _modoTecnico(key);
   wrap.style.display = 'block';
   if (modo === 'externo') {
-    wrap.innerHTML = `<label>Técnico (externo)</label><input type="text" id="ag-tec" placeholder="Nombre del técnico">`;
+    wrap.innerHTML = `<label>Técnico externo (TOT)</label>${_agExternoHtml()}`;
   } else if (modo === 'toggle') {
-    wrap.innerHTML = `<label>Técnico de electrónica</label>
+    wrap.innerHTML = `<label>Técnico</label>
       <div style="display:flex;gap:16px;margin:4px 0 8px;font-size:13px">
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="ag-elec-tipo" value="interno" checked onchange="_agElecTipoChange()"> Interno (de la lista)</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="ag-elec-tipo" value="externo" onchange="_agElecTipoChange()"> Externo</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="ag-elec-tipo" value="externo" onchange="_agElecTipoChange()"> TOT / Externo</label>
       </div>
       <div id="ag-tec-cont">${_agDropdownTecnicosHtml()}</div>`;
   } else {
@@ -1450,9 +1482,7 @@ function _agElecTipoChange() {
   const tipo = document.querySelector('input[name="ag-elec-tipo"]:checked')?.value;
   const cont = document.getElementById('ag-tec-cont');
   if (!cont) return;
-  cont.innerHTML = tipo === 'externo'
-    ? `<input type="text" id="ag-tec" placeholder="Nombre del técnico externo">`
-    : _agDropdownTecnicosHtml();
+  cont.innerHTML = tipo === 'externo' ? _agExternoHtml() : _agDropdownTecnicosHtml();
 }
 
 // Agrega el proceso actual a la lista de pendientes (en orden).
@@ -1469,10 +1499,11 @@ function _agAgregarPend() {
   const tecEl = document.getElementById('ag-tec');
   const mecanico_id = (!esExterno && tecEl?.value) ? parseInt(tecEl.value) : null;
   const tercero = (esExterno && tecEl?.value?.trim()) ? tecEl.value.trim() : null;
+  const tercero_desc = esExterno ? (document.getElementById('ag-tot-desc')?.value?.trim() || null) : null;
   if (!mecanico_id && !tercero) { toast('Asigna un técnico', 'err'); return; }
   _etapasPend.push({
     servicio: srvKey, key, nombre: etDef.nombre,
-    mecanico_id, tercero,
+    mecanico_id, tercero, tercero_desc,
     descripcion: document.getElementById('ag-desc')?.value?.trim() || null
   });
   const selP = document.getElementById('ag-proceso'); if (selP) selP.value = '';
@@ -1497,7 +1528,7 @@ function _renderPendLista() {
       return `<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--gris-borde);border-radius:7px;padding:8px 10px;margin-bottom:6px">
         <span style="font-size:11px;font-weight:700;color:${srvColor[e.servicio]||'#475569'};min-width:16px">${i+1}</span>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:13px">${escapeHtml(e.nombre)} <span style="font-size:11px;color:var(--gris-mid);font-weight:400">· ${escapeHtml(tecNombre)}</span></div>
+          <div style="font-weight:600;font-size:13px">${escapeHtml(e.nombre)} <span style="font-size:11px;color:var(--gris-mid);font-weight:400">· ${escapeHtml(tecNombre)}</span>${e.tercero_desc ? ` <span style="font-size:10px;color:#7C3AED;font-weight:600;background:#F3E8FF;padding:1px 6px;border-radius:99px">${escapeHtml(e.tercero_desc)}</span>` : ''}</div>
           ${e.descripcion ? `<div style="font-size:11px;color:var(--gris-mid);white-space:pre-wrap">${escapeHtml(e.descripcion)}</div>` : ''}
         </div>
         <button type="button" class="btn btn-ghost btn-xs" style="color:var(--rojo)" onclick="_agQuitarPend(${i})">✕</button>
@@ -1514,11 +1545,11 @@ function recogerChecklist(_containerId) {
 // tabla, ligados a la placa y la orden, para llevar historial. Si la tabla aún
 // no existe en la base de datos, falla en silencio sin romper el guardado.
 async function _guardarTecnicosExternos(etapas, ordenId, placa) {
-  const externos = etapas.filter(et => et.tercero && (et.servicio === 'mecanica' || et.servicio === 'adicionales'));
+  const externos = etapas.filter(et => et.tercero);
   for (const et of externos) {
     try {
       await api('/tecnicos_externos', 'POST', {
-        nombre: et.tercero, servicio: et.servicio, etapa: et.nombre,
+        nombre: et.tercero, descripcion: et.tercero_desc || null, servicio: et.servicio, etapa: et.nombre,
         placa: placa || null, orden_id: ordenId || null
       }, { Prefer: 'return=minimal' });
     } catch (e) { console.warn('No se pudo registrar técnico externo:', e?.message); }
@@ -1533,11 +1564,12 @@ async function guardarEtapasNueva() {
   try {
     for (const et of etapas) {
       const mec = mecanicos.find(m => m.id === et.mecanico_id);
-      await api('/etapas', 'POST', {
+      const _res = await api('/etapas', 'POST', {
         orden_id: modalOrdenId, servicio: et.servicio, etapa_key: et.key, etapa: et.nombre,
         tercero: et.tercero || null, mecanico_id: et.mecanico_id || null, tecnico: mec?.nombre || null,
         descripcion: et.descripcion || null
-      }, { Prefer: 'return=minimal' });
+      }, { Prefer: 'return=representation' });
+      if (et.tercero_desc && _res?.[0]?.id) await api(`/etapas?id=eq.${_res[0].id}`, 'PATCH', { tercero_desc: et.tercero_desc }).catch(() => {});
     }
     toast('Etapas guardadas ✓');
     document.getElementById('modal-servicios')?.classList.remove('show');
@@ -1606,11 +1638,12 @@ async function confirmarAgregarEtapas() {
   try {
     for (const et of etapas) {
       const mec = mecanicos.find(m => m.id === et.mecanico_id);
-      await api('/etapas', 'POST', { 
-        orden_id: ordenActual.id, servicio: et.servicio, etapa_key: et.key, etapa: et.nombre, 
+      const _res = await api('/etapas', 'POST', {
+        orden_id: ordenActual.id, servicio: et.servicio, etapa_key: et.key, etapa: et.nombre,
         tercero: et.tercero || null, mecanico_id: et.mecanico_id || null, tecnico: mec?.nombre || null,
         descripcion: et.descripcion || null
-      }, { Prefer: 'return=minimal' });
+      }, { Prefer: 'return=representation' });
+      if (et.tercero_desc && _res?.[0]?.id) await api(`/etapas?id=eq.${_res[0].id}`, 'PATCH', { tercero_desc: et.tercero_desc }).catch(() => {});
     }
     await _guardarTecnicosExternos(etapas, ordenActual.id, ordenActual.placa);
     toast('Etapas agregadas ✓');
