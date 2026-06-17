@@ -1486,7 +1486,7 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
       api(`/ordenes?id=eq.${ordenId}`).then(r => r?.[0]).catch(()=>null),
       api(`/etapas?orden_id=eq.${ordenId}&order=creado_en.asc&select=*`).catch(()=>[]) || [],
       api(`/novedades?orden_id=eq.${ordenId}&select=*`).catch(()=>[]) || [],
-      api(`/solicitudes_repuesto?orden_id=eq.${ordenId}&estado=in.(pedido,recibido_taller,entregado)&select=*`).catch(()=>[]) || []
+      api(`/solicitudes_repuesto?orden_id=eq.${ordenId}&estado=in.(recibido_taller,entregado)&select=*`).catch(()=>[]) || []
     ]);
 
     // Cotizaciones e ítems de cada solicitud de repuesto
