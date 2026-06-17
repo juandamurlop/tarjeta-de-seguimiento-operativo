@@ -45,21 +45,15 @@ async function cargarOrdenes() {
       return;
     }
     const ids = data.map(o => o.id).join(',');
-    const [etapas, comentarios] = await Promise.all([
-      api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico`).catch(() => []),
-      api(`/novedades?orden_id=in.(${ids})&etapa_id=is.null&tipo=eq.Comentario&order=creado_en.desc&select=orden_id,motivo,creado_en`).catch(() => [])
-    ]);
-    // Último comentario general (estado del carro) por orden.
-    const comentMap = {};
-    (comentarios || []).forEach(c => { if (!comentMap[c.orden_id]) comentMap[c.orden_id] = c.motivo; });
+    const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico`).catch(() => []) || [];
     _ordenesTablaData = data;
-    _etapasTablaData  = etapas || [];
-    renderTablaOrdenes(data, etapas || [], comentMap);
+    _etapasTablaData  = etapas;
+    renderTablaOrdenes(data, etapas);
   } catch(e) { lista.innerHTML = `<div class="empty-state">Error cargando órdenes: ${e.message}</div>`; }
 }
 
-function _buildOrdenRow(o, etapas, comentMap = {}) {
-  const comentario = comentMap[o.id] || '';
+function _buildOrdenRow(o, etapas) {
+  const comentario = o.descripcion_general || '';
   const etapasO  = etapas.filter(e => e.orden_id === o.id);
   const total    = etapasO.length;
   const comp     = etapasO.filter(e => e.fin).length;
@@ -123,14 +117,14 @@ function _buildOrdenRow(o, etapas, comentMap = {}) {
   </tr>`;
 }
 
-function renderTablaOrdenes(data, etapas, comentMap = {}) {
+function renderTablaOrdenes(data, etapas) {
   const lista = document.getElementById('lista-ordenes');
   if (!lista) return;
   if (!data.length) {
     lista.innerHTML = `<div class="empty-state"><div class="empty-state-icon">${ico('clipboard',32)}</div>No hay órdenes.</div>`;
     return;
   }
-  const rows = data.map(o => _buildOrdenRow(o, etapas, comentMap)).join('');
+  const rows = data.map(o => _buildOrdenRow(o, etapas)).join('');
   renderSinParpadeo(lista, `<div class="ordenes-tabla-wrap"><table class="ordenes-tabla">
     <thead><tr>
       <th>Orden</th><th>Vehículo</th><th>Etapa actual</th>

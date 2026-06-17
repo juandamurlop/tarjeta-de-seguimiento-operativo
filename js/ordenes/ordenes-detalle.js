@@ -154,7 +154,7 @@ async function abrirOrden(id) {
     detalleCont.innerHTML = `
       <div class="detalle-grid">
         <div>
-          ${typeof _panelComentariosOrden === 'function' ? _panelComentariosOrden(novedades, orden.id) : ''}
+          ${typeof _panelComentariosOrden === 'function' ? _panelComentariosOrden(orden) : ''}
           <div class="detalle-header-card">
             <!-- Fila placa + badges -->
             <div class="detalle-placa-row">
@@ -756,41 +756,29 @@ function _toggleNovForm(eid) {
 }
 
 // ============================================================
-// COMENTARIO GENERAL DE LA ORDEN (estado del carro)
-// Nota libre a nivel de ORDEN (no de etapa): para saber de un vistazo en qué
-// estado está el carro. Se guarda en 'novedades' con etapa_id NULL y tipo
-// 'Comentario'. El más reciente se muestra como "Estado actual" y el resto
-// queda en un historial desplegable.
+// ESTADO DEL CARRO (Descripción general de la orden)
+// Barra FIJA (sticky) arriba del detalle: muestra SIEMPRE la "Descripción
+// general" de la orden (la que se escribe al crear/llenar la orden) y deja
+// editarla con "Actualizar". Es la misma descripción, en un solo lugar visible.
 // ============================================================
-function _panelComentariosOrden(novedades, ordenId) {
-  const coms = (novedades || [])
-    .filter(n => !n.etapa_id && (n.tipo === 'Comentario'))
-    .sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
-  const ultimo = coms[0];
-  const histHtml = coms.map(c => `<div style="border-left:3px solid #2563EB;background:#F8FAFC;border-radius:6px;padding:7px 10px;margin-bottom:6px">
-      <div style="font-size:13px;color:#1E293B;white-space:pre-wrap">${escapeHtml(c.motivo || '—')}</div>
-      <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(c.responsable || '—')} · ${formatTS(c.creado_en)}</div>
-    </div>`).join('');
-  // Barra FIJA (sticky) en la parte de arriba del detalle: muestra siempre el
-  // estado actual del carro. El editor se abre con "Actualizar" para no ocupar
-  // espacio de más.
+function _panelComentariosOrden(orden) {
+  const ordenId = orden?.id;
+  const desc = (orden && orden.descripcion_general) ? String(orden.descripcion_general) : '';
   return `
     <div class="orden-coment-bar" style="position:sticky;top:0;z-index:30;background:#fff;border:1.5px solid #BFDBFE;border-radius:10px;padding:10px 12px;margin-bottom:14px;box-shadow:0 2px 10px rgba(37,99,235,.10)">
       <div style="display:flex;align-items:flex-start;gap:10px">
         <div style="flex:1;min-width:0">
           <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#2563EB;margin-bottom:2px">📝 Estado del carro</div>
-          <div style="font-size:13.5px;color:${ultimo ? '#1E293B' : 'var(--gris-mid)'};white-space:pre-wrap;line-height:1.4">${ultimo ? escapeHtml(ultimo.motivo || '—') : 'Sin comentario. Toca “Actualizar” para escribir el estado del carro.'}</div>
-          ${ultimo ? `<div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(ultimo.responsable || '—')} · ${formatTS(ultimo.creado_en)}</div>` : ''}
+          <div style="font-size:13.5px;color:${desc ? '#1E293B' : 'var(--gris-mid)'};white-space:pre-wrap;line-height:1.4">${desc ? escapeHtml(desc) : 'Sin descripción. Toca “Actualizar” para escribir el estado del carro.'}</div>
         </div>
         <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="_toggleComentOrden(${ordenId})">✏ Actualizar</button>
       </div>
       <div id="coment-orden-editor-${ordenId}" style="display:none;margin-top:10px;border-top:1px solid var(--gris-borde);padding-top:10px">
-        <textarea id="coment-orden-${ordenId}" placeholder="Escribe el estado del carro (ej. esperando repuesto, listo para entrega, cliente avisado...)" style="width:100%;min-height:46px;resize:vertical;box-sizing:border-box"></textarea>
+        <textarea id="coment-orden-${ordenId}" placeholder="Escribe el estado / descripción del carro (ej. daños, esperando repuesto, listo para entrega...)" style="width:100%;min-height:60px;resize:vertical;box-sizing:border-box">${escapeHtml(desc)}</textarea>
         <div class="btn-row" style="margin-top:8px;justify-content:flex-end;gap:8px">
           <button class="btn btn-ghost btn-sm" onclick="_toggleComentOrden(${ordenId})">Cancelar</button>
-          <button class="btn btn-primary btn-sm" onclick="_guardarComentarioOrden(${ordenId})">Guardar comentario</button>
+          <button class="btn btn-primary btn-sm" onclick="_guardarComentarioOrden(${ordenId})">Guardar</button>
         </div>
-        ${coms.length ? `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:12px;color:var(--gris-mid);font-weight:600">Ver historial (${coms.length})</summary><div style="margin-top:8px">${histHtml}</div></details>` : ''}
       </div>
     </div>`;
 }
@@ -804,16 +792,13 @@ function _toggleComentOrden(ordenId) {
   if (mostrar) document.getElementById('coment-orden-' + ordenId)?.focus();
 }
 
-// Guarda un comentario general de la orden (sin etapa). Refresca el detalle.
+// Guarda la "Descripción general" (estado del carro) de la orden. Refresca.
 async function _guardarComentarioOrden(ordenId) {
-  const txt = document.getElementById('coment-orden-' + ordenId)?.value?.trim();
-  if (!txt) { toast('Escribe un comentario primero', 'err'); return; }
+  const txt = document.getElementById('coment-orden-' + ordenId)?.value?.trim() || '';
   try {
-    await api('/novedades', 'POST', {
-      orden_id: ordenId, etapa_id: null, tipo: 'Comentario',
-      motivo: txt, responsable: sesion?.nombre || '—', desde: new Date().toISOString()
-    }, { Prefer: 'return=minimal' });
-    toast('Comentario guardado ✓');
+    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { descripcion_general: txt || null });
+    if (ordenActual && ordenActual.id === ordenId) ordenActual.descripcion_general = txt || null;
+    toast('Estado del carro actualizado ✓');
     abrirOrden(ordenId);
   } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
