@@ -510,8 +510,7 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
           Etapa rechazada — corrígela y finaliza de nuevo
           ${ultimaAprob?.observacion ? `<span style="font-weight:400;color:#B91C1C;display:block;margin-top:3px">"${escapeHtml(ultimaAprob.observacion)}"</span>` : ''}
         </div>` : '';
-    acc = avisoRechazo + `<button class="btn btn-danger btn-sm" data-eid="${eid}" data-nombre="${escapeHtml(nombre)}" data-srv="${escapeHtml(e.servicio||'')}" onclick="finalizarEtapa(+this.dataset.eid,this.dataset.nombre,this.dataset.srv)">${fueRechazada ? '■ Reenviar a calidad' : '■ Finalizar'}</button>
-    <button class="btn btn-ghost btn-sm" data-eid="${eid}" onclick="_mostrarPausa(+this.dataset.eid)" style="color:#92400E;border-color:#FCD34D;background:#FFFBEB">⏸ Pausar</button>`;
+    acc = avisoRechazo + `<button class="btn btn-danger btn-sm" data-eid="${eid}" data-nombre="${escapeHtml(nombre)}" data-srv="${escapeHtml(e.servicio||'')}" onclick="finalizarEtapa(+this.dataset.eid,this.dataset.nombre,this.dataset.srv)">${fueRechazada ? '■ Reenviar a calidad' : '■ Finalizar'}</button>`;
   } else if (e.fin) {
     const esRechazada = fueRechazada;
     const aprobBtn = esRechazada
@@ -571,6 +570,10 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
             onclick="abrirModalSolicitudRepuesto(${ordenActual?.id||0},+this.dataset.eid,this.dataset.placa)">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
             Pedir repuesto
+          </button>
+          <button class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:5px;color:#92400E;border-color:#FCD34D;background:#FFFBEB"
+            data-eid="${eid}" onclick="_mostrarPausa(+this.dataset.eid)">
+            💬 Comentar${(e.inicio && !e.fin && !esPausado) ? ' / Pausar' : ''}
           </button>
         </div>
         ${e.descripcion ? `<div style="background:#F0F7FF;border:1px solid #BFDBFE;border-radius:7px;padding:9px 12px;margin-bottom:10px;font-size:12.5px;color:#1E293B;line-height:1.5;white-space:pre-wrap"><span style="font-size:10px;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:3px">Descripción</span>${escapeHtml(e.descripcion)}</div>` : ''}
@@ -656,18 +659,18 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
             <div class="upload-prog" id="prog-${k}"></div>
           </div>
         </div>
-        ${eNovs.length || (e.inicio && !e.fin) ? `
         <div class="novedad-section">
-          ${eNovs.length ? `<div class="novedad-section-titulo" style="margin:0 0 8px">Historial de pausas</div><div id="nlist-${eid}">${novsHtml}</div>` : ''}
+          ${eNovs.length ? `<div class="novedad-section-titulo" style="margin:0 0 8px">Historial / comentarios</div><div id="nlist-${eid}">${novsHtml}</div>` : ''}
           <div id="pausa-form-${eid}" style="display:none;margin-top:${eNovs.length?'10px':'0'};${eNovs.length?'border-top:1px solid var(--gris-borde);padding-top:10px;':''}">
-            <label style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--gris-mid)">Motivo de la pausa</label>
-            <textarea id="pausa-motivo-${eid}" placeholder="¿Por qué se pausa la etapa?" style="width:100%;min-height:44px;margin-top:5px;resize:vertical;box-sizing:border-box"></textarea>
-            <div class="btn-row" style="margin-top:8px;justify-content:flex-end">
+            <label style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--gris-mid)">Comentario / motivo</label>
+            <textarea id="pausa-motivo-${eid}" placeholder="Escribe un comentario (ej. falta repuesto, esperando aprobación, etc.)" style="width:100%;min-height:44px;margin-top:5px;resize:vertical;box-sizing:border-box"></textarea>
+            <div class="btn-row" style="margin-top:8px;justify-content:flex-end;flex-wrap:wrap;gap:8px">
               <button class="btn btn-ghost btn-xs" onclick="_ocultarPausa(${eid})">Cancelar</button>
-              <button class="btn btn-primary btn-sm" onclick="confirmarPausa(${eid})">⏸ Confirmar pausa</button>
+              <button class="btn btn-ghost btn-sm" onclick="_guardarComentarioEtapa(${eid})">💬 Guardar comentario</button>
+              ${(e.inicio && !e.fin && !esPausado) ? `<button class="btn btn-primary btn-sm" onclick="confirmarPausa(${eid})" style="background:#D97706;border-color:#D97706">⏸ Pausar etapa</button>` : ''}
             </div>
           </div>
-        </div>` : ''}
+        </div>
         ${ultimaAprob ? `
         <div class="aprob-box ${ultimaAprob.estado==='rechazado'?'rechazado':''}" style="margin-top:14px">
           <div class="aprob-box-top">
@@ -694,6 +697,21 @@ function _mostrarPausa(eid) {
 function _ocultarPausa(eid) {
   const f = document.getElementById('pausa-form-' + eid);
   if (f) f.style.display = 'none';
+}
+
+// Guarda un comentario en la etapa SIN pausarla (queda en el historial).
+async function _guardarComentarioEtapa(eid) {
+  const txt = document.getElementById('pausa-motivo-' + eid)?.value?.trim();
+  if (!txt) { toast('Escribe un comentario primero', 'err'); return; }
+  if (!ordenActual) return;
+  try {
+    await api('/novedades', 'POST', {
+      orden_id: ordenActual.id, etapa_id: eid, tipo: 'Comentario', motivo: txt,
+      responsable: sesion?.nombre || '—', desde: new Date().toISOString()
+    }, { Prefer: 'return=minimal' });
+    toast('Comentario guardado ✓');
+    abrirOrden(ordenActual.id);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
 // Pausa la etapa (detiene el cronómetro) y registra el motivo en el historial.
