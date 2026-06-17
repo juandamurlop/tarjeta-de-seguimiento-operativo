@@ -1145,7 +1145,7 @@ async function cargarPantallaTaller() {
       }).join('');
 
       // Técnico(s) — puede ser múltiple si hay simultáneas
-      const tecnicos = [...new Set(etapasActOrden.map(e => e.tecnico).filter(Boolean))];
+      const tecnicos = [...new Set(etapasActOrden.map(e => e.tecnico || e.tercero).filter(Boolean))];
       const tecHtml  = `<div style="display:flex;flex-direction:column;gap:.25vh;align-items:flex-start">${
         tecnicos.length
           ? tecnicos.map(t => `<span class="tv-tec-box">${escapeHtml(t)}</span>`).join('')
