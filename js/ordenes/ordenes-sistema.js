@@ -1338,7 +1338,10 @@ async function guardarEdicionOrden() {
     const tipoPersona = document.querySelector('input[name="ed-tipo-persona"]:checked')?.value || 'natural';
     const tipoCliente = document.getElementById('ed-tipo-cliente')?.value || null;
     const vin = document.getElementById('ed-vin')?.value.trim().toUpperCase() || null;
-    if (vin && vin.length !== 17) { toast('VIN debe tener 17 caracteres','err'); return; }
+    // No bloquear la edición por el VIN: si no tiene 17 caracteres avisamos, pero
+    // se guarda igual. Antes hacía return y cortaba TODO el guardado (incluida la
+    // fecha de entrega), así que un VIN imperfecto impedía editar cualquier dato.
+    if (vin && vin.length !== 17) { toast('Aviso: el VIN no tiene 17 caracteres (se guardó igual)', 'warn'); }
 
     // Aseguradora / flotilla según tipo
     let aseguradora = null;
