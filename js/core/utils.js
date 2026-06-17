@@ -113,11 +113,26 @@ function capturarFotoCamara() {
       inp.click();
     };
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { usarInput(); return; }
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+    // Pedimos la MAYOR resolución posible de la cámara trasera (4K si el equipo
+    // la tiene) y enfoque continuo: así el VIN y la cédula —que son letras muy
+    // pequeñas— salen nítidos. width/height son 'ideal' (no fallan si el equipo
+    // da menos) y focusMode va en 'advanced' (best-effort, se ignora si no existe).
+    navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 3840 },
+        height: { ideal: 2160 },
+        advanced: [{ focusMode: 'continuous' }]
+      },
+      audio: false
+    })
       .then((stream) => {
         const ov = document.createElement('div');
         ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#000;display:flex;flex-direction:column';
         ov.innerHTML = `
+          <div style="position:absolute;top:0;left:0;right:0;z-index:2;padding:14px 18px 26px;background:linear-gradient(#000c,transparent);color:#fff;font-size:13.5px;line-height:1.4;text-align:center;font-family:'DM Sans',sans-serif">
+            Acerca la cámara hasta que la tarjeta <b>llene la pantalla</b>.<br>Que se vean claros el <b>VIN</b> y la <b>cédula/NIT</b> antes de tomar la foto.
+          </div>
           <video autoplay playsinline muted style="flex:1;width:100%;object-fit:cover;background:#000"></video>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 22px;background:#000">
             <button id="_camCancel" style="background:none;border:1.5px solid #fff;color:#fff;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif">Cancelar</button>
@@ -133,10 +148,11 @@ function capturarFotoCamara() {
           const w = video.videoWidth || 1280, h = video.videoHeight || 720;
           const c = document.createElement('canvas'); c.width = w; c.height = h;
           c.getContext('2d').drawImage(video, 0, 0, w, h);
+          // Calidad alta (0.95): la foto pesa más pero conserva el detalle fino.
           c.toBlob((blob) => {
             cerrar();
             resolve(blob ? new File([blob], 'tarjeta_' + Date.now() + '.jpg', { type: 'image/jpeg' }) : null);
-          }, 'image/jpeg', 0.9);
+          }, 'image/jpeg', 0.95);
         };
       })
       .catch(() => { usarInput(); }); // permiso negado o sin cámara → archivo
@@ -217,11 +233,14 @@ function comprimirImagenFile(file, maxDim = 1400, quality = 0.72) {
 }
 
 // Lee una tarjeta de propiedad con la función propia de Supabase (OpenAI
-// gpt-4o-mini, sin n8n: rápida y con la API key segura en el servidor).
-// Comprime la foto antes de enviar. Devuelve { placa, marca, linea, modelo,
-// color, vin, propietario }.
+// gpt-4o, con la API key segura en el servidor). Envía la foto en alta calidad
+// para máxima precisión. Devuelve { placa, marca, linea, modelo, color, vin,
+// propietario, documento, tipo_documento }.
 async function ocrLeerTarjeta(file) {
-  const { base64, mime } = await comprimirImagenBase64(file);
+  // Enviamos la imagen grande y con poca compresión (2400px, calidad 0.92) para
+  // que el modelo lea bien el VIN, la cédula y el NIT (letras pequeñas). Pesa más
+  // y tarda un poco más, pero la lectura sale mucho más exacta.
+  const { base64, mime } = await comprimirImagenBase64(file, 2400, 0.92);
 
   // Manda el token del usuario logueado (no la llave publica): así la función
   // OCR solo responde a personal autenticado y nadie de afuera gasta el saldo.

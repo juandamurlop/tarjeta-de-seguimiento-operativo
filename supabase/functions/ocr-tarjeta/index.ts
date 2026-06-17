@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────
 // OCR de tarjeta de propiedad — Supabase Edge Function (sin n8n)
-// Usa OpenAI gpt-4o-mini (visión): rápido, barato y preciso.
+// Usa OpenAI gpt-4o (visión): máxima precisión leyendo VIN, cédula y NIT.
 // La API key va como SECRETO del servidor, nunca en el navegador.
 //
 // Desplegar:
@@ -14,7 +14,9 @@
 // ─────────────────────────────────────────────────────────────
 
 const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY") || "";
-const MODELO = "gpt-4o-mini";
+// gpt-4o (completo): lee mucho mejor el texto fino (VIN, cédula, NIT) que el
+// gpt-4o-mini. Cuesta un poco más por foto, pero la precisión es la prioridad.
+const MODELO = "gpt-4o";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -61,14 +63,21 @@ Deno.serve(async (req) => {
     if (!OPENAI_KEY) return json({ error: "Falta el secreto OPENAI_API_KEY" }, 500);
 
     const prompt =
-      "Eres un extractor de datos de TARJETAS DE PROPIEDAD de vehículos de Colombia. " +
-      "Lee la imagen y devuelve SOLO un JSON válido con estas claves (string; vacío si no aparece): " +
+      "Eres un extractor EXPERTO de datos de TARJETAS DE PROPIEDAD de vehículos de Colombia. " +
+      "Lee la imagen con MÁXIMO cuidado, carácter por carácter, y devuelve SOLO un JSON válido con estas " +
+      "claves (string; vacío '' si no aparece): " +
       "placa, marca, linea, modelo, color, vin, propietario, documento, tipo_documento. " +
-      "'modelo' es el AÑO del vehículo. 'linea' es la referencia/línea. " +
-      "'documento' es el número de identificación del propietario SOLO DÍGITOS (sin puntos, " +
-      "comas ni guiones; si es NIT incluye el dígito de verificación sin el guion). " +
-      "'tipo_documento' es 'CC' si el propietario es una persona (cédula), o 'NIT' si es una " +
-      "empresa/persona jurídica. La placa en mayúsculas. No agregues texto fuera del JSON.";
+      "'modelo' es el AÑO del vehículo (4 dígitos). 'linea' es la referencia/línea. " +
+      "REGLAS DEL VIN (número de chasis / serie): es un código de EXACTAMENTE 17 caracteres " +
+      "alfanuméricos en MAYÚSCULAS. NUNCA contiene las letras I, O ni Q: si crees ver una 'I' es un '1', " +
+      "si ves una 'O' es un '0' (cero). Léelo dígito por dígito; si en la tarjeta aparece como 'No. Motor', " +
+      "'Serie', 'Chasis' o 'VIN', usa el de 17 caracteres. No inventes: si no estás seguro de un carácter " +
+      "déjalo lo más fiel posible a lo que ves. " +
+      "'documento' es el número de identificación del propietario, SOLO DÍGITOS (sin puntos, comas ni " +
+      "guiones); si es NIT incluye el dígito de verificación final sin el guion. Léelo dígito por dígito. " +
+      "'tipo_documento' es 'CC' si el propietario es una persona (cédula), o 'NIT' si es una empresa/persona " +
+      "jurídica. La placa en MAYÚSCULAS (formato colombiano, normalmente 3 letras y 3 números). " +
+      "No agregues texto, explicaciones ni comentarios fuera del JSON.";
 
     const dataUrl = `data:${tipo || "image/jpeg"};base64,${imagen}`;
 
