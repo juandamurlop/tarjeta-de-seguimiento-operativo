@@ -584,61 +584,44 @@ async function cargarRepuestosJefe() {
     }
 
     renderSinParpadeo(cont, `<div style="padding:20px">${barraHtml}
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;align-items:stretch">
+      <div style="display:flex;flex-direction:column;gap:6px">
         ${solicitudes.map(s => {
           const o   = om[s.orden_id]||{};
           const est = estMap[s.estado]||{txt:s.estado,cls:''};
           const items = todosItems.filter(i => i.solicitud_id === s.id);
-
-          // Timer del proveedor
-          let timerProv = '';
-          if (s.pedido_en && (s.estado === 'pedido' || s.estado === 'recibido_taller' || s.estado === 'entregado')) {
+          const repNames = items.length ? items.map(i => i.repuesto) : [s.repuesto].filter(Boolean);
+          const repResumen = repNames.slice(0, 2).map(escapeHtml).join(', ') + (repNames.length > 2 ? ` <span style="color:var(--gris-mid);font-weight:400">+${repNames.length - 2}</span>` : '');
+          const timerEstado = _tiempoDesde(s.actualizado_en || s.creado_en, ' en estado');
+          // Espera del proveedor (si ya se pidió)
+          let espera = '';
+          if (s.pedido_en) {
             const finTs = s.recibido_en ? new Date(s.recibido_en) : new Date();
             const mins  = Math.round((finTs - new Date(s.pedido_en)) / 60000);
             const h = Math.floor(mins/60), m = mins%60;
-            const label = s.recibido_en ? 'Proveedor tardó' : 'Esperando proveedor';
-            timerProv = `<div style="font-size:11px;color:${s.recibido_en?'#059669':'#D97706'};margin-top:3px;font-weight:600">⏱ ${label}: ${h>0?h+'h ':''}${m}m</div>`;
+            espera = ` · ⏱ ${s.recibido_en ? 'tardó' : 'esperando'} ${h > 0 ? h+'h ' : ''}${m}m`;
           }
-
-          // Lista de ítems con fotos
-          const itemsHtml = items.length > 0
-            ? `<div style="margin:8px 0 10px;display:flex;flex-direction:column;gap:5px">
-                ${items.map(i => `<div style="display:flex;align-items:center;gap:8px">
-                  ${i.foto_url ? `<img src="${escapeHtml(i.foto_url)}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;flex-shrink:0;cursor:pointer" onclick="abrirLightbox('${escapeHtml(i.foto_url)}')">` : ''}
-                  <div>
-                    <span style="font-weight:600;font-size:13px">${escapeHtml(i.repuesto)}</span>
-                    <span style="font-size:12px;color:var(--gris-mid);margin-left:6px">x${i.unidades||1}</span>
-                    ${i.observaciones ? `<div style="font-size:11px;color:var(--gris-mid);font-style:italic">${escapeHtml(i.observaciones)}</div>` : ''}
-                  </div>
-                </div>`).join('')}
-              </div>`
-            : `<div style="font-size:13px;color:var(--gris-mid);margin-bottom:8px">${escapeHtml(s.repuesto)} · x${s.unidades||1}${s.observaciones?` · ${escapeHtml(s.observaciones)}`:''}</div>`;
-
-          // Timers universales
-          const timerSolicitud  = _tiempoDesde(s.creado_en, ' desde solicitud');
-          const timerEstado     = _tiempoDesde(s.actualizado_en || s.creado_en, ' en estado');
-
-          const repNames = items.length ? items.map(i => i.repuesto) : [s.repuesto].filter(Boolean);
-          const repResumen = repNames.slice(0, 2).map(escapeHtml).join(', ') + (repNames.length > 2 ? ` <span style="color:var(--gris-mid);font-weight:400">+${repNames.length - 2} más</span>` : '');
-          // Un solo botón grande con "lo que toca hacer ahora" según el estado.
+          // Un solo botón con "lo que toca hacer ahora" según el estado.
           let accionBtns = '';
-          if (s.estado === 'pendiente_jefe') accionBtns = `<button class="btn btn-primary btn-sm" style="flex:1" onclick="jefeProcesarSolicitud(${s.id},'aprobar',${s.etapa_id||'null'})">✓ Enviar a cotizar</button>`;
-          else if (s.estado === 'enviado_repuestos') accionBtns = `<button class="btn btn-primary btn-sm" style="flex:1" data-sol-id="${s.id}" onclick="_abrirCotizarPorId(this)">📝 Cotizar</button>`;
-          else if (s.estado === 'cotizado') accionBtns = `<button class="btn btn-primary btn-sm" style="flex:1" onclick="abrirModalPrecioVenta(${s.id})">💲 Definir precio</button>`;
-          else if (s.estado === 'pedido') accionBtns = `<button class="btn btn-success btn-sm" style="flex:1" onclick="jefeLlegadaYEntrega(${s.id},${s.etapa_id||'null'})">✓ Llegó y entregar</button>`;
-          else if (s.estado === 'recibido_taller') accionBtns = `<button class="btn btn-success btn-sm" style="flex:1" onclick="jefeConfirmarEntrega(${s.id},${s.etapa_id||'null'})">✓ Entregar al técnico</button>`;
+          if (s.estado === 'pendiente_jefe') accionBtns = `<button class="btn btn-primary btn-xs" onclick="jefeProcesarSolicitud(${s.id},'aprobar',${s.etapa_id||'null'})">✓ Enviar a cotizar</button>`;
+          else if (s.estado === 'enviado_repuestos') accionBtns = `<button class="btn btn-primary btn-xs" data-sol-id="${s.id}" onclick="_abrirCotizarPorId(this)">📝 Cotizar</button>`;
+          else if (s.estado === 'cotizado') accionBtns = `<button class="btn btn-primary btn-xs" onclick="abrirModalPrecioVenta(${s.id})">💲 Precio</button>`;
+          else if (s.estado === 'pedido') accionBtns = `<button class="btn btn-success btn-xs" onclick="jefeLlegadaYEntrega(${s.id},${s.etapa_id||'null'})">✓ Llegó y entregar</button>`;
+          else if (s.estado === 'recibido_taller') accionBtns = `<button class="btn btn-success btn-xs" onclick="jefeConfirmarEntrega(${s.id},${s.etapa_id||'null'})">✓ Entregar</button>`;
 
-          return `<div class="card" data-id="${s.id}" style="padding:12px;display:flex;flex-direction:column;gap:7px">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-              <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:15px;color:#111;letter-spacing:.5px">${escapeHtml(o.placa||'—')}</span>
-              <span class="badge ${est.cls}" style="flex-shrink:0">${est.txt}</span>
+          return `<div class="card" data-id="${s.id}" style="display:flex;align-items:center;gap:12px;padding:9px 12px">
+            <div style="min-width:80px;flex-shrink:0">
+              <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;color:#0F172A;letter-spacing:.5px">${escapeHtml(o.placa||'—')}</div>
+              <div style="font-size:10px;color:var(--gris-mid);font-family:'DM Mono',monospace">${formatOT(s.orden_id)}</div>
             </div>
-            <div style="font-size:12px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(o.propietario||'Cliente —')} · ${formatOT(s.orden_id)}</div>
-            <div title="${escapeHtml(repNames.join(', '))}" style="font-size:13px;font-weight:600;color:#1E293B;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${repResumen || '—'}</div>
-            ${_barraEstado(s.estado)}
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:2px">
-              <button class="btn btn-ghost btn-xs" onclick="_verSolicitud(${s.id})">Ver detalle</button>
+            <div style="flex:1;min-width:0">
+              <div title="${escapeHtml(repNames.join(', '))}" style="font-size:13px;font-weight:600;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${repResumen || '—'}</div>
+              <div style="font-size:11px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(o.propietario||'Cliente —')} · ${timerEstado}${espera}</div>
+            </div>
+            <div style="width:118px;flex-shrink:0">${_barraEstadoMini(s.estado)}</div>
+            <span class="badge ${est.cls}" style="flex-shrink:0">${est.txt}</span>
+            <div style="display:flex;gap:6px;flex-shrink:0">
               ${accionBtns}
+              <button class="btn btn-ghost btn-xs" onclick="_verSolicitud(${s.id})">Ver</button>
             </div>
           </div>`;
         }).join('')}
