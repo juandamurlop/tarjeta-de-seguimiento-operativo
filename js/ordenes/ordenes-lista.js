@@ -45,14 +45,21 @@ async function cargarOrdenes() {
       return;
     }
     const ids = data.map(o => o.id).join(',');
-    const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico`).catch(() => []) || [];
+    const [etapas, comentarios] = await Promise.all([
+      api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico`).catch(() => []),
+      api(`/novedades?orden_id=in.(${ids})&etapa_id=is.null&tipo=eq.Comentario&order=creado_en.desc&select=orden_id,motivo,creado_en`).catch(() => [])
+    ]);
+    // Último comentario general (estado del carro) por orden.
+    const comentMap = {};
+    (comentarios || []).forEach(c => { if (!comentMap[c.orden_id]) comentMap[c.orden_id] = c.motivo; });
     _ordenesTablaData = data;
-    _etapasTablaData  = etapas;
-    renderTablaOrdenes(data, etapas);
+    _etapasTablaData  = etapas || [];
+    renderTablaOrdenes(data, etapas || [], comentMap);
   } catch(e) { lista.innerHTML = `<div class="empty-state">Error cargando órdenes: ${e.message}</div>`; }
 }
 
-function _buildOrdenRow(o, etapas) {
+function _buildOrdenRow(o, etapas, comentMap = {}) {
+  const comentario = comentMap[o.id] || '';
   const etapasO  = etapas.filter(e => e.orden_id === o.id);
   const total    = etapasO.length;
   const comp     = etapasO.filter(e => e.fin).length;
@@ -79,7 +86,7 @@ function _buildOrdenRow(o, etapas) {
   }
 
   const fechaEnt = o.fecha_entrega_1 ? formatFecha(o.fecha_entrega_1) : '—';
-  const searchStr = [(o.placa||''), (o.propietario||''), (tecnico||''), (o.marca||''), (o.linea||'')].join(' ').toLowerCase();
+  const searchStr = [(o.placa||''), (o.propietario||''), (tecnico||''), (o.marca||''), (o.linea||''), (comentario||'')].join(' ').toLowerCase();
 
   // Alerta de contacto / datos faltantes
   const camposFaltantes = [];
@@ -99,6 +106,7 @@ function _buildOrdenRow(o, etapas) {
     <td>
       <div class="ord-veh-nombre">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'}</div>
       <div class="ord-veh-cliente">${escapeHtml(o.propietario || '—')}${o.modelo ? ` · ${escapeHtml(o.modelo)}` : ''}</div>
+      ${comentario ? `<div class="ord-coment" title="${escapeHtml(comentario)}" style="font-size:11px;color:#2563EB;margin-top:3px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 ${escapeHtml(comentario)}</div>` : ''}
     </td>
     <td>
       ${total > 0 ? `
@@ -115,14 +123,14 @@ function _buildOrdenRow(o, etapas) {
   </tr>`;
 }
 
-function renderTablaOrdenes(data, etapas) {
+function renderTablaOrdenes(data, etapas, comentMap = {}) {
   const lista = document.getElementById('lista-ordenes');
   if (!lista) return;
   if (!data.length) {
     lista.innerHTML = `<div class="empty-state"><div class="empty-state-icon">${ico('clipboard',32)}</div>No hay órdenes.</div>`;
     return;
   }
-  const rows = data.map(o => _buildOrdenRow(o, etapas)).join('');
+  const rows = data.map(o => _buildOrdenRow(o, etapas, comentMap)).join('');
   renderSinParpadeo(lista, `<div class="ordenes-tabla-wrap"><table class="ordenes-tabla">
     <thead><tr>
       <th>Orden</th><th>Vehículo</th><th>Etapa actual</th>
