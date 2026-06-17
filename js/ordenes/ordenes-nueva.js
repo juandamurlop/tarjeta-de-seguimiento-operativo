@@ -406,12 +406,13 @@ async function ocrTarjetaPropiedad(input) {
       if (el) { el.value = val; encontrados.push(id.replace('n-','').replace('-',' ')); }
     });
 
-    // Propietario va al campo correcto según tipo cliente seleccionado
+    // Propietario va al campo correcto según tipo cliente seleccionado.
+    // Sobreescribe lo que hubiera escrito el usuario: la tarjeta es la fuente real.
     if (parsed.propietario) {
       const tipo = document.getElementById('n-tipo-cliente')?.value;
       const targetId = tipo === 'aseguradora' ? 'n-propietario-aseg' : 'n-propietario';
       const el = document.getElementById(targetId);
-      if (el && !el.value) { el.value = parsed.propietario; encontrados.push('propietario'); }
+      if (el) { el.value = parsed.propietario; encontrados.push('propietario'); }
     }
 
     // Documento del propietario (cédula o NIT) extraído de la tarjeta.
@@ -421,7 +422,7 @@ async function ocrTarjetaPropiedad(input) {
       const tipo = document.getElementById('n-tipo-cliente')?.value;
       const cedId = tipo === 'aseguradora' ? 'n-cedula-aseg' : 'n-cedula-cliente';
       const cedEl = document.getElementById(cedId);
-      if (cedEl && !cedEl.value) { cedEl.value = docParsed; encontrados.push(esNit ? 'NIT' : 'cédula'); }
+      if (cedEl) { cedEl.value = docParsed; encontrados.push(esNit ? 'NIT' : 'cédula'); }
       // Si la tarjeta es de una empresa (NIT), ajustar el modo persona/empresa.
       if (esNit) {
         const radioEmp = document.querySelector('input[name="n-tipo-persona"][value="empresa"]');

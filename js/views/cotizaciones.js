@@ -305,7 +305,7 @@ async function cotOcrTarjetaPropiedad(input) {
     });
     if (parsed.propietario) {
       const el = document.getElementById('cn-nombre');
-      if (el && !el.value) { el.value = parsed.propietario; encontrados.push('propietario'); }
+      if (el) { el.value = parsed.propietario; encontrados.push('propietario'); }
     }
     if (estado) {
       if (encontrados.length) {

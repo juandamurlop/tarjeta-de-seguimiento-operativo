@@ -97,73 +97,24 @@ function _avatarOnError(img) {
   img.replaceWith(d);
 }
 
-// ── CÁMARA: abre la cámara trasera en vivo y devuelve la foto como File ──
-// Funciona en cualquier dispositivo/SO con cámara (no depende del atributo
-// `capture`, que algunas tablets ignoran y abren la galería). Si el navegador
-// no soporta la API o niegan el permiso, cae a elegir/tomar foto con archivo.
-function capturarFotoCamara() {
-  return new Promise((resolve) => {
-    const usarInput = () => {
-      const inp = document.createElement('input');
-      inp.type = 'file'; inp.accept = 'image/*';
-      inp.setAttribute('capture', 'environment');
-      inp.style.display = 'none';
-      inp.onchange = () => { const f = inp.files && inp.files[0]; inp.remove(); resolve(f || null); };
-      document.body.appendChild(inp);
-      inp.click();
-    };
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { usarInput(); return; }
-    // Pedimos la MAYOR resolución posible de la cámara trasera (4K si el equipo
-    // la tiene) y enfoque continuo: así el VIN y la cédula —que son letras muy
-    // pequeñas— salen nítidos. width/height son 'ideal' (no fallan si el equipo
-    // da menos) y focusMode va en 'advanced' (best-effort, se ignora si no existe).
-    navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: 'environment' },
-        width: { ideal: 3840 },
-        height: { ideal: 2160 },
-        advanced: [{ focusMode: 'continuous' }]
-      },
-      audio: false
-    })
-      .then((stream) => {
-        const ov = document.createElement('div');
-        ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#000;display:flex;flex-direction:column';
-        ov.innerHTML = `
-          <div style="position:absolute;top:0;left:0;right:0;z-index:2;padding:14px 18px 26px;background:linear-gradient(#000c,transparent);color:#fff;font-size:13.5px;line-height:1.4;text-align:center;font-family:'DM Sans',sans-serif">
-            Acerca la cámara hasta que la tarjeta <b>llene la pantalla</b>.<br>Que se vean claros el <b>VIN</b> y la <b>cédula/NIT</b> antes de tomar la foto.
-          </div>
-          <video autoplay playsinline muted style="flex:1;width:100%;object-fit:cover;background:#000"></video>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 22px;background:#000">
-            <button id="_camCancel" style="background:none;border:1.5px solid #fff;color:#fff;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif">Cancelar</button>
-            <button id="_camShot" aria-label="Tomar foto" style="width:66px;height:66px;border-radius:50%;background:#fff;border:5px solid #25D366;cursor:pointer;flex-shrink:0"></button>
-            <div style="width:84px"></div>
-          </div>`;
-        document.body.appendChild(ov);
-        const video = ov.querySelector('video');
-        video.srcObject = stream;
-        const cerrar = () => { try { stream.getTracks().forEach(t => t.stop()); } catch (e) {} ov.remove(); };
-        ov.querySelector('#_camCancel').onclick = () => { cerrar(); resolve(null); };
-        ov.querySelector('#_camShot').onclick = () => {
-          const w = video.videoWidth || 1280, h = video.videoHeight || 720;
-          const c = document.createElement('canvas'); c.width = w; c.height = h;
-          c.getContext('2d').drawImage(video, 0, 0, w, h);
-          // Calidad alta (0.95): la foto pesa más pero conserva el detalle fino.
-          c.toBlob((blob) => {
-            cerrar();
-            resolve(blob ? new File([blob], 'tarjeta_' + Date.now() + '.jpg', { type: 'image/jpeg' }) : null);
-          }, 'image/jpeg', 0.95);
-        };
-      })
-      .catch(() => { usarInput(); }); // permiso negado o sin cámara → archivo
-  });
-}
-
-// Abre la cámara y pasa la foto al handler de OCR (que espera un input con
-// .files). Uso: onclick="escanearTarjetaCamara(ocrTarjetaPropiedad)".
+// ── CÁMARA NATIVA: abre la cámara propia del dispositivo (la app de cámara del
+// teléfono) con un input file + capture="environment". Da mejor calidad y
+// enfoque que la cámara dentro del navegador, y deja repetir la foto. En
+// computador sin cámara abre el selector de archivos. Pasa la foto al handler
+// de OCR (que espera algo con .files). Uso: escanearTarjetaCamara(ocrTarjeta...).
 async function escanearTarjetaCamara(handler) {
-  const file = await capturarFotoCamara();
-  if (file && typeof handler === 'function') handler({ files: [file], value: '' });
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.setAttribute('capture', 'environment'); // abre la cámara trasera del dispositivo
+  inp.style.display = 'none';
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    inp.remove();
+    if (f && typeof handler === 'function') handler({ files: [f], value: '' });
+  };
+  document.body.appendChild(inp);
+  inp.click();
 }
 
 // Comprime/reduce una imagen antes de enviarla al OCR (mucho más rápido:
