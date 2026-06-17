@@ -1381,6 +1381,13 @@ let _etapasPend = [];
 
 function buildChecklist(containerId, servicios, _existentes) {
   _etapasPend = [];
+  // Los modales de "nueva orden" y "agregar etapas" usan los MISMOS IDs internos
+  // (ag-proceso, ag-tec, ag-desc…). Si dejamos contenido en el otro contenedor,
+  // document.getElementById('ag-proceso') devuelve el del modal equivocado (vacío)
+  // y el guardado falla con "Elige un proceso". Por eso vaciamos el otro.
+  ['checklist-nuevo', 'checklist-agregar'].forEach(id => {
+    if (id !== containerId) { const otro = document.getElementById(id); if (otro) otro.innerHTML = ''; }
+  });
   const container = document.getElementById(containerId);
   if (!container) return;
   const srvList = (servicios && servicios.length) ? servicios : Object.keys(CATALOGO);
