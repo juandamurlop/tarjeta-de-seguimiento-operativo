@@ -1485,7 +1485,7 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
     const [orden, etapas, novedades, solicitudes] = await Promise.all([
       api(`/ordenes?id=eq.${ordenId}`).then(r => r?.[0]).catch(()=>null),
       api(`/etapas?orden_id=eq.${ordenId}&order=creado_en.asc&select=*`).catch(()=>[]) || [],
-      api(`/novedades?orden_id=eq.${ordenId}&select=*`).catch(()=>[]) || [],
+      api(`/novedades?orden_id=eq.${ordenId}&tipo=neq.Comentario&select=*`).catch(()=>[]) || [],
       api(`/solicitudes_repuesto?orden_id=eq.${ordenId}&estado=in.(recibido_taller,entregado)&select=*`).catch(()=>[]) || []
     ]);
 

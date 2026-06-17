@@ -140,7 +140,9 @@ async function cargarOrdenesCliente() {
 
     cont.innerHTML = _cliBrandHeader() + ordenes.map(orden => {
       const ets = etapas.filter(e => e.orden_id === orden.id);
-      const novs = novedades.filter(n => n.orden_id === orden.id);
+      // Los comentarios internos del taller (tipo 'Comentario', sin etapa) NO se
+      // muestran al cliente: solo las novedades/imprevistos reales.
+      const novs = novedades.filter(n => n.orden_id === orden.id && n.tipo !== 'Comentario');
       const fotos = fotosEt.filter(f => f.orden_id === orden.id).slice(0, 6);
       const fotosEntrada = fotosIng.filter(f => f.orden_id === orden.id).slice(0, 6);
       const total = ets.length;
