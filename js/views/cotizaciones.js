@@ -6,6 +6,7 @@
 
 let _cotEditandoId = null;         // null = nueva, number = editando
 let _cotEmpresasCache = [];        // cache de empresas cargadas
+let _cotEmpresaPersonas = [];      // personas/contactos de la empresa seleccionada
 
 // ── Tipo de cliente ──────────────────────────────────────
 function _cotSelTipo(tipo) {
@@ -66,6 +67,13 @@ function _cotSeleccionarEmpresa(empId) {
   set('cn-emp-cnom',   emp.contacto_nombre);
   set('cn-emp-ctel',   emp.contacto_telefono);
   set('cn-emp-ccorreo',emp.contacto_correo);
+  // Lista de personas de la empresa. Compatibilidad: si no hay lista pero existe
+  // el contacto viejo, lo sembramos como primera persona.
+  _cotEmpresaPersonas = Array.isArray(emp.personas) ? emp.personas.slice() : [];
+  if (!_cotEmpresaPersonas.length && emp.contacto_nombre) {
+    _cotEmpresaPersonas = [{ nombre: emp.contacto_nombre, telefono: emp.contacto_telefono || null, correo: emp.contacto_correo || null }];
+  }
+  _cotRenderPersonasSelect();
   const tit = document.getElementById('cn-emp-datos-titulo');
   if (tit) tit.textContent = 'Empresa seleccionada';
   const datos = document.getElementById('cn-emp-datos');
@@ -82,6 +90,8 @@ function _cotNuevaEmpresaInline() {
    'cn-emp-dir','cn-emp-cnom','cn-emp-ctel','cn-emp-ccorreo'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  _cotEmpresaPersonas = [];
+  _cotRenderPersonasSelect();
   const tit = document.getElementById('cn-emp-datos-titulo');
   if (tit) tit.textContent = 'Nueva empresa';
   const datos = document.getElementById('cn-emp-datos');
@@ -91,6 +101,49 @@ function _cotNuevaEmpresaInline() {
   const buscar = document.getElementById('cn-emp-buscar');
   if (buscar) buscar.value = '';
   setTimeout(() => document.getElementById('cn-emp-nombre')?.focus(), 60);
+}
+
+// ── Personas/contactos de la empresa ─────────────────────
+// Llena el desplegable con las personas guardadas de la empresa actual.
+function _cotRenderPersonasSelect() {
+  const sel = document.getElementById('cn-emp-persona-sel');
+  if (!sel) return;
+  const opts = _cotEmpresaPersonas.map((p, i) =>
+    `<option value="${i}">${escapeHtml(p.nombre || '(sin nombre)')}${p.telefono ? ' · ' + escapeHtml(p.telefono) : ''}</option>`
+  ).join('');
+  sel.innerHTML = `<option value="">— Elegir persona —</option>${opts}`;
+}
+
+// Al elegir una persona guardada, sus datos pasan a los campos (serán el
+// contacto de ESTA cotización).
+function _cotSelPersona(val) {
+  if (val === '' || val == null) return;
+  const p = _cotEmpresaPersonas[+val];
+  if (!p) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  set('cn-emp-cnom', p.nombre);
+  set('cn-emp-ctel', p.telefono);
+  set('cn-emp-ccorreo', p.correo);
+}
+
+// Guarda la persona escrita en los campos dentro de la lista de la empresa
+// (y la persiste). Sirve para ir agregando personas a la misma empresa.
+async function _cotAgregarPersona() {
+  const nombre = document.getElementById('cn-emp-cnom')?.value.trim();
+  const tel    = document.getElementById('cn-emp-ctel')?.value.trim();
+  const correo = document.getElementById('cn-emp-ccorreo')?.value.trim();
+  if (!document.getElementById('cn-emp-nombre')?.value.trim()) {
+    toast('Primero escribe la razón social de la empresa', 'err'); return;
+  }
+  if (!nombre) { toast('Escribe el nombre de la persona', 'err'); document.getElementById('cn-emp-cnom')?.focus(); return; }
+  const existe = _cotEmpresaPersonas.some(p => (p.nombre || '').toLowerCase() === nombre.toLowerCase());
+  if (!existe) _cotEmpresaPersonas.push({ nombre, telefono: tel || null, correo: correo || null });
+  const empId = await _cotGuardarEmpresa(); // persiste empresa + personas
+  if (!empId) return;
+  _cotRenderPersonasSelect();
+  const sel = document.getElementById('cn-emp-persona-sel');
+  if (sel) sel.value = String(_cotEmpresaPersonas.findIndex(p => (p.nombre || '').toLowerCase() === nombre.toLowerCase()));
+  toast(existe ? 'Persona ya estaba en la lista' : 'Persona guardada en la empresa ✓');
 }
 
 function _cotCerrarEmpresaDatos() {
@@ -117,18 +170,22 @@ async function _cotGuardarEmpresa() {
   };
   const empId = document.getElementById('cn-empresa-id')?.value;
   try {
+    let id;
     if (empId) {
       await api(`/empresas?id=eq.${empId}`, 'PATCH', body);
-      return parseInt(empId);
+      id = parseInt(empId);
     } else {
       const res = await api('/empresas', 'POST', body, { Prefer: 'return=representation' });
-      const id = res?.[0]?.id || null;
+      id = res?.[0]?.id || null;
       if (id) {
         const idEl = document.getElementById('cn-empresa-id');
         if (idEl) idEl.value = id;
       }
-      return id;
     }
+    // Guardar la LISTA de personas aparte (best-effort): si la columna 'personas'
+    // aún no existe en la BD, no rompe el guardado de la empresa.
+    if (id) await api(`/empresas?id=eq.${id}`, 'PATCH', { personas: _cotEmpresaPersonas }).catch(() => {});
+    return id;
   } catch(e) {
     toast('Error guardando empresa: ' + e.message, 'err');
     return null;
@@ -153,6 +210,8 @@ function _cotLimpiarFormulario() {
   if (repTbody) repTbody.innerHTML = '';
   if (moTbody)  moTbody.innerHTML  = '';
   // Resetear a persona natural
+  _cotEmpresaPersonas = [];
+  _cotRenderPersonasSelect();
   _cotSelTipo('persona');
   const datos = document.getElementById('cn-emp-datos');
   if (datos) datos.style.display = 'none';
@@ -228,6 +287,11 @@ async function _editarCotizacionReal(cotId) {
       set('cn-emp-cnom',     emp.contacto_nombre);
       set('cn-emp-ctel',     emp.contacto_telefono);
       set('cn-emp-ccorreo',  emp.contacto_correo);
+      _cotEmpresaPersonas = Array.isArray(emp.personas) ? emp.personas.slice() : [];
+      if (!_cotEmpresaPersonas.length && emp.contacto_nombre) {
+        _cotEmpresaPersonas = [{ nombre: emp.contacto_nombre, telefono: emp.contacto_telefono || null, correo: emp.contacto_correo || null }];
+      }
+      _cotRenderPersonasSelect();
       const tit = document.getElementById('cn-emp-datos-titulo');
       if (tit) tit.textContent = 'Empresa seleccionada';
       const datos = document.getElementById('cn-emp-datos');

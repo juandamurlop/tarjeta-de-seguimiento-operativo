@@ -594,12 +594,19 @@
                 <div class="field" style="margin:0"><label>Correo</label><input id="cn-emp-correo" type="email" placeholder="info@empresa.com"></div>
                 <div class="field" style="margin:0;grid-column:1/-1"><label>Dirección</label><input id="cn-emp-dir" placeholder="Cra 7 #32-16, Bogotá"></div>
               </div>
-              <div style="font-size:10.5px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Persona de contacto</div>
+              <div style="font-size:10.5px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Persona que trae el vehículo</div>
+              <div class="field" style="margin:0 0 8px">
+                <label>Personas guardadas de esta empresa</label>
+                <select id="cn-emp-persona-sel" onchange="_cotSelPersona(this.value)">
+                  <option value="">— Elegir persona —</option>
+                </select>
+              </div>
               <div class="grid-2">
                 <div class="field" style="margin:0"><label>Nombre</label><input id="cn-emp-cnom" placeholder="Carlos López"></div>
                 <div class="field" style="margin:0"><label>Teléfono</label><input id="cn-emp-ctel" type="tel" placeholder="3001234567"></div>
-                <div class="field" style="margin:0;grid-column:1/-1"><label>Correo contacto</label><input id="cn-emp-ccorreo" type="email" placeholder="carlos@empresa.com"></div>
+                <div class="field" style="margin:0;grid-column:1/-1"><label>Correo</label><input id="cn-emp-ccorreo" type="email" placeholder="carlos@empresa.com"></div>
               </div>
+              <button type="button" class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="_cotAgregarPersona()">+ Guardar esta persona en la empresa</button>
             </div>
 
           </div>
