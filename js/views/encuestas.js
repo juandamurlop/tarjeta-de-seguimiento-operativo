@@ -173,11 +173,18 @@ const Encuestas = (() => {
       </div>
       <div class="enc-tabs" role="tablist">
         <button class="enc-tab-btn ${_state.tab === 'pendientes' ? 'active' : ''}" role="tab" aria-selected="${_state.tab === 'pendientes'}" onclick="Encuestas.switchTab('pendientes')">Pendientes</button>
+        <button class="enc-tab-btn ${_state.tab === 'seguimiento' ? 'active' : ''}" role="tab" aria-selected="${_state.tab === 'seguimiento'}" onclick="Encuestas.switchTab('seguimiento')">Reseñas / Seguimiento</button>
         <button class="enc-tab-btn ${_state.tab === 'resultados' ? 'active' : ''}" role="tab" aria-selected="${_state.tab === 'resultados'}" onclick="Encuestas.switchTab('resultados')">Resultados</button>
       </div>
       <div id="enc-panel"><div class="loading-state">Cargando...</div></div>
     `;
-    _state.tab === 'resultados' ? cargarResultados() : cargarPendientes();
+    _dispatchTab();
+  }
+
+  function _dispatchTab() {
+    if (_state.tab === 'resultados') cargarResultados();
+    else if (_state.tab === 'seguimiento') cargarSeguimiento();
+    else cargarPendientes();
   }
 
   function switchTab(tab) {
@@ -187,7 +194,7 @@ const Encuestas = (() => {
       b.classList.toggle('active', !!on);
       b.setAttribute('aria-selected', on ? 'true' : 'false');
     });
-    tab === 'resultados' ? cargarResultados() : cargarPendientes();
+    _dispatchTab();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -240,6 +247,140 @@ const Encuestas = (() => {
       toast('Marcada como "no contestó" — sigue pendiente');
       cargarPendientes();
     } catch (e) { console.error('[Encuestas.noContesta]', e); toast('Error: ' + e.message, 'err'); }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PESTAÑA: RESEÑAS / SEGUIMIENTO (órdenes cerradas)
+  // Lista las órdenes ENTREGADAS y, según el tiempo desde la entrega, muestra
+  // los recordatorios (48 h → llamar; 2 semanas → segundo contacto). Permite
+  // registrar el contacto y marcar la orden como gestionada. Mide el tiempo
+  // promedio hasta el primer contacto. Los recordatorios se calculan al abrir.
+  // ═══════════════════════════════════════════════════════════════════════════
+  function _parseSeg(v) {
+    let s = {};
+    try { s = typeof v === 'string' ? JSON.parse(v) : (v || {}); } catch { s = {}; }
+    return {
+      estado: s.estado || 'pendiente',
+      contactos: Array.isArray(s.contactos) ? s.contactos : [],
+      resena_enviada_en: s.resena_enviada_en || null,
+      gestionada_en: s.gestionada_en || null,
+      gestionada_por: s.gestionada_por || null
+    };
+  }
+  function _segWa(tel) {
+    let t = String(tel || '').replace(/\D/g, '');
+    if (!t) return null;
+    if (t.length === 10) t = '57' + t;
+    return 'https://wa.me/' + t;
+  }
+  const _segBadge = (bg, color, txt) => `<span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:${bg};color:${color}">${txt}</span>`;
+
+  async function cargarSeguimiento() {
+    const panel = document.getElementById('enc-panel');
+    if (!panel) return;
+    panel.innerHTML = '<div class="loading-state">Cargando...</div>';
+    const ordenes = await _safe(api('/ordenes?estado=eq.Entregada&select=id,numero_ot,placa,propietario,marca,linea,telefono,entregada_en,seguimiento_resena&order=entregada_en.desc'), 'cargarSeguimiento') || [];
+
+    const ahora = Date.now();
+    const H48 = 48, H2SEM = 24 * 14;
+    let nGest = 0, nDue = 0;
+    const tiempos = [];
+
+    const items = ordenes.map(o => {
+      const seg = _parseSeg(o.seguimiento_resena);
+      const horas = o.entregada_en ? (ahora - new Date(o.entregada_en).getTime()) / 3600000 : 0;
+      const nContactos = seg.contactos.length;
+      const gestionada = seg.estado === 'gestionada';
+      const due48 = !gestionada && horas >= H48 && nContactos === 0;
+      const due2sem = !gestionada && horas >= H2SEM && nContactos < 2;
+      if (gestionada) nGest++;
+      if (due48 || due2sem) nDue++;
+      if (nContactos && o.entregada_en) {
+        const primero = Math.min(...seg.contactos.map(c => new Date(c.en).getTime()));
+        tiempos.push((primero - new Date(o.entregada_en).getTime()) / 3600000);
+      }
+      return { o, seg, horas, nContactos, gestionada, due48, due2sem };
+    });
+
+    const promH = tiempos.length ? tiempos.reduce((a, b) => a + b, 0) / tiempos.length : null;
+    const promTxt = promH == null ? '—' : (promH < 48 ? `${Math.round(promH)} h` : `${(promH / 24).toFixed(1)} d`);
+    const mc = (num, lbl, color) => `<div style="flex:1;min-width:90px;background:var(--gris-bg,#F8FAFC);border:1px solid var(--gris-borde);border-radius:10px;padding:10px 12px;text-align:center"><div style="font-size:22px;font-weight:800;${color ? 'color:' + color : ''}">${num}</div><div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${lbl}</div></div>`;
+    const metricas = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      ${mc(ordenes.length, 'Cerradas')}
+      ${mc(nGest, 'Gestionadas', '#059669')}
+      ${mc(nDue, 'Por contactar', nDue ? '#DC2626' : '#6B7280')}
+      ${mc(promTxt, 'Prom. 1er contacto', '#2563EB')}
+    </div>`;
+
+    if (!ordenes.length) {
+      panel.innerHTML = metricas + `<div class="empty-state" style="padding:30px;text-align:center;color:var(--gris-mid)">No hay órdenes cerradas todavía.</div>`;
+      return;
+    }
+
+    const cards = items.map(({ o, seg, nContactos, gestionada, due48, due2sem }) => {
+      const wa = _segWa(o.telefono);
+      const dias = _dias(o.entregada_en);
+      const diasTxt = dias == null ? '' : (dias === 0 ? 'hoy' : `hace ${dias} día${dias === 1 ? '' : 's'}`);
+      let badge;
+      if (gestionada) badge = _segBadge('#E6F5EF', '#059669', '✓ Gestionada');
+      else if (due2sem) badge = _segBadge('#FEE2E2', '#DC2626', '📅 +2 semanas · segundo contacto');
+      else if (due48) badge = _segBadge('#FEF3C7', '#92400E', '⏰ +48 h · llama al cliente');
+      else if (nContactos) badge = _segBadge('#EFF6FF', '#2563EB', `${nContactos} contacto${nContactos === 1 ? '' : 's'}`);
+      else badge = _segBadge('#F4F6F9', '#6B7280', 'Reciente');
+      const hist = seg.contactos.length
+        ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:3px">${seg.contactos.map(c => `<div style="font-size:11.5px;color:var(--gris-mid)">📞 ${formatTS(c.en)} · ${escapeHtml(c.por || '—')}${c.nota ? ' — ' + escapeHtml(c.nota) : ''}</div>`).join('')}</div>`
+        : '';
+      return `<div class="enc-card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="min-width:0">
+            <div style="font-weight:700;color:var(--texto)">${escapeHtml(o.placa || '—')}
+              <span style="font-weight:500;color:var(--gris-mid);font-size:13px">· ${escapeHtml(o.marca || '')} ${escapeHtml(o.linea || '')}</span>
+            </div>
+            <div style="font-size:12px;color:var(--gris-mid);margin-top:2px">${escapeHtml(o.propietario || 'Sin propietario')} · ${escapeHtml(otDe(o))} · Entregada ${formatFecha(o.entregada_en)} ${diasTxt ? `<b>(${diasTxt})</b>` : ''}</div>
+            <div style="margin-top:6px">${badge}</div>
+            ${hist}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0">
+            ${wa ? `<a href="${wa}" target="_blank" rel="noopener" class="btn-sm" style="background:#25D366;color:white;border:none;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">💬 WhatsApp</a>` : ''}
+            ${!gestionada ? `<button class="btn-sm" style="background:var(--azul);color:white;border:none;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" onclick="Encuestas.registrarContacto(${o.id})">Registrar contacto</button>` : ''}
+            ${!gestionada ? `<button class="btn-sm" style="background:#F4F6F9;color:var(--gris-mid);border:1.5px solid var(--gris-borde);padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" onclick="Encuestas.marcarGestionada(${o.id})">Marcar gestionada</button>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    panel.innerHTML = metricas + cards;
+  }
+
+  async function registrarContacto(ordenId) {
+    const nota = (typeof prompt === 'function') ? (prompt('Nota del contacto (opcional): ¿qué dijo el cliente?') || '') : '';
+    try {
+      const o = await api(`/ordenes?id=eq.${ordenId}&select=seguimiento_resena`).then(r => r?.[0]);
+      const seg = _parseSeg(o?.seguimiento_resena);
+      seg.contactos.push({ en: new Date().toISOString(), por: sesion?.nombre || '—', nota: (nota || '').trim() || null });
+      await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { seguimiento_resena: seg });
+      toast('Contacto registrado ✓');
+      cargarSeguimiento();
+    } catch (e) {
+      console.error('[Encuestas.registrarContacto]', e);
+      toast('No se pudo guardar (¿falta correr el SQL de seguimiento_resena?)', 'err');
+    }
+  }
+
+  async function marcarGestionada(ordenId) {
+    try {
+      const o = await api(`/ordenes?id=eq.${ordenId}&select=seguimiento_resena`).then(r => r?.[0]);
+      const seg = _parseSeg(o?.seguimiento_resena);
+      seg.estado = 'gestionada';
+      seg.gestionada_en = new Date().toISOString();
+      seg.gestionada_por = sesion?.nombre || '—';
+      await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { seguimiento_resena: seg });
+      toast('Marcada como gestionada ✓');
+      cargarSeguimiento();
+    } catch (e) {
+      console.error('[Encuestas.marcarGestionada]', e);
+      toast('No se pudo guardar (¿falta correr el SQL de seguimiento_resena?)', 'err');
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -713,6 +854,6 @@ const Encuestas = (() => {
   }
 
   // API pública del módulo (lo que usan onclick inline, navJefe y mecanico.js)
-  return { montar, switchTab, cargarPendientes, cargarResultados, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml };
+  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml };
 })();
 window.Encuestas = Encuestas;
