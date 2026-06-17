@@ -1780,6 +1780,7 @@ async function cargarProveedores() {
               })()}
             </td>
             <td style="padding:10px 12px;white-space:nowrap">
+              <button class="btn btn-ghost btn-sm" style="color:#128C7E;border-color:#25D366" data-prov-id="${p.id}" onclick="_abrirChatProveedor(this)" title="Abrir chat de WhatsApp con este proveedor">💬 Chat</button>
               <button class="btn btn-ghost btn-sm" data-prov-id="${p.id}" onclick="_editarProveedorPorId(this)">Editar</button>
               <button class="btn btn-ghost btn-sm" style="color:var(--rojo)" data-prov-id="${p.id}" onclick="_eliminarProveedorPorId(this)">Eliminar</button>
             </td>
@@ -1796,6 +1797,17 @@ function _filtrarProveedores(q) {
   document.querySelectorAll('#rep-contenido tbody tr[data-buscar]').forEach(tr => {
     tr.style.display = (!q || tr.dataset.buscar.includes(q)) ? '' : 'none';
   });
+}
+
+// Abre directamente el chat de WhatsApp con ese proveedor (su número guardado).
+// Colombia: si el número trae 10 dígitos se le antepone el indicativo 57.
+function _abrirChatProveedor(btn) {
+  const id = +btn.dataset.provId;
+  const p = (_provRegistry || {})[id] || {};
+  let tel = String(p.whatsapp || p.telefono || '').replace(/\D/g, '');
+  if (!tel) { toast('Este proveedor no tiene WhatsApp guardado. Edítalo para agregar el número.', 'err'); return; }
+  if (tel.length === 10) tel = '57' + tel;
+  window.open(`https://wa.me/${tel}`, '_blank');
 }
 
 // Eliminar proveedor desde el botón de la fila (usa el registry para el nombre).
