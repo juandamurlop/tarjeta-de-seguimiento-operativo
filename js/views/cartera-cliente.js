@@ -139,9 +139,12 @@ async function _guardarNuevaOrg() {
   if (!nombre) { toast('El nombre es obligatorio', 'err'); return; }
   const nit = val('no-nit'), dir = val('no-dir'), tel = val('no-tel'), cor = val('no-cor');
   try {
-    // Crear con el nombre (lo seguro); luego completar el resto best-effort por si
-    // falta alguna columna en la tabla.
-    await api(`/${tabla}`, 'POST', { nombre, activo: true }, { Prefer: 'return=minimal' });
+    // Si ya existe una con ese nombre (la tabla tiene nombre único), NO la creamos
+    // de nuevo (eso daba "duplicate key"): la reutilizamos y completamos sus datos.
+    const existe = await api(`/${tabla}?nombre=eq.${encodeURIComponent(nombre)}&select=nombre&limit=1`).then(r => r && r.length).catch(() => false);
+    if (!existe) {
+      await api(`/${tabla}`, 'POST', { nombre, activo: true }, { Prefer: 'return=minimal' });
+    }
     const where = `/${tabla}?nombre=eq.${encodeURIComponent(nombre)}`;
     const fallaron = [];
     const patch = async (obj, et) => { try { await api(where, 'PATCH', obj); } catch (e) { fallaron.push(et); } };
@@ -153,7 +156,7 @@ async function _guardarNuevaOrg() {
     await patch({ telefono: tel }, 'teléfono');
     await patch({ correo: cor }, 'correo');
     m.remove();
-    toast(fallaron.length ? 'Creado. No se guardó: ' + fallaron.join(', ') : 'Creado ✓');
+    toast(fallaron.length ? (existe ? 'Actualizado' : 'Creado') + '. No se guardó: ' + fallaron.join(', ') : (existe ? 'Actualizado ✓' : 'Creado ✓'));
     _refrescarVistaOrg(cref);
   } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
@@ -312,10 +315,10 @@ function _carteraFichaHtml(tipo, nombre) {
         <div class="aseg-ficha-nombre" style="color:${cfg.color}">${cfg.icon} ${escapeHtml(nombre)}</div>
         ${datos ? `<div class="aseg-ficha-sub">${datos}</div>` : ''}
       </div>
-      ${a && a.id != null ? `<div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="btn btn-ghost btn-sm" data-ctabla="flotillas" data-ckey="id" data-cval="${a.id}" data-cfield="personas" data-cref="${tipo}" data-cnombre="${escapeHtml(nombre)}" onclick="abrirEditarContactoOrg(this)">✏️ Editar</button>
-        <button class="btn btn-ghost btn-sm" style="color:var(--rojo)" data-ctabla="flotillas" data-ckey="id" data-cval="${a.id}" data-cref="${tipo}" data-cnombre="${escapeHtml(nombre)}" onclick="_eliminarContactoOrg(this)">🗑 Eliminar</button>
-      </div>` : ''}
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" data-ctabla="flotillas" data-ckey="nombre" data-cval="${escapeHtml(nombre)}" data-cfield="personas" data-cref="${tipo}" data-cnombre="${escapeHtml(nombre)}" onclick="abrirEditarContactoOrg(this)">✏️ Editar</button>
+        ${a ? `<button class="btn btn-ghost btn-sm" style="color:var(--rojo)" data-ctabla="flotillas" data-ckey="nombre" data-cval="${escapeHtml(nombre)}" data-cref="${tipo}" data-cnombre="${escapeHtml(nombre)}" onclick="_eliminarContactoOrg(this)">🗑 Eliminar</button>` : ''}
+      </div>
     </div>
     ${personas.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">${personas.map(p => `<span class="aseg-chip" style="background:#F5F3FF;color:#5B21B6">👤 ${escapeHtml(p.nombre || '—')}${p.telefono ? ' · ' + escapeHtml(p.telefono) : ''}${p.correo ? ' · ' + escapeHtml(p.correo) : ''}</span>`).join('')}</div>` : ''}
     <div class="aseg-ficha-stats">
@@ -441,8 +444,11 @@ async function abrirEditarContactoOrg(btn) {
   ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
   ov.innerHTML = `
     <div style="background:#fff;border-radius:14px;max-width:520px;width:100%;max-height:88vh;overflow:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
-      <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:2px">Editar datos</div>
-      <div style="font-size:12px;color:var(--gris-mid);margin-bottom:14px">${escapeHtml(nombre)}</div>
+      <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:12px">Editar datos</div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:4px">Nombre</label>
+        <input id="co-nombre" value="${escapeHtml(fila.nombre || nombre || '')}" placeholder="Nombre de la organización" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--gris-borde);border-radius:7px;font-size:13px;font-weight:600">
+      </div>
       <div style="display:flex;gap:8px;margin-bottom:10px">
         <div style="flex:1;min-width:0">
           <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:4px">NIT</label>
@@ -481,27 +487,52 @@ async function abrirEditarContactoOrg(btn) {
 async function _guardarContactoOrg() {
   const m = document.getElementById('modal-contacto-org');
   if (!m) return;
-  const { ctabla, ckey, cval, cfield, cref } = m.dataset;
+  const { ctabla, cval, cfield, cref } = m.dataset;   // cval = nombre original
   _coSync();
+  const nuevoNombre = document.getElementById('co-nombre')?.value.trim() || cval;
   const nit = document.getElementById('co-nit')?.value.trim() || null;
   const dir = document.getElementById('co-dir')?.value.trim() || null;
   const tel = document.getElementById('co-tel')?.value.trim() || null;
   const cor = document.getElementById('co-cor')?.value.trim() || null;
   const personas = _contactoOrgPersonas.filter(p => p.nombre || p.telefono || p.correo);
-  const where = `/${ctabla}?${ckey}=eq.${encodeURIComponent(cval)}`;
+  const esFlot = ctabla === 'flotillas' && cref !== 'aseg';
 
+  // Asegurar que exista el registro (puede venir solo de órdenes, sin catálogo).
+  try {
+    const existe = await api(`/${ctabla}?nombre=eq.${encodeURIComponent(cval)}&select=nombre&limit=1`).then(r => r && r.length).catch(() => false);
+    if (!existe) {
+      const base = { nombre: cval, activo: true };
+      if (esFlot) base.tipo = cref;
+      await api(`/${ctabla}`, 'POST', base, { Prefer: 'return=minimal' });
+    }
+  } catch (e) { /* los PATCH siguientes avisan si algo falla */ }
+
+  const where = `/${ctabla}?nombre=eq.${encodeURIComponent(cval)}`;
   const fallaron = [];
   const patch = async (obj, etiqueta) => {
     try { await api(where, 'PATCH', obj); } catch (e) { fallaron.push(etiqueta); }
   };
+  if (esFlot) await patch({ tipo: cref }, 'tipo');
   await patch({ nit: nit }, 'NIT');
   await patch({ direccion: dir }, 'dirección');
   await patch({ telefono: tel }, 'teléfono');
   await patch({ correo: cor }, 'correo');
   await patch({ [cfield]: personas }, 'personas');
 
+  // Cambio de nombre: renombra el registro y actualiza las órdenes que lo usan
+  // (las órdenes referencian la organización por el campo "aseguradora").
+  let renombrado = true;
+  if (nuevoNombre && nuevoNombre !== cval) {
+    try {
+      await api(where, 'PATCH', { nombre: nuevoNombre });
+      try { await api(`/ordenes?aseguradora=eq.${encodeURIComponent(cval)}`, 'PATCH', { aseguradora: nuevoNombre }); } catch (e) {}
+    } catch (e) { renombrado = false; }
+  }
+
   m.remove();
-  if (fallaron.length) {
+  if (!renombrado) {
+    toast('Datos guardados, pero ese nombre ya existe (no se cambió el nombre).', 'err');
+  } else if (fallaron.length) {
     toast('Guardado parcial. No se pudo guardar: ' + fallaron.join(', ') + (fallaron.includes('personas') ? ' (¿falta correr el SQL de personas/contactos?)' : ''), 'err');
   } else {
     toast('Contacto actualizado ✓');
