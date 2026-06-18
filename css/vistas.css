@@ -1577,6 +1577,10 @@
 ══════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
 
+  /* Gestión Operativa: la cuadrícula de secciones (4 col en desktop, estilo
+     inline) pasa a 2 columnas para que no se vea apretada en móvil/tablet. */
+  .kpi-secciones { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
   /* Cotizaciones lista */
   .cot-card-mid { gap: 8px; }
   .cot-placa    { font-size: 14px; }
@@ -1586,10 +1590,11 @@
   .cot-table-wrap { margin-bottom: 8px; }
   .cot-resumen    { padding: 10px 12px; }
 
-  /* Detalle de orden: panel lateral debajo del contenido */
+  /* Detalle de orden: panel lateral debajo del contenido, en una sola columna
+     (incluye banner N° orden y tarjeta de pulmón, que no son .sidebar-card). */
   .detalle-grid { grid-template-columns: 1fr; }
-  .detalle-sidebar { flex-direction: row; flex-wrap: wrap; gap: 8px; }
-  .sidebar-card  { flex: 1 1 calc(50% - 4px); min-width: 240px; }
+  .detalle-sidebar { flex-direction: column; gap: 10px; }
+  .sidebar-card  { flex: 1 1 auto; min-width: 0; }
 
   /* Repuestos: tabla scroll */
   .rep-tabla-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }

@@ -220,16 +220,16 @@ async function abrirOrden(id) {
           <div class="detalle-header-card">
             <!-- Fila placa + badges -->
             <div class="detalle-placa-row">
-              <div>
+              <div style="min-width:0;flex:1">
                 <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
                   <div class="detalle-placa">${escapeHtml(orden.placa)}</div>
                   <div style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--gris-mid);letter-spacing:.5px">${otDe(orden)}</div>
                 </div>
-                <div class="detalle-vehiculo">${[orden.marca,orden.linea,orden.modelo,orden.color].filter(Boolean).map(escapeHtml).join(' · ')}</div>
-                <div style="display:flex;align-items:center;gap:5px;margin-top:5px;font-size:13.5px;font-weight:700;color:#1E293B">
-                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;opacity:.65"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  ${orden.propietario ? escapeHtml(orden.propietario) : '<span style="color:var(--gris-mid);font-weight:600">Sin nombre de cliente</span>'}
+                <div style="display:flex;align-items:center;gap:6px;margin-top:5px;min-width:0">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;color:var(--gris-mid)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <span style="font-size:14px;font-weight:600;color:#334155;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${orden.propietario ? escapeHtml(orden.propietario) : '<span style="color:var(--gris-mid)">Sin nombre de cliente</span>'}</span>
                 </div>
+                <div class="detalle-vehiculo" style="margin-top:3px">${[orden.marca,orden.linea,orden.modelo,orden.color].filter(Boolean).map(escapeHtml).join(' · ') || '—'}</div>
               </div>
               <div style="display:flex;flex-wrap:wrap;align-items:center;gap:5px;justify-content:flex-end">
                 <span class="badge badge-${estadoClase}">${estadoTexto}</span>
@@ -397,12 +397,12 @@ async function abrirOrden(id) {
           </div>
           ${orden.tipo_cliente === 'aseguradora' && esJefe() ? `
           <div class="sidebar-card">
-            <div onclick="_togglePrecioVenta()" class="sidebar-card-header" style="background:#ECFDF5;color:#047857;display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none">
+            <div onclick="_togglePrecioVenta()" class="sidebar-card-header" style="background:#ECFDF5;color:#047857;gap:8px;cursor:pointer;user-select:none">
               <svg id="precio-venta-chev" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_precioVentaAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
-              <span style="flex:1;min-width:0">Precio venta a cliente</span>
+              <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Precio venta a cliente</span>
               ${orden.precio_venta_cliente
-                ? `<span style="flex-shrink:0;font-size:11px;font-weight:700;color:#047857;background:#D1FAE5;border-radius:99px;padding:1px 8px">${new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(orden.precio_venta_cliente)}</span>`
-                : `<span style="flex-shrink:0;font-size:11px;font-weight:700;color:#B45309;background:#FEF3C7;border-radius:99px;padding:1px 8px">Pendiente</span>`}
+                ? `<span style="flex-shrink:0;font-size:10px;font-weight:700;text-transform:none;letter-spacing:0;color:#047857;background:#D1FAE5;border-radius:99px;padding:2px 8px;white-space:nowrap">${new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(orden.precio_venta_cliente)}</span>`
+                : `<span style="flex-shrink:0;font-size:10px;font-weight:700;text-transform:none;letter-spacing:0;color:#B45309;background:#FEF3C7;border-radius:99px;padding:2px 8px;white-space:nowrap">Pendiente</span>`}
             </div>
             <div id="precio-venta-body" class="sidebar-card-body" style="${_precioVentaAbierto?'':'display:none'}">
               <div style="font-size:11px;color:var(--gris-mid);margin-bottom:8px">Es el total que verá la <strong>aseguradora</strong> en la orden de trabajo (sin detalle de procesos). Solo lo ven jefe y gerente.</div>
@@ -429,11 +429,10 @@ async function abrirOrden(id) {
           </div>` : ''}
           ${orden.placa ? `
           <div class="sidebar-card" id="consumibles-sidebar-card">
-            <div onclick="_toggleConsumibles()" id="consumibles-sidebar-header" class="sidebar-card-header" style="display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;${_consumiblesAbierto?'':'background:#FEF3C7;color:#B45309'}">
+            <div onclick="_toggleConsumibles()" id="consumibles-sidebar-header" class="sidebar-card-header" style="gap:8px;cursor:pointer;user-select:none;${_consumiblesAbierto?'':'background:#FEF3C7;color:#B45309'}">
               <svg id="consumibles-chev" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_consumiblesAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
-              <span style="flex:1;min-width:0">🔧 Consumibles</span>
-              <span id="consumibles-pill" style="flex-shrink:0;font-size:11px;font-weight:700;color:#B45309;background:#FDE68A;border-radius:99px;padding:1px 8px;${_consumiblesAbierto?'display:none':''}">Pendiente</span>
-              <button class="btn btn-ghost btn-xs" style="flex-shrink:0" onclick="event.stopPropagation();abrirPopupConsumibles('${escapeHtml(orden.placa)}',${orden.kilometraje||0})">Ver todo</button>
+              <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔧 Consumibles</span>
+              <span id="consumibles-pill" style="flex-shrink:0;font-size:10px;font-weight:700;text-transform:none;letter-spacing:0;color:#B45309;background:#FDE68A;border-radius:99px;padding:2px 8px;white-space:nowrap;${_consumiblesAbierto?'display:none':''}">Pendiente</span>
             </div>
             <div class="sidebar-card-body" id="consumibles-sidebar-body" style="${_consumiblesAbierto?'':'display:none'}">
               <div style="font-size:12px;color:var(--gris-mid)">Cargando...</div>

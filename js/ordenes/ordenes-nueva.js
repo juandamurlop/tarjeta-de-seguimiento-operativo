@@ -789,9 +789,9 @@ function _bloqueIngreso(orden) {
   const avisado = !!orden.ingreso_avisado_en;
   let h = `<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px 12px">
     <div style="font-size:11.5px;color:#166534;font-weight:600;margin-bottom:8px">📲 Avísale al cliente que puede seguir su vehículo en tiempo real</div>
-    <div style="display:flex;gap:6px">
-      <button class="btn" style="flex:1;background:#25D366;border-color:#25D366;color:#fff" onclick="avisarIngresoCliente(${orden.id})">${avisado ? 'Reenviar link' : 'Enviar link al cliente'} (WhatsApp)</button>
-      <button class="btn btn-ghost btn-sm" title="Editar mensaje" onclick="editarMensajeIngreso()">✏️</button>
+    <div style="display:flex;gap:6px;align-items:stretch">
+      <button class="btn" style="flex:1;min-width:0;white-space:normal;line-height:1.25;background:#25D366;border-color:#25D366;color:#fff" onclick="avisarIngresoCliente(${orden.id})">${avisado ? 'Reenviar link' : 'Enviar link al cliente'} (WhatsApp)</button>
+      <button class="btn btn-ghost btn-sm" style="flex-shrink:0" title="Editar mensaje" onclick="editarMensajeIngreso()">✏️</button>
     </div>`;
   if (avisado) h += `<div style="font-size:11px;color:var(--gris-mid);margin-top:6px">✓ Link enviado el ${formatTS(orden.ingreso_avisado_en)}</div>`;
   if (!tel) h += `<div style="font-size:11px;color:var(--rojo);margin-top:6px">⚠ Esta orden no tiene celular del cliente.</div>`;
@@ -866,9 +866,9 @@ function _bloqueEntrega(orden) {
   const ci = _citaInfo(orden.cita_entrega);
   let h = `<div style="font-size:11px;color:var(--verde);font-weight:600;margin-bottom:8px;text-align:center">✓ Calidad aprobada — listo para entrega</div>`;
   // Botón avisar (o reenviar) + editar mensaje
-  h += `<div style="display:flex;gap:6px;margin-bottom:6px">
-    <button class="btn" style="flex:1;background:#25D366;border-color:#25D366;color:#fff" onclick="avisarClienteWhatsapp(${orden.id})">📲 ${avisado ? 'Reenviar' : 'Avisar al cliente'} (WhatsApp)</button>
-    <button class="btn btn-ghost btn-sm" title="Editar mensaje" onclick="editarMensajeEntrega()">✏️</button>
+  h += `<div style="display:flex;gap:6px;margin-bottom:6px;align-items:stretch">
+    <button class="btn" style="flex:1;min-width:0;white-space:normal;line-height:1.25;background:#25D366;border-color:#25D366;color:#fff" onclick="avisarClienteWhatsapp(${orden.id})">📲 ${avisado ? 'Reenviar' : 'Avisar al cliente'} (WhatsApp)</button>
+    <button class="btn btn-ghost btn-sm" style="flex-shrink:0" title="Editar mensaje" onclick="editarMensajeEntrega()">✏️</button>
   </div>`;
   if (avisado) {
     h += `<div style="font-size:11px;color:var(--gris-mid);margin-bottom:8px">✓ Cliente avisado el ${formatTS(orden.entrega_avisada_en)}</div>`;
