@@ -584,6 +584,11 @@ function montarTaller() {
       .tv-table-wrap { overflow-y:auto; scrollbar-width:none; }
       .tv-table-wrap::-webkit-scrollbar { display:none; }
       .tv-thead th { position:sticky; top:0; z-index:5; }
+
+      /* La OT se cortaba al lado de la placa (no cabia con la fuente grande):
+         ahora va DEBAJO de la placa, dentro del mismo recuadro, y se ve completa. */
+      .tv-placa-box { flex-direction:column; align-items:flex-start; gap:.05vw; overflow:visible; }
+      .tv-placa-ot  { font-size:.82vw; }
     `;
     document.head.appendChild(st);
   }
