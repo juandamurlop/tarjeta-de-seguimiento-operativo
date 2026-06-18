@@ -496,16 +496,16 @@ async function cargarKPITaller() {
     window._kpiPrevSig = _sigMap;
     const _ordCambia = (filas, getId) => filas.slice().sort((a, b) => (_cambiados.has(getId(b)) ? 1 : 0) - (_cambiados.has(getId(a)) ? 1 : 0));
 
-    const _chipO = (id, placa, info) => `<div class="kpi-ord-chip${_cambiados.has(id) ? ' kpi-ord-shake' : ''}" onclick="_kpiAbrirOrden(${id})" style="display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:6px;cursor:pointer;line-height:1.25">
-        <span style="font-family:'DM Mono',monospace;font-weight:800;font-size:14px;color:var(--texto);flex-shrink:0">${escapeHtml(placa || '—')}</span>
-        <span style="font-size:12.5px;font-weight:600;color:#334155;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(info || '')}</span>
+    const _chipO = (id, placa, info) => `<div class="kpi-ord-chip${_cambiados.has(id) ? ' kpi-ord-shake' : ''}" onclick="_kpiAbrirOrden(${id})" style="display:flex;align-items:center;gap:6px;padding:2px 5px;border-radius:5px;cursor:pointer;line-height:1.2">
+        <span style="font-family:'DM Mono',monospace;font-weight:800;font-size:12.5px;color:var(--texto);flex-shrink:0">${escapeHtml(placa || '—')}</span>
+        <span style="font-size:11px;font-weight:600;color:#334155;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(info || '')}</span>
       </div>`;
-    const _secO = (ico, titulo, color, filas, mapFn, getId) => `<div class="kpi-sec" style="border:1px solid var(--gris-borde);border-radius:9px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 9px;background:${color}14;border-left:4px solid ${color}">
-          <span style="font-size:13px;font-weight:800;color:${color};text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ico} ${titulo}</span>
-          <span style="font-size:13px;font-weight:800;color:#fff;background:${color};border-radius:99px;min-width:22px;text-align:center;padding:1px 7px;flex-shrink:0">${filas.length}</span>
+    const _secO = (ico, titulo, color, filas, mapFn, getId) => `<div class="kpi-sec" style="border:1px solid ${color}33;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 8px;background:${color}14;border-left:4px solid ${color}">
+          <span style="font-size:11.5px;font-weight:800;color:${color};text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ico} ${titulo}</span>
+          <span style="font-size:11.5px;font-weight:800;color:#fff;background:${color};border-radius:99px;min-width:20px;text-align:center;padding:1px 6px;flex-shrink:0">${filas.length}</span>
         </div>
-        <div class="kpi-sec-body" style="padding:4px 6px;overflow:auto;flex:1;min-height:0;max-height:26vh">${filas.length ? _ordCambia(filas, getId).map(mapFn).join('') : '<div style="font-size:12px;color:var(--gris-mid);padding:3px 5px">—</div>'}</div>
+        <div class="kpi-sec-body" style="padding:3px 5px;overflow:auto;flex:1;min-height:0;max-height:150px;background:${color}0a">${filas.length ? _ordCambia(filas, getId).map(mapFn).join('') : '<div style="font-size:11px;color:var(--gris-mid);padding:3px 5px">—</div>'}</div>
       </div>`;
     const seccionesHtml = `<div class="kpi-secciones" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px;align-items:stretch">
         ${_secO('🚨','Vencidas','#DC2626', k5Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId)}

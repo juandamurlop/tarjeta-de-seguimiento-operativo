@@ -819,20 +819,26 @@ function _panelComentariosOrden(orden, novedades, etapas) {
   try { const raw = orden && orden.estado_historial; hist = Array.isArray(raw) ? raw.slice() : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch (e) { hist = []; }
   hist.sort((a, b) => new Date(b.en || 0) - new Date(a.en || 0));
   const ultimo = hist[0];
-  const histHtml = hist.map(n => `<div style="border-left:3px solid #7C3AED;background:#F8FAFC;border-radius:6px;padding:7px 10px;margin-bottom:6px">
-      <div style="font-size:13px;color:#1E293B;white-space:pre-wrap">${escapeHtml(n.texto || '—')}</div>
-      <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(n.por || '—')} · ${formatTS(n.en)}</div>
+  // Botón ✕ para eliminar una novedad (se identifica por su marca de tiempo 'en').
+  const _delNov = n => `<button class="btn btn-ghost btn-xs" title="Eliminar novedad" style="flex-shrink:0;color:#DC2626;padding:1px 6px;font-size:13px;line-height:1" onclick="event.stopPropagation();_eliminarNovedadEstado(${ordenId},'${encodeURIComponent(n.en || '')}')">✕</button>`;
+  const histHtml = hist.map(n => `<div style="display:flex;align-items:flex-start;gap:6px;border-left:3px solid #7C3AED;background:#F8FAFC;border-radius:6px;padding:7px 10px;margin-bottom:6px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;color:#1E293B;white-space:pre-wrap">${escapeHtml(n.texto || '—')}</div>
+        <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(n.por || '—')} · ${formatTS(n.en)}</div>
+      </div>
+      ${_delNov(n)}
     </div>`).join('');
 
   // Estado operativo (para los botones contextuales).
   const activaEnProceso = etapas.find(e => e.inicio && !e.fin && !e.pausado);
   const pausada = etapas.find(e => e.inicio && !e.fin && e.pausado);
   const enPulmon = !!orden.pulmon;
-  const _b = (txt, onclick, bg, color, bd) => `<button class="btn btn-sm" style="background:${bg};color:${color};border:1px solid ${bd};padding:7px 11px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer" onclick="${onclick}">${txt}</button>`;
+  // Botones neutros y compactos (sin colores llamativos: el color lo dan los íconos).
+  const _b = (txt, onclick) => `<button class="btn" style="background:#fff;color:#475569;border:1px solid var(--gris-borde);padding:4px 9px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer" onclick="${onclick}">${txt}</button>`;
   let acciones = '';
-  if (activaEnProceso) acciones += _b('⏸ Pausar', `_estadoPausar(${ordenId})`, '#FFFBEB', '#92400E', '#FDE68A');
-  if (pausada || enPulmon) acciones += _b('▶ Continuar', `_estadoContinuar(${ordenId})`, '#ECFDF5', '#047857', '#A7F3D0');
-  acciones += _b(enPulmon ? '↩ Sacar de pulmón' : '🫁 Pulmón', `_estadoPulmon(${ordenId})`, '#F5F3FF', '#6D28D9', '#DDD6FE');
+  if (activaEnProceso) acciones += _b('⏸ Pausar', `_estadoPausar(${ordenId})`);
+  if (pausada || enPulmon) acciones += _b('▶ Continuar', `_estadoContinuar(${ordenId})`);
+  acciones += _b(enPulmon ? '↩ Sacar de pulmón' : '🫁 Pulmón', `_estadoPulmon(${ordenId})`);
 
   // Preview de una línea para cuando está colapsado (lo último relevante).
   const _preview = ((ultimo && ultimo.texto) || desc || '').replace(/\s+/g, ' ').trim().slice(0, 70);
@@ -866,12 +872,17 @@ function _panelComentariosOrden(orden, novedades, etapas) {
       <div style="margin-top:10px;border-top:1px solid var(--gris-borde);padding-top:10px">
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7C3AED;margin-bottom:4px">🔄 Estado del proceso</div>
         ${ultimo
-          ? `<div style="font-size:13.5px;color:#1E293B;white-space:pre-wrap;line-height:1.4">${escapeHtml(ultimo.texto || '—')}</div>
-             <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(ultimo.por || '—')} · ${formatTS(ultimo.en)}</div>`
+          ? `<div style="display:flex;align-items:flex-start;gap:6px">
+               <div style="flex:1;min-width:0">
+                 <div style="font-size:13.5px;color:#1E293B;white-space:pre-wrap;line-height:1.4">${escapeHtml(ultimo.texto || '—')}</div>
+                 <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(ultimo.por || '—')} · ${formatTS(ultimo.en)}</div>
+               </div>
+               ${_delNov(ultimo)}
+             </div>`
           : `<div style="font-size:12px;color:var(--gris-mid)">Sin novedades de estado todavía.</div>`}
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
           ${acciones}
-          ${_b('+ Agregar novedad', `_toggleNovedadEstado(${ordenId})`, '#EFF6FF', '#2563EB', '#BFDBFE')}
+          ${_b('+ Agregar novedad', `_toggleNovedadEstado(${ordenId})`)}
         </div>
         <div id="nov-estado-form-${ordenId}" style="display:none;margin-top:8px">
           <textarea id="nov-estado-${ordenId}" placeholder="Novedad del estado (ej. esperando aprobación, listo para entrega, cliente avisado...)" style="width:100%;min-height:44px;resize:vertical;box-sizing:border-box"></textarea>
@@ -895,6 +906,23 @@ async function _appendEstadoHistorial(ordenId, texto) {
   h.push({ texto, en: new Date().toISOString(), por: sesion?.nombre || '—' });
   await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { estado_historial: h });
   if (ordenActual && ordenActual.id === ordenId) ordenActual.estado_historial = h;
+}
+
+// Elimina una novedad de estado del historial (se identifica por su marca de
+// tiempo 'en', que es única). Pide confirmación y refresca el detalle.
+async function _eliminarNovedadEstado(ordenId, enEnc) {
+  const en = decodeURIComponent(enEnc || '');
+  if (!confirm('¿Eliminar esta novedad de estado?')) return;
+  try {
+    const o = await api(`/ordenes?id=eq.${ordenId}&select=estado_historial`).then(r => r?.[0]).catch(() => null);
+    let h = [];
+    try { const raw = o && o.estado_historial; h = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch (e) { h = []; }
+    const nueva = h.filter(n => (n.en || '') !== en);
+    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { estado_historial: nueva });
+    if (ordenActual && ordenActual.id === ordenId) ordenActual.estado_historial = nueva;
+    toast('Novedad eliminada ✓');
+    abrirOrden(ordenId);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
 // Registro AUTOMÁTICO desde las acciones (pausar/pulmón/continuar): best-effort,
