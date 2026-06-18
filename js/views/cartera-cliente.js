@@ -170,7 +170,10 @@ function _carteraFichaHtml(tipo, nombre) {
         <div class="aseg-ficha-nombre" style="color:${cfg.color}">${cfg.icon} ${escapeHtml(nombre)}</div>
         ${datos ? `<div class="aseg-ficha-sub">${datos}</div>` : ''}
       </div>
-      ${a && a.id != null ? `<button class="btn btn-ghost btn-sm" style="flex-shrink:0" data-ctabla="flotillas" data-ckey="id" data-cval="${a.id}" data-cfield="personas" data-cref="${tipo}" data-cnombre="${escapeHtml(nombre)}" onclick="abrirEditarContactoOrg(this)">✏️ Editar contacto</button>` : ''}
+      ${a && a.id != null ? `<div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" data-ctabla="flotillas" data-ckey="id" data-cval="${a.id}" data-cfield="personas" data-cref="${tipo}" data-cnombre="${escapeHtml(nombre)}" onclick="abrirEditarContactoOrg(this)">✏️ Editar</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--rojo)" data-ctabla="flotillas" data-ckey="id" data-cval="${a.id}" data-cref="${tipo}" data-cnombre="${escapeHtml(nombre)}" onclick="_eliminarContactoOrg(this)">🗑 Eliminar</button>
+      </div>` : ''}
     </div>
     ${personas.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">${personas.map(p => `<span class="aseg-chip" style="background:#F5F3FF;color:#5B21B6">👤 ${escapeHtml(p.nombre || '—')}${p.telefono ? ' · ' + escapeHtml(p.telefono) : ''}${p.correo ? ' · ' + escapeHtml(p.correo) : ''}</span>`).join('')}</div>` : ''}
     <div class="aseg-ficha-stats">
@@ -296,14 +299,24 @@ async function abrirEditarContactoOrg(btn) {
   ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
   ov.innerHTML = `
     <div style="background:#fff;border-radius:14px;max-width:520px;width:100%;max-height:88vh;overflow:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
-      <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:2px">Editar contacto</div>
+      <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:2px">Editar datos</div>
       <div style="font-size:12px;color:var(--gris-mid);margin-bottom:14px">${escapeHtml(nombre)}</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div style="flex:1;min-width:0">
+          <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:4px">NIT</label>
+          <input id="co-nit" value="${escapeHtml(fila.nit || '')}" placeholder="900.123.456-7" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--gris-borde);border-radius:7px;font-size:13px">
+        </div>
+        <div style="flex:1.6;min-width:0">
+          <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:4px">Dirección</label>
+          <input id="co-dir" value="${escapeHtml(fila.direccion || '')}" placeholder="Dirección" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--gris-borde);border-radius:7px;font-size:13px">
+        </div>
+      </div>
       <div style="display:flex;gap:8px;margin-bottom:12px">
         <div style="flex:1;min-width:0">
           <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:4px">Teléfono</label>
           <input id="co-tel" type="tel" value="${escapeHtml(fila.telefono || '')}" placeholder="3001234567" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--gris-borde);border-radius:7px;font-size:13px">
         </div>
-        <div style="flex:1.4;min-width:0">
+        <div style="flex:1.6;min-width:0">
           <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:4px">Correo</label>
           <input id="co-cor" type="email" value="${escapeHtml(fila.correo || '')}" placeholder="correo@empresa.com" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--gris-borde);border-radius:7px;font-size:13px">
         </div>
@@ -328,6 +341,8 @@ async function _guardarContactoOrg() {
   if (!m) return;
   const { ctabla, ckey, cval, cfield, cref } = m.dataset;
   _coSync();
+  const nit = document.getElementById('co-nit')?.value.trim() || null;
+  const dir = document.getElementById('co-dir')?.value.trim() || null;
   const tel = document.getElementById('co-tel')?.value.trim() || null;
   const cor = document.getElementById('co-cor')?.value.trim() || null;
   const personas = _contactoOrgPersonas.filter(p => p.nombre || p.telefono || p.correo);
@@ -337,6 +352,8 @@ async function _guardarContactoOrg() {
   const patch = async (obj, etiqueta) => {
     try { await api(where, 'PATCH', obj); } catch (e) { fallaron.push(etiqueta); }
   };
+  await patch({ nit: nit }, 'NIT');
+  await patch({ direccion: dir }, 'dirección');
   await patch({ telefono: tel }, 'teléfono');
   await patch({ correo: cor }, 'correo');
   await patch({ [cfield]: personas }, 'personas');
@@ -348,6 +365,24 @@ async function _guardarContactoOrg() {
     toast('Contacto actualizado ✓');
   }
   // Refrescar la vista correspondiente.
+  _refrescarVistaOrg(cref);
+}
+
+function _refrescarVistaOrg(cref) {
   if (cref === 'aseg') { if (typeof cargarModuloAseguradoras === 'function') cargarModuloAseguradoras(); else if (typeof montarAseguradoras === 'function') montarAseguradoras(); }
   else if (typeof cargarCarteraCliente === 'function') cargarCarteraCliente(cref);
+}
+
+// Elimina la organización del catálogo (aseguradora / flotilla / empresa). NO
+// borra las órdenes — solo el registro con sus datos de contacto. Pide confirmar.
+async function _eliminarContactoOrg(btn) {
+  const { ctabla, ckey, cval, cref, cnombre } = btn.dataset;
+  if (!confirm(`¿Eliminar "${cnombre || ''}" del catálogo?\n\nSe borran sus datos de contacto (NIT, teléfono, personas...). Las órdenes NO se borran.`)) return;
+  try {
+    await api(`/${ctabla}?${ckey}=eq.${encodeURIComponent(cval)}`, 'DELETE');
+    toast('Eliminado ✓');
+    _refrescarVistaOrg(cref);
+  } catch (e) {
+    toast('Error eliminando: ' + e.message, 'err');
+  }
 }

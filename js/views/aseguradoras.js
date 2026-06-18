@@ -626,7 +626,10 @@ function _asegFichaHtml(nombre) {
           : `<div class="aseg-ficha-sub" style="color:#D97706">No está en el catálogo todavía — créala para guardar sus datos.</div>`}
       </div>
       ${a
-        ? `<button class="btn btn-ghost btn-sm" style="flex-shrink:0" data-ctabla="aseguradoras" data-ckey="nombre" data-cval="${escapeHtml(nombre)}" data-cfield="contactos" data-cref="aseg" data-cnombre="${escapeHtml(nombre)}" onclick="abrirEditarContactoOrg(this)">✏️ Editar contacto</button>`
+        ? `<div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn btn-ghost btn-sm" data-ctabla="aseguradoras" data-ckey="nombre" data-cval="${escapeHtml(nombre)}" data-cfield="contactos" data-cref="aseg" data-cnombre="${escapeHtml(nombre)}" onclick="abrirEditarContactoOrg(this)">✏️ Editar</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--rojo)" data-ctabla="aseguradoras" data-ckey="nombre" data-cval="${escapeHtml(nombre)}" data-cref="aseg" data-cnombre="${escapeHtml(nombre)}" onclick="_eliminarContactoOrg(this)">🗑 Eliminar</button>
+          </div>`
         : `<button class="btn btn-primary btn-sm" onclick="abrirNuevaAseguradoraDesdeModulo()">Crear en catálogo</button>`}
     </div>
     <div class="aseg-ficha-stats">
