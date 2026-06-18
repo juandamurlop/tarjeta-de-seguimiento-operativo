@@ -576,6 +576,14 @@ function montarTaller() {
       .tv-prog-placa   { font-size:1.05vw; }
       .tv-prog-fecha   { font-size:.7vw; }
       .tv-prog-ot      { font-size:.64vw; }
+
+      /* El listado debe poder DESPLAZARSE para ver todas las órdenes (con las
+         fuentes más grandes ya no caben todas). Antes estaba overflow:hidden, que
+         en varios navegadores de TV ignora scrollTop → quedaban cortadas. Ahora es
+         scroll real con la barra oculta, y el encabezado queda FIJO arriba. */
+      .tv-table-wrap { overflow-y:auto; scrollbar-width:none; }
+      .tv-table-wrap::-webkit-scrollbar { display:none; }
+      .tv-thead th { position:sticky; top:0; z-index:5; }
     `;
     document.head.appendChild(st);
   }
