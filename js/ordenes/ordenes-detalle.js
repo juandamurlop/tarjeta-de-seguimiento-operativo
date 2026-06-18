@@ -359,7 +359,6 @@ async function abrirOrden(id) {
             </div>
           </div>
             ${typeof _panelRepuestosOrden === 'function' ? _panelRepuestosOrden(solicitudesRep, repItems, etapas) : ''}
-            ${typeof _panelInsumosOrden === 'function' ? _panelInsumosOrden(orden) : ''}
         </div>
         <div class="detalle-sidebar">
           ${(!(orden.numero_ot && String(orden.numero_ot).trim()) && orden.estado !== 'Programada') ? `
@@ -407,6 +406,7 @@ async function abrirOrden(id) {
               })()}
             </div>
           </div>
+          ${typeof _panelInsumosOrden === 'function' ? _panelInsumosOrden(orden) : ''}
           ${orden.tipo_cliente === 'aseguradora' && esJefe() ? `
           <div class="sidebar-card">
             <div onclick="_togglePrecioVenta()" class="sidebar-card-header" style="background:#ECFDF5;color:#047857;gap:8px;cursor:pointer;user-select:none">
@@ -1145,39 +1145,73 @@ function _panelInsumosOrden(orden) {
   const fmt = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
   const totalIns = insumos.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0);
 
-  const chips = _insumosFrecuentes().map(n =>
-    `<button type="button" class="btn btn-ghost btn-xs" style="font-size:11px" onclick="_insumoQuick(${oid},'${encodeURIComponent(n)}')">${escapeHtml(n)}</button>`).join('');
-
   const lista = insumos.length
     ? insumos.map((i, idx) => {
         const cant = (+i.cantidad) || 0, val = (+i.valor) || 0;
-        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--gris-borde);border-radius:8px;margin-bottom:6px">
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--gris-borde);border-radius:8px;margin-bottom:6px">
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:600;color:#1E293B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(i.nombre || 'Insumo')}</div>
+            <div style="font-size:12.5px;font-weight:600;color:#1E293B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(i.nombre || 'Insumo')}</div>
             <div style="font-size:11px;color:var(--gris-mid)">${cant} × ${fmt(val)} = <strong>${fmt(cant * val)}</strong></div>
           </div>
           <button class="btn btn-ghost btn-xs" style="flex-shrink:0;color:#DC2626" title="Quitar" onclick="_eliminarInsumo(${oid},${idx})">✕</button>
         </div>`;
       }).join('')
-    : '<div style="font-size:12px;color:var(--gris-mid);padding:4px 0">Aún no hay insumos.</div>';
+    : '<div style="font-size:12px;color:var(--gris-mid);padding:2px 0 8px">Aún no hay insumos.</div>';
 
-  const inLbl = 'font-size:10px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:3px';
-  const inCss = 'width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--gris-borde);border-radius:6px;font-size:12.5px';
-
-  return `<div class="seccion-titulo" style="margin:18px 0 8px;display:flex;align-items:center;justify-content:space-between;gap:10px">
-      <span>🛢 Insumos</span>
-      ${totalIns ? `<span style="font-size:12px;font-weight:700;color:#B45309">${fmt(totalIns)}</span>` : ''}
-    </div>
-    <div style="border:1px solid var(--gris-borde);border-radius:10px;padding:12px;margin-bottom:12px">
-      ${chips ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px">${chips}</div>` : ''}
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
-        <div style="flex:2;min-width:130px"><label style="${inLbl}">Insumo</label><input id="insumo-nom-${oid}" placeholder="Ej. Aceite 15W40" style="${inCss}"></div>
-        <div style="flex:1;min-width:55px"><label style="${inLbl}">Cant.</label><input id="insumo-cant-${oid}" type="number" min="0" step="1" value="1" style="${inCss}"></div>
-        <div style="flex:1.3;min-width:90px"><label style="${inLbl}">Valor c/u</label><input id="insumo-val-${oid}" type="number" min="0" step="1000" placeholder="0" style="${inCss};font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')_agregarInsumo(${oid})"></div>
-        <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="_agregarInsumo(${oid})">Agregar</button>
+  // Tarjeta lateral PLEGABLE (cerrada por defecto). El formulario se abre en un
+  // popup al tocar "Agregar insumo" (no queda apretado en la barra angosta).
+  return `<div class="sidebar-card">
+      <div onclick="_toggleInsumos()" id="insumos-header" class="sidebar-card-header" style="gap:8px;cursor:pointer;user-select:none;${_insumosAbierto?'':'background:#FEF3C7;color:#B45309'}">
+        <svg id="insumos-chev" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_insumosAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
+        <span style="flex:1;min-width:0">🛢 Insumos</span>
+        <span style="flex-shrink:0;font-size:10.5px;font-weight:700;text-transform:none;letter-spacing:0;color:${totalIns?'#B45309':'var(--gris-mid)'}">${totalIns ? fmt(totalIns) : (insumos.length ? '' : 'Ninguno')}</span>
       </div>
-      <div style="margin-top:10px">${lista}</div>
+      <div id="insumos-body" class="sidebar-card-body" style="${_insumosAbierto?'':'display:none'}">
+        ${lista}
+        <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:6px;color:var(--azul);border:1px dashed var(--gris-borde)" onclick="abrirModalInsumo(${oid})">➕ Agregar insumo</button>
+      </div>
     </div>`;
+}
+
+let _insumosAbierto = false;
+function _toggleInsumos() {
+  _insumosAbierto = !_insumosAbierto;
+  const body = document.getElementById('insumos-body');
+  const chev = document.getElementById('insumos-chev');
+  const head = document.getElementById('insumos-header');
+  if (body) body.style.display = _insumosAbierto ? '' : 'none';
+  if (chev) chev.style.transform = `rotate(${_insumosAbierto ? '90' : '0'}deg)`;
+  if (head) { head.style.background = _insumosAbierto ? '' : '#FEF3C7'; head.style.color = _insumosAbierto ? '' : '#B45309'; }
+}
+
+// Popup para agregar un insumo: frecuentes + nombre + cantidad + valor unitario.
+function abrirModalInsumo(oid) {
+  _insumosAbierto = true; // que la tarjeta quede abierta tras agregar
+  const inLbl = 'font-size:10px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:3px';
+  const inCss = 'width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--gris-borde);border-radius:7px;font-size:13px';
+  const chips = _insumosFrecuentes().map(n =>
+    `<button type="button" class="btn btn-ghost btn-xs" style="font-size:11px" onclick="_insumoQuick(${oid},'${encodeURIComponent(n)}')">${escapeHtml(n)}</button>`).join('');
+  document.getElementById('modal-insumo')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'modal-insumo';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:14px;max-width:440px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
+      <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:12px">🛢 Agregar insumo</div>
+      ${chips ? `<div style="font-size:11px;color:var(--gris-mid);margin-bottom:5px">Frecuentes:</div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">${chips}</div>` : ''}
+      <div style="margin-bottom:11px"><label style="${inLbl}">Insumo</label><input id="insumo-nom-${oid}" placeholder="Ej. Aceite 15W40" style="${inCss}"></div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1"><label style="${inLbl}">Cantidad</label><input id="insumo-cant-${oid}" type="number" min="0" step="1" value="1" style="${inCss}"></div>
+        <div style="flex:1.4"><label style="${inLbl}">Valor c/u</label><input id="insumo-val-${oid}" type="number" min="0" step="1000" placeholder="0" style="${inCss};font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')_agregarInsumo(${oid})"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-insumo').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="_agregarInsumo(${oid})">Agregar</button>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  setTimeout(() => document.getElementById('insumo-nom-' + oid)?.focus(), 30);
 }
 
 function _insumoQuick(oid, enc) {
@@ -1199,6 +1233,7 @@ async function _agregarInsumo(ordenId) {
     await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { insumos: arr });
     if (ordenActual && ordenActual.id === ordenId) ordenActual.insumos = arr;
     _recordarInsumoFrecuente(nom);
+    document.getElementById('modal-insumo')?.remove();
     toast('Insumo agregado ✓');
     abrirOrden(ordenId);
   } catch (e) { toast('Error agregando insumo (¿falta correr docs/sql-insumos.sql?): ' + e.message, 'err'); }
