@@ -359,6 +359,7 @@ async function abrirOrden(id) {
             </div>
           </div>
             ${typeof _panelRepuestosOrden === 'function' ? _panelRepuestosOrden(solicitudesRep, repItems, etapas) : ''}
+            ${typeof _panelInsumosOrden === 'function' ? _panelInsumosOrden(orden) : ''}
         </div>
         <div class="detalle-sidebar">
           ${(!(orden.numero_ot && String(orden.numero_ot).trim()) && orden.estado !== 'Programada') ? `
@@ -378,17 +379,28 @@ async function abrirOrden(id) {
               ${(() => {
                 const fmt = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
                 const manoObra = etapas.reduce((s,e) => s + (e.valor_venta||0), 0);
-                const subtotal = manoObra + valorRepuestos;
+                let insumos = [];
+                try { const raw = orden.insumos; insumos = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch(e) { insumos = []; }
+                const valorInsumos = insumos.reduce((s,i) => s + (((+i.cantidad)||0) * ((+i.valor)||0)), 0);
+                const subtotal = manoObra + valorRepuestos + valorInsumos;
                 if (!subtotal) return '<div style="font-size:13px;color:var(--gris-mid)">Sin precio de venta aún.</div>';
                 const iva = Math.round(subtotal * 0.19);
                 const total = subtotal + iva;
-                const filas = etapas.filter(e=>e.valor_venta).map(e =>
-                  '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--gris-borde)"><span style="color:var(--gris-mid)">' + escapeHtml(e.etapa||'') + '</span><span style="font-weight:600">' + fmt(e.valor_venta) + '</span></div>'
-                ).join('');
-                const filaRep = valorRepuestos
-                  ? '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--gris-borde)"><span style="color:var(--gris-mid)">🔧 Repuestos (recibidos)</span><span style="font-weight:600">' + fmt(valorRepuestos) + '</span></div>'
+                const sub = (txt,col) => '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:'+col+';margin:8px 0 2px">' + txt + '</div>';
+                const fila = (lbl,val) => '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px solid var(--gris-borde)"><span style="color:var(--gris-mid);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + lbl + '</span><span style="font-weight:600;flex-shrink:0">' + fmt(val) + '</span></div>';
+                // Mano de obra (procesos / etapas)
+                const filasMO = etapas.filter(e=>e.valor_venta).map(e => fila(escapeHtml(e.etapa||''), e.valor_venta)).join('');
+                const bloqueMO = filasMO ? sub('🔧 Mano de obra','#1D4ED8') + filasMO : '';
+                // Repuestos de taller
+                const bloqueRep = valorRepuestos ? sub('🧰 Repuestos','#0F766E') + fila('Repuestos recibidos', valorRepuestos) : '';
+                // Insumos (cada uno listado)
+                const bloqueIns = insumos.length
+                  ? sub('🛢 Insumos','#B45309') + insumos.map(i => {
+                      const cant = (+i.cantidad)||0, val = (+i.valor)||0;
+                      return fila(escapeHtml(i.nombre||'Insumo') + (cant && cant !== 1 ? ' ×'+cant : ''), cant*val);
+                    }).join('')
                   : '';
-                return filas + filaRep +
+                return bloqueMO + bloqueRep + bloqueIns +
                   '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0 2px"><span style="color:var(--gris-mid)">Subtotal</span><span style="font-weight:600">' + fmt(subtotal) + '</span></div>' +
                   '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--gris-mid)">IVA (19%)</span><span style="font-weight:600">' + fmt(iva) + '</span></div>' +
                   '<div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:8px;border-top:2px solid var(--azul-mid)"><span style="font-size:13px;font-weight:700;color:var(--azul)">Total con IVA</span><span style="font-size:15px;font-weight:700;color:var(--azul)">' + fmt(total) + '</span></div>';
@@ -1091,6 +1103,115 @@ async function _guardarComentarioOrden(ordenId) {
     await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { descripcion_general: txt || null });
     if (ordenActual && ordenActual.id === ordenId) ordenActual.descripcion_general = txt || null;
     toast('Estado del carro actualizado ✓');
+    abrirOrden(ordenId);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ============================================================
+// PANEL DE INSUMOS DE LA ORDEN (solo jefe/gerente)
+// Insumos = aceite, filtros, gasolina, etc. (distintos de los "repuestos de
+// taller" que tienen proveedores/estados). Cada uno: nombre + cantidad + valor
+// unitario. Se guardan en ordenes.insumos (jsonb) — requiere docs/sql-insumos.sql.
+// ============================================================
+const _INSUMOS_FRECUENTES_DEFAULT = ['Aceite de motor', 'Filtro de aceite', 'Filtro de aire', 'Filtro de combustible', 'Gasolina', 'Refrigerante', 'Líquido de frenos', 'Grasa'];
+
+function _insumosFrecuentes() {
+  let custom = [];
+  try { custom = JSON.parse(localStorage.getItem('insumos_frecuentes') || '[]'); } catch (e) { custom = []; }
+  if (!Array.isArray(custom)) custom = [];
+  const seen = new Set(); const out = [];
+  [..._INSUMOS_FRECUENTES_DEFAULT, ...custom].forEach(n => {
+    const k = String(n || '').trim().toLowerCase();
+    if (k && !seen.has(k)) { seen.add(k); out.push(String(n).trim()); }
+  });
+  return out.slice(0, 16);
+}
+function _recordarInsumoFrecuente(nombre) {
+  const k = String(nombre || '').trim();
+  if (!k || _INSUMOS_FRECUENTES_DEFAULT.some(d => d.toLowerCase() === k.toLowerCase())) return;
+  let custom = [];
+  try { custom = JSON.parse(localStorage.getItem('insumos_frecuentes') || '[]'); } catch (e) { custom = []; }
+  if (!Array.isArray(custom)) custom = [];
+  if (custom.some(c => String(c).toLowerCase() === k.toLowerCase())) return;
+  custom.push(k);
+  try { localStorage.setItem('insumos_frecuentes', JSON.stringify(custom.slice(-20))); } catch (e) {}
+}
+
+function _panelInsumosOrden(orden) {
+  if (typeof esJefe === 'function' && !esJefe()) return '';
+  const oid = orden.id;
+  let insumos = [];
+  try { const raw = orden.insumos; insumos = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch (e) { insumos = []; }
+  const fmt = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
+  const totalIns = insumos.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0);
+
+  const chips = _insumosFrecuentes().map(n =>
+    `<button type="button" class="btn btn-ghost btn-xs" style="font-size:11px" onclick="_insumoQuick(${oid},'${encodeURIComponent(n)}')">${escapeHtml(n)}</button>`).join('');
+
+  const lista = insumos.length
+    ? insumos.map((i, idx) => {
+        const cant = (+i.cantidad) || 0, val = (+i.valor) || 0;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--gris-borde);border-radius:8px;margin-bottom:6px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:#1E293B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(i.nombre || 'Insumo')}</div>
+            <div style="font-size:11px;color:var(--gris-mid)">${cant} × ${fmt(val)} = <strong>${fmt(cant * val)}</strong></div>
+          </div>
+          <button class="btn btn-ghost btn-xs" style="flex-shrink:0;color:#DC2626" title="Quitar" onclick="_eliminarInsumo(${oid},${idx})">✕</button>
+        </div>`;
+      }).join('')
+    : '<div style="font-size:12px;color:var(--gris-mid);padding:4px 0">Aún no hay insumos.</div>';
+
+  const inLbl = 'font-size:10px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:3px';
+  const inCss = 'width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--gris-borde);border-radius:6px;font-size:12.5px';
+
+  return `<div class="seccion-titulo" style="margin:18px 0 8px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <span>🛢 Insumos</span>
+      ${totalIns ? `<span style="font-size:12px;font-weight:700;color:#B45309">${fmt(totalIns)}</span>` : ''}
+    </div>
+    <div style="border:1px solid var(--gris-borde);border-radius:10px;padding:12px;margin-bottom:12px">
+      ${chips ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px">${chips}</div>` : ''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:2;min-width:130px"><label style="${inLbl}">Insumo</label><input id="insumo-nom-${oid}" placeholder="Ej. Aceite 15W40" style="${inCss}"></div>
+        <div style="flex:1;min-width:55px"><label style="${inLbl}">Cant.</label><input id="insumo-cant-${oid}" type="number" min="0" step="1" value="1" style="${inCss}"></div>
+        <div style="flex:1.3;min-width:90px"><label style="${inLbl}">Valor c/u</label><input id="insumo-val-${oid}" type="number" min="0" step="1000" placeholder="0" style="${inCss};font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')_agregarInsumo(${oid})"></div>
+        <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="_agregarInsumo(${oid})">Agregar</button>
+      </div>
+      <div style="margin-top:10px">${lista}</div>
+    </div>`;
+}
+
+function _insumoQuick(oid, enc) {
+  const inp = document.getElementById('insumo-nom-' + oid);
+  if (inp) inp.value = decodeURIComponent(enc);
+  document.getElementById('insumo-val-' + oid)?.focus();
+}
+async function _agregarInsumo(ordenId) {
+  const nom = (document.getElementById('insumo-nom-' + ordenId)?.value || '').trim();
+  const cant = parseFloat(document.getElementById('insumo-cant-' + ordenId)?.value) || 1;
+  const val = parseFloat(document.getElementById('insumo-val-' + ordenId)?.value) || 0;
+  if (!nom) { toast('Escribe el nombre del insumo', 'err'); return; }
+  if (!val) { toast('Escribe el valor del insumo', 'err'); return; }
+  try {
+    const o = await api(`/ordenes?id=eq.${ordenId}&select=insumos`).then(r => r?.[0]).catch(() => null);
+    let arr = [];
+    try { const raw = o && o.insumos; arr = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch (e) { arr = []; }
+    arr.push({ nombre: nom, cantidad: cant, valor: val });
+    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { insumos: arr });
+    if (ordenActual && ordenActual.id === ordenId) ordenActual.insumos = arr;
+    _recordarInsumoFrecuente(nom);
+    toast('Insumo agregado ✓');
+    abrirOrden(ordenId);
+  } catch (e) { toast('Error agregando insumo (¿falta correr docs/sql-insumos.sql?): ' + e.message, 'err'); }
+}
+async function _eliminarInsumo(ordenId, idx) {
+  try {
+    const o = await api(`/ordenes?id=eq.${ordenId}&select=insumos`).then(r => r?.[0]).catch(() => null);
+    let arr = [];
+    try { const raw = o && o.insumos; arr = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch (e) { arr = []; }
+    arr.splice(idx, 1);
+    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { insumos: arr });
+    if (ordenActual && ordenActual.id === ordenId) ordenActual.insumos = arr;
+    toast('Insumo eliminado');
     abrirOrden(ordenId);
   } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
