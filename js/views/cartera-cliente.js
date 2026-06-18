@@ -546,13 +546,35 @@ function _refrescarVistaOrg(cref) {
   else if (typeof cargarCarteraCliente === 'function') cargarCarteraCliente(cref);
 }
 
-// Elimina la organización del catálogo (aseguradora / flotilla / empresa). NO
-// borra las órdenes — solo el registro con sus datos de contacto. Pide confirmar.
+// Elimina la organización. Borra su registro del catálogo y, si tiene órdenes,
+// las DESVINCULA (pasan a "Particular", NO se borran) para que desaparezca de la
+// lista (que se arma desde las órdenes). Pide confirmar en cada caso.
 async function _eliminarContactoOrg(btn) {
-  const { ctabla, ckey, cval, cref, cnombre } = btn.dataset;
-  if (!confirm(`¿Eliminar "${cnombre || ''}" del catálogo?\n\nSe borran sus datos de contacto (NIT, teléfono, personas...). Las órdenes NO se borran.`)) return;
+  const { ctabla, cval, cref, cnombre } = btn.dataset;
+  const nombre = cval;
+  if (!confirm(`¿Eliminar "${cnombre || nombre}"?\n\nSe borra su registro (NIT, teléfono, contactos...). Las órdenes NO se borran.`)) return;
   try {
-    await api(`/${ctabla}?${ckey}=eq.${encodeURIComponent(cval)}`, 'DELETE');
+    // ¿Tiene órdenes asignadas? Se referencian por "aseguradora"; en empresas/
+    // flotillas a veces el nombre quedó en "propietario" (sin aseguradora).
+    const enc = encodeURIComponent(nombre);
+    let ords = await api(`/ordenes?aseguradora=eq.${enc}&select=id&limit=1`).catch(() => []) || [];
+    if (!ords.length && cref !== 'aseg') {
+      ords = await api(`/ordenes?tipo_cliente=eq.${cref}&propietario=eq.${enc}&aseguradora=is.null&select=id&limit=1`).catch(() => []) || [];
+    }
+    let desvincular = false;
+    if (ords.length) {
+      desvincular = confirm(`"${cnombre || nombre}" tiene órdenes asignadas.\n\nPara que desaparezca del listado, esas órdenes pasarán a "Particular" (NO se borran, solo se les quita la organización). ¿Continuar?`);
+      if (!desvincular) return;  // si no quiere desvincular, no tiene sentido borrar el catálogo y que siga apareciendo
+    }
+    // Borrar el registro del catálogo (si existe).
+    await api(`/${ctabla}?nombre=eq.${enc}`, 'DELETE').catch(() => {});
+    // Desvincular las órdenes para que la organización deje de aparecer.
+    if (desvincular) {
+      try { await api(`/ordenes?aseguradora=eq.${enc}`, 'PATCH', { aseguradora: null, tipo_cliente: 'particular' }); } catch (e) {}
+      if (cref !== 'aseg') {
+        try { await api(`/ordenes?tipo_cliente=eq.${cref}&propietario=eq.${enc}&aseguradora=is.null`, 'PATCH', { tipo_cliente: 'particular' }); } catch (e) {}
+      }
+    }
     toast('Eliminado ✓');
     _refrescarVistaOrg(cref);
   } catch (e) {
