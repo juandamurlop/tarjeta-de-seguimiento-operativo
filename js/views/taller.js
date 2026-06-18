@@ -546,7 +546,20 @@ function montarTaller() {
       .chip          { font-size:.82vw; }
       .chip-dot      { width:.55vw;height:.55vw; }
       .tv-tec        { font-size:.96vw; }
-      .tv-tec-box    { font-size:.94vw; }
+      /* Técnico: que el nombre baje a 2 líneas (no se corte) y la columna un
+         poco más ancha. El recuadro pasa a inline-block para permitir el salto. */
+      .tv-tec-box {
+        font-size:.9vw; display:inline-block; white-space:normal;
+        line-height:1.18; text-align:center; word-break:break-word;
+        overflow:visible; text-overflow:clip; max-width:100%;
+      }
+      .tv-col-etapas { width:33%; }
+      .tv-col-tec    { width:17%; }
+      /* Nombre del cliente: también a 2 líneas en vez de cortarse. */
+      .tv-propietario {
+        white-space:normal; max-width:none; overflow:visible;
+        text-overflow:clip; line-height:1.2;
+      }
       .tv-timer-val  { font-size:1.08vw; }
       .tv-entrega-chip { font-size:.96vw; }
       .tv-badge      { font-size:.8vw; }
