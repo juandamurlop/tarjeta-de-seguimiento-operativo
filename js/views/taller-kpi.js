@@ -134,6 +134,21 @@ function _kpiActualizar(btn) {
   cargarKPITaller();
 }
 
+// Refrescar la Gestión Operativa apenas se vuelve a ver la pantalla. Los
+// temporizadores (setInterval) se ralentizan o pausan en segundo plano —p. ej.
+// un monitor/TV o una pestaña detrás—, así que esto la pone al día al instante
+// cuando se mira de nuevo. Se registra una sola vez.
+if (typeof document !== 'undefined' && !window._kpiVisHandler) {
+  window._kpiVisHandler = true;
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden &&
+        document.getElementById('pag-taller-kpi')?.classList.contains('activa') &&
+        typeof cargarKPITaller === 'function') {
+      cargarKPITaller();
+    }
+  });
+}
+
 // ── Función principal ────────────────────────────────────
 async function cargarKPITaller() {
   const cont = document.getElementById('taller-kpi-contenido');
