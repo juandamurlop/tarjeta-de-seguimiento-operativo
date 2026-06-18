@@ -1730,7 +1730,7 @@ async function cargarProveedores() {
           placeholder="🔎 Buscar por nombre, número o marca…"
           style="width:100%;padding:9px 13px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;outline:none">
       </div>
-      ${provs.length ? `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:500px">
+      ${provs.length ? `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="prov-tabla" style="width:100%;font-size:13px;min-width:500px">
         <thead><tr style="background:var(--gris-bg);border-bottom:1px solid var(--gris-borde)">
           <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--gris-mid);text-transform:uppercase">Nombre</th>
           <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--gris-mid);text-transform:uppercase">Tipo</th>
@@ -1741,7 +1741,7 @@ async function cargarProveedores() {
           <th></th>
         </tr></thead>
         <tbody>
-          ${provs.map(p=>`<tr data-buscar="${escapeHtml(((p.nombre||'')+' '+(p.whatsapp||'')+' '+(p.telefono||'')+' '+(p.marcas||[]).join(' ')+(p.multimarca?' multimarca todas':'')).toLowerCase())}" style="border-bottom:1px solid var(--gris-borde)">
+          ${provs.map(p=>`<tr data-buscar="${escapeHtml(((p.nombre||'')+' '+(p.whatsapp||'')+' '+(p.telefono||'')+' '+(p.marcas||[]).join(' ')+(p.multimarca?' multimarca todas':'')).toLowerCase())}">
             <td style="padding:10px 12px;font-weight:600">${escapeHtml(p.nombre)}
               ${(p.categorias||[]).length ? `<div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:3px">${p.categorias.slice(0,4).map(c=>`<span style="background:#EEF2F7;color:var(--azul);font-size:9px;font-weight:600;padding:1px 6px;border-radius:99px">${escapeHtml(c)}</span>`).join('')}</div>` : ''}
             </td>

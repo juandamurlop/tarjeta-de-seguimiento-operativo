@@ -960,6 +960,27 @@
   box-shadow: var(--shadow-sm);
 }
 .rep-card:hover { box-shadow: var(--shadow-md); border-color: #C5CBD5; }
+
+/* Tabla de proveedores: cada fila como una "tarjeta" con borde propio y una
+   pequeña separación, para diferenciarlas claramente entre sí. */
+.prov-tabla { border-collapse: separate; border-spacing: 0 6px; }
+.prov-tabla thead th { border-bottom: none; }
+.prov-tabla tbody tr { background: white; }
+.prov-tabla tbody td {
+  border-top: 1px solid var(--gris-borde);
+  border-bottom: 1px solid var(--gris-borde);
+}
+.prov-tabla tbody td:first-child {
+  border-left: 1px solid var(--gris-borde);
+  border-top-left-radius: 9px;
+  border-bottom-left-radius: 9px;
+}
+.prov-tabla tbody td:last-child {
+  border-right: 1px solid var(--gris-borde);
+  border-top-right-radius: 9px;
+  border-bottom-right-radius: 9px;
+}
+.prov-tabla tbody tr:hover td { background: var(--gris-bg); }
 .rep-card-header {
   display: flex;
   align-items: flex-start;
