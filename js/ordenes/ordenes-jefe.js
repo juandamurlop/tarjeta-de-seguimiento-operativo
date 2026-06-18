@@ -532,18 +532,10 @@ function montarJefe() {
         </button>
       </div>
 
-      ${_grupoHeader('aseguradoras','Carteras')}
-        <button class="nav-item" id="nav-aseguradoras" onclick="navJefe('aseguradoras')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span class="nav-label">Aseguradoras</span>
-        </button>
-        <button class="nav-item" id="nav-cartera-flotillas" onclick="navJefe('cartera-flotillas')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-          <span class="nav-label">Flotillas</span>
-        </button>
-        <button class="nav-item" id="nav-cartera-empresas" onclick="navJefe('cartera-empresas')">
+      ${_grupoHeader('organizaciones','Organizaciones')}
+        <button class="nav-item" id="nav-organizaciones" onclick="navJefe('organizaciones')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-3"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
-          <span class="nav-label">Empresas</span>
+          <span class="nav-label">Organizaciones</span>
         </button>
       </div>
     `;
@@ -690,7 +682,7 @@ function navJefe(pag) {
   // Actualizar clases active en sidebar y bottom nav
   // Detener polling KPI al salir de esa pantalla
   if (pag !== 'taller-kpi' && window._kpiInterval) { clearInterval(window._kpiInterval); window._kpiInterval = null; }
-  const pages = ['ordenes', 'nueva', 'dashboard', 'taller-kpi', 'cotizaciones', 'calendario', 'mecanicos', 'repuestos', 'reportes', 'encuestas', 'flotillas', 'aseguradoras', 'cartera-flotillas', 'cartera-empresas', 'vehiculos', 'vehiculos-lista', 'metas'];
+  const pages = ['ordenes', 'nueva', 'dashboard', 'taller-kpi', 'cotizaciones', 'calendario', 'mecanicos', 'repuestos', 'reportes', 'encuestas', 'flotillas', 'organizaciones', 'aseguradoras', 'cartera-flotillas', 'cartera-empresas', 'vehiculos', 'vehiculos-lista', 'metas'];
   pages.forEach(p => {
     const navBtn = document.getElementById('nav-' + p);
     const bnavBtn = document.getElementById('bnav-' + p);
@@ -774,26 +766,26 @@ function navJefe(pag) {
       titulo = 'Ingreso Flotilla';
       setTimeout(() => { if (typeof montarFlotillas === 'function') montarFlotillas(); }, 50);
       break;
+    case 'organizaciones':
+      pagId = 'pag-organizaciones';
+      titulo = 'Organizaciones';
+      setTimeout(() => { if (typeof montarOrganizaciones === 'function') montarOrganizaciones('aseguradora'); }, 50);
+      break;
+    // Rutas antiguas → redirigen a la pestaña correspondiente de Organizaciones.
     case 'aseguradoras':
-      pagId = 'pag-aseguradoras';
-      titulo = 'Aseguradoras';
-      if (typeof resetVistaAseguradoras === 'function') resetVistaAseguradoras();
-      setTimeout(() => {
-        if (typeof cargarModuloAseguradoras === 'function') cargarModuloAseguradoras();
-        else if (typeof montarAseguradoras === 'function') montarAseguradoras();
-      }, 50);
+      pagId = 'pag-organizaciones';
+      titulo = 'Organizaciones';
+      setTimeout(() => { if (typeof montarOrganizaciones === 'function') montarOrganizaciones('aseguradora'); }, 50);
       break;
     case 'cartera-flotillas':
-      pagId = 'pag-cartera-flotillas';
-      titulo = 'Flotillas';
-      if (typeof resetVistaCartera === 'function') resetVistaCartera('flotilla');
-      setTimeout(() => { if (typeof montarCarteraFlotillas === 'function') montarCarteraFlotillas(); }, 50);
+      pagId = 'pag-organizaciones';
+      titulo = 'Organizaciones';
+      setTimeout(() => { if (typeof montarOrganizaciones === 'function') montarOrganizaciones('flotilla'); }, 50);
       break;
     case 'cartera-empresas':
-      pagId = 'pag-cartera-empresas';
-      titulo = 'Empresas';
-      if (typeof resetVistaCartera === 'function') resetVistaCartera('empresa');
-      setTimeout(() => { if (typeof montarCarteraEmpresas === 'function') montarCarteraEmpresas(); }, 50);
+      pagId = 'pag-organizaciones';
+      titulo = 'Organizaciones';
+      setTimeout(() => { if (typeof montarOrganizaciones === 'function') montarOrganizaciones('empresa'); }, 50);
       break;
     case 'vehiculos':
       pagId = 'pag-vehiculos';

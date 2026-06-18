@@ -34,6 +34,53 @@ function abrirCartera(tipo, nombre) { _carteraSel[tipo] = nombre; cargarCarteraC
 function volverCartera(tipo)        { _carteraSel[tipo] = null;   cargarCarteraCliente(tipo); }
 function resetVistaCartera(tipo)    { _carteraSel[tipo] = null; }
 
+// ═══════════════════════════════════════════════════════════
+// PANTALLA "ORGANIZACIONES" — Aseguradoras / Flotillas / Empresas en pestañas.
+// Reemplaza el antiguo grupo "Carteras" de la barra lateral. Reutiliza los
+// módulos existentes renderizando cada uno en su panel (mismos IDs que antes).
+// ═══════════════════════════════════════════════════════════
+function montarOrganizaciones(tab) {
+  const pag = document.getElementById('pag-organizaciones');
+  if (!pag) return;
+  if (!document.getElementById('org-panel-host')) {
+    pag.innerHTML = `
+      <div style="padding:16px 20px 0">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button class="filtro-btn" id="org-tab-aseguradora" onclick="orgTab('aseguradora')">🛡️ Aseguradoras</button>
+          <button class="filtro-btn" id="org-tab-flotilla" onclick="orgTab('flotilla')">🚚 Flotillas</button>
+          <button class="filtro-btn" id="org-tab-empresa" onclick="orgTab('empresa')">🏢 Empresas</button>
+        </div>
+      </div>
+      <div id="org-panel-host">
+        <div id="pag-aseguradoras" class="org-panel"></div>
+        <div id="pag-cartera-flotillas" class="org-panel" style="display:none"></div>
+        <div id="pag-cartera-empresas" class="org-panel" style="display:none"></div>
+      </div>`;
+  }
+  orgTab(tab || 'aseguradora');
+}
+
+function orgTab(tipo) {
+  const map = { aseguradora: 'pag-aseguradoras', flotilla: 'pag-cartera-flotillas', empresa: 'pag-cartera-empresas' };
+  ['aseguradora', 'flotilla', 'empresa'].forEach(t => {
+    const btn = document.getElementById('org-tab-' + t);
+    if (btn) btn.classList.toggle('active', t === tipo);
+    const pan = document.getElementById(map[t]);
+    if (pan) pan.style.display = t === tipo ? '' : 'none';
+  });
+  if (tipo === 'aseguradora') {
+    if (typeof resetVistaAseguradoras === 'function') resetVistaAseguradoras();
+    if (typeof cargarModuloAseguradoras === 'function') cargarModuloAseguradoras();
+    else if (typeof montarAseguradoras === 'function') montarAseguradoras();
+  } else if (tipo === 'flotilla') {
+    if (typeof resetVistaCartera === 'function') resetVistaCartera('flotilla');
+    if (typeof montarCarteraFlotillas === 'function') montarCarteraFlotillas();
+  } else {
+    if (typeof resetVistaCartera === 'function') resetVistaCartera('empresa');
+    if (typeof montarCarteraEmpresas === 'function') montarCarteraEmpresas();
+  }
+}
+
 // Abre el formulario de registro de una nueva flotilla/empresa.
 function crearOrgCartera(tipo) { abrirNuevaOrg(tipo); }
 
