@@ -664,9 +664,12 @@ async function guardarValorPlazaAsegCompania(nombre, v) {
   }
 }
 
-// Abre el formulario de nueva aseguradora y refresca el módulo al guardar
+// Abre el formulario de registro de nueva aseguradora (mismo form que flotilla/
+// empresa: Nombre, NIT, Dirección, Teléfono, Correo) y refresca el módulo.
 function abrirNuevaAseguradoraDesdeModulo() {
-  if (typeof agregarNuevaAsegNueva === 'function') {
+  if (typeof abrirNuevaOrg === 'function') {
+    abrirNuevaOrg('aseguradora');
+  } else if (typeof agregarNuevaAsegNueva === 'function') {
     agregarNuevaAsegNueva(() => cargarModuloAseguradoras());
   } else {
     toast('El formulario de aseguradora no está disponible', 'err');

@@ -34,18 +34,77 @@ function abrirCartera(tipo, nombre) { _carteraSel[tipo] = nombre; cargarCarteraC
 function volverCartera(tipo)        { _carteraSel[tipo] = null;   cargarCarteraCliente(tipo); }
 function resetVistaCartera(tipo)    { _carteraSel[tipo] = null; }
 
-// Crear una nueva flotilla/empresa desde la lista de Carteras. Se guarda en el
-// catálogo /flotillas (donde viven ambas). Aparecerá en la lista al asignarle una
-// orden; mientras tanto ya queda disponible para órdenes y para editar su contacto.
-async function crearOrgCartera(tipo) {
-  const esEmp  = tipo === 'empresa';
-  const nombre = (prompt(`Nombre de ${esEmp ? 'la empresa' : 'la flotilla'}:`) || '').trim();
-  if (!nombre) return;
-  const nit = (prompt('NIT (opcional):') || '').trim() || null;
+// Abre el formulario de registro de una nueva flotilla/empresa.
+function crearOrgCartera(tipo) { abrirNuevaOrg(tipo); }
+
+// ═══════════════════════════════════════════════════════════
+// FORMULARIO DE REGISTRO — Nueva flotilla / empresa / aseguradora
+// Pide: Nombre*, NIT, Dirección, Teléfono, Correo. Guarda en su catálogo
+// (/flotillas para flotilla y empresa, /aseguradoras para aseguradora). Los
+// campos opcionales se guardan best-effort por si falta alguna columna.
+// ═══════════════════════════════════════════════════════════
+function abrirNuevaOrg(tipo) {
+  const meta = {
+    flotilla:    { tabla: 'flotillas',    titulo: 'Nueva flotilla',    cref: 'flotilla'    },
+    empresa:     { tabla: 'flotillas',    titulo: 'Nueva empresa',     cref: 'empresa'     },
+    aseguradora: { tabla: 'aseguradoras', titulo: 'Nueva aseguradora', cref: 'aseg'        }
+  }[tipo];
+  if (!meta) return;
+
+  document.getElementById('modal-nueva-org')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'modal-nueva-org';
+  ov.dataset.tabla = meta.tabla; ov.dataset.cref = meta.cref;
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
+  const f = (id, label, ph, type) => `
+    <div class="field">
+      <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:4px">${label}</label>
+      <input id="${id}" ${type ? `type="${type}"` : ''} placeholder="${ph}" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--gris-borde);border-radius:7px;font-size:13px">
+    </div>`;
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:14px;max-width:480px;width:100%;max-height:88vh;overflow:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
+      <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:14px">${meta.titulo}</div>
+      <div style="display:flex;flex-direction:column;gap:11px">
+        ${f('no-nombre', 'Nombre *', tipo === 'empresa' ? 'Razón social' : 'Nombre')}
+        <div style="display:flex;gap:8px">
+          <div style="flex:1;min-width:0">${f('no-nit', 'NIT', '900.123.456-7')}</div>
+          <div style="flex:1.4;min-width:0">${f('no-tel', 'Teléfono', '3001234567', 'tel')}</div>
+        </div>
+        ${f('no-dir', 'Dirección', 'Dirección')}
+        ${f('no-cor', 'Correo', 'correo@empresa.com', 'email')}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-nueva-org').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="_guardarNuevaOrg()">Guardar</button>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  setTimeout(() => document.getElementById('no-nombre')?.focus(), 30);
+}
+
+async function _guardarNuevaOrg() {
+  const m = document.getElementById('modal-nueva-org');
+  if (!m) return;
+  const { tabla, cref } = m.dataset;
+  const val = id => document.getElementById(id)?.value.trim() || null;
+  const nombre = val('no-nombre');
+  if (!nombre) { toast('El nombre es obligatorio', 'err'); return; }
+  const nit = val('no-nit'), dir = val('no-dir'), tel = val('no-tel'), cor = val('no-cor');
   try {
-    await api('/flotillas', 'POST', { nombre, nit, activo: true }, { Prefer: 'return=minimal' });
-    toast((esEmp ? 'Empresa' : 'Flotilla') + ' creada ✓');
-    cargarCarteraCliente(tipo);
+    // Crear con el nombre (lo seguro); luego completar el resto best-effort por si
+    // falta alguna columna en la tabla.
+    await api(`/${tabla}`, 'POST', { nombre, activo: true }, { Prefer: 'return=minimal' });
+    const where = `/${tabla}?nombre=eq.${encodeURIComponent(nombre)}`;
+    const fallaron = [];
+    const patch = async (obj, et) => { try { await api(where, 'PATCH', obj); } catch (e) { fallaron.push(et); } };
+    await patch({ nit }, 'NIT');
+    await patch({ direccion: dir }, 'dirección');
+    await patch({ telefono: tel }, 'teléfono');
+    await patch({ correo: cor }, 'correo');
+    m.remove();
+    toast(fallaron.length ? 'Creado. No se guardó: ' + fallaron.join(', ') : 'Creado ✓');
+    _refrescarVistaOrg(cref);
   } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
