@@ -449,6 +449,40 @@ async function cargarKPITaller() {
         </div>
       </div>`;
 
+    // ── PANEL: ÓRDENES POR ESTADO (reemplaza los recuadros de conteo) ──────
+    const _pulmonInt = ordenesActivas.filter(o => o.pulmon && o.pulmon_tipo === 'interno');
+    const _pulmonExt = ordenesActivas.filter(o => o.pulmon && o.pulmon_tipo === 'externo');
+    const _enProceso = [];
+    { const _vistos = new Set();
+      etapasActivas.forEach(e => {
+        if (_vistos.has(e.orden_id)) return; _vistos.add(e.orden_id);
+        const o = ordenesActivas.find(or => or.id === e.orden_id);
+        if (!o || o.pulmon) return;
+        _enProceso.push({ id: o.id, placa: o.placa, info: (typeof nombreTec === 'function' ? nombreTec(e) : (e.tecnico || e.tercero)) || (e.etapa || e.servicio || '') });
+      });
+    }
+    const _chipO = (id, placa, info, col) => `<div class="kpi-ord-chip" onclick="_kpiAbrirOrden(${id})" style="display:flex;align-items:center;gap:5px;padding:2px 4px;border-radius:5px;cursor:pointer;line-height:1.2">
+        <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:11.5px;color:var(--texto);flex-shrink:0">${escapeHtml(placa || '—')}</span>
+        <span style="font-size:10px;color:${col || 'var(--gris-mid)'};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(info || '')}</span>
+      </div>`;
+    const _secO = (ico, titulo, color, filas, mapFn) => `<div class="kpi-sec" style="border:1px solid var(--gris-borde);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 7px;background:${color}14;border-left:3px solid ${color}">
+          <span style="font-size:11px;font-weight:800;color:${color};text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ico} ${titulo}</span>
+          <span style="font-size:11px;font-weight:800;color:#fff;background:${color};border-radius:99px;min-width:18px;text-align:center;padding:0 5px;flex-shrink:0">${filas.length}</span>
+        </div>
+        <div style="padding:3px 5px;overflow:auto;flex:1;min-height:0;max-height:22vh">${filas.length ? filas.map(mapFn).join('') : '<div style="font-size:10px;color:var(--gris-mid);padding:2px 4px">—</div>'}</div>
+      </div>`;
+    const seccionesHtml = `<div class="kpi-secciones" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:8px;margin-top:10px;align-items:start">
+        ${_secO('🚨','Vencidas','#DC2626', k5Filas, f => _chipO(f.ordenId, f.placa, f.badge, '#DC2626'))}
+        ${_secO('🫁','Pulmón interno','#D97706', _pulmonInt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde)), '#D97706'))}
+        ${_secO('🫁','Pulmón externo','#2563EB', _pulmonExt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde)), '#2563EB'))}
+        ${_secO('🔧','En proceso','#059669', _enProceso, o => _chipO(o.id, o.placa, o.info))}
+        ${_secO('📋','Sin técnico','#B45309', k1Filas, f => _chipO(f.ordenId, f.placa, f.titulo))}
+        ${_secO('⏳','Sin iniciar','#92400E', k2Filas, f => _chipO(f.ordenId, f.placa, f.titulo))}
+        ${_secO('🕐','Sin movimiento +4h','#9333EA', k8Filas, f => _chipO(f.ordenId, f.placa, f.badge))}
+        ${_secO('🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo))}
+      </div>`;
+
     renderSinParpadeo(cont, `
       <div class="kpi-shell">
 
@@ -467,8 +501,6 @@ async function cargarKPITaller() {
           ${valorTallerHtml}
           ${pulsoHtml}
         </div>
-
-        ${pendientesHtml}
 
         <div class="kpi-resumen">
           <div class="kpi-res-item">
@@ -490,7 +522,9 @@ async function cargarKPITaller() {
           ${indicadores2Html}
         </div>
 
-        <div class="kpi-grid">
+        ${seccionesHtml}
+
+        <div class="kpi-grid" style="display:none">
           <div class="kpi-card kpi-${k1Color}" onclick="kpiDrilldown('k1')">
             <div class="kpi-card-ico">📋</div>
             <div class="kpi-card-num">${k1Filas.length}</div>
@@ -556,8 +590,8 @@ async function cargarKPITaller() {
           </div>
         </div>
 
-        <!-- PANELES DE CONTROL -->
-        <div class="kpi-paneles">
+        <!-- PANELES DE CONTROL (ocultos: reemplazados por "Órdenes por estado") -->
+        <div class="kpi-paneles" style="display:none">
           <div class="card kpi-panel">
             <div class="kpi-panel-titulo">Flujo · ingresos vs entregas (7 días)</div>
             <div style="display:flex;align-items:flex-end;gap:6px;height:52px;padding-top:3px">
