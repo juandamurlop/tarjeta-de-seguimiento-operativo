@@ -948,12 +948,18 @@ function _barraAccionesEstado(orden) {
   const ini     = !!orden.ingreso_avisado_en;
   const listo   = !!orden.entrega_avisada_en;
   const cerrada = orden.estado === 'Entregada' || orden.estado === 'Archivada';
-  const _b = (done, color, label, labelDone, onclick) =>
-    `<button class="btn btn-sm" style="flex:1;min-width:0;font-size:10.5px;padding:7px 4px;border:1px solid ${done ? color : 'var(--gris-borde)'};background:${done ? color : '#fff'};color:${done ? '#fff' : 'var(--gris-mid)'};font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="${onclick}">${done ? '✓ ' + labelDone : label}</button>`;
-  return `<div style="display:flex;gap:5px;margin-bottom:10px">
-    ${_b(ini,   '#16a34a', '📲 Mensaje inicial', 'Mensaje enviado', `avisarIngresoCliente(${orden.id})`)}
-    ${_b(listo, '#16a34a', '🔔 Avisar listo',    'Cliente avisado',  `avisarClienteWhatsapp(${orden.id})`)}
-    ${_b(cerrada, 'var(--azul)', '🔒 Cerrar',     'Cerrada',          `intentarCerrarOrden(${orden.id})`)}
+  // Botones APILADOS a lo ancho completo: ícono + texto completo (no se corta) +
+  // ✓ a la derecha cuando ya se hizo. Hecho = fondo tinte del color + texto del color.
+  const _b = (done, color, bg, icon, label, labelDone, onclick) =>
+    `<button class="btn" style="display:flex;align-items:center;gap:8px;width:100%;font-size:12.5px;font-weight:600;padding:9px 11px;border:1px solid ${done ? color : 'var(--gris-borde)'};border-radius:8px;background:${done ? bg : '#fff'};color:${done ? color : '#475569'};cursor:pointer;text-align:left" onclick="${onclick}">
+      <span style="font-size:15px;flex-shrink:0">${icon}</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${done ? labelDone : label}</span>
+      ${done ? '<span style="margin-left:auto;flex-shrink:0">✓</span>' : ''}
+    </button>`;
+  return `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+    ${_b(ini,   '#0F6E56', '#E1F5EE', '📲', 'Enviar mensaje inicial', 'Mensaje inicial enviado', `avisarIngresoCliente(${orden.id})`)}
+    ${_b(listo, '#0F6E56', '#E1F5EE', '🔔', 'Avisar que está listo',  'Cliente avisado',          `avisarClienteWhatsapp(${orden.id})`)}
+    ${_b(cerrada, '#185FA5', '#E6F1FB', '🔒', 'Cerrar orden',          'Orden cerrada',            `intentarCerrarOrden(${orden.id})`)}
   </div>`;
 }
 

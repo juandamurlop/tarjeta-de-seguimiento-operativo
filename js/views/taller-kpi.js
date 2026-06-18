@@ -457,26 +457,31 @@ async function cargarKPITaller() {
       document.head.appendChild(_st);
     }
     if (!window._kpiScrollLoop) {
-      // Auto-scroll suave (sube/baja) en las secciones que no caben, para verlas
-      // todas. Usa requestAnimationFrame + velocidad por segundo (sub-pixel) para
-      // que el movimiento sea FLUIDO y LENTO, no a saltos como con setInterval.
-      const VEL = 9;          // px por segundo (lento)
-      const PAUSA = 1800;     // ms de pausa al llegar a cada extremo
+      // Auto-scroll de las secciones que no caben. Mueve una PISTA interna con
+      // transform:translateY (sub-pixel + acelerado por GPU) en vez de scrollTop
+      // (que redondea a enteros y se ve "a pasos"). Resultado: totalmente fluido.
+      const VEL = 14;         // px por segundo
+      const PAUSA = 1500;     // ms de pausa al llegar a cada extremo
       let _kpiLast = performance.now();
       const _kpiTick = (now) => {
         const dt = Math.min(80, now - _kpiLast) / 1000; // s (clamp si la pestaña estuvo en 2º plano)
         _kpiLast = now;
-        document.querySelectorAll('#taller-kpi-contenido .kpi-sec-body').forEach(el => {
-          const max = el.scrollHeight - el.clientHeight;
-          if (max <= 4) return;                       // cabe: no scroll
-          if (el.matches(':hover')) { el._pos = el.scrollTop; return; } // mouse encima: no mover
-          if (el._pos == null) el._pos = el.scrollTop;
-          if (el._pauseUntil && now < el._pauseUntil) return;
-          el._dir = el._dir || 1;
-          el._pos += el._dir * VEL * dt;
-          if (el._pos >= max) { el._pos = max; el._dir = -1; el._pauseUntil = now + PAUSA; }
-          else if (el._pos <= 0) { el._pos = 0; el._dir = 1; el._pauseUntil = now + PAUSA; }
-          el.scrollTop = el._pos;                      // scrollTop fraccional → movimiento suave
+        document.querySelectorAll('#taller-kpi-contenido .kpi-sec-body').forEach(body => {
+          const track = body.firstElementChild;
+          if (!track) return;
+          const max = track.offsetHeight - body.clientHeight;
+          if (max <= 2) {                              // cabe: nada que mover
+            if (body._pos) { body._pos = 0; track.style.transform = 'translateY(0)'; }
+            return;
+          }
+          if (body.matches(':hover')) return;          // mouse encima: pausa
+          if (body._pos == null) body._pos = 0;
+          if (body._pauseUntil && now < body._pauseUntil) return;
+          body._dir = body._dir || 1;
+          body._pos += body._dir * VEL * dt;
+          if (body._pos >= max) { body._pos = max; body._dir = -1; body._pauseUntil = now + PAUSA; }
+          else if (body._pos <= 0) { body._pos = 0; body._dir = 1; body._pauseUntil = now + PAUSA; }
+          track.style.transform = `translateY(${(-body._pos).toFixed(2)}px)`;
         });
         window._kpiScrollLoop = requestAnimationFrame(_kpiTick);
       };
@@ -517,7 +522,7 @@ async function cargarKPITaller() {
           <span style="font-size:11.5px;font-weight:800;color:${color};text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ico} ${titulo}</span>
           <span style="font-size:11.5px;font-weight:800;color:#fff;background:${color};border-radius:99px;min-width:20px;text-align:center;padding:1px 6px;flex-shrink:0">${filas.length}</span>
         </div>
-        <div class="kpi-sec-body" style="padding:3px 5px;overflow:auto;flex:1;min-height:0;max-height:150px;background:${color}0a">${filas.length ? _ordCambia(filas, getId).map(mapFn).join('') : '<div style="font-size:11px;color:var(--gris-mid);padding:3px 5px">—</div>'}</div>
+        <div class="kpi-sec-body" style="padding:3px 5px;overflow:hidden;flex:1;min-height:0;max-height:150px;background:${color}0a"><div class="kpi-sec-track" style="will-change:transform">${filas.length ? _ordCambia(filas, getId).map(mapFn).join('') : '<div style="font-size:11px;color:var(--gris-mid);padding:3px 5px">—</div>'}</div></div>
       </div>`;
     const seccionesHtml = `<div class="kpi-secciones" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px;align-items:stretch">
         ${_secO('🚨','Vencidas','#DC2626', k5Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId)}

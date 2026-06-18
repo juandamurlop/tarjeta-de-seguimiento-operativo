@@ -328,22 +328,34 @@ async function _cargarConsumiblesSidebar(placa, kmActual) {
     const _pend = '<span style="color:#ca8a04">🟡 Pendiente</span>';
 
     let filas = '';
+    let nPend = 0;   // ítems sin registrar (pendientes de agregar)
+    let nAlerta = 0; // ítems registrados pero no en verde (vencidos/por vencer)
     Object.entries(CONSUMIBLES_CONFIG).forEach(([tipo, cfg]) => {
       const c = ultimos[tipo];
-      if (!c) { filas += _fila(cfg.icon, cfg.label, _pend); return; }
+      if (!c) { filas += _fila(cfg.icon, cfg.label, _pend); nPend++; return; }
       const est = cfg.porFecha
         ? (c.fecha_venc ? calcularEstadoFecha(c.fecha_venc) : { dot: '🟢', label: 'Registrada', color: '#16a34a' })
         : calcularEstadoConsumible(kmActual, c.km_instalacion, c.km_vida_util || cfg.kmDefault);
+      if (est.dot !== '🟢') nAlerta++;
       filas += _fila(cfg.icon, cfg.label, `<span style="color:${est.color}">${est.dot} ${escapeHtml(est.label)}</span>`);
     });
     Object.entries(DOCUMENTOS_CONFIG).forEach(([tipo, cfg]) => {
       const d = docPorTipo[tipo];
-      if (!d) { filas += _fila(cfg.icon, cfg.label, _pend); return; }
+      if (!d) { filas += _fila(cfg.icon, cfg.label, _pend); nPend++; return; }
       const est = calcularEstadoFecha(d.fecha_venc);
+      if (est.dot !== '🟢') nAlerta++;
       filas += _fila(cfg.icon, cfg.label, `<span style="color:${est.color}">${est.dot} ${escapeHtml(est.label)}</span>`);
     });
 
     body.innerHTML = filas + `<button class="btn btn-ghost btn-xs" style="margin-top:6px;font-size:11px;width:100%" onclick="abrirPopupConsumibles('${escapeHtml(placa)}',${kmActual})">Agregar / Ver todo →</button>`;
+
+    // Indicador del encabezado (visible cuando la tarjeta está cerrada).
+    const pill = document.getElementById('consumibles-pill');
+    if (pill) {
+      if (nPend > 0) { pill.textContent = `${nPend} pendiente${nPend === 1 ? '' : 's'}`; pill.style.color = '#B45309'; pill.style.background = '#FDE68A'; }
+      else if (nAlerta > 0) { pill.textContent = `${nAlerta} por revisar`; pill.style.color = '#B91C1C'; pill.style.background = '#FECACA'; }
+      else { pill.textContent = 'Al día'; pill.style.color = '#047857'; pill.style.background = '#D1FAE5'; }
+    }
   } catch(e) {
     if (body) body.innerHTML = `<div style="font-size:11px;color:var(--gris-mid)">—</div>`;
   }

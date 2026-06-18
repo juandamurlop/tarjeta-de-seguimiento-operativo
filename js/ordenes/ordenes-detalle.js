@@ -21,10 +21,45 @@ function _toggleComentBar(ordenId) {
 }
 function _toggleDatosOrden() {
   _datosOrdenAbierto = !_datosOrdenAbierto;
-  const grid = document.getElementById('det-datos-grid');
+  const body = document.getElementById('det-datos-body');
   const chev = document.getElementById('det-datos-chev');
-  if (grid) grid.style.display = _datosOrdenAbierto ? '' : 'none';
+  if (body) body.style.display = _datosOrdenAbierto ? '' : 'none';
   if (chev) chev.style.transform = `rotate(${_datosOrdenAbierto ? '90' : '0'}deg)`;
+}
+
+// "Servicios y etapas" también arranca colapsado; se recuerda el estado entre
+// refrescos del polling.
+let _serviciosAbierto = false;
+function _toggleServiciosOrden() {
+  _serviciosAbierto = !_serviciosAbierto;
+  const body = document.getElementById('serv-body');
+  const chev = document.getElementById('serv-chev');
+  if (body) body.style.display = _serviciosAbierto ? '' : 'none';
+  if (chev) chev.style.transform = `rotate(${_serviciosAbierto ? '90' : '0'}deg)`;
+}
+
+// Tarjetas laterales plegables (cerradas por defecto): Precio venta y Consumibles.
+let _precioVentaAbierto = false;
+function _togglePrecioVenta() {
+  _precioVentaAbierto = !_precioVentaAbierto;
+  const body = document.getElementById('precio-venta-body');
+  const chev = document.getElementById('precio-venta-chev');
+  if (body) body.style.display = _precioVentaAbierto ? '' : 'none';
+  if (chev) chev.style.transform = `rotate(${_precioVentaAbierto ? '90' : '0'}deg)`;
+}
+
+let _consumiblesAbierto = false;
+function _toggleConsumibles() {
+  _consumiblesAbierto = !_consumiblesAbierto;
+  const body = document.getElementById('consumibles-sidebar-body');
+  const chev = document.getElementById('consumibles-chev');
+  const head = document.getElementById('consumibles-sidebar-header');
+  const pill = document.getElementById('consumibles-pill');
+  if (body) body.style.display = _consumiblesAbierto ? '' : 'none';
+  if (chev) chev.style.transform = `rotate(${_consumiblesAbierto ? '90' : '0'}deg)`;
+  // Cerrado = header ámbar con pastilla de estado; abierto = header normal.
+  if (head) { head.style.background = _consumiblesAbierto ? '' : '#FEF3C7'; head.style.color = _consumiblesAbierto ? '' : '#B45309'; }
+  if (pill) pill.style.display = _consumiblesAbierto ? 'none' : '';
 }
 
 async function abrirOrden(id) {
@@ -245,25 +280,29 @@ async function abrirOrden(id) {
               ${esJefe() && orden.estado !== 'Entregada' ? `<button class="btn btn-sm" style="margin-left:auto;flex-shrink:0;background:#FEF3C7;color:#B45309;border:1px solid #FDE68A" onclick="abrirEditarOrden(${orden.id})">Completar datos</button>` : ''}
             </div>`;
           })()}
-          <div class="det-datos-header">
-            <div onclick="_toggleDatosOrden()" style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;min-width:0;user-select:none">
-              <svg id="det-datos-chev" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;color:var(--azul);transition:transform .18s ease;transform:rotate(${_datosOrdenAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
-              <div class="seccion-titulo" style="margin-bottom:0">Datos del vehículo y cliente</div>
+          <div style="border:1px solid #9FE1CB;border-radius:10px;overflow:hidden;margin-bottom:12px">
+            <div onclick="_toggleDatosOrden()" style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#E1F5EE;cursor:pointer;user-select:none">
+              <svg id="det-datos-chev" width="15" height="15" fill="none" stroke="#0F6E56" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_datosOrdenAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
+              <svg width="16" height="16" fill="none" stroke="#0F6E56" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+              <div class="seccion-titulo" style="margin-bottom:0;color:#085041">Datos del vehículo y cliente</div>
+              <span style="margin-left:auto;font-size:12px;color:#0F6E56;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml([orden.propietario, [orden.marca,orden.linea].filter(Boolean).join(' ')].filter(Boolean).join(' · ')) || '—'}</span>
             </div>
-            <button class="btn btn-ghost btn-sm" style="color:var(--azul)" onclick="verHistorialVehiculo('${escapeHtml(orden.placa)}')" title="Ver visitas anteriores de este vehículo">
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              Historial
-            </button>
-            ${esJefe() && orden.estado !== 'Entregada' ? `<button class="btn btn-ghost btn-sm" onclick="abrirEditarOrden(${orden.id})">
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Editar datos
-            </button>` : ''}
-            ${esJefe() && orden.estado !== 'Archivada' ? `<button class="btn btn-ghost btn-sm" style="color:#DC2626" onclick="archivarOrden(${orden.id})" title="Archivar orden (con PIN)">
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="4" rx="1"/><path d="M5 7v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-              Archivar
-            </button>` : ''}
-          </div>
-          <div class="det-datos-grid" id="det-datos-grid" style="${_datosOrdenAbierto?'':'display:none'}">
+            <div id="det-datos-body" style="${_datosOrdenAbierto?'':'display:none;'}padding:12px">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+                <button class="btn btn-ghost btn-sm" style="color:var(--azul)" onclick="verHistorialVehiculo('${escapeHtml(orden.placa)}')" title="Ver visitas anteriores de este vehículo">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  Historial
+                </button>
+                ${esJefe() && orden.estado !== 'Entregada' ? `<button class="btn btn-ghost btn-sm" onclick="abrirEditarOrden(${orden.id})">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Editar datos
+                </button>` : ''}
+                ${esJefe() && orden.estado !== 'Archivada' ? `<button class="btn btn-ghost btn-sm" style="color:#DC2626" onclick="archivarOrden(${orden.id})" title="Archivar orden (con PIN)">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="4" rx="1"/><path d="M5 7v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                  Archivar
+                </button>` : ''}
+              </div>
+          <div class="det-datos-grid" id="det-datos-grid">
             <!-- Vehículo -->
             <div class="det-datos-card" style="border-left:3px solid #2563EB">
               <div class="det-datos-card-titulo" style="color:#2563EB">
@@ -299,20 +338,26 @@ async function abrirOrden(id) {
               </div>
             </div>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;background:linear-gradient(90deg,#EEF2FF,#F5F3FF);border-left:4px solid #6366F1;border-radius:8px;padding:9px 12px">
-            <div style="display:flex;align-items:center;gap:8px;min-width:0">
-              <svg width="16" height="16" fill="none" stroke="#6366F1" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-              <div class="seccion-titulo" style="margin-bottom:0;color:#4338CA">Servicios y Etapas</div>
             </div>
-            ${esJefe() && orden.estado !== 'Programada' && orden.estado !== 'Entregada' && orden.estado !== 'Archivada' ? '<button class="btn btn-ghost btn-sm" style="flex-shrink:0;color:#4338CA" onclick="abrirModalAgregar()">+ Agregar etapas</button>' : ''}
           </div>
-          ${orden.estado === 'Programada'
-            ? `<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 20px;background:#F8FAFC;border:1.5px dashed #CBD5E1;border-radius:10px;text-align:center;margin-bottom:12px">
-                 <svg width="32" height="32" fill="none" stroke="#94A3B8" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="16" r="1"/></svg>
-                 <div style="font-size:13px;font-weight:600;color:#64748B">Vehículo aún no ha ingresado</div>
-                 <div style="font-size:12px;color:#94A3B8">Las etapas de trabajo estarán disponibles cuando el vehículo llegue al taller y el jefe confirme su ingreso.</div>
-               </div>`
-            : serviciosHtml}
+          <div style="border:1px solid #DDD6FE;border-radius:10px;overflow:hidden;margin-bottom:12px">
+            <div onclick="_toggleServiciosOrden()" style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#EEEDFE;cursor:pointer;user-select:none">
+              <svg id="serv-chev" width="15" height="15" fill="none" stroke="#534AB7" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_serviciosAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
+              <svg width="16" height="16" fill="none" stroke="#534AB7" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+              <div class="seccion-titulo" style="margin-bottom:0;color:#3C3489">Servicios y etapas</div>
+              <span style="margin-left:auto;font-size:12px;color:#534AB7;white-space:nowrap">${total === 0 ? 'Sin etapas' : (comp === 0 ? `0 / ${total} · sin iniciar` : `${comp} / ${total} etapas`)}</span>
+              ${esJefe() && orden.estado !== 'Programada' && orden.estado !== 'Entregada' && orden.estado !== 'Archivada' ? `<button class="btn btn-ghost btn-sm" style="flex-shrink:0;color:#4338CA;padding:3px 8px" onclick="event.stopPropagation();abrirModalAgregar()">+ Agregar</button>` : ''}
+            </div>
+            <div id="serv-body" style="${_serviciosAbierto?'':'display:none;'}padding:12px">
+              ${orden.estado === 'Programada'
+                ? `<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px 20px;background:#F8FAFC;border:1.5px dashed #CBD5E1;border-radius:10px;text-align:center">
+                     <svg width="32" height="32" fill="none" stroke="#94A3B8" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="16" r="1"/></svg>
+                     <div style="font-size:13px;font-weight:600;color:#64748B">Vehículo aún no ha ingresado</div>
+                     <div style="font-size:12px;color:#94A3B8">Las etapas de trabajo estarán disponibles cuando el vehículo llegue al taller y el jefe confirme su ingreso.</div>
+                   </div>`
+                : serviciosHtml}
+            </div>
+          </div>
             ${typeof _panelRepuestosOrden === 'function' ? _panelRepuestosOrden(solicitudesRep, repItems, etapas) : ''}
         </div>
         <div class="detalle-sidebar">
@@ -352,8 +397,14 @@ async function abrirOrden(id) {
           </div>
           ${orden.tipo_cliente === 'aseguradora' && esJefe() ? `
           <div class="sidebar-card">
-            <div class="sidebar-card-header" style="background:#ECFDF5;color:#047857">Precio venta a cliente</div>
-            <div class="sidebar-card-body">
+            <div onclick="_togglePrecioVenta()" class="sidebar-card-header" style="background:#ECFDF5;color:#047857;display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none">
+              <svg id="precio-venta-chev" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_precioVentaAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
+              <span style="flex:1;min-width:0">Precio venta a cliente</span>
+              ${orden.precio_venta_cliente
+                ? `<span style="flex-shrink:0;font-size:11px;font-weight:700;color:#047857;background:#D1FAE5;border-radius:99px;padding:1px 8px">${new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(orden.precio_venta_cliente)}</span>`
+                : `<span style="flex-shrink:0;font-size:11px;font-weight:700;color:#B45309;background:#FEF3C7;border-radius:99px;padding:1px 8px">Pendiente</span>`}
+            </div>
+            <div id="precio-venta-body" class="sidebar-card-body" style="${_precioVentaAbierto?'':'display:none'}">
               <div style="font-size:11px;color:var(--gris-mid);margin-bottom:8px">Es el total que verá la <strong>aseguradora</strong> en la orden de trabajo (sin detalle de procesos). Solo lo ven jefe y gerente.</div>
               <div style="display:flex;gap:6px">
                 <input id="precio-venta-${orden.id}" type="number" min="0" step="1000" placeholder="0" value="${orden.precio_venta_cliente||''}" style="flex:1;min-width:0;padding:7px 9px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:13px;font-family:'DM Mono',monospace">
@@ -378,11 +429,13 @@ async function abrirOrden(id) {
           </div>` : ''}
           ${orden.placa ? `
           <div class="sidebar-card" id="consumibles-sidebar-card">
-            <div class="sidebar-card-header" style="display:flex;align-items:center;justify-content:space-between">
-              <span>🔧 Consumibles</span>
-              <button class="btn btn-ghost btn-xs" onclick="abrirPopupConsumibles('${escapeHtml(orden.placa)}',${orden.kilometraje||0})">Ver todo</button>
+            <div onclick="_toggleConsumibles()" id="consumibles-sidebar-header" class="sidebar-card-header" style="display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;${_consumiblesAbierto?'':'background:#FEF3C7;color:#B45309'}">
+              <svg id="consumibles-chev" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_consumiblesAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
+              <span style="flex:1;min-width:0">🔧 Consumibles</span>
+              <span id="consumibles-pill" style="flex-shrink:0;font-size:11px;font-weight:700;color:#B45309;background:#FDE68A;border-radius:99px;padding:1px 8px;${_consumiblesAbierto?'display:none':''}">Pendiente</span>
+              <button class="btn btn-ghost btn-xs" style="flex-shrink:0" onclick="event.stopPropagation();abrirPopupConsumibles('${escapeHtml(orden.placa)}',${orden.kilometraje||0})">Ver todo</button>
             </div>
-            <div class="sidebar-card-body" id="consumibles-sidebar-body">
+            <div class="sidebar-card-body" id="consumibles-sidebar-body" style="${_consumiblesAbierto?'':'display:none'}">
               <div style="font-size:12px;color:var(--gris-mid)">Cargando...</div>
             </div>
           </div>` : ''}
@@ -853,12 +906,12 @@ function _panelComentariosOrden(orden, novedades, etapas) {
   const _ab = _comentOrdenAbierto;
 
   return `
-    <div class="orden-coment-bar" style="background:#fff;border:1.5px solid #BFDBFE;border-radius:10px;margin-bottom:14px;box-shadow:0 1px 6px rgba(37,99,235,.08)">
+    <div class="orden-coment-bar" style="background:#fff;border:1px solid #B5D4F4;border-radius:10px;overflow:hidden;margin-bottom:14px;box-shadow:0 1px 6px rgba(37,99,235,.08)">
       <!-- ENCABEZADO COLAPSABLE -->
-      <div onclick="_toggleComentBar(${ordenId})" style="display:flex;align-items:center;gap:8px;padding:8px 11px;cursor:pointer;user-select:none">
-        <svg id="coment-bar-chev-${ordenId}" width="14" height="14" fill="none" stroke="#2563EB" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_ab ? '90' : '0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
-        <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#2563EB;flex-shrink:0">📝 Descripción y estado</span>
-        <span id="coment-bar-prev-${ordenId}" style="font-size:12px;color:var(--gris-mid);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;${_ab ? 'visibility:hidden' : ''}">${_preview ? escapeHtml(_preview) : 'Sin descripción'}</span>
+      <div onclick="_toggleComentBar(${ordenId})" style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#E6F1FB;cursor:pointer;user-select:none">
+        <svg id="coment-bar-chev-${ordenId}" width="15" height="15" fill="none" stroke="#185FA5" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_ab ? '90' : '0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
+        <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#0C447C;flex-shrink:0">📝 Descripción y estado</span>
+        <span id="coment-bar-prev-${ordenId}" style="font-size:12px;color:#185FA5;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;${_ab ? 'visibility:hidden' : ''}">${_preview ? escapeHtml(_preview) : 'Sin descripción'}</span>
       </div>
       <div id="coment-bar-body-${ordenId}" style="${_ab ? '' : 'display:none;'}padding:0 12px 11px">
       <!-- DESCRIPCIÓN -->
