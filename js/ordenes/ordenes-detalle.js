@@ -6,6 +6,19 @@
 // mira es Servicios/Etapas). Guardamos si el usuario lo abrió para no volver a
 // cerrarlo en cada refresco del detalle (que se re-renderiza con el polling).
 let _datosOrdenAbierto = false;
+// El panel "Descripción y estado" también arranca colapsado (compacto). Se
+// recuerda si el usuario lo abrió para no cerrarlo en cada refresco del polling.
+let _comentOrdenAbierto = false;
+function _toggleComentBar(ordenId) {
+  _comentOrdenAbierto = !_comentOrdenAbierto;
+  const body = document.getElementById('coment-bar-body-' + ordenId);
+  const chev = document.getElementById('coment-bar-chev-' + ordenId);
+  if (body) body.style.display = _comentOrdenAbierto ? '' : 'none';
+  if (chev) chev.style.transform = `rotate(${_comentOrdenAbierto ? '90' : '0'}deg)`;
+  // Oculta/muestra el preview de una línea del encabezado según el estado.
+  const prev = document.getElementById('coment-bar-prev-' + ordenId);
+  if (prev) prev.style.visibility = _comentOrdenAbierto ? 'hidden' : 'visible';
+}
 function _toggleDatosOrden() {
   _datosOrdenAbierto = !_datosOrdenAbierto;
   const grid = document.getElementById('det-datos-grid');
@@ -821,15 +834,25 @@ function _panelComentariosOrden(orden, novedades, etapas) {
   if (pausada || enPulmon) acciones += _b('▶ Continuar', `_estadoContinuar(${ordenId})`, '#ECFDF5', '#047857', '#A7F3D0');
   acciones += _b(enPulmon ? '↩ Sacar de pulmón' : '🫁 Pulmón', `_estadoPulmon(${ordenId})`, '#F5F3FF', '#6D28D9', '#DDD6FE');
 
+  // Preview de una línea para cuando está colapsado (lo último relevante).
+  const _preview = ((ultimo && ultimo.texto) || desc || '').replace(/\s+/g, ' ').trim().slice(0, 70);
+  const _ab = _comentOrdenAbierto;
+
   return `
-    <div class="orden-coment-bar" style="position:sticky;top:0;z-index:30;background:#fff;border:1.5px solid #BFDBFE;border-radius:10px;padding:10px 12px;margin-bottom:14px;box-shadow:0 2px 10px rgba(37,99,235,.10)">
+    <div class="orden-coment-bar" style="background:#fff;border:1.5px solid #BFDBFE;border-radius:10px;margin-bottom:14px;box-shadow:0 1px 6px rgba(37,99,235,.08)">
+      <!-- ENCABEZADO COLAPSABLE -->
+      <div onclick="_toggleComentBar(${ordenId})" style="display:flex;align-items:center;gap:8px;padding:8px 11px;cursor:pointer;user-select:none">
+        <svg id="coment-bar-chev-${ordenId}" width="14" height="14" fill="none" stroke="#2563EB" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_ab ? '90' : '0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
+        <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#2563EB;flex-shrink:0">📝 Descripción y estado</span>
+        <span id="coment-bar-prev-${ordenId}" style="font-size:12px;color:var(--gris-mid);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;${_ab ? 'visibility:hidden' : ''}">${_preview ? escapeHtml(_preview) : 'Sin descripción'}</span>
+      </div>
+      <div id="coment-bar-body-${ordenId}" style="${_ab ? '' : 'display:none;'}padding:0 12px 11px">
       <!-- DESCRIPCIÓN -->
       <div style="display:flex;align-items:flex-start;gap:10px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#2563EB;margin-bottom:2px">📝 Descripción del carro</div>
           <div style="font-size:13.5px;color:${desc ? '#1E293B' : 'var(--gris-mid)'};white-space:pre-wrap;line-height:1.4">${desc ? escapeHtml(desc) : 'Sin descripción. Toca “Editar” para escribirla.'}</div>
         </div>
-        <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="_toggleComentOrden(${ordenId})">✏ Editar</button>
+        <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="event.stopPropagation();_toggleComentOrden(${ordenId})">✏ Editar</button>
       </div>
       <div id="coment-orden-editor-${ordenId}" style="display:none;margin-top:8px;border-top:1px solid var(--gris-borde);padding-top:8px">
         <textarea id="coment-orden-${ordenId}" placeholder="Descripción del carro (daños, trabajo a realizar...)" style="width:100%;min-height:50px;resize:vertical;box-sizing:border-box">${escapeHtml(desc)}</textarea>
@@ -858,6 +881,7 @@ function _panelComentariosOrden(orden, novedades, etapas) {
           </div>
         </div>
         ${hist.length > 1 ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-size:12px;color:var(--gris-mid);font-weight:600">Ver historial (${hist.length})</summary><div style="margin-top:8px">${histHtml}</div></details>` : ''}
+      </div>
       </div>
     </div>`;
 }
@@ -963,6 +987,8 @@ async function _guardarNumeroOT(ordenId) {
 
 // Abre/cierra el editor del comentario general de la orden.
 function _toggleComentOrden(ordenId) {
+  // Si la barra está colapsada, ábrela primero para que se vea el editor.
+  if (!_comentOrdenAbierto) _toggleComentBar(ordenId);
   const ed = document.getElementById('coment-orden-editor-' + ordenId);
   if (!ed) return;
   const mostrar = ed.style.display === 'none';
