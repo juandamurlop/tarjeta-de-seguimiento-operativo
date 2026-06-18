@@ -218,6 +218,17 @@ async function ocrLeerTarjeta(file) {
 // formato (1.010.026.957 == 1010026957) y aunque se cambie en cualquier momento.
 function normDoc(d) { return String(d == null ? '' : d).toUpperCase().replace(/[^A-Z0-9]/g, ''); }
 
+// Nombre del técnico de una etapa. Si es EXTERNO (tercero, sin técnico interno)
+// lo muestra como "Nombre - TOT"; si es interno, solo el nombre.
+function nombreTec(e) {
+  if (!e) return '';
+  const interno = e.tecnico != null && String(e.tecnico).trim();
+  if (interno) return String(e.tecnico).trim();
+  const ext = e.tercero != null && String(e.tercero).trim();
+  if (ext) return String(e.tercero).trim() + ' - TOT';
+  return '';
+}
+
 function formatFecha(f) { return f ? new Date(f).toLocaleDateString('es-CO') : '—'; }
 function formatTS(ts) { return ts ? new Date(ts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '—'; }
 function kid(id) { return 'e' + String(id).replace(/\D/g, ''); }

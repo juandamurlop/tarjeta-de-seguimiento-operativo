@@ -812,8 +812,9 @@ function _tvEntregaInfo(orden) {
 function _tvMostrarOverlay(orden, etapasOrden, badge, esVerde, aprobadas) {
   if (_tallerOverlayTimer) clearInterval(_tallerOverlayTimer);
   const { color: entColor, label: entLabel } = _tvEntregaInfo(orden);
-  const tecnico = etapasOrden.find(e => e.inicio && !e.fin)?.tecnico
-    || etapasOrden.filter(e => e.tecnico).slice(-1)[0]?.tecnico || '';
+  const _etTec = etapasOrden.find(e => e.inicio && !e.fin)
+    || etapasOrden.filter(e => e.tecnico || e.tercero).slice(-1)[0];
+  const tecnico = (typeof nombreTec === 'function') ? nombreTec(_etTec) : (_etTec?.tecnico || '');
 
   const etapasHtml = etapasOrden.map(e => {
     const isApproved = !!e.fin && aprobadas?.has(e.id);
@@ -1145,7 +1146,7 @@ async function cargarPantallaTaller() {
       }).join('');
 
       // Técnico(s) — puede ser múltiple si hay simultáneas
-      const tecnicos = [...new Set(etapasActOrden.map(e => e.tecnico || e.tercero).filter(Boolean))];
+      const tecnicos = [...new Set(etapasActOrden.map(e => (typeof nombreTec === 'function' ? nombreTec(e) : (e.tecnico || e.tercero))).filter(Boolean))];
       const tecHtml  = `<div style="display:flex;flex-direction:column;gap:.25vh;align-items:flex-start">${
         tecnicos.length
           ? tecnicos.map(t => `<span class="tv-tec-box">${escapeHtml(t)}</span>`).join('')

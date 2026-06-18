@@ -559,7 +559,7 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
       <div class="etapa-header" onclick="toggleEtapa('eb-${k}')">
         <div style="flex:1;min-width:0">
           <div class="etapa-nombre">${escapeHtml(nombre)}${e.tercero?` <span style="font-size:11px;color:var(--gris-mid);font-weight:400">(${escapeHtml(e.tercero)}${e.tercero_desc?' · '+escapeHtml(e.tercero_desc):''})</span>`:''}</div>
-          ${!sinTecnico ? `<div class="etapa-tecnico">${ico('user',12)} ${escapeHtml(e.tecnico||e.tercero)||'Asignado'}</div>` : `<div class="etapa-tecnico" style="color:#B45309;font-weight:700">⚠ Falta asignar técnico</div>`}
+          ${!sinTecnico ? `<div class="etapa-tecnico">${ico('user',12)} ${escapeHtml(nombreTec(e))||'Asignado'}</div>` : `<div class="etapa-tecnico" style="color:#B45309;font-weight:700">⚠ Falta asignar técnico</div>`}
         </div>
         <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
           ${ultimaAprob ? `<span class="badge badge-${ultimaAprob.estado}">${ultimaAprob.estado==='aprobado'?'✓ Aprobada':'✗ Rechazada'}</span>` : ''}

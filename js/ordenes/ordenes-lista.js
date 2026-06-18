@@ -45,7 +45,7 @@ async function cargarOrdenes() {
       return;
     }
     const ids = data.map(o => o.id).join(',');
-    const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico,valor_venta`).catch(() => []) || [];
+    const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico,tercero,valor_venta`).catch(() => []) || [];
     _ordenesTablaData = data;
     _etapasTablaData  = etapas;
     renderTablaOrdenes(data, etapas);
@@ -66,7 +66,7 @@ function _buildOrdenRow(o, etapas) {
   const srvNombre = activa
     ? (CATALOGO[activa.servicio]?.nombre || activa.servicio)
     : (comp === total && total > 0 ? 'Completada' : null);
-  const tecnico  = activa?.tecnico || '';
+  const tecnico  = (typeof nombreTec === 'function') ? nombreTec(activa) : (activa?.tecnico || '');
 
   // Días en taller
   const diasTaller = o.creado_en ? Math.floor((Date.now() - new Date(o.creado_en)) / 86400000) : 0;
@@ -163,7 +163,7 @@ async function cargarOrdenesPulmon() {
       return;
     }
     const ids = data.map(o => o.id).join(',');
-    const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico`).catch(() => []) || [];
+    const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico,tercero`).catch(() => []) || [];
     _ordenesTablaData = data;
     _etapasTablaData  = etapas;
 
@@ -174,7 +174,7 @@ async function cargarOrdenesPulmon() {
       const pct       = total ? Math.round((comp / total) * 100) : 0;
       const activa    = etapasO.find(e => e.inicio && !e.fin);
       const srvNombre = activa ? (CATALOGO[activa.servicio]?.nombre || activa.servicio) : (comp===total&&total>0?'Completada':null);
-      const tecnico   = activa?.tecnico || '';
+      const tecnico   = (typeof nombreTec === 'function') ? nombreTec(activa) : (activa?.tecnico || '');
       const diasPulmon = o.pulmon_desde ? Math.floor((Date.now() - new Date(o.pulmon_desde)) / 86400000) : null;
       const diasTaller = o.creado_en ? Math.floor((Date.now() - new Date(o.creado_en)) / 86400000) : 0;
       const comentario = o.descripcion_general || '';

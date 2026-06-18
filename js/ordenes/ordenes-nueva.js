@@ -1536,7 +1536,7 @@ function _renderPendLista() {
   cont.innerHTML = `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gris-mid);margin-bottom:6px">Procesos a agregar (${_etapasPend.length})</div>` +
     _etapasPend.map((e, i) => {
       const sinTec = !e.mecanico_id && !e.tercero;
-      const tecNombre = e.tercero || (mecanicos.find(m => m.id === e.mecanico_id)?.nombre) || null;
+      const tecNombre = e.tercero ? (e.tercero + ' - TOT') : ((mecanicos.find(m => m.id === e.mecanico_id)?.nombre) || null);
       const tecHtml = sinTec
         ? ` <span style="font-size:10px;color:#B45309;font-weight:800;background:#FEF3C7;border:1px solid #FCD34D;padding:1px 7px;border-radius:99px">⚠ Falta técnico</span>`
         : ` <span style="font-size:11px;color:var(--gris-mid);font-weight:400">· ${escapeHtml(tecNombre)}</span>`;
