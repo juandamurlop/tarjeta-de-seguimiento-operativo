@@ -701,14 +701,13 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
             <select id="tec-${k}" onchange="asignarMecanico(${eid},'${k}')">
               <option value="">— Sin asignar —</option>
               ${(() => {
-                const _srvRoles = { latoneria:['latonero','tot'], pintura:['pintor','tot'], mecanica:['mecanico','tot'], adicionales:['detailing','mecanico','latonero','pintor','tot'] };
-                const _rolesValidos = _srvRoles[e.servicio] || null;
+                // Se muestran TODOS los técnicos (no se filtra por rol/servicio).
+                // Solo se excluyen perfiles que no son técnicos (TV/repuestos/asesor).
+                const _noTecnicos = ['taller', 'repuestos', 'asesor previsora'];
                 return mecanicos
                   .filter(m => {
                     if (e.mecanico_id && Number(e.mecanico_id) === Number(m.id)) return true;
-                    if (['taller','repuestos','Asesor Previsora'].includes(m.rol)) return false;
-                    if (_rolesValidos && !_rolesValidos.map(r=>r.toLowerCase()).includes((m.rol||'').toLowerCase())) return false;
-                    return true;
+                    return !_noTecnicos.includes((m.rol || '').toLowerCase());
                   })
                   .map(m=>`<option value="${m.id}" ${Number(e.mecanico_id)===Number(m.id)?'selected':''}>${escapeHtml(m.nombre)}</option>`)
                   .join('');
