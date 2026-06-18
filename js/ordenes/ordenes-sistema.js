@@ -1361,7 +1361,7 @@ async function guardarEdicionOrden() {
       vin:             vin,
       propietario:     document.getElementById('ed-propietario')?.value.trim() || null,
       telefono:        document.getElementById('ed-telefono')?.value.trim() || null,
-      cedula_cliente:  document.getElementById('ed-cedula')?.value.trim()   || null,
+      cedula_cliente:  (typeof normDoc === 'function' ? normDoc(document.getElementById('ed-cedula')?.value) : (document.getElementById('ed-cedula')?.value.trim())) || null,
       correo_cliente:  document.getElementById('ed-correo')?.value.trim()   || null,
       tipo_cliente:    tipoPersona === 'empresa' ? 'empresa' : (tipoCliente || null),
       aseguradora:     aseguradora,

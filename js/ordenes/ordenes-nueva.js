@@ -1173,7 +1173,7 @@ async function crearOrden() {
   const kmVal = document.getElementById('n-km')?.value;
   if (!kmOmitir && (!kmVal || parseInt(kmVal) < 0)) { toast('El kilometraje es obligatorio (o marca "Sin odómetro")', 'err'); document.getElementById('n-km')?.focus(); return; }
 
-  const cedulaCliente = document.getElementById('n-cedula-cliente')?.value.trim() || '';
+  const cedulaCliente = ((typeof normDoc === 'function') ? normDoc(document.getElementById('n-cedula-cliente')?.value) : (document.getElementById('n-cedula-cliente')?.value.trim())) || '';
   const vin = document.getElementById('n-vin')?.value.trim().toUpperCase() || null;
   const correoCliente = document.getElementById('n-correo-cliente')?.value.trim() || null;
 

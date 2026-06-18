@@ -30,7 +30,9 @@ function montarLoginCliente(cedula) {
 }
 
 async function loginClientePortal() {
-  const doc   = (document.getElementById('login-cedula')?.value || '').trim();
+  // Normalizamos el documento (sin puntos/espacios/guiones) para que calce con
+  // la cédula guardada en la orden, sin importar cómo se escriba.
+  const doc   = (typeof normDoc === 'function') ? normDoc(document.getElementById('login-cedula')?.value) : (document.getElementById('login-cedula')?.value || '').trim();
   const errEl = document.getElementById('login-error');
   const btn   = document.getElementById('login-btn');
   const _err  = (m) => { if (errEl) { errEl.textContent = m; errEl.classList.add('show'); } };
@@ -85,8 +87,9 @@ function _cliBrandFooter() {
 
 // Enlace de seguimiento para enviar al cliente por WhatsApp.
 function _linkClienteSeguimiento(cedula) {
-  if (!cedula) return '';
-  return `${location.origin}${location.pathname}?cliente=${encodeURIComponent(String(cedula).trim())}`;
+  const doc = (typeof normDoc === 'function') ? normDoc(cedula) : String(cedula || '').trim();
+  if (!doc) return '';
+  return `${location.origin}${location.pathname}?cliente=${encodeURIComponent(doc)}`;
 }
 
 // ═══════════════════════════════════════════════════════════

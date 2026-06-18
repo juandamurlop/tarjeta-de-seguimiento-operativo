@@ -212,6 +212,12 @@ async function ocrLeerTarjeta(file) {
   return (d && d.datos) || {};
 }
 
+// Normaliza un documento (cédula/NIT) para guardarlo/buscarlo SIEMPRE igual:
+// quita puntos, espacios y guiones y deja solo letras y números en mayúscula.
+// Así el acceso del cliente funciona aunque la cédula se escriba con o sin
+// formato (1.010.026.957 == 1010026957) y aunque se cambie en cualquier momento.
+function normDoc(d) { return String(d == null ? '' : d).toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
 function formatFecha(f) { return f ? new Date(f).toLocaleDateString('es-CO') : '—'; }
 function formatTS(ts) { return ts ? new Date(ts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '—'; }
 function kid(id) { return 'e' + String(id).replace(/\D/g, ''); }
