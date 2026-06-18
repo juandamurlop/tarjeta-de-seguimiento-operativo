@@ -481,6 +481,10 @@ function montarJefe() {
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
           <span class="nav-label">Órdenes</span>
         </button>
+        <button class="nav-item" id="nav-historial" onclick="navJefe('historial')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+          <span class="nav-label">Historial de órdenes</span>
+        </button>
         <button class="nav-item" id="nav-nueva" onclick="navJefe('nueva')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
           <span class="nav-label">Nueva orden</span>
@@ -682,7 +686,7 @@ function navJefe(pag) {
   // Actualizar clases active en sidebar y bottom nav
   // Detener polling KPI al salir de esa pantalla
   if (pag !== 'taller-kpi' && window._kpiInterval) { clearInterval(window._kpiInterval); window._kpiInterval = null; }
-  const pages = ['ordenes', 'nueva', 'dashboard', 'taller-kpi', 'cotizaciones', 'calendario', 'mecanicos', 'repuestos', 'reportes', 'encuestas', 'flotillas', 'organizaciones', 'aseguradoras', 'cartera-flotillas', 'cartera-empresas', 'vehiculos', 'vehiculos-lista', 'metas'];
+  const pages = ['ordenes', 'historial', 'nueva', 'dashboard', 'taller-kpi', 'cotizaciones', 'calendario', 'mecanicos', 'repuestos', 'reportes', 'encuestas', 'flotillas', 'organizaciones', 'aseguradoras', 'cartera-flotillas', 'cartera-empresas', 'vehiculos', 'vehiculos-lista', 'metas'];
   pages.forEach(p => {
     const navBtn = document.getElementById('nav-' + p);
     const bnavBtn = document.getElementById('bnav-' + p);
@@ -765,6 +769,11 @@ function navJefe(pag) {
       pagId = 'pag-flotillas';
       titulo = 'Ingreso Flotilla';
       setTimeout(() => { if (typeof montarFlotillas === 'function') montarFlotillas(); }, 50);
+      break;
+    case 'historial':
+      pagId = 'pag-historial';
+      titulo = 'Historial de órdenes';
+      setTimeout(() => { if (typeof montarHistorialOrdenes === 'function') montarHistorialOrdenes(); }, 50);
       break;
     case 'organizaciones':
       pagId = 'pag-organizaciones';

@@ -117,7 +117,7 @@ function _buildOrdenRow(o, etapas) {
       <div class="ord-ot">${otDe(o)}${contactAlert}</div>
       ${sinValor ? `<div style="margin-top:3px"><span title="La orden no tiene precio de venta asignado" style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:.03em;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;padding:1px 6px;border-radius:99px">💲 SIN VALOR</span></div>` : ''}
     </td>
-    <td>${_chipTipoOrden(o)}</td>
+    <td><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">${_chipTipoOrden(o)}<button class="btn btn-ghost btn-xs" style="font-size:10px;padding:1px 6px;color:var(--azul)" title="Mover a una organización" onclick="event.stopPropagation();abrirMoverOrganizacion(${o.id})">🏢 Mover</button></div></td>
     <td>
       <div class="ord-veh-nombre">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'}</div>
       <div class="ord-veh-cliente">${escapeHtml(o.propietario || '—')}${o.modelo ? ` · ${escapeHtml(o.modelo)}` : ''}</div>
@@ -201,7 +201,7 @@ async function cargarOrdenesPulmon() {
           <div class="ord-placa">${escapeHtml(o.placa)}</div>
           <div class="ord-ot">${otDe(o)}</div>
         </td>
-        <td>${_chipTipoOrden(o)}</td>
+        <td><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">${_chipTipoOrden(o)}<button class="btn btn-ghost btn-xs" style="font-size:10px;padding:1px 6px;color:var(--azul)" title="Mover a una organización" onclick="event.stopPropagation();abrirMoverOrganizacion(${o.id})">🏢 Mover</button></div></td>
         <td>
           <div class="ord-veh-nombre">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'}</div>
           <div class="ord-veh-cliente">${escapeHtml(o.propietario || '—')}${o.modelo ? ` · ${escapeHtml(o.modelo)}` : ''}</div>
@@ -287,4 +287,137 @@ function volverALista() {
   } else {
     navJefe('ordenes');
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HISTORIAL DE ÓRDENES — todas las órdenes con buscador. Se puede abrir cada
+// una y moverla a una organización (aseguradora / flotilla / empresa).
+// ═══════════════════════════════════════════════════════════
+let _historialData = [];
+
+async function montarHistorialOrdenes() {
+  const cont = document.getElementById('pag-historial');
+  if (!cont) return;
+  mostrarCargandoSiVacio(cont, '<div class="loading-state">Cargando historial...</div>');
+  try {
+    const data = await api('/ordenes?order=creado_en.desc&limit=1000&select=id,numero_ot,placa,marca,linea,modelo,propietario,tipo_cliente,aseguradora,estado,pulmon,creado_en,entregada_en').catch(() => []) || [];
+    _historialData = data;
+    cont.innerHTML = `<div style="padding:18px 20px">
+      <div style="font-size:16px;font-weight:700;margin-bottom:12px">Historial de órdenes <span style="font-size:13px;color:var(--gris-mid);font-weight:500">(${data.length})</span></div>
+      <input id="hist-buscar" type="text" oninput="_filtrarHistorial(this.value)" autocomplete="off" placeholder="🔎 Buscar por placa, cliente, organización, N° de orden..." style="width:100%;padding:9px 13px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;outline:none;margin-bottom:14px;box-sizing:border-box">
+      <div id="hist-lista"></div>
+    </div>`;
+    _renderHistorial(data);
+  } catch (e) { cont.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+}
+
+function _histEstadoPill(o) {
+  if (o.pulmon) return '<span class="ord-pill pill-pulmon">En pulmón</span>';
+  if (o.estado === 'Entregada') return '<span class="ord-pill pill-entregada">Entregada</span>';
+  if (o.estado === 'Archivada') return '<span class="ord-pill" style="background:#F1F5F9;color:#64748B">Archivada</span>';
+  if (o.estado === 'Programada') return '<span class="ord-pill pill-programada">Programada</span>';
+  return '<span class="ord-pill pill-a-tiempo">Activa</span>';
+}
+
+function _renderHistorial(data) {
+  const cont = document.getElementById('hist-lista');
+  if (!cont) return;
+  if (!data.length) { cont.innerHTML = '<div class="empty-state"><p>Sin órdenes.</p></div>'; return; }
+  const rows = data.map(o => {
+    const ti = _tipoOrdenInfo(o);
+    const veh = [o.marca, o.linea, o.modelo].filter(Boolean).map(escapeHtml).join(' ');
+    const org = o.aseguradora ? ` · ${escapeHtml(o.aseguradora)}` : '';
+    const search = [(o.placa || ''), (o.propietario || ''), (o.aseguradora || ''), (o.marca || ''), (o.linea || ''), otDe(o)].join(' ').toLowerCase();
+    return `<div data-hsearch="${escapeHtml(search)}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--gris-borde);border-left:4px solid ${ti.color};border-radius:9px;margin-bottom:7px;background:${ti.color}10;cursor:pointer" onclick="abrirOrden(${o.id})">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-family:'DM Mono',monospace;font-weight:800;font-size:14px">${escapeHtml(o.placa || '—')}</span>
+          <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--gris-mid)">${otDe(o)}</span>
+          ${_chipTipoOrden(o)}
+        </div>
+        <div style="font-size:12px;color:var(--gris-mid);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${veh || '—'}${o.propietario ? ` · ${escapeHtml(o.propietario)}` : ''}${org}</div>
+        <div style="font-size:11px;color:var(--gris-mid);margin-top:1px">Ingreso ${formatFecha(o.creado_en)}${o.entregada_en ? ` · Entregada ${formatFecha(o.entregada_en)}` : ''}</div>
+      </div>
+      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        ${_histEstadoPill(o)}
+        <button class="btn btn-ghost btn-xs" style="color:var(--azul)" onclick="event.stopPropagation();abrirMoverOrganizacion(${o.id})">🏢 Mover</button>
+      </div>
+    </div>`;
+  }).join('');
+  renderSinParpadeo(cont, rows);
+}
+
+function _filtrarHistorial(q) {
+  q = (q || '').trim().toLowerCase();
+  document.querySelectorAll('#hist-lista [data-hsearch]').forEach(el => {
+    el.style.display = (!q || el.dataset.hsearch.includes(q)) ? '' : 'none';
+  });
+}
+
+// ── Mover una orden a una organización (aseguradora / flotilla / empresa) ──
+async function abrirMoverOrganizacion(ordenId) {
+  let o = (typeof ordenActual !== 'undefined' && ordenActual && ordenActual.id === ordenId) ? ordenActual
+        : (_historialData || []).find(x => x.id === ordenId)
+        || (typeof _ordenesTablaData !== 'undefined' ? (_ordenesTablaData || []).find(x => x.id === ordenId) : null);
+  if (!o) o = await api(`/ordenes?id=eq.${ordenId}&select=id,placa,tipo_cliente,aseguradora`).then(r => r && r[0]).catch(() => null);
+  if (!o) { toast('Orden no encontrada', 'err'); return; }
+  const [asegs, flots] = await Promise.all([
+    api('/aseguradoras?activo=eq.true&order=nombre.asc').catch(() => []) || [],
+    api('/flotillas?activo=eq.true&order=nombre.asc').catch(() => []) || []
+  ]);
+  window._movAsegs = asegs; window._movFlots = flots; window._movActual = o.aseguradora || '';
+  const tipoActual = o.tipo_cliente || 'particular';
+  document.getElementById('modal-mover-org')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'modal-mover-org';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:14px;max-width:440px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
+      <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:2px">Mover orden a organización</div>
+      <div style="font-size:12px;color:var(--gris-mid);margin-bottom:14px">${escapeHtml(o.placa || '')}</div>
+      <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:4px">Tipo de cliente</label>
+      <select id="mov-tipo" onchange="_movToggle()" style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--gris-borde);border-radius:7px;font-size:13px;margin-bottom:11px">
+        <option value="particular" ${tipoActual === 'particular' || !tipoActual ? 'selected' : ''}>Particular (sin organización)</option>
+        <option value="aseguradora" ${tipoActual === 'aseguradora' ? 'selected' : ''}>Aseguradora</option>
+        <option value="flotilla" ${tipoActual === 'flotilla' ? 'selected' : ''}>Flotilla</option>
+        <option value="empresa" ${tipoActual === 'empresa' ? 'selected' : ''}>Empresa</option>
+      </select>
+      <div id="mov-org-wrap" style="display:none">
+        <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:4px">Organización</label>
+        <select id="mov-org" style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--gris-borde);border-radius:7px;font-size:13px"></select>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-mover-org').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="_guardarMoverOrganizacion(${ordenId})">Guardar</button>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  _movToggle();
+}
+
+function _movToggle() {
+  const tipo = document.getElementById('mov-tipo')?.value;
+  const wrap = document.getElementById('mov-org-wrap');
+  const sel = document.getElementById('mov-org');
+  if (!wrap || !sel) return;
+  if (tipo === 'particular') { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const list = tipo === 'aseguradora' ? (window._movAsegs || []) : (window._movFlots || []);
+  sel.innerHTML = '<option value="">— Seleccionar —</option>' +
+    list.map(x => `<option value="${escapeHtml(x.nombre)}" ${x.nombre === window._movActual ? 'selected' : ''}>${escapeHtml(x.nombre)}</option>`).join('');
+}
+
+async function _guardarMoverOrganizacion(ordenId) {
+  const tipo = document.getElementById('mov-tipo')?.value || 'particular';
+  const org = (tipo === 'particular') ? null : (document.getElementById('mov-org')?.value || null);
+  if (tipo !== 'particular' && !org) { toast('Selecciona la organización', 'err'); return; }
+  try {
+    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { tipo_cliente: tipo, aseguradora: org });
+    if (typeof ordenActual !== 'undefined' && ordenActual && ordenActual.id === ordenId) { ordenActual.tipo_cliente = tipo; ordenActual.aseguradora = org; }
+    document.getElementById('modal-mover-org')?.remove();
+    toast('Orden movida ✓');
+    if (document.getElementById('hist-lista')) montarHistorialOrdenes();
+    else if (typeof filtroEstado !== 'undefined' && filtroEstado !== null && typeof cargarOrdenes === 'function') cargarOrdenes();
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
