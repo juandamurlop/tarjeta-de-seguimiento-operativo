@@ -528,6 +528,41 @@ function montarTaller() {
         box-shadow:0 1.2vw 2.8vw rgba(15,23,42,.28); border-radius:.5vw;
       }
       tr.tv-inserted { background:rgba(37,99,235,.07); }
+
+      /* ── FUENTES MÁS GRANDES PARA TV (legibilidad a distancia) ──
+         Se reescriben al final del bloque para que ganen sobre las reglas de
+         arriba sin tener que tocarlas una por una. El móvil no se afecta:
+         sus reglas están en @media con !important. */
+      .tv-brand-name { font-size:.85vw; }
+      .tv-date       { font-size:.9vw; }
+      .tv-clock      { font-size:2vw; }
+      .tv-kpi-num    { font-size:3.7vw; }
+      .tv-kpi-label  { font-size:.98vw; }
+      .tv-thead th   { font-size:.8vw; }
+      .tv-placa      { font-size:1.75vw; }
+      .tv-placa-ot   { font-size:.9vw; }
+      .tv-vehiculo   { font-size:.74vw; }
+      .tv-propietario{ font-size:.84vw; }
+      .chip          { font-size:.82vw; }
+      .chip-dot      { width:.55vw;height:.55vw; }
+      .tv-tec        { font-size:.96vw; }
+      .tv-tec-box    { font-size:.94vw; }
+      .tv-timer-val  { font-size:1.08vw; }
+      .tv-entrega-chip { font-size:.96vw; }
+      .tv-badge      { font-size:.8vw; }
+      .tv-pulmon-strip-label { font-size:.7vw; }
+      .tv-pulmon-placa { font-size:1.05vw; }
+      .tv-pulmon-veh   { font-size:.64vw; }
+      .tv-pulmon-tipo  { font-size:.62vw; }
+      .tv-pulmon-dias  { font-size:.88vw; }
+      .tv-panel-title  { font-size:.8vw; }
+      .tv-panel-placa  { font-size:1.18vw; }
+      .tv-panel-status { font-size:.78vw; }
+      .tv-panel-time   { font-size:.74vw; }
+      .tv-panel-empty  { font-size:.88vw; }
+      .tv-prog-placa   { font-size:1.05vw; }
+      .tv-prog-fecha   { font-size:.7vw; }
+      .tv-prog-ot      { font-size:.64vw; }
     `;
     document.head.appendChild(st);
   }
