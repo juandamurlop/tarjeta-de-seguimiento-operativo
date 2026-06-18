@@ -2199,6 +2199,9 @@ function _fmtMin(min) {
 }
 
 function _mostrarPopupAlerta(etapa, orden, minutos, nivel) {
+  // DESACTIVADO por pedido: ya no se muestran las notificaciones flotantes de
+  // "Etapa sin movimiento". (El aviso de citas de recogida sigue activo aparte.)
+  return;
   // Límite de popups simultáneos: máx 3
   const existentes = document.querySelectorAll('.alerta-popup-etapa');
   if (existentes.length >= 3) return;
@@ -2356,6 +2359,12 @@ function _alertaMarcarRevisado(etapaId, btn) {
 function _actualizarListaCritica(criticas) {
   const cont = document.getElementById('alertas-criticas-container');
   if (!cont) return;
+
+  // DESACTIVADO por pedido: ya no se muestra el panel "Alertas críticas · +5h sin
+  // movimiento" arriba de Gestión Operativa. Se mantiene oculto y vacío.
+  cont.style.display = 'none';
+  cont.innerHTML = '';
+  return;
 
   if (!criticas.length) {
     cont.style.display = 'none';
