@@ -182,13 +182,6 @@ async function abrirOrden(id) {
       <div class="detalle-grid">
         <div>
           ${typeof _panelComentariosOrden === 'function' ? _panelComentariosOrden(orden, novedades, etapas) : ''}
-          ${(!(orden.numero_ot && String(orden.numero_ot).trim()) && orden.estado !== 'Programada') ? `
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:10px 12px;margin-bottom:14px">
-            <svg width="16" height="16" fill="none" stroke="#92400E" stroke-width="2.4" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <div style="flex:1;min-width:150px;font-size:13px;color:#92400E;font-weight:700">Falta agregar el N° de orden de trabajo</div>
-            <input id="ot-num-${orden.id}" placeholder="N° de orden" autocomplete="off" style="width:130px;padding:7px 9px;border:1.5px solid #FCD34D;border-radius:7px;font-size:13px;font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')_guardarNumeroOT(${orden.id})">
-            <button class="btn btn-sm" style="background:#D97706;color:#fff;border-color:#D97706" onclick="_guardarNumeroOT(${orden.id})">Guardar</button>
-          </div>` : ''}
           <div class="detalle-header-card">
             <!-- Fila placa + badges -->
             <div class="detalle-placa-row">
@@ -198,6 +191,10 @@ async function abrirOrden(id) {
                   <div style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--gris-mid);letter-spacing:.5px">${otDe(orden)}</div>
                 </div>
                 <div class="detalle-vehiculo">${[orden.marca,orden.linea,orden.modelo,orden.color].filter(Boolean).map(escapeHtml).join(' · ')}</div>
+                <div style="display:flex;align-items:center;gap:5px;margin-top:5px;font-size:13.5px;font-weight:700;color:#1E293B">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;opacity:.65"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  ${orden.propietario ? escapeHtml(orden.propietario) : '<span style="color:var(--gris-mid);font-weight:600">Sin nombre de cliente</span>'}
+                </div>
               </div>
               <div style="display:flex;flex-wrap:wrap;align-items:center;gap:5px;justify-content:flex-end">
                 <span class="badge badge-${estadoClase}">${estadoTexto}</span>
@@ -319,6 +316,17 @@ async function abrirOrden(id) {
             ${typeof _panelRepuestosOrden === 'function' ? _panelRepuestosOrden(solicitudesRep, repItems, etapas) : ''}
         </div>
         <div class="detalle-sidebar">
+          ${(!(orden.numero_ot && String(orden.numero_ot).trim()) && orden.estado !== 'Programada') ? `
+          <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:9px;padding:8px 10px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#92400E;margin-bottom:6px">
+              <svg width="13" height="13" fill="none" stroke="#92400E" stroke-width="2.4" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Falta el N° de orden
+            </div>
+            <div style="display:flex;gap:5px">
+              <input id="ot-num-${orden.id}" placeholder="N° de orden" autocomplete="off" style="flex:1;min-width:0;padding:6px 8px;border:1.5px solid #FCD34D;border-radius:6px;font-size:12.5px;font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')_guardarNumeroOT(${orden.id})">
+              <button class="btn btn-sm" style="flex-shrink:0;background:#D97706;color:#fff;border-color:#D97706;padding:6px 10px" onclick="_guardarNumeroOT(${orden.id})">Guardar</button>
+            </div>
+          </div>` : ''}
           <div class="sidebar-card">
             <div class="sidebar-card-header" style="background:var(--azul-light);color:var(--azul)">Valor total de la orden</div>
             <div class="sidebar-card-body">

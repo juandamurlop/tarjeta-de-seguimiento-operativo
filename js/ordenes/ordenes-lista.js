@@ -111,7 +111,7 @@ function _buildOrdenRow(o, etapas) {
     : '';
 
   const ti = _tipoOrdenInfo(o);
-  return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-oid="${o.id}" data-search="${escapeHtml(searchStr)}">
+  return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-oid="${o.id}" data-search="${escapeHtml(searchStr)}" style="background:${ti.color}12">
     <td style="border-left:4px solid ${ti.color}">
       <div class="ord-placa">${escapeHtml(o.placa)}</div>
       <div class="ord-ot">${otDe(o)}${contactAlert}</div>
@@ -196,7 +196,7 @@ async function cargarOrdenesPulmon() {
       const comentario = o.descripcion_general || '';
       const searchStr  = [(o.placa||''), (o.propietario||''), (tecnico||''), (o.marca||''), (o.linea||''), (comentario||'')].join(' ').toLowerCase();
       const ti = _tipoOrdenInfo(o);
-      return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-search="${escapeHtml(searchStr)}">
+      return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-search="${escapeHtml(searchStr)}" style="background:${ti.color}12">
         <td style="border-left:4px solid ${ti.color}">
           <div class="ord-placa">${escapeHtml(o.placa)}</div>
           <div class="ord-ot">${otDe(o)}</div>
