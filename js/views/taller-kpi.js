@@ -450,6 +450,27 @@ async function cargarKPITaller() {
       </div>`;
 
     // ── PANEL: ÓRDENES POR ESTADO (reemplaza los recuadros de conteo) ──────
+    // Estilo (sacudida) + bucle de auto-scroll, registrados una sola vez.
+    if (!document.getElementById('kpi-sec-style')) {
+      const _st = document.createElement('style'); _st.id = 'kpi-sec-style';
+      _st.textContent = '@keyframes kpiShake{0%,100%{transform:translateX(0)}15%{transform:translateX(-4px)}30%{transform:translateX(4px)}45%{transform:translateX(-3px)}60%{transform:translateX(3px)}75%{transform:translateX(-1px)}}.kpi-ord-shake{animation:kpiShake .55s ease 2;background:#FEF9C3}.kpi-ord-chip:hover{background:#EFF6FF}';
+      document.head.appendChild(_st);
+    }
+    if (!window._kpiScrollLoop) {
+      // Auto-scroll suave (sube/baja) en las secciones que no caben, para verlas todas.
+      window._kpiScrollLoop = setInterval(() => {
+        document.querySelectorAll('#taller-kpi-contenido .kpi-sec-body').forEach(el => {
+          if (el.scrollHeight <= el.clientHeight + 4) return;       // cabe: no scroll
+          if (el.matches(':hover')) return;                          // si el mouse está encima, no mover
+          if (el._pause > 0) { el._pause--; return; }
+          el._dir = el._dir || 1;
+          el.scrollTop += el._dir;
+          if (el.scrollTop + el.clientHeight >= el.scrollHeight - 1) { el._dir = -1; el._pause = 55; }
+          else if (el.scrollTop <= 0) { el._dir = 1; el._pause = 55; }
+        });
+      }, 55);
+    }
+
     const _pulmonInt = ordenesActivas.filter(o => o.pulmon && o.pulmon_tipo === 'interno');
     const _pulmonExt = ordenesActivas.filter(o => o.pulmon && o.pulmon_tipo === 'externo');
     const _enProceso = [];
@@ -461,26 +482,40 @@ async function cargarKPITaller() {
         _enProceso.push({ id: o.id, placa: o.placa, info: (typeof nombreTec === 'function' ? nombreTec(e) : (e.tecnico || e.tercero)) || (e.etapa || e.servicio || '') });
       });
     }
-    const _chipO = (id, placa, info, col) => `<div class="kpi-ord-chip" onclick="_kpiAbrirOrden(${id})" style="display:flex;align-items:center;gap:5px;padding:2px 4px;border-radius:5px;cursor:pointer;line-height:1.2">
-        <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:11.5px;color:var(--texto);flex-shrink:0">${escapeHtml(placa || '—')}</span>
-        <span style="font-size:10px;color:${col || 'var(--gris-mid)'};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(info || '')}</span>
+    // CAMBIOS desde el refresco anterior: si la "firma" de una orden cambió
+    // (etapa activa, pausa, pulmón, etapas terminadas), se sube de primera y se sacude.
+    const _sigMap = {};
+    ordenesActivas.forEach(o => {
+      const ets = todasEtapas.filter(e => e.orden_id === o.id);
+      const act = ets.find(e => e.inicio && !e.fin);
+      _sigMap[o.id] = [o.pulmon ? (o.pulmon_tipo || 'p') : '', act ? act.id : '', act ? (act.pausado ? 'P' : 'R') : '', ets.filter(e => e.fin).length].join('|');
+    });
+    const _prevSig = window._kpiPrevSig || {};
+    const _cambiados = new Set();
+    Object.keys(_sigMap).forEach(id => { if (_prevSig[id] !== undefined && _prevSig[id] !== _sigMap[id]) _cambiados.add(+id); });
+    window._kpiPrevSig = _sigMap;
+    const _ordCambia = (filas, getId) => filas.slice().sort((a, b) => (_cambiados.has(getId(b)) ? 1 : 0) - (_cambiados.has(getId(a)) ? 1 : 0));
+
+    const _chipO = (id, placa, info) => `<div class="kpi-ord-chip${_cambiados.has(id) ? ' kpi-ord-shake' : ''}" onclick="_kpiAbrirOrden(${id})" style="display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:6px;cursor:pointer;line-height:1.25">
+        <span style="font-family:'DM Mono',monospace;font-weight:800;font-size:14px;color:var(--texto);flex-shrink:0">${escapeHtml(placa || '—')}</span>
+        <span style="font-size:12.5px;font-weight:600;color:#334155;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(info || '')}</span>
       </div>`;
-    const _secO = (ico, titulo, color, filas, mapFn) => `<div class="kpi-sec" style="border:1px solid var(--gris-borde);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 7px;background:${color}14;border-left:3px solid ${color}">
-          <span style="font-size:11px;font-weight:800;color:${color};text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ico} ${titulo}</span>
-          <span style="font-size:11px;font-weight:800;color:#fff;background:${color};border-radius:99px;min-width:18px;text-align:center;padding:0 5px;flex-shrink:0">${filas.length}</span>
+    const _secO = (ico, titulo, color, filas, mapFn, getId) => `<div class="kpi-sec" style="border:1px solid var(--gris-borde);border-radius:9px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 9px;background:${color}14;border-left:4px solid ${color}">
+          <span style="font-size:13px;font-weight:800;color:${color};text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ico} ${titulo}</span>
+          <span style="font-size:13px;font-weight:800;color:#fff;background:${color};border-radius:99px;min-width:22px;text-align:center;padding:1px 7px;flex-shrink:0">${filas.length}</span>
         </div>
-        <div style="padding:3px 5px;overflow:auto;flex:1;min-height:0;max-height:22vh">${filas.length ? filas.map(mapFn).join('') : '<div style="font-size:10px;color:var(--gris-mid);padding:2px 4px">—</div>'}</div>
+        <div class="kpi-sec-body" style="padding:4px 6px;overflow:auto;flex:1;min-height:0;max-height:26vh">${filas.length ? _ordCambia(filas, getId).map(mapFn).join('') : '<div style="font-size:12px;color:var(--gris-mid);padding:3px 5px">—</div>'}</div>
       </div>`;
-    const seccionesHtml = `<div class="kpi-secciones" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:8px;margin-top:10px;align-items:start">
-        ${_secO('🚨','Vencidas','#DC2626', k5Filas, f => _chipO(f.ordenId, f.placa, f.badge, '#DC2626'))}
-        ${_secO('🫁','Pulmón interno','#D97706', _pulmonInt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde)), '#D97706'))}
-        ${_secO('🫁','Pulmón externo','#2563EB', _pulmonExt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde)), '#2563EB'))}
-        ${_secO('🔧','En proceso','#059669', _enProceso, o => _chipO(o.id, o.placa, o.info))}
-        ${_secO('📋','Sin técnico','#B45309', k1Filas, f => _chipO(f.ordenId, f.placa, f.titulo))}
-        ${_secO('⏳','Sin iniciar','#92400E', k2Filas, f => _chipO(f.ordenId, f.placa, f.titulo))}
-        ${_secO('🕐','Sin movimiento +4h','#9333EA', k8Filas, f => _chipO(f.ordenId, f.placa, f.badge))}
-        ${_secO('🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo))}
+    const seccionesHtml = `<div class="kpi-secciones" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px;align-items:stretch">
+        ${_secO('🚨','Vencidas','#DC2626', k5Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId)}
+        ${_secO('🫁','Pulmón interno','#D97706', _pulmonInt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id)}
+        ${_secO('🫁','Pulmón externo','#2563EB', _pulmonExt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id)}
+        ${_secO('🔧','En proceso','#059669', _enProceso, o => _chipO(o.id, o.placa, o.info), o => o.id)}
+        ${_secO('📋','Sin técnico','#B45309', k1Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId)}
+        ${_secO('⏳','Sin iniciar','#92400E', k2Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId)}
+        ${_secO('🕐','Sin movimiento +4h','#9333EA', k8Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId)}
+        ${_secO('🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId)}
       </div>`;
 
     renderSinParpadeo(cont, `
