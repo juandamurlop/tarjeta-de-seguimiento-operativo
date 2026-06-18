@@ -1,14 +1,14 @@
-const CACHE_NAME = 'freimanautos-pwa-v282';
+﻿const CACHE_NAME = 'freimanautos-pwa-v283';
 
-// Lista alineada con lo que carga index.html tras la reestructuración de
+// Lista alineada con lo que carga index.html tras la reestructuraciÃ³n de
 // carpetas (css/main.css importa el resto; js dividido en core/ordenes/views).
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
 
-  // CSS (main.css importa el resto vía @import, pero los precacheamos
-  // explícitamente para que el offline funcione sin red)
+  // CSS (main.css importa el resto vÃ­a @import, pero los precacheamos
+  // explÃ­citamente para que el offline funcione sin red)
   '/css/main.css',
   '/css/base.css',
   '/css/layout.css',
@@ -17,14 +17,14 @@ const STATIC_ASSETS = [
   '/css/cotizaciones.css',
   '/css/vistas.css',
 
-  // Core: configuración, API, utilidades, estado global, autenticación
+  // Core: configuraciÃ³n, API, utilidades, estado global, autenticaciÃ³n
   '/js/config.js',
   '/js/core/api.js',
   '/js/core/utils.js',
   '/js/core/state.js',
   '/js/core/auth.js',
 
-  // Módulo órdenes
+  // MÃ³dulo Ã³rdenes
   '/js/ordenes/ordenes-lista.js',
   '/js/ordenes/ordenes-detalle.js',
   '/js/ordenes/ordenes-nueva.js',
@@ -91,17 +91,17 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const method = request.method.toUpperCase();
 
-  // Red exclusiva: métodos mutantes o requests externos
+  // Red exclusiva: mÃ©todos mutantes o requests externos
   if (method !== 'GET' || isExternal(request.url)) {
     event.respondWith(fetch(request));
     return;
   }
 
-  // El documento HTML (navegación) va NETWORK-FIRST: tras un deploy —sobre todo
-  // si cambió la estructura de archivos— el index.html siempre será el actual y
-  // referenciará los .js/.css correctos. Evita servir una mezcla vieja/nueva
+  // El documento HTML (navegaciÃ³n) va NETWORK-FIRST: tras un deploy â€”sobre todo
+  // si cambiÃ³ la estructura de archivosâ€” el index.html siempre serÃ¡ el actual y
+  // referenciarÃ¡ los .js/.css correctos. Evita servir una mezcla vieja/nueva
   // (causa del error "Cannot access 'API_METHODS' before initialization").
-  // Si no hay red, cae a la caché.
+  // Si no hay red, cae a la cachÃ©.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).then(response => {
@@ -115,11 +115,11 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // CÓDIGO (JS/CSS) → NETWORK-FIRST: si hay internet, SIEMPRE la última versión
-  // (y se guarda en caché para offline). Antes era stale-while-revalidate, que
-  // servía el código VIEJO en la primera carga tras un deploy y solo se
-  // actualizaba al recargar → causaba bugs raros que "desaparecían al recargar".
-  // Si no hay red, cae a la caché.
+  // CÃ“DIGO (JS/CSS) â†’ NETWORK-FIRST: si hay internet, SIEMPRE la Ãºltima versiÃ³n
+  // (y se guarda en cachÃ© para offline). Antes era stale-while-revalidate, que
+  // servÃ­a el cÃ³digo VIEJO en la primera carga tras un deploy y solo se
+  // actualizaba al recargar â†’ causaba bugs raros que "desaparecÃ­an al recargar".
+  // Si no hay red, cae a la cachÃ©.
   let esCodigo = false;
   try { esCodigo = /\.(?:js|css)(?:\?|$)/i.test(new URL(request.url).pathname); } catch {}
   if (esCodigo) {
@@ -135,9 +135,9 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // OTROS assets locales (imágenes, fuentes, manifest) → STALE-WHILE-REVALIDATE:
-  // responde al instante desde la caché y baja la versión nueva en paralelo.
-  // (Estos cambian poco y conviene que sean rápidos.)
+  // OTROS assets locales (imÃ¡genes, fuentes, manifest) â†’ STALE-WHILE-REVALIDATE:
+  // responde al instante desde la cachÃ© y baja la versiÃ³n nueva en paralelo.
+  // (Estos cambian poco y conviene que sean rÃ¡pidos.)
   event.respondWith(
     caches.match(request).then(cached => {
       const red = fetch(request).then(response => {

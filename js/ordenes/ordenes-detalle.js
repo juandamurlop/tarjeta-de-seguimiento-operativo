@@ -61,10 +61,12 @@ async function abrirOrden(id) {
 
     // Inventario
     let invHtml = '—';
+    let _hayInv = false;
     try {
       const inv = orden.inventario ? JSON.parse(orden.inventario) : null;
       if (inv?.items) {
         const activos = Object.entries(inv.items).filter(([,v])=>v).map(([k])=>INV_LABELS[k]||k);
+        _hayInv = activos.length > 0;
         invHtml = activos.length
           ? activos.map(a=>`<span class="badge" style="background:var(--verde-bg);color:var(--verde);margin:2px">${a}</span>`).join('')
           : '<span style="color:var(--gris-mid)">Sin ítems</span>';
@@ -321,18 +323,20 @@ async function abrirOrden(id) {
               ${orden.precio_venta_cliente ? `<div style="font-size:12px;color:var(--verde);font-weight:600;margin-top:8px">Total a cliente: ${new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(orden.precio_venta_cliente)}</div>` : ''}
             </div>
           </div>` : ''}
+          ${todasFotos.length ? `
           <div class="sidebar-card">
             <div class="sidebar-card-header">Fotos recientes</div>
             <div class="sidebar-card-body">
               <div class="fotos-grid">${fotosRecHtml}</div>
             </div>
-          </div>
+          </div>` : ''}
+          ${_hayInv ? `
           <div class="sidebar-card">
             <div class="sidebar-card-header">Inventario</div>
             <div class="sidebar-card-body">
               <div>${invHtml}</div>
             </div>
-          </div>
+          </div>` : ''}
           ${orden.placa ? `
           <div class="sidebar-card" id="consumibles-sidebar-card">
             <div class="sidebar-card-header" style="display:flex;align-items:center;justify-content:space-between">
@@ -359,7 +363,7 @@ async function abrirOrden(id) {
                   : 'Sin pulmón activo'}
             </div>
           </div>
-          ${orden.aseguradora ? `
+          ${false ? `
           <div class="sidebar-card">
             <div class="sidebar-card-header" style="background:#F5F3FF;color:#6D28D9;display:flex;align-items:center;gap:6px">
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
