@@ -860,9 +860,22 @@ function _toggleNovedadEstado(ordenId) {
 async function _agregarNovedadEstado(ordenId) {
   const txt = document.getElementById('nov-estado-' + ordenId)?.value?.trim();
   if (!txt) { toast('Escribe la novedad', 'err'); return; }
-  await _logEstado(ordenId, txt);
-  toast('Novedad agregada ✓');
-  abrirOrden(ordenId);
+  try {
+    // Insertamos directo (no por _logEstado) para poder MOSTRAR el error si falla,
+    // en vez de decir "agregada" cuando en realidad no se guardó.
+    await api('/novedades', 'POST', {
+      orden_id: ordenId, etapa_id: null, tipo: 'Comentario',
+      motivo: txt, responsable: sesion?.nombre || '—', desde: new Date().toISOString()
+    }, { Prefer: 'return=minimal' });
+    toast('Novedad agregada ✓');
+    abrirOrden(ordenId);
+  } catch (e) {
+    console.error('[novedadEstado]', e);
+    const hint = /etapa_id|null value|not.?null|violates/i.test(e?.message || '')
+      ? ' — falta correr el SQL docs/sql-comentario-orden.sql (deja etapa_id en NULL)'
+      : '';
+    toast('No se pudo guardar: ' + (e?.message || 'error') + hint, 'err');
+  }
 }
 
 // Pausa la etapa que esté EN PROCESO (con un motivo) y lo registra en el historial.
