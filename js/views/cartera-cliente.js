@@ -163,13 +163,16 @@ function _carteraFichaHtml(tipo, nombre) {
   const fact = ords.reduce((s,o) => s + (_carteraVal[tipo][o.id] || 0), 0);
   const datos = a ? [a.nit ? 'NIT ' + escapeHtml(a.nit) : '', a.telefono ? '📞 ' + escapeHtml(a.telefono) : '', a.correo ? '✉ ' + escapeHtml(a.correo) : ''].filter(Boolean).join('  ·  ') : '';
 
+  const personas = (a && Array.isArray(a.personas)) ? a.personas : [];
   return `<div class="aseg-ficha-card" style="border-left-color:${cfg.color}">
     <div class="aseg-ficha-head">
       <div style="min-width:0">
         <div class="aseg-ficha-nombre" style="color:${cfg.color}">${cfg.icon} ${escapeHtml(nombre)}</div>
         ${datos ? `<div class="aseg-ficha-sub">${datos}</div>` : ''}
       </div>
+      ${a && a.id != null ? `<button class="btn btn-ghost btn-sm" style="flex-shrink:0" data-ctabla="flotillas" data-ckey="id" data-cval="${a.id}" data-cfield="personas" data-cref="${tipo}" data-cnombre="${escapeHtml(nombre)}" onclick="abrirEditarContactoOrg(this)">✏️ Editar contacto</button>` : ''}
     </div>
+    ${personas.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">${personas.map(p => `<span class="aseg-chip" style="background:#F5F3FF;color:#5B21B6">👤 ${escapeHtml(p.nombre || '—')}${p.telefono ? ' · ' + escapeHtml(p.telefono) : ''}${p.correo ? ' · ' + escapeHtml(p.correo) : ''}</span>`).join('')}</div>` : ''}
     <div class="aseg-ficha-stats">
       <div><div class="v">${ords.length}</div><div class="l">Órdenes totales</div></div>
       <div><div class="v" style="color:#2563EB">${act}</div><div class="l">Activas</div></div>
@@ -236,4 +239,115 @@ function renderListaCarteraOrdenes(tipo, data) {
     </div>`;
   }).join('') + '</div>';
   renderSinParpadeo(cont, html);
+}
+
+// ═══════════════════════════════════════════════════════════
+// EDITAR CONTACTO desde la ficha (aseguradora / flotilla / empresa)
+// Modal compartido: edita teléfono, correo y la lista de personas de contacto.
+//   · Aseguradoras → tabla /aseguradoras (clave nombre), campo "contactos".
+//   · Flotillas/Empresas → tabla /flotillas (clave id), campo "personas".
+// Guarda campo por campo (best-effort): si una columna no existe aún (falta el
+// SQL), el resto igual se guarda y avisamos cuál falló.
+// ═══════════════════════════════════════════════════════════
+let _contactoOrgPersonas = [];
+
+function _coRenderPersonas() {
+  const cont = document.getElementById('co-personas-list');
+  if (!cont) return;
+  cont.innerHTML = _contactoOrgPersonas.length
+    ? _contactoOrgPersonas.map((p, i) => `
+        <div data-pi="${i}" style="display:flex;gap:5px;margin-bottom:6px">
+          <input class="co-p-nom" placeholder="Nombre" value="${escapeHtml(p.nombre || '')}" style="flex:2;min-width:0;padding:7px 9px;border:1px solid var(--gris-borde);border-radius:6px;font-size:12.5px">
+          <input class="co-p-tel" placeholder="Teléfono" value="${escapeHtml(p.telefono || '')}" style="flex:1;min-width:0;padding:7px 9px;border:1px solid var(--gris-borde);border-radius:6px;font-size:12.5px">
+          <input class="co-p-cor" placeholder="Correo" value="${escapeHtml(p.correo || '')}" style="flex:1.5;min-width:0;padding:7px 9px;border:1px solid var(--gris-borde);border-radius:6px;font-size:12.5px">
+          <button onclick="_coDelPersona(${i})" title="Quitar" style="flex-shrink:0;background:none;border:1px solid #FECACA;color:#DC2626;border-radius:6px;padding:0 9px;cursor:pointer;font-size:13px">✕</button>
+        </div>`).join('')
+    : '<div style="font-size:12px;color:var(--gris-mid);padding:4px 0">Sin personas de contacto. Agrega una abajo.</div>';
+}
+function _coSync() {
+  const cont = document.getElementById('co-personas-list');
+  if (!cont) return;
+  _contactoOrgPersonas = [...cont.querySelectorAll('[data-pi]')].map(row => ({
+    nombre:   row.querySelector('.co-p-nom').value.trim(),
+    telefono: row.querySelector('.co-p-tel').value.trim(),
+    correo:   row.querySelector('.co-p-cor').value.trim()
+  }));
+}
+function _coAddPersona() { _coSync(); _contactoOrgPersonas.push({ nombre: '', telefono: '', correo: '' }); _coRenderPersonas(); }
+function _coDelPersona(i) { _coSync(); _contactoOrgPersonas.splice(i, 1); _coRenderPersonas(); }
+
+async function abrirEditarContactoOrg(btn) {
+  const tabla = btn.dataset.ctabla, ckey = btn.dataset.ckey, cval = btn.dataset.cval, cfield = btn.dataset.cfield, cref = btn.dataset.cref;
+  const nombre = btn.dataset.cnombre || '';
+  // Traer fila actual para precargar.
+  let fila = {};
+  try {
+    const r = await api(`/${tabla}?${ckey}=eq.${encodeURIComponent(cval)}&limit=1`);
+    fila = (r && r[0]) || {};
+  } catch (e) { /* sigue con vacíos */ }
+  let personas = [];
+  try { const raw = fila[cfield]; personas = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch (e) { personas = []; }
+  _contactoOrgPersonas = personas.map(p => ({ nombre: p.nombre || '', telefono: p.telefono || '', correo: p.correo || '' }));
+
+  document.getElementById('modal-contacto-org')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'modal-contacto-org';
+  ov.dataset.ctabla = tabla; ov.dataset.ckey = ckey; ov.dataset.cval = cval; ov.dataset.cfield = cfield; ov.dataset.cref = cref;
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:14px;max-width:520px;width:100%;max-height:88vh;overflow:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
+      <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:2px">Editar contacto</div>
+      <div style="font-size:12px;color:var(--gris-mid);margin-bottom:14px">${escapeHtml(nombre)}</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <div style="flex:1;min-width:0">
+          <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:4px">Teléfono</label>
+          <input id="co-tel" type="tel" value="${escapeHtml(fila.telefono || '')}" placeholder="3001234567" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--gris-borde);border-radius:7px;font-size:13px">
+        </div>
+        <div style="flex:1.4;min-width:0">
+          <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:4px">Correo</label>
+          <input id="co-cor" type="email" value="${escapeHtml(fila.correo || '')}" placeholder="correo@empresa.com" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--gris-borde);border-radius:7px;font-size:13px">
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <label style="font-size:11px;font-weight:700;color:var(--gris-mid)">Personas de contacto</label>
+        <button class="btn btn-ghost btn-sm" onclick="_coAddPersona()">+ Agregar persona</button>
+      </div>
+      <div id="co-personas-list"></div>
+      <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-contacto-org').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="_guardarContactoOrg()">Guardar</button>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  _coRenderPersonas();
+}
+
+async function _guardarContactoOrg() {
+  const m = document.getElementById('modal-contacto-org');
+  if (!m) return;
+  const { ctabla, ckey, cval, cfield, cref } = m.dataset;
+  _coSync();
+  const tel = document.getElementById('co-tel')?.value.trim() || null;
+  const cor = document.getElementById('co-cor')?.value.trim() || null;
+  const personas = _contactoOrgPersonas.filter(p => p.nombre || p.telefono || p.correo);
+  const where = `/${ctabla}?${ckey}=eq.${encodeURIComponent(cval)}`;
+
+  const fallaron = [];
+  const patch = async (obj, etiqueta) => {
+    try { await api(where, 'PATCH', obj); } catch (e) { fallaron.push(etiqueta); }
+  };
+  await patch({ telefono: tel }, 'teléfono');
+  await patch({ correo: cor }, 'correo');
+  await patch({ [cfield]: personas }, 'personas');
+
+  m.remove();
+  if (fallaron.length) {
+    toast('Guardado parcial. No se pudo guardar: ' + fallaron.join(', ') + (fallaron.includes('personas') ? ' (¿falta correr el SQL de personas/contactos?)' : ''), 'err');
+  } else {
+    toast('Contacto actualizado ✓');
+  }
+  // Refrescar la vista correspondiente.
+  if (cref === 'aseg') { if (typeof cargarModuloAseguradoras === 'function') cargarModuloAseguradoras(); else if (typeof montarAseguradoras === 'function') montarAseguradoras(); }
+  else if (typeof cargarCarteraCliente === 'function') cargarCarteraCliente(cref);
 }
