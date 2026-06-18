@@ -776,14 +776,15 @@ function _panelComentariosOrden(orden, novedades, etapas) {
   novedades = novedades || [];
   etapas = etapas || [];
 
-  // Historial de estado: novedades de ORDEN (sin etapa). La más reciente = actual.
-  const hist = novedades
-    .filter(n => !n.etapa_id && n.tipo === 'Comentario')
-    .sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
+  // Historial de estado: se guarda en orden.estado_historial (lista JSON en la
+  // propia orden). La entrada más reciente = estado actual. Cada una: {texto,en,por}.
+  let hist = [];
+  try { const raw = orden && orden.estado_historial; hist = Array.isArray(raw) ? raw.slice() : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch (e) { hist = []; }
+  hist.sort((a, b) => new Date(b.en || 0) - new Date(a.en || 0));
   const ultimo = hist[0];
   const histHtml = hist.map(n => `<div style="border-left:3px solid #7C3AED;background:#F8FAFC;border-radius:6px;padding:7px 10px;margin-bottom:6px">
-      <div style="font-size:13px;color:#1E293B;white-space:pre-wrap">${escapeHtml(n.motivo || '—')}</div>
-      <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(n.responsable || '—')} · ${formatTS(n.creado_en)}</div>
+      <div style="font-size:13px;color:#1E293B;white-space:pre-wrap">${escapeHtml(n.texto || '—')}</div>
+      <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(n.por || '—')} · ${formatTS(n.en)}</div>
     </div>`).join('');
 
   // Estado operativo (para los botones contextuales).
@@ -818,8 +819,8 @@ function _panelComentariosOrden(orden, novedades, etapas) {
       <div style="margin-top:10px;border-top:1px solid var(--gris-borde);padding-top:10px">
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7C3AED;margin-bottom:4px">🔄 Estado del proceso</div>
         ${ultimo
-          ? `<div style="font-size:13.5px;color:#1E293B;white-space:pre-wrap;line-height:1.4">${escapeHtml(ultimo.motivo || '—')}</div>
-             <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(ultimo.responsable || '—')} · ${formatTS(ultimo.creado_en)}</div>`
+          ? `<div style="font-size:13.5px;color:#1E293B;white-space:pre-wrap;line-height:1.4">${escapeHtml(ultimo.texto || '—')}</div>
+             <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(ultimo.por || '—')} · ${formatTS(ultimo.en)}</div>`
           : `<div style="font-size:12px;color:var(--gris-mid)">Sin novedades de estado todavía.</div>`}
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
           ${acciones}
@@ -837,16 +838,21 @@ function _panelComentariosOrden(orden, novedades, etapas) {
     </div>`;
 }
 
-// Inserta una entrada en el HISTORIAL de estado de la orden (novedad a nivel de
-// orden, con fecha/hora y autor). La usan el botón "Agregar novedad" y las
-// acciones (pausar/pulmón/continuar) para dejar registro automático.
+// Agrega una entrada al historial de estado (orden.estado_historial). Lee la
+// lista actual, le suma {texto, en, por} y guarda la orden. Lanza si falla.
+async function _appendEstadoHistorial(ordenId, texto) {
+  const o = await api(`/ordenes?id=eq.${ordenId}&select=estado_historial`).then(r => r?.[0]).catch(() => null);
+  let h = [];
+  try { const raw = o && o.estado_historial; h = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch (e) { h = []; }
+  h.push({ texto, en: new Date().toISOString(), por: sesion?.nombre || '—' });
+  await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { estado_historial: h });
+  if (ordenActual && ordenActual.id === ordenId) ordenActual.estado_historial = h;
+}
+
+// Registro AUTOMÁTICO desde las acciones (pausar/pulmón/continuar): best-effort,
+// no rompe la acción si el guardado del historial falla.
 async function _logEstado(ordenId, texto) {
-  try {
-    await api('/novedades', 'POST', {
-      orden_id: ordenId, etapa_id: null, tipo: 'Comentario',
-      motivo: texto, responsable: sesion?.nombre || '—', desde: new Date().toISOString()
-    }, { Prefer: 'return=minimal' });
-  } catch (e) { console.warn('[logEstado]', e?.message); }
+  try { await _appendEstadoHistorial(ordenId, texto); } catch (e) { console.warn('[logEstado]', e?.message); }
 }
 
 function _toggleNovedadEstado(ordenId) {
@@ -861,18 +867,13 @@ async function _agregarNovedadEstado(ordenId) {
   const txt = document.getElementById('nov-estado-' + ordenId)?.value?.trim();
   if (!txt) { toast('Escribe la novedad', 'err'); return; }
   try {
-    // Insertamos directo (no por _logEstado) para poder MOSTRAR el error si falla,
-    // en vez de decir "agregada" cuando en realidad no se guardó.
-    await api('/novedades', 'POST', {
-      orden_id: ordenId, etapa_id: null, tipo: 'Comentario',
-      motivo: txt, responsable: sesion?.nombre || '—', desde: new Date().toISOString()
-    }, { Prefer: 'return=minimal' });
+    await _appendEstadoHistorial(ordenId, txt);
     toast('Novedad agregada ✓');
     abrirOrden(ordenId);
   } catch (e) {
     console.error('[novedadEstado]', e);
-    const hint = /etapa_id|null value|not.?null|violates/i.test(e?.message || '')
-      ? ' — falta correr el SQL docs/sql-comentario-orden.sql (deja etapa_id en NULL)'
+    const hint = /estado_historial|column|does not exist|schema cache|PGRST/i.test(e?.message || '')
+      ? ' — falta correr el SQL docs/sql-estado-historial.sql (agrega la columna estado_historial)'
       : '';
     toast('No se pudo guardar: ' + (e?.message || 'error') + hint, 'err');
   }
