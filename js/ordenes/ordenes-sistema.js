@@ -1165,6 +1165,11 @@ async function abrirEditarOrden(ordenId) {
   const flotOpts = flotillas.map(f =>
     `<option value="${escapeHtml(f.nombre)}" ${orden.aseguradora===f.nombre?'selected':''}>${escapeHtml(f.nombre)}</option>`
   ).join('');
+  // Las empresas se guardan en la misma tabla /flotillas (ver ingreso de orden),
+  // así que el selector de empresa reutiliza esa lista.
+  const empOpts = flotillas.map(f =>
+    `<option value="${escapeHtml(f.nombre)}" ${orden.aseguradora===f.nombre?'selected':''}>${escapeHtml(f.nombre)}</option>`
+  ).join('');
 
   const modal = document.getElementById('modal-editar-orden');
   const body  = document.getElementById('modal-editar-body');
@@ -1227,6 +1232,16 @@ async function abrirEditarOrden(ordenId) {
               ${flotOpts}
             </select>
             <button class="btn btn-ghost btn-sm" onclick="agregarNuevaFlot()" title="Agregar nueva">+</button>
+          </div>
+        </div>
+        <div class="field" id="ed-wrap-emp" style="display:${tipoActual==='empresa'?'block':'none'}">
+          <label>Empresa</label>
+          <div style="display:flex;gap:6px">
+            <select id="ed-empresa" style="flex:1">
+              <option value="">— Seleccionar —</option>
+              ${empOpts}
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="agregarNuevaEmp()" title="Agregar nueva">+</button>
           </div>
         </div>
 
@@ -1295,8 +1310,10 @@ function toggleTipoPersonaEdit(tipo) {
 function toggleTipoClienteEdit(tipo) {
   const wAseg = document.getElementById('ed-wrap-aseg');
   const wFlot = document.getElementById('ed-wrap-flot');
+  const wEmp  = document.getElementById('ed-wrap-emp');
   if (wAseg) wAseg.style.display = tipo === 'aseguradora' ? 'block' : 'none';
   if (wFlot) wFlot.style.display = tipo === 'flotilla'    ? 'block' : 'none';
+  if (wEmp)  wEmp.style.display  = tipo === 'empresa'     ? 'block' : 'none';
 }
 
 async function agregarNuevaAseg() {
@@ -1330,6 +1347,22 @@ async function agregarNuevaFlot() {
   } catch(e) { toast('Error: '+e.message,'err'); }
 }
 
+async function agregarNuevaEmp() {
+  const nombre = prompt('Razón social / nombre de la empresa:')?.trim();
+  if (!nombre) return;
+  try {
+    // Las empresas viven en la misma tabla /flotillas (ver ingreso de orden).
+    await api('/flotillas', 'POST', { nombre, activo: true }, { Prefer: 'return=minimal' });
+    toast('Empresa agregada ✓');
+    const emp = await api('/flotillas?activo=eq.true&order=nombre.asc').catch(()=>[]) || [];
+    const sel = document.getElementById('ed-empresa');
+    if (sel) {
+      sel.innerHTML = '<option value="">— Seleccionar —</option>' +
+        emp.map(f=>`<option value="${escapeHtml(f.nombre)}" ${f.nombre===nombre?'selected':''}>${escapeHtml(f.nombre)}</option>`).join('');
+    }
+  } catch(e) { toast('Error: '+e.message,'err'); }
+}
+
 async function guardarEdicionOrden() {
   const btn = document.getElementById('btn-guardar-edicion');
   if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
@@ -1349,6 +1382,8 @@ async function guardarEdicionOrden() {
       aseguradora = document.getElementById('ed-aseguradora')?.value || null;
     } else if (tipoCliente === 'flotilla') {
       aseguradora = document.getElementById('ed-flotilla')?.value || null;
+    } else if (tipoCliente === 'empresa') {
+      aseguradora = document.getElementById('ed-empresa')?.value || null;
     }
 
     const patch = {
