@@ -34,6 +34,21 @@ function abrirCartera(tipo, nombre) { _carteraSel[tipo] = nombre; cargarCarteraC
 function volverCartera(tipo)        { _carteraSel[tipo] = null;   cargarCarteraCliente(tipo); }
 function resetVistaCartera(tipo)    { _carteraSel[tipo] = null; }
 
+// Crear una nueva flotilla/empresa desde la lista de Carteras. Se guarda en el
+// catálogo /flotillas (donde viven ambas). Aparecerá en la lista al asignarle una
+// orden; mientras tanto ya queda disponible para órdenes y para editar su contacto.
+async function crearOrgCartera(tipo) {
+  const esEmp  = tipo === 'empresa';
+  const nombre = (prompt(`Nombre de ${esEmp ? 'la empresa' : 'la flotilla'}:`) || '').trim();
+  if (!nombre) return;
+  const nit = (prompt('NIT (opcional):') || '').trim() || null;
+  try {
+    await api('/flotillas', 'POST', { nombre, nit, activo: true }, { Prefer: 'return=minimal' });
+    toast((esEmp ? 'Empresa' : 'Flotilla') + ' creada ✓');
+    cargarCarteraCliente(tipo);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
 // ─── Carga + render ─────────────────────────────────────────
 async function cargarCarteraCliente(tipo) {
   const cfg = _carteraConfig(tipo);
@@ -113,6 +128,10 @@ async function cargarCarteraCliente(tipo) {
         <div class="aseg-wrap">
           <div class="aseg-topbar">
             <span class="aseg-topbar-info">${cfg.icon} ${companias.length} ${cfg.plural}</span>
+            <button class="btn btn-primary btn-sm" onclick="crearOrgCartera('${tipo}')" style="display:flex;align-items:center;gap:6px">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nueva ${cfg.singular}
+            </button>
           </div>
           <div class="aseg-kpi-grupo">📊 Resumen</div>
           <div class="aseg-kpis">
