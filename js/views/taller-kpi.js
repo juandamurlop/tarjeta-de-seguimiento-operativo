@@ -457,18 +457,30 @@ async function cargarKPITaller() {
       document.head.appendChild(_st);
     }
     if (!window._kpiScrollLoop) {
-      // Auto-scroll suave (sube/baja) en las secciones que no caben, para verlas todas.
-      window._kpiScrollLoop = setInterval(() => {
+      // Auto-scroll suave (sube/baja) en las secciones que no caben, para verlas
+      // todas. Usa requestAnimationFrame + velocidad por segundo (sub-pixel) para
+      // que el movimiento sea FLUIDO y LENTO, no a saltos como con setInterval.
+      const VEL = 9;          // px por segundo (lento)
+      const PAUSA = 1800;     // ms de pausa al llegar a cada extremo
+      let _kpiLast = performance.now();
+      const _kpiTick = (now) => {
+        const dt = Math.min(80, now - _kpiLast) / 1000; // s (clamp si la pestaña estuvo en 2º plano)
+        _kpiLast = now;
         document.querySelectorAll('#taller-kpi-contenido .kpi-sec-body').forEach(el => {
-          if (el.scrollHeight <= el.clientHeight + 4) return;       // cabe: no scroll
-          if (el.matches(':hover')) return;                          // si el mouse está encima, no mover
-          if (el._pause > 0) { el._pause--; return; }
+          const max = el.scrollHeight - el.clientHeight;
+          if (max <= 4) return;                       // cabe: no scroll
+          if (el.matches(':hover')) { el._pos = el.scrollTop; return; } // mouse encima: no mover
+          if (el._pos == null) el._pos = el.scrollTop;
+          if (el._pauseUntil && now < el._pauseUntil) return;
           el._dir = el._dir || 1;
-          el.scrollTop += el._dir;
-          if (el.scrollTop + el.clientHeight >= el.scrollHeight - 1) { el._dir = -1; el._pause = 55; }
-          else if (el.scrollTop <= 0) { el._dir = 1; el._pause = 55; }
+          el._pos += el._dir * VEL * dt;
+          if (el._pos >= max) { el._pos = max; el._dir = -1; el._pauseUntil = now + PAUSA; }
+          else if (el._pos <= 0) { el._pos = 0; el._dir = 1; el._pauseUntil = now + PAUSA; }
+          el.scrollTop = el._pos;                      // scrollTop fraccional → movimiento suave
         });
-      }, 55);
+        window._kpiScrollLoop = requestAnimationFrame(_kpiTick);
+      };
+      window._kpiScrollLoop = requestAnimationFrame(_kpiTick);
     }
 
     const _pulmonInt = ordenesActivas.filter(o => o.pulmon && o.pulmon_tipo === 'interno');
