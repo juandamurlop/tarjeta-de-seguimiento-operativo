@@ -154,7 +154,7 @@ async function abrirOrden(id) {
     detalleCont.innerHTML = `
       <div class="detalle-grid">
         <div>
-          ${typeof _panelComentariosOrden === 'function' ? _panelComentariosOrden(orden) : ''}
+          ${typeof _panelComentariosOrden === 'function' ? _panelComentariosOrden(orden, novedades, etapas) : ''}
           ${(!(orden.numero_ot && String(orden.numero_ot).trim()) && orden.estado !== 'Programada') ? `
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:10px 12px;margin-bottom:14px">
             <svg width="16" height="16" fill="none" stroke="#92400E" stroke-width="2.4" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -763,31 +763,151 @@ function _toggleNovForm(eid) {
 }
 
 // ============================================================
-// ESTADO DEL CARRO (Descripción general de la orden)
-// Barra FIJA (sticky) arriba del detalle: muestra SIEMPRE la "Descripción
-// general" de la orden (la que se escribe al crear/llenar la orden) y deja
-// editarla con "Actualizar". Es la misma descripción, en un solo lugar visible.
+// ESTADO DEL CARRO — panel fijo arriba del detalle. Tiene 2 partes:
+//  1) DESCRIPCIÓN (descripcion_general): el daño/trabajo inicial, editable.
+//  2) ESTADO / HISTORIAL: novedades a nivel de orden (novedades.tipo='Comentario',
+//     etapa_id NULL) que NO se sobrescriben — cada nueva queda como estado actual
+//     y las anteriores pasan al historial, con fecha/hora y autor. Además, botones
+//     para Pausar etapa, Pulmón y Continuar, que se registran solos en el historial.
 // ============================================================
-function _panelComentariosOrden(orden) {
+function _panelComentariosOrden(orden, novedades, etapas) {
   const ordenId = orden?.id;
   const desc = (orden && orden.descripcion_general) ? String(orden.descripcion_general) : '';
+  novedades = novedades || [];
+  etapas = etapas || [];
+
+  // Historial de estado: novedades de ORDEN (sin etapa). La más reciente = actual.
+  const hist = novedades
+    .filter(n => !n.etapa_id && n.tipo === 'Comentario')
+    .sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
+  const ultimo = hist[0];
+  const histHtml = hist.map(n => `<div style="border-left:3px solid #7C3AED;background:#F8FAFC;border-radius:6px;padding:7px 10px;margin-bottom:6px">
+      <div style="font-size:13px;color:#1E293B;white-space:pre-wrap">${escapeHtml(n.motivo || '—')}</div>
+      <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(n.responsable || '—')} · ${formatTS(n.creado_en)}</div>
+    </div>`).join('');
+
+  // Estado operativo (para los botones contextuales).
+  const activaEnProceso = etapas.find(e => e.inicio && !e.fin && !e.pausado);
+  const pausada = etapas.find(e => e.inicio && !e.fin && e.pausado);
+  const enPulmon = !!orden.pulmon;
+  const _b = (txt, onclick, bg, color, bd) => `<button class="btn btn-sm" style="background:${bg};color:${color};border:1px solid ${bd};padding:7px 11px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer" onclick="${onclick}">${txt}</button>`;
+  let acciones = '';
+  if (activaEnProceso) acciones += _b('⏸ Pausar', `_estadoPausar(${ordenId})`, '#FFFBEB', '#92400E', '#FDE68A');
+  if (pausada || enPulmon) acciones += _b('▶ Continuar', `_estadoContinuar(${ordenId})`, '#ECFDF5', '#047857', '#A7F3D0');
+  acciones += _b(enPulmon ? '↩ Sacar de pulmón' : '🫁 Pulmón', `_estadoPulmon(${ordenId})`, '#F5F3FF', '#6D28D9', '#DDD6FE');
+
   return `
     <div class="orden-coment-bar" style="position:sticky;top:0;z-index:30;background:#fff;border:1.5px solid #BFDBFE;border-radius:10px;padding:10px 12px;margin-bottom:14px;box-shadow:0 2px 10px rgba(37,99,235,.10)">
+      <!-- DESCRIPCIÓN -->
       <div style="display:flex;align-items:flex-start;gap:10px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#2563EB;margin-bottom:2px">📝 Estado del carro</div>
-          <div style="font-size:13.5px;color:${desc ? '#1E293B' : 'var(--gris-mid)'};white-space:pre-wrap;line-height:1.4">${desc ? escapeHtml(desc) : 'Sin descripción. Toca “Actualizar” para escribir el estado del carro.'}</div>
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#2563EB;margin-bottom:2px">📝 Descripción del carro</div>
+          <div style="font-size:13.5px;color:${desc ? '#1E293B' : 'var(--gris-mid)'};white-space:pre-wrap;line-height:1.4">${desc ? escapeHtml(desc) : 'Sin descripción. Toca “Editar” para escribirla.'}</div>
         </div>
-        <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="_toggleComentOrden(${ordenId})">✏ Actualizar</button>
+        <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="_toggleComentOrden(${ordenId})">✏ Editar</button>
       </div>
-      <div id="coment-orden-editor-${ordenId}" style="display:none;margin-top:10px;border-top:1px solid var(--gris-borde);padding-top:10px">
-        <textarea id="coment-orden-${ordenId}" placeholder="Escribe el estado / descripción del carro (ej. daños, esperando repuesto, listo para entrega...)" style="width:100%;min-height:60px;resize:vertical;box-sizing:border-box">${escapeHtml(desc)}</textarea>
+      <div id="coment-orden-editor-${ordenId}" style="display:none;margin-top:8px;border-top:1px solid var(--gris-borde);padding-top:8px">
+        <textarea id="coment-orden-${ordenId}" placeholder="Descripción del carro (daños, trabajo a realizar...)" style="width:100%;min-height:50px;resize:vertical;box-sizing:border-box">${escapeHtml(desc)}</textarea>
         <div class="btn-row" style="margin-top:8px;justify-content:flex-end;gap:8px">
           <button class="btn btn-ghost btn-sm" onclick="_toggleComentOrden(${ordenId})">Cancelar</button>
-          <button class="btn btn-primary btn-sm" onclick="_guardarComentarioOrden(${ordenId})">Guardar</button>
+          <button class="btn btn-primary btn-sm" onclick="_guardarComentarioOrden(${ordenId})">Guardar descripción</button>
         </div>
       </div>
+
+      <!-- ESTADO / HISTORIAL -->
+      <div style="margin-top:10px;border-top:1px solid var(--gris-borde);padding-top:10px">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7C3AED;margin-bottom:4px">🔄 Estado del proceso</div>
+        ${ultimo
+          ? `<div style="font-size:13.5px;color:#1E293B;white-space:pre-wrap;line-height:1.4">${escapeHtml(ultimo.motivo || '—')}</div>
+             <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(ultimo.responsable || '—')} · ${formatTS(ultimo.creado_en)}</div>`
+          : `<div style="font-size:12px;color:var(--gris-mid)">Sin novedades de estado todavía.</div>`}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+          ${acciones}
+          ${_b('+ Agregar novedad', `_toggleNovedadEstado(${ordenId})`, '#EFF6FF', '#2563EB', '#BFDBFE')}
+        </div>
+        <div id="nov-estado-form-${ordenId}" style="display:none;margin-top:8px">
+          <textarea id="nov-estado-${ordenId}" placeholder="Novedad del estado (ej. esperando aprobación, listo para entrega, cliente avisado...)" style="width:100%;min-height:44px;resize:vertical;box-sizing:border-box"></textarea>
+          <div class="btn-row" style="margin-top:6px;justify-content:flex-end;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="_toggleNovedadEstado(${ordenId})">Cancelar</button>
+            <button class="btn btn-primary btn-sm" onclick="_agregarNovedadEstado(${ordenId})">Guardar novedad</button>
+          </div>
+        </div>
+        ${hist.length > 1 ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-size:12px;color:var(--gris-mid);font-weight:600">Ver historial (${hist.length})</summary><div style="margin-top:8px">${histHtml}</div></details>` : ''}
+      </div>
     </div>`;
+}
+
+// Inserta una entrada en el HISTORIAL de estado de la orden (novedad a nivel de
+// orden, con fecha/hora y autor). La usan el botón "Agregar novedad" y las
+// acciones (pausar/pulmón/continuar) para dejar registro automático.
+async function _logEstado(ordenId, texto) {
+  try {
+    await api('/novedades', 'POST', {
+      orden_id: ordenId, etapa_id: null, tipo: 'Comentario',
+      motivo: texto, responsable: sesion?.nombre || '—', desde: new Date().toISOString()
+    }, { Prefer: 'return=minimal' });
+  } catch (e) { console.warn('[logEstado]', e?.message); }
+}
+
+function _toggleNovedadEstado(ordenId) {
+  const f = document.getElementById('nov-estado-form-' + ordenId);
+  if (!f) return;
+  const mostrar = f.style.display === 'none';
+  f.style.display = mostrar ? 'block' : 'none';
+  if (mostrar) document.getElementById('nov-estado-' + ordenId)?.focus();
+}
+
+async function _agregarNovedadEstado(ordenId) {
+  const txt = document.getElementById('nov-estado-' + ordenId)?.value?.trim();
+  if (!txt) { toast('Escribe la novedad', 'err'); return; }
+  await _logEstado(ordenId, txt);
+  toast('Novedad agregada ✓');
+  abrirOrden(ordenId);
+}
+
+// Pausa la etapa que esté EN PROCESO (con un motivo) y lo registra en el historial.
+async function _estadoPausar(ordenId) {
+  const et = await api(`/etapas?orden_id=eq.${ordenId}&inicio=not.is.null&fin=is.null&pausado=eq.false&order=inicio.desc&limit=1&select=id,etapa`).then(r => r?.[0]).catch(() => null);
+  if (!et) { toast('No hay una etapa en proceso para pausar', 'err'); return; }
+  const motivo = (typeof prompt === 'function') ? prompt('¿Por qué se pausa? (ej. falta repuesto)') : '';
+  if (motivo === null) return; // canceló
+  try {
+    await api(`/etapas?id=eq.${et.id}`, 'PATCH', { pausado: true, pausa_inicio: new Date().toISOString() });
+    await _logEstado(ordenId, `⏸ Pausado · ${et.etapa || 'etapa'}${(motivo || '').trim() ? ': ' + motivo.trim() : ''}`);
+    toast('Etapa pausada ⏸');
+    abrirOrden(ordenId);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// Reanuda lo que esté detenido: la etapa pausada y/o saca la orden de pulmón.
+async function _estadoContinuar(ordenId) {
+  let hizo = false;
+  try {
+    const etP = await api(`/etapas?orden_id=eq.${ordenId}&fin=is.null&pausado=eq.true&order=inicio.desc&limit=1&select=id,etapa,pausa_inicio,tiempo_pausado_min`).then(r => r?.[0]).catch(() => null);
+    if (etP) {
+      const min = etP.pausa_inicio ? Math.max(0, Math.round((Date.now() - new Date(etP.pausa_inicio)) / 60000)) : 0;
+      await api(`/etapas?id=eq.${etP.id}`, 'PATCH', { pausado: false, pausa_inicio: null, tiempo_pausado_min: (etP.tiempo_pausado_min || 0) + min });
+      await _logEstado(ordenId, `▶ Continuó el proceso · ${etP.etapa || 'etapa'}`);
+      hizo = true;
+    }
+    const o = await api(`/ordenes?id=eq.${ordenId}&select=pulmon`).then(r => r?.[0]).catch(() => null);
+    if (o?.pulmon) {
+      await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { pulmon: false, pulmon_fin: new Date().toISOString() });
+      if (ordenActual && ordenActual.id === ordenId) ordenActual.pulmon = false;
+      await _logEstado(ordenId, '▶ Salió de pulmón');
+      hizo = true;
+    }
+    if (!hizo) { toast('No hay nada pausado ni en pulmón', 'info'); return; }
+    if (typeof _refrescarCapacidad === 'function') _refrescarCapacidad();
+    toast('Proceso reanudado ▶');
+    abrirOrden(ordenId);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// Abre el flujo de pulmón (interno/externo) o lo saca. El registro en el
+// historial lo hacen activarPulmonCon / _desactivarPulmon.
+function _estadoPulmon() {
+  if (typeof togglePulmon === 'function') togglePulmon();
 }
 
 // Guarda el N° de orden de trabajo (manual) de la orden. Al guardarlo, el aviso

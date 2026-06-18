@@ -267,6 +267,8 @@ async function activarPulmonCon(tipo) {
     _setPulmonUI(true, tipo);
     toast(`Orden en pulmón ${tipo.charAt(0).toUpperCase()+tipo.slice(1)} ✓`);
     _refrescarCapacidad();
+    // Registrar en el historial de estado de la orden y refrescar el panel.
+    if (typeof _logEstado === 'function') { await _logEstado(ordenActual.id, `🫁 Entró a Pulmón ${tipo}`); if (typeof abrirOrden === 'function') abrirOrden(ordenActual.id); }
   } catch(e) { toast('Error: ' + e.message, 'err'); }
 }
 
@@ -283,6 +285,8 @@ async function _desactivarPulmon() {
     toast('Pulmón desactivado ✓');
     _refrescarCapacidad();
     cargarOrdenesPulmon(); // refrescar lista pulmón para que desaparezca
+    // Registrar en el historial de estado de la orden y refrescar el panel.
+    if (typeof _logEstado === 'function') { await _logEstado(ordenActual.id, '↩ Salió de pulmón'); if (typeof abrirOrden === 'function') abrirOrden(ordenActual.id); }
   } catch(e) { toast('Error: ' + e.message, 'err'); }
 }
 
