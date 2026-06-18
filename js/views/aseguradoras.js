@@ -557,7 +557,7 @@ function _asegCompCard(c) {
       <span class="aseg-comp-nombre">🏢 ${escapeHtml(c.nombre)}</span>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         ${c.enCat ? '' : '<span class="aseg-comp-flag">sin datos</span>'}
-        ${c.enCat ? `<button class="btn btn-ghost btn-xs" title="Eliminar del catálogo" style="color:var(--rojo);padding:2px 6px" data-ctabla="aseguradoras" data-ckey="nombre" data-cval="${escapeHtml(c.nombre)}" data-cref="aseg" data-cnombre="${escapeHtml(c.nombre)}" onclick="event.stopPropagation();_eliminarContactoOrg(this)">🗑</button>` : ''}
+        <button class="btn btn-ghost btn-xs" title="Eliminar" style="color:var(--rojo);padding:2px 6px" data-ctabla="aseguradoras" data-ckey="nombre" data-cval="${escapeHtml(c.nombre)}" data-cref="aseg" data-cnombre="${escapeHtml(c.nombre)}" onclick="event.stopPropagation();_eliminarContactoOrg(this)">🗑</button>
       </div>
     </div>
     <div class="aseg-comp-nums">
@@ -630,7 +630,7 @@ function _asegFichaHtml(nombre) {
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button class="btn btn-ghost btn-sm" data-ctabla="aseguradoras" data-ckey="nombre" data-cval="${escapeHtml(nombre)}" data-cfield="contactos" data-cref="aseg" data-cnombre="${escapeHtml(nombre)}" onclick="abrirEditarContactoOrg(this)">✏️ Editar</button>
-        ${a ? `<button class="btn btn-ghost btn-sm" style="color:var(--rojo)" data-ctabla="aseguradoras" data-ckey="nombre" data-cval="${escapeHtml(nombre)}" data-cref="aseg" data-cnombre="${escapeHtml(nombre)}" onclick="_eliminarContactoOrg(this)">🗑 Eliminar</button>` : ''}
+        <button class="btn btn-ghost btn-sm" style="color:var(--rojo)" data-ctabla="aseguradoras" data-ckey="nombre" data-cval="${escapeHtml(nombre)}" data-cref="aseg" data-cnombre="${escapeHtml(nombre)}" onclick="_eliminarContactoOrg(this)">🗑 Eliminar</button>
       </div>
     </div>
     <div class="aseg-ficha-stats">
