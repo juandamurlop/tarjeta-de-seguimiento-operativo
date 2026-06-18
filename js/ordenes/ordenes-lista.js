@@ -52,6 +52,20 @@ async function cargarOrdenes() {
   } catch(e) { lista.innerHTML = `<div class="empty-state">Error cargando órdenes: ${e.message}</div>`; }
 }
 
+// Tipo de orden → color característico (para distinguir de un vistazo en la lista).
+//  Aseguradora = violeta · Flotilla = cian · Empresa = ámbar · Particular = azul.
+function _tipoOrdenInfo(o) {
+  const t = (o?.tipo_cliente || '').toLowerCase();
+  if (t === 'aseguradora') return { key: 'aseguradora', label: 'Aseguradora', color: '#7C3AED', bg: '#F5F3FF' };
+  if (t === 'flotilla')    return { key: 'flotilla',    label: 'Flotilla',    color: '#0891B2', bg: '#ECFEFF' };
+  if (t === 'empresa')     return { key: 'empresa',     label: 'Empresa',     color: '#D97706', bg: '#FFFBEB' };
+  return { key: 'particular', label: 'Particular', color: '#2563EB', bg: '#EFF6FF' };
+}
+function _chipTipoOrden(o) {
+  const ti = _tipoOrdenInfo(o);
+  return `<span style="display:inline-block;font-size:10px;font-weight:800;letter-spacing:.02em;color:${ti.color};background:${ti.bg};border:1px solid ${ti.color}44;padding:2px 8px;border-radius:99px;white-space:nowrap">${ti.label}</span>`;
+}
+
 function _buildOrdenRow(o, etapas) {
   const comentario = o.descripcion_general || '';
   const etapasO  = etapas.filter(e => e.orden_id === o.id);
@@ -96,12 +110,14 @@ function _buildOrdenRow(o, etapas) {
     ? `<span class="ord-alert-contact" title="Faltan datos: ${camposFaltantes.join(', ')}">⚠</span>`
     : '';
 
+  const ti = _tipoOrdenInfo(o);
   return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-oid="${o.id}" data-search="${escapeHtml(searchStr)}">
-    <td>
+    <td style="border-left:4px solid ${ti.color}">
       <div class="ord-placa">${escapeHtml(o.placa)}</div>
       <div class="ord-ot">${otDe(o)}${contactAlert}</div>
       ${sinValor ? `<div style="margin-top:3px"><span title="La orden no tiene precio de venta asignado" style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:.03em;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;padding:1px 6px;border-radius:99px">💲 SIN VALOR</span></div>` : ''}
     </td>
+    <td>${_chipTipoOrden(o)}</td>
     <td>
       <div class="ord-veh-nombre">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'}</div>
       <div class="ord-veh-cliente">${escapeHtml(o.propietario || '—')}${o.modelo ? ` · ${escapeHtml(o.modelo)}` : ''}</div>
@@ -132,7 +148,7 @@ function renderTablaOrdenes(data, etapas) {
   const rows = data.map(o => _buildOrdenRow(o, etapas)).join('');
   renderSinParpadeo(lista, `<div class="ordenes-tabla-wrap"><table class="ordenes-tabla">
     <thead><tr>
-      <th>Orden</th><th>Vehículo</th><th>Etapa actual</th>
+      <th>Orden</th><th>Tipo</th><th>Vehículo</th><th>Etapa actual</th>
       <th>Responsable</th><th>Entrega est.</th><th>Días</th><th>Estado</th>
     </tr></thead>
     <tbody>${rows}</tbody>
@@ -179,11 +195,13 @@ async function cargarOrdenesPulmon() {
       const diasTaller = o.creado_en ? Math.floor((Date.now() - new Date(o.creado_en)) / 86400000) : 0;
       const comentario = o.descripcion_general || '';
       const searchStr  = [(o.placa||''), (o.propietario||''), (tecnico||''), (o.marca||''), (o.linea||''), (comentario||'')].join(' ').toLowerCase();
+      const ti = _tipoOrdenInfo(o);
       return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-search="${escapeHtml(searchStr)}">
-        <td>
+        <td style="border-left:4px solid ${ti.color}">
           <div class="ord-placa">${escapeHtml(o.placa)}</div>
           <div class="ord-ot">${otDe(o)}</div>
         </td>
+        <td>${_chipTipoOrden(o)}</td>
         <td>
           <div class="ord-veh-nombre">${[o.marca,o.linea].filter(Boolean).map(escapeHtml).join(' ') || '—'}</div>
           <div class="ord-veh-cliente">${escapeHtml(o.propietario || '—')}${o.modelo ? ` · ${escapeHtml(o.modelo)}` : ''}</div>
@@ -206,7 +224,7 @@ async function cargarOrdenesPulmon() {
 
     lista.innerHTML = `<div class="ordenes-tabla-wrap"><table class="ordenes-tabla">
       <thead><tr>
-        <th>Orden</th><th>Vehículo</th><th>Etapa actual</th>
+        <th>Orden</th><th>Tipo</th><th>Vehículo</th><th>Etapa actual</th>
         <th>Responsable</th><th>Tiempo pulmón</th><th>Días</th><th>Estado</th>
       </tr></thead>
       <tbody>${rows}</tbody>

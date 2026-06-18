@@ -316,42 +316,34 @@ async function _cargarConsumiblesSidebar(placa, kmActual) {
     // Último por tipo
     const ultimos = {};
     consumibles.forEach(c => { if (!ultimos[c.tipo]) ultimos[c.tipo] = c; });
+    const docPorTipo = {};
+    docs.forEach(d => { if (!docPorTipo[d.tipo]) docPorTipo[d.tipo] = d; });
 
-    const alertas = [];
+    // Lista TODOS los ítems: el que se agregó muestra su estado; el que no, queda
+    // como "🟡 Pendiente" (pendiente de agregar), por cada ítem.
+    const _fila = (icon, label, estadoHtml) => `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid var(--gris-borde);font-size:12px">
+        <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${icon} ${escapeHtml(label)}</span>
+        <span style="font-weight:600;flex-shrink:0">${estadoHtml}</span>
+      </div>`;
+    const _pend = '<span style="color:#ca8a04">🟡 Pendiente</span>';
 
-    // Consumibles con km
+    let filas = '';
     Object.entries(CONSUMIBLES_CONFIG).forEach(([tipo, cfg]) => {
-      if (cfg.porFecha) return;
       const c = ultimos[tipo];
-      if (!c) return;
-      const est = calcularEstadoConsumible(kmActual, c.km_instalacion, c.km_vida_util || cfg.kmDefault);
-      if (est.color !== '🟢') alertas.push({ icon: cfg.icon, label: cfg.label, est });
+      if (!c) { filas += _fila(cfg.icon, cfg.label, _pend); return; }
+      const est = cfg.porFecha
+        ? (c.fecha_venc ? calcularEstadoFecha(c.fecha_venc) : { dot: '🟢', label: 'Registrada', color: '#16a34a' })
+        : calcularEstadoConsumible(kmActual, c.km_instalacion, c.km_vida_util || cfg.kmDefault);
+      filas += _fila(cfg.icon, cfg.label, `<span style="color:${est.color}">${est.dot} ${escapeHtml(est.label)}</span>`);
     });
-
-    // Documentos por fecha
-    docs.forEach(d => {
-      const cfg = DOCUMENTOS_CONFIG[d.tipo];
-      if (!cfg) return;
+    Object.entries(DOCUMENTOS_CONFIG).forEach(([tipo, cfg]) => {
+      const d = docPorTipo[tipo];
+      if (!d) { filas += _fila(cfg.icon, cfg.label, _pend); return; }
       const est = calcularEstadoFecha(d.fecha_venc);
-      if (est.color !== '🟢') alertas.push({ icon: cfg.icon, label: cfg.label, est });
+      filas += _fila(cfg.icon, cfg.label, `<span style="color:${est.color}">${est.dot} ${escapeHtml(est.label)}</span>`);
     });
 
-    if (!alertas.length) {
-      // Sin datos NO es lo mismo que "todo bien": si no hay ningún consumible
-      // ni documento registrado, queda PENDIENTE de cargar (no verde).
-      const sinDatos = consumibles.length === 0 && docs.length === 0;
-      body.innerHTML = sinDatos
-        ? `<div style="font-size:12px;color:var(--amarillo);display:flex;align-items:center;gap:5px">🟡 Pendiente: agregar datos</div>
-           <button class="btn btn-ghost btn-xs" style="margin-top:6px;font-size:11px;width:100%" onclick="abrirPopupConsumibles('${escapeHtml(placa)}',${kmActual})">Agregar datos →</button>`
-        : `<div style="font-size:12px;color:var(--verde);display:flex;align-items:center;gap:5px">🟢 Todo en buen estado</div>`;
-    } else {
-      body.innerHTML = alertas.map(a =>
-        `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--gris-borde);font-size:12px">
-          <span>${a.icon} ${a.label}</span>
-          <span style="font-weight:700">${a.est.dot} ${a.est.label}</span>
-        </div>`
-      ).join('') + `<button class="btn btn-ghost btn-xs" style="margin-top:6px;font-size:11px;width:100%" onclick="abrirPopupConsumibles('${escapeHtml(placa)}',${kmActual})">Ver todo →</button>`;
-    }
+    body.innerHTML = filas + `<button class="btn btn-ghost btn-xs" style="margin-top:6px;font-size:11px;width:100%" onclick="abrirPopupConsumibles('${escapeHtml(placa)}',${kmActual})">Agregar / Ver todo →</button>`;
   } catch(e) {
     if (body) body.innerHTML = `<div style="font-size:11px;color:var(--gris-mid)">—</div>`;
   }

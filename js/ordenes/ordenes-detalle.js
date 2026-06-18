@@ -2,6 +2,18 @@
 // ÓRDENES — DETALLE Y ETAPAS
 // ═══════════════════════════════════════════════════════════
 
+// El panel "Datos del vehículo y cliente" arranca COLAPSADO (la info que más se
+// mira es Servicios/Etapas). Guardamos si el usuario lo abrió para no volver a
+// cerrarlo en cada refresco del detalle (que se re-renderiza con el polling).
+let _datosOrdenAbierto = false;
+function _toggleDatosOrden() {
+  _datosOrdenAbierto = !_datosOrdenAbierto;
+  const grid = document.getElementById('det-datos-grid');
+  const chev = document.getElementById('det-datos-chev');
+  if (grid) grid.style.display = _datosOrdenAbierto ? '' : 'none';
+  if (chev) chev.style.transform = `rotate(${_datosOrdenAbierto ? '90' : '0'}deg)`;
+}
+
 async function abrirOrden(id) {
   mostrarPagina('pag-detalle');
   document.getElementById('topbar-title').textContent = 'Detalle de Orden';
@@ -224,7 +236,10 @@ async function abrirOrden(id) {
             </div>`;
           })()}
           <div class="det-datos-header">
-            <div class="seccion-titulo" style="margin-bottom:0">Datos del vehículo y cliente</div>
+            <div onclick="_toggleDatosOrden()" style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;min-width:0;user-select:none">
+              <svg id="det-datos-chev" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;color:var(--azul);transition:transform .18s ease;transform:rotate(${_datosOrdenAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
+              <div class="seccion-titulo" style="margin-bottom:0">Datos del vehículo y cliente</div>
+            </div>
             <button class="btn btn-ghost btn-sm" style="color:var(--azul)" onclick="verHistorialVehiculo('${escapeHtml(orden.placa)}')" title="Ver visitas anteriores de este vehículo">
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               Historial
@@ -238,10 +253,10 @@ async function abrirOrden(id) {
               Archivar
             </button>` : ''}
           </div>
-          <div class="det-datos-grid">
+          <div class="det-datos-grid" id="det-datos-grid" style="${_datosOrdenAbierto?'':'display:none'}">
             <!-- Vehículo -->
-            <div class="det-datos-card">
-              <div class="det-datos-card-titulo">
+            <div class="det-datos-card" style="border-left:3px solid #2563EB">
+              <div class="det-datos-card-titulo" style="color:#2563EB">
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                 Vehículo
               </div>
@@ -258,8 +273,8 @@ async function abrirOrden(id) {
               </div>
             </div>
             <!-- Cliente -->
-            <div class="det-datos-card">
-              <div class="det-datos-card-titulo">
+            <div class="det-datos-card" style="border-left:3px solid #059669">
+              <div class="det-datos-card-titulo" style="color:#059669">
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 Cliente
               </div>
@@ -274,9 +289,12 @@ async function abrirOrden(id) {
               </div>
             </div>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div class="seccion-titulo" style="margin-bottom:0">Servicios y Etapas</div>
-            ${esJefe() && orden.estado !== 'Programada' && orden.estado !== 'Entregada' && orden.estado !== 'Archivada' ? '<button class="btn btn-ghost btn-sm" onclick="abrirModalAgregar()">+ Agregar etapas</button>' : ''}
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;background:linear-gradient(90deg,#EEF2FF,#F5F3FF);border-left:4px solid #6366F1;border-radius:8px;padding:9px 12px">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+              <svg width="16" height="16" fill="none" stroke="#6366F1" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+              <div class="seccion-titulo" style="margin-bottom:0;color:#4338CA">Servicios y Etapas</div>
+            </div>
+            ${esJefe() && orden.estado !== 'Programada' && orden.estado !== 'Entregada' && orden.estado !== 'Archivada' ? '<button class="btn btn-ghost btn-sm" style="flex-shrink:0;color:#4338CA" onclick="abrirModalAgregar()">+ Agregar etapas</button>' : ''}
           </div>
           ${orden.estado === 'Programada'
             ? `<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 20px;background:#F8FAFC;border:1.5px dashed #CBD5E1;border-radius:10px;text-align:center;margin-bottom:12px">
@@ -347,20 +365,21 @@ async function abrirOrden(id) {
               <div style="font-size:12px;color:var(--gris-mid)">Cargando...</div>
             </div>
           </div>` : ''}
-          <div id="pulmon-card" class="pulmon-card ${orden.pulmon?'':'inactivo'}">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-              <div style="font-size:12px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:${orden.pulmon?'var(--amarillo)':'var(--gris-mid)'}">Pulmón</div>
+          <div id="pulmon-card" class="pulmon-card ${orden.pulmon?'':'inactivo'}" style="padding:9px 11px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${orden.pulmon?'var(--amarillo)':'var(--gris-borde)'}"></span>
+              <span style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:${orden.pulmon?'var(--amarillo)':'var(--gris-mid)'};flex-shrink:0">Pulmón</span>
+              <span id="d-pulmon-badge" style="font-size:12px;color:${orden.pulmon?'#92400e':'var(--gris-mid)'};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">
+                ${orden.pulmon
+                  ? `${orden.pulmon_tipo ? `<strong>${orden.pulmon_tipo.charAt(0).toUpperCase()+orden.pulmon_tipo.slice(1)}</strong> · ` : ''}desde ${formatFecha(orden.pulmon_desde)}`
+                  : (orden.pulmon_fin && orden.pulmon_desde)
+                    ? `<span style="color:var(--verde,#10B981)">✓</span> estuvo <strong>${_calcPulmonTiempo(orden.pulmon_desde, orden.pulmon_fin)}</strong>`
+                    : 'Sin pulmón'}
+              </span>
               ${orden.estado !== 'Entregada' && orden.estado !== 'Archivada' ? `
-              <button class="btn btn-sm btn-ghost" id="btn-pulmon" onclick="togglePulmon()">
-                ${orden.pulmon ? 'Sacar de pulmón' : 'Activar Pulmón'}
-              </button>` : `<span id="btn-pulmon" style="font-size:11px;color:var(--gris-mid)">Orden cerrada</span>`}
-            </div>
-            <div id="d-pulmon-badge" style="font-size:13px;color:${orden.pulmon?'var(--amarillo)':'var(--gris-mid)'}">
-              ${orden.pulmon
-                ? `En pulmón${orden.pulmon_tipo ? ` · <strong>${orden.pulmon_tipo.charAt(0).toUpperCase()+orden.pulmon_tipo.slice(1)}</strong>` : ''} desde ${formatFecha(orden.pulmon_desde)}`
-                : (orden.pulmon_fin && orden.pulmon_desde)
-                  ? `<span style="color:var(--verde,#10B981)">✓ Salió de pulmón</span> · estuvo <strong>${_calcPulmonTiempo(orden.pulmon_desde, orden.pulmon_fin)}</strong>${orden.pulmon_tipo ? ` (${orden.pulmon_tipo})` : ''}`
-                  : 'Sin pulmón activo'}
+              <button class="btn btn-xs btn-ghost" id="btn-pulmon" style="flex-shrink:0;font-size:11px;padding:3px 8px" onclick="togglePulmon()">
+                ${orden.pulmon ? 'Sacar' : 'Activar'}
+              </button>` : `<span id="btn-pulmon" style="font-size:10px;color:var(--gris-mid);flex-shrink:0">cerrada</span>`}
             </div>
           </div>
           ${false ? `
@@ -388,6 +407,7 @@ async function abrirOrden(id) {
           <div class="sidebar-card">
             <div class="sidebar-card-header">Estado de la orden</div>
             <div class="sidebar-card-body">
+              ${typeof _barraAccionesEstado === 'function' ? _barraAccionesEstado(orden) : ''}
               ${orden.estado === 'Programada'
                 ? `<div style="display:flex;flex-direction:column;gap:10px">
                      <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:#F1F5F9;border-radius:20px">

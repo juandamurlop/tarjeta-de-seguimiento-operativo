@@ -938,6 +938,25 @@ async function enviarPreliquidacionCliente(ordenId) {
 }
 
 // Bloque del detalle: enviar preliquidación + cerrar con PIN.
+// Barra de acciones rápidas (siempre visible para jefe/gerente en "Estado de la
+// orden"): los 3 pasos clave de cara al cliente. Cada botón se pone VERDE/AZUL
+// (con ✓) cuando ya se hizo esa acción, para ver de un vistazo qué falta.
+//  1) Mensaje inicial  → avisarIngresoCliente (link de seguimiento en vivo)
+//  2) Avisar listo      → avisarClienteWhatsapp (vehículo listo para entrega)
+//  3) Cerrar            → intentarCerrarOrden (con PIN; exige preliquidación)
+function _barraAccionesEstado(orden) {
+  const ini     = !!orden.ingreso_avisado_en;
+  const listo   = !!orden.entrega_avisada_en;
+  const cerrada = orden.estado === 'Entregada' || orden.estado === 'Archivada';
+  const _b = (done, color, label, labelDone, onclick) =>
+    `<button class="btn btn-sm" style="flex:1;min-width:0;font-size:10.5px;padding:7px 4px;border:1px solid ${done ? color : 'var(--gris-borde)'};background:${done ? color : '#fff'};color:${done ? '#fff' : 'var(--gris-mid)'};font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="${onclick}">${done ? '✓ ' + labelDone : label}</button>`;
+  return `<div style="display:flex;gap:5px;margin-bottom:10px">
+    ${_b(ini,   '#16a34a', '📲 Mensaje inicial', 'Mensaje enviado', `avisarIngresoCliente(${orden.id})`)}
+    ${_b(listo, '#16a34a', '🔔 Avisar listo',    'Cliente avisado',  `avisarClienteWhatsapp(${orden.id})`)}
+    ${_b(cerrada, 'var(--azul)', '🔒 Cerrar',     'Cerrada',          `intentarCerrarOrden(${orden.id})`)}
+  </div>`;
+}
+
 function _bloquePreliqCierre(orden) {
   const enviada = !!orden.preliquidacion_enviada_en;
   let h = `<div style="background:#F8FAFC;border:1px solid var(--gris-borde);border-radius:8px;padding:10px;margin:8px 0">
