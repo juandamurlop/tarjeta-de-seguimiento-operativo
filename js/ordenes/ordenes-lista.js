@@ -10,6 +10,8 @@
 // ============================================================
 function setFiltro(estado, btn) {
   filtroEstado = estado;
+  _busqOrdGlobalCache = null;
+  const s = document.getElementById('ord-search'); if (s) s.value = '';
   document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   cargarOrdenes();
@@ -17,9 +19,50 @@ function setFiltro(estado, btn) {
 
 function setFiltroPulmon(btn) {
   filtroEstado = null;
+  _busqOrdGlobalCache = null;
+  const s = document.getElementById('ord-search'); if (s) s.value = '';
   document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   cargarOrdenesPulmon();
+}
+
+// Búsqueda GLOBAL del apartado Órdenes: busca en TODAS las órdenes (cualquier
+// estado: activas, programadas, entregadas, en pulmón, archivadas), no solo la
+// pestaña activa. Al borrar el texto, vuelve a la pestaña seleccionada.
+let _busqOrdGlobalCache = null;
+async function buscarOrdenesGlobal(q) {
+  q = (q || '').trim().toLowerCase();
+  const lista = document.getElementById('lista-ordenes');
+  if (!q) {
+    _busqOrdGlobalCache = null;
+    if (typeof filtroEstado !== 'undefined' && filtroEstado === null) cargarOrdenesPulmon();
+    else cargarOrdenes();
+    return;
+  }
+  if (!_busqOrdGlobalCache) {
+    if (lista) mostrarCargandoSiVacio(lista, '<div class="loading-state">Buscando en todas las órdenes...</div>');
+    try {
+      const data = await api('/ordenes?order=creado_en.desc&limit=600') || [];
+      const ids = data.map(o => o.id).join(',');
+      const etapas = ids ? (await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico,tercero,valor_venta`).catch(() => []) || []) : [];
+      _busqOrdGlobalCache = { data, etapas };
+    } catch (e) {
+      if (lista) lista.innerHTML = `<div class="empty-state">Error buscando: ${e.message}</div>`;
+      return;
+    }
+  }
+  // Si ya cambió el texto mientras cargaba, no pisar la vista.
+  if (((document.getElementById('ord-search')?.value) || '').trim().toLowerCase() !== q) return;
+  const { data, etapas } = _busqOrdGlobalCache;
+  const filtradas = data.filter(o => {
+    const ets = etapas.filter(e => e.orden_id === o.id);
+    const tec = ets.map(e => (typeof nombreTec === 'function' ? nombreTec(e) : (e.tecnico || e.tercero || ''))).join(' ');
+    const s = [(o.placa || ''), (o.propietario || ''), tec, (o.marca || ''), (o.linea || ''), (o.descripcion_general || ''), (o.aseguradora || ''), (typeof otDe === 'function' ? otDe(o) : '')].join(' ').toLowerCase();
+    return s.includes(q);
+  });
+  renderTablaOrdenes(filtradas, etapas);
+  document.getElementById('ord-busq-nota')?.remove();
+  if (lista) lista.insertAdjacentHTML('afterbegin', `<div id="ord-busq-nota" style="font-size:12px;color:var(--gris-mid);margin-bottom:8px">🔎 Resultados en <strong>todos los estados</strong> · ${filtradas.length}</div>`);
 }
 
 let _ordenesTablaData  = [];
