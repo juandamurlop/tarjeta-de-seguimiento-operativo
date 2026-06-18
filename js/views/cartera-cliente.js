@@ -145,6 +145,9 @@ async function _guardarNuevaOrg() {
     const where = `/${tabla}?nombre=eq.${encodeURIComponent(nombre)}`;
     const fallaron = [];
     const patch = async (obj, et) => { try { await api(where, 'PATCH', obj); } catch (e) { fallaron.push(et); } };
+    // En /flotillas marcamos el tipo (flotilla/empresa) para que aparezca en su
+    // pestaña aunque todavía no tenga órdenes. cref ya es 'flotilla' o 'empresa'.
+    if (tabla === 'flotillas') await patch({ tipo: cref }, 'tipo');
     await patch({ nit }, 'NIT');
     await patch({ direccion: dir }, 'dirección');
     await patch({ telefono: tel }, 'teléfono');
@@ -195,7 +198,18 @@ async function cargarCarteraCliente(tipo) {
       const ciclos = g.ords.filter(o => o.entregada_en && o.creado_en).map(o => (new Date(o.entregada_en) - new Date(o.creado_en)) / 86400000);
       const ciclo = ciclos.length ? Math.round(ciclos.reduce((a,b)=>a+b,0)/ciclos.length) : null;
       return { nombre:g.nombre, count:g.ords.length, act, ent, fact, ciclo, enCat: !!catByName[(g.nombre||'').trim().toLowerCase()] };
-    }).filter(c => c.count > 0).sort((a,b) => b.act - a.act || b.count - a.count);
+    }).filter(c => c.count > 0);
+
+    // Incluir las organizaciones del catálogo de ESTE tipo que aún no tienen
+    // órdenes (las recién creadas), para que aparezcan de una vez en su pestaña.
+    const _conOrden = new Set(companias.map(c => (c.nombre||'').trim().toLowerCase()));
+    catalogo.forEach(cat => {
+      if (cat.tipo !== tipo) return;                 // solo del tipo correcto
+      const k = (cat.nombre||'').trim().toLowerCase();
+      if (!k || _conOrden.has(k)) return;
+      companias.push({ nombre: cat.nombre, count:0, act:0, ent:0, fact:0, ciclo:null, enCat:true });
+    });
+    companias.sort((a,b) => b.act - a.act || b.count - a.count);
 
     const G = {
       total: ordenes.length,

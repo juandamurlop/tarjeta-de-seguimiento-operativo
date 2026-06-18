@@ -372,7 +372,7 @@ async function cargarModuloAseguradoras() {
         else if (!o.entregada_en) sinAut++;
       });
       return { nombre, count: ords.length, act, aut, cob, sinAut, enCat: !!_asegCatalogo[(nombre || '').trim().toLowerCase()] };
-    }).filter(c => c.count > 0)  // solo aseguradoras con al menos una orden
+    }).filter(c => c.count > 0 || c.enCat)  // con órdenes o registradas en el catálogo
       .sort((a, b) => b.act - a.act || b.count - a.count);
 
     if (_asegSeleccionada) {
