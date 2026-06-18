@@ -158,7 +158,10 @@ function _carteraCompCard(tipo, c) {
   return `<div class="aseg-comp-card hover-lift" data-nombre="${escapeHtml(c.nombre)}" onclick="abrirCartera('${tipo}', this.dataset.nombre)" style="border-left-color:${cfg.color}">
     <div class="aseg-comp-top">
       <span class="aseg-comp-nombre" style="color:${cfg.color}">${cfg.icon} ${escapeHtml(c.nombre)}</span>
-      ${c.enCat ? '' : '<span class="aseg-comp-flag">sin datos</span>'}
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        ${c.enCat ? '' : '<span class="aseg-comp-flag">sin datos</span>'}
+        ${c.enCat ? `<button class="btn btn-ghost btn-xs" title="Eliminar del catálogo" style="color:var(--rojo);padding:2px 6px" data-ctabla="flotillas" data-ckey="nombre" data-cval="${escapeHtml(c.nombre)}" data-cref="${tipo}" data-cnombre="${escapeHtml(c.nombre)}" onclick="event.stopPropagation();_eliminarContactoOrg(this)">🗑</button>` : ''}
+      </div>
     </div>
     <div class="aseg-comp-nums">
       <div><span class="n">${c.count}</span><span class="t">órdenes</span></div>
