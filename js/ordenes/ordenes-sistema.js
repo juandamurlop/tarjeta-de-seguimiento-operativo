@@ -2517,10 +2517,10 @@ async function abrirPanelCapacidad() {
     }
 
     function _verOrdenBtn(id) {
-      return `<button onclick="cerrarPanelCapacidad();abrirOrden(${id});navJefe('detalle')" class="cap-btn-ver">→ Ver</button>`;
+      return `<button onclick="cerrarPanelCapacidad();abrirOrden(${id})" class="cap-btn-ver">→ Ver</button>`;
     }
     function _asignarBtn(id) {
-      return `<button onclick="cerrarPanelCapacidad();abrirOrden(${id});navJefe('detalle');setTimeout(()=>abrirModalAgregar(),600)" class="cap-btn-asignar">Asignar</button>`;
+      return `<button onclick="cerrarPanelCapacidad();abrirOrden(${id});setTimeout(()=>abrirModalAgregar(),600)" class="cap-btn-asignar">Asignar</button>`;
     }
     function _capRow(placa, nombre, meta, tiempo, tColor, btns) {
       return `<div class="cap-row">
