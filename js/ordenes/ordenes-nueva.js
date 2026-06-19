@@ -977,11 +977,14 @@ function _bloquePreliqCierre(orden) {
     <button class="btn btn-sm" style="width:100%;background:#25D366;border-color:#25D366;color:#fff" onclick="enviarPreliquidacionCliente(${orden.id})">📲 ${enviada ? 'Reenviar' : 'Enviar'} preliquidación (WhatsApp)</button>`;
   h += enviada
     ? `<div style="font-size:11px;color:var(--verde);font-weight:600;margin-top:6px">✓ Preliquidación enviada el ${formatTS(orden.preliquidacion_enviada_en)}</div>`
-    : `<div style="font-size:11px;color:var(--gris-mid);margin-top:6px">La preliquidación es opcional: puedes enviarla o cerrar directamente.</div>`;
+    : '';
   h += `</div>`;
-  // Botón cerrar — requiere PIN. Ya NO exige la preliquidación (se puede cerrar
-  // una vez avisado el cliente).
-  h += `<button class="btn btn-success" style="width:100%" onclick="intentarCerrarOrden(${orden.id})">🔒 Cerrar orden (con PIN)</button>`;
+  // Botón cerrar — requiere PIN. Se DESBLOQUEA al completar el paso 2 (avisar al
+  // cliente que está listo). La preliquidación ya no es requisito.
+  const avisado = !!orden.entrega_avisada_en;
+  h += avisado
+    ? `<button class="btn btn-success" style="width:100%" onclick="intentarCerrarOrden(${orden.id})">🔒 Cerrar orden (con PIN)</button>`
+    : `<button class="btn" style="width:100%;opacity:.45;cursor:not-allowed" disabled title="Primero avisa al cliente que está listo (paso 2)">🔒 Cerrar orden (con PIN)</button>`;
   h += `<div style="text-align:center;margin-top:4px"><button class="btn btn-ghost btn-sm" style="font-size:10px;color:var(--gris-mid)" onclick="configurarPinCierre()">⚙ Configurar PIN de cierre</button></div>`;
   return h;
 }
