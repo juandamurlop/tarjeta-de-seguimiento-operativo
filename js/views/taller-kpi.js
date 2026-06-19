@@ -160,7 +160,7 @@ async function cargarKPITaller() {
   try {
     const _hace14d = new Date(ahora - 14 * 86400000).toISOString();
     const _inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString();
-    const [ordenesActivas, todasEtapas, solicitudesRep, mecanicosData, entregadasRecientes, cotsPendientes, cotsMes, capActivas, capPulmonInt] = await Promise.all([
+    const [ordenesActivas, todasEtapas, solicitudesRep, mecanicosData, entregadasRecientes, cotsPendientes, cotsMes, capActivas, capPulmonInt, entregadasMesVal, ventasMensuales] = await Promise.all([
       api('/ordenes?estado=eq.Activa&order=creado_en.asc').catch(() => []),
       api('/etapas?select=id,orden_id,etapa,servicio,mecanico_id,tecnico,creado_en,inicio,fin,pausado,tiempo_pausado_min,valor_venta&order=creado_en.asc').catch(() => []),
       api('/solicitudes_repuesto?estado=not.in.(entregado,rechazado)&order=creado_en.asc').catch(() => []),
@@ -171,7 +171,10 @@ async function cargarKPITaller() {
       // MISMAS consultas que el sidebar (_refrescarCapacidad) para que la
       // "Ocupación del taller" coincida exactamente con la capacidad del sidebar.
       api('/ordenes?estado=eq.Activa&pulmon=eq.false&select=id').catch(() => []),
-      api('/ordenes?pulmon=eq.true&pulmon_tipo=eq.interno&select=id').catch(() => [])
+      api('/ordenes?pulmon=eq.true&pulmon_tipo=eq.interno&select=id').catch(() => []),
+      // FACTURADO del mes: órdenes entregadas este mes (con su valor) + metas.
+      api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${_inicioMes}&select=id,precio_venta_cliente,insumos,repuestos_simple&limit=500`).catch(() => []),
+      api('/ventas_mensuales?order=ano.desc,mes_num.desc&limit=36').catch(() => [])
     ]);
 
     const etapasActivas = todasEtapas.filter(e => e.inicio && !e.fin);
@@ -378,13 +381,32 @@ async function cargarKPITaller() {
       const etsVal = todasEtapas.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
       return s + (o.precio_venta_cliente && o.precio_venta_cliente > 0 ? o.precio_venta_cliente : etsVal);
     }, 0);
+    // FACTURADO del mes: lo reportado por el contador (ventas_mensuales) si está,
+    // si no el valor de las órdenes entregadas este mes.
+    const _valItemsVT = (o, campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (e) { return 0; } };
+    const _metaMesVT = (ventasMensuales || []).find(m => Number(m.ano) === hoy.getFullYear() && Number(m.mes_num) === hoy.getMonth() + 1);
+    const _ventaMesVT = Number(_metaMesVT?.ventas) || 0;
+    const _facturadoOrdenes = (entregadasMesVal || []).reduce((s, o) => {
+      const mo = todasEtapas.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
+      return s + ((o.precio_venta_cliente && o.precio_venta_cliente > 0) ? o.precio_venta_cliente : (mo + _valItemsVT(o, 'insumos') + _valItemsVT(o, 'repuestos_simple')));
+    }, 0);
+    const facturadoMes = _ventaMesVT > 0 ? _ventaMesVT : _facturadoOrdenes;
     const valorTallerHtml = `
       <div class="kpi-valor-taller" onclick="abrirPanelValorTaller()" style="cursor:pointer" title="Ver valor por orden y la meta del mes">
-        <div>
+        <div style="min-width:0">
           <div class="kpi-vt-lbl">💰 Valor en el taller</div>
-          <div class="kpi-vt-sub">Suma de las ${ordenesActivas.length} órdenes activas · <span style="text-decoration:underline">ver detalle y meta →</span></div>
+          <div class="kpi-vt-sub">${ordenesActivas.length} órdenes activas · <span style="text-decoration:underline">ver detalle y meta →</span></div>
         </div>
-        <div class="kpi-vt-num">${_fmtCOP(totalValorTaller)}</div>
+        <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;flex-shrink:0">
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.7">En el taller</span>
+            <span class="kpi-vt-num" style="font-size:20px">${_fmtCOP(totalValorTaller)}</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:8px;border-top:1px solid rgba(255,255,255,.22);padding-top:5px">
+            <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.7">Facturado mes</span>
+            <span class="kpi-vt-num" style="font-size:20px;color:#A7F3D0">${_fmtCOP(facturadoMes)}</span>
+          </div>
+        </div>
       </div>`;
 
     // ── Capacidad y comercial (datos reales) ──
