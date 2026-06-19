@@ -1168,11 +1168,6 @@ function _panelItemsOrden(orden, tipo) {
       }).join('')
     : `<div style="font-size:12px;color:var(--gris-mid);padding:2px 0 6px">Aún no hay ${cfg.titulo.toLowerCase()}.</div>`;
 
-  const dlId = `dl-${tipo}-${oid}`;
-  const datalist = `<datalist id="${dlId}">${_itemFrecuentes(tipo).map(n => `<option value="${escapeHtml(n)}"></option>`).join('')}</datalist>`;
-  const inLbl = 'font-size:9.5px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:2px';
-  const inCss = 'width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--gris-borde);border-radius:6px;font-size:12.5px';
-
   return `<div class="sidebar-card">
       <div onclick="_toggleItems('${tipo}')" id="${tipo}-header" class="sidebar-card-header" style="gap:8px;cursor:pointer;user-select:none;${abierto ? '' : `background:${cfg.headBg};color:${cfg.color}`}">
         <svg id="${tipo}-chev" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${abierto ? '90' : '0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
@@ -1181,15 +1176,75 @@ function _panelItemsOrden(orden, tipo) {
       </div>
       <div id="${tipo}-body" class="sidebar-card-body" style="${abierto ? '' : 'display:none'}">
         ${lista}
-        ${datalist}
-        <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:flex-end;margin-top:8px;border-top:1px dashed var(--gris-borde);padding-top:9px">
-          <div style="flex:2;min-width:108px"><label style="${inLbl}">${cfg.singular} (busca o escribe)</label><input id="item-nom-${tipo}-${oid}" list="${dlId}" placeholder="${cfg.ph}" autocomplete="off" style="${inCss}"></div>
-          <div style="flex:.6;min-width:44px"><label style="${inLbl}">Cant.</label><input id="item-cant-${tipo}-${oid}" type="number" min="0" step="1" value="1" style="${inCss}"></div>
-          <div style="flex:1;min-width:78px"><label style="${inLbl}">Valor c/u</label><input id="item-val-${tipo}-${oid}" type="number" min="0" step="1000" placeholder="0" style="${inCss};font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')_agregarItem(${oid},'${tipo}')"></div>
-          <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="_agregarItem(${oid},'${tipo}')">Agregar</button>
-        </div>
+        <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:6px;color:${cfg.color};border:1px dashed var(--gris-borde)" onclick="abrirModalAgregarItems(${oid},'${tipo}')">➕ Agregar ${cfg.titulo.toLowerCase()}</button>
       </div>
     </div>`;
+}
+
+// Modal para agregar UNO o VARIOS items (insumos/repuestos) de una sola vez.
+let _maiState = { oid: null, tipo: null, rows: [] };
+function abrirModalAgregarItems(oid, tipo) {
+  _itemsAbierto[tipo] = true;  // que la tarjeta quede abierta tras guardar
+  _maiState = { oid, tipo, rows: [{ nombre: '', cantidad: 1, valor: 0 }, { nombre: '', cantidad: 1, valor: 0 }] };
+  const cfg = ITEM_CFG[tipo];
+  document.getElementById('modal-agregar-items')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'modal-agregar-items';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:14px;max-width:520px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.28);font-family:'DM Sans',sans-serif">
+      <div style="padding:16px 18px 8px"><div style="font-size:16px;font-weight:800;color:var(--azul)">${cfg.icono} Agregar ${cfg.titulo.toLowerCase()}</div>
+        <div style="font-size:11.5px;color:var(--gris-mid);margin-top:2px">Agrega uno o varios a la vez. Usa el desplegable para elegir de los frecuentes o escribe.</div></div>
+      <datalist id="mai-dl">${_itemFrecuentes(tipo).map(n => `<option value="${escapeHtml(n)}"></option>`).join('')}</datalist>
+      <div id="mai-rows" style="padding:6px 18px;overflow:auto;flex:1"></div>
+      <div style="padding:6px 18px"><button class="btn btn-ghost btn-sm" style="width:100%;color:${cfg.color};border:1px dashed var(--gris-borde)" onclick="_maiAddRow()">＋ Agregar otra fila</button></div>
+      <div style="padding:12px 18px;border-top:1px solid var(--gris-borde);display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-agregar-items').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="_guardarModalItems()">Guardar</button>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  _maiRender();
+}
+function _maiSync() {
+  const cont = document.getElementById('mai-rows'); if (!cont) return;
+  _maiState.rows = [...cont.querySelectorAll('[data-mai]')].map(row => ({
+    nombre: row.querySelector('.mai-nom')?.value || '',
+    cantidad: parseFloat(row.querySelector('.mai-cant')?.value) || 1,
+    valor: parseFloat(row.querySelector('.mai-val')?.value) || 0
+  }));
+}
+function _maiRender() {
+  const cont = document.getElementById('mai-rows'); if (!cont) return;
+  const cfg = ITEM_CFG[_maiState.tipo];
+  const inCss = 'box-sizing:border-box;padding:7px 9px;border:1px solid var(--gris-borde);border-radius:6px;font-size:13px';
+  cont.innerHTML = _maiState.rows.map((r, i) => `<div data-mai="${i}" style="display:flex;gap:5px;margin-bottom:7px;align-items:center">
+      <input class="mai-nom" list="mai-dl" value="${escapeHtml(r.nombre)}" placeholder="${cfg.ph}" autocomplete="off" style="${inCss};flex:2;min-width:0">
+      <input class="mai-cant" type="number" min="0" step="1" value="${r.cantidad}" title="Cantidad" style="${inCss};flex:.6;min-width:46px">
+      <input class="mai-val" type="number" min="0" step="1000" value="${r.valor || ''}" placeholder="Valor c/u" title="Valor unitario" style="${inCss};flex:1.1;min-width:80px;font-family:'DM Mono',monospace">
+      <button class="btn btn-ghost btn-xs" style="flex-shrink:0;color:#DC2626" onclick="_maiDelRow(${i})">✕</button>
+    </div>`).join('');
+}
+function _maiAddRow() { _maiSync(); _maiState.rows.push({ nombre: '', cantidad: 1, valor: 0 }); _maiRender(); setTimeout(() => { const rows = document.querySelectorAll('#mai-rows .mai-nom'); rows[rows.length - 1]?.focus(); }, 20); }
+function _maiDelRow(i) { _maiSync(); _maiState.rows.splice(i, 1); if (!_maiState.rows.length) _maiState.rows.push({ nombre: '', cantidad: 1, valor: 0 }); _maiRender(); }
+async function _guardarModalItems() {
+  _maiSync();
+  const { oid, tipo } = _maiState; const cfg = ITEM_CFG[tipo];
+  const nuevos = _maiState.rows
+    .filter(r => r.nombre.trim() && (+r.valor) > 0)
+    .map(r => ({ nombre: r.nombre.trim(), cantidad: (+r.cantidad) || 1, valor: (+r.valor) || 0 }));
+  if (!nuevos.length) { toast(`Agrega al menos un ${cfg.singular.toLowerCase()} con nombre y valor`, 'err'); return; }
+  try {
+    const o = await api(`/ordenes?id=eq.${oid}&select=${cfg.campo}`).then(r => r?.[0]).catch(() => null);
+    const arr = _leerItems(o || {}, cfg.campo);
+    nuevos.forEach(n => { arr.push(n); _recordarItemFrecuente(tipo, n.nombre); });
+    await api(`/ordenes?id=eq.${oid}`, 'PATCH', { [cfg.campo]: arr });
+    if (ordenActual && ordenActual.id === oid) ordenActual[cfg.campo] = arr;
+    document.getElementById('modal-agregar-items')?.remove();
+    toast(`${nuevos.length} ${nuevos.length === 1 ? cfg.singular.toLowerCase() + ' agregado' : cfg.titulo.toLowerCase() + ' agregados'} ✓`);
+    abrirOrden(oid);
+  } catch (e) { toast(`Error agregando (¿falta la columna ${cfg.campo}? corre el SQL): ` + e.message, 'err'); }
 }
 
 function _toggleItems(tipo) {
