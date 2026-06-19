@@ -27,14 +27,25 @@ function _toggleDatosOrden() {
   if (chev) chev.style.transform = `rotate(${_datosOrdenAbierto ? '90' : '0'}deg)`;
 }
 
-// "Estado de la orden" — minimizable; arranca abierto (tiene las acciones).
-let _estadoOrdenAbierto = true;
+// "Estado de la orden" — minimizable; arranca CERRADO (como los demás paneles).
+let _estadoOrdenAbierto = false;
 function _toggleEstadoOrden() {
   _estadoOrdenAbierto = !_estadoOrdenAbierto;
   const body = document.getElementById('estado-orden-body');
   const chev = document.getElementById('estado-orden-chev');
   if (body) body.style.display = _estadoOrdenAbierto ? '' : 'none';
   if (chev) chev.style.transform = `rotate(${_estadoOrdenAbierto ? '90' : '0'}deg)`;
+}
+
+// "Valor total de la orden" — minimizable, CERRADO por defecto; el total se ve
+// en el encabezado.
+let _valorTotalAbierto = false;
+function _toggleValorTotal() {
+  _valorTotalAbierto = !_valorTotalAbierto;
+  const body = document.getElementById('valor-total-body');
+  const chev = document.getElementById('valor-total-chev');
+  if (body) body.style.display = _valorTotalAbierto ? '' : 'none';
+  if (chev) chev.style.transform = `rotate(${_valorTotalAbierto ? '90' : '0'}deg)`;
 }
 
 // "Servicios y etapas" también arranca colapsado; se recuerda el estado entre
@@ -382,50 +393,59 @@ async function abrirOrden(id) {
               <button class="btn btn-sm" style="flex-shrink:0;background:#D97706;color:#fff;border-color:#D97706;padding:6px 10px" onclick="_guardarNumeroOT(${orden.id})">Guardar</button>
             </div>
           </div>` : ''}
+          ${(() => {
+            const fmt = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
+            const manoObra = etapas.reduce((s,e) => s + (e.valor_venta||0), 0);
+            let insumos = [];
+            try { const raw = orden.insumos; insumos = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch(e) { insumos = []; }
+            const valorInsumos = insumos.reduce((s,i) => s + (((+i.cantidad)||0) * ((+i.valor)||0)), 0);
+            let repSimple = [];
+            try { const raw = orden.repuestos_simple; repSimple = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch(e) { repSimple = []; }
+            const valorRepSimple = repSimple.reduce((s,i) => s + (((+i.cantidad)||0) * ((+i.valor)||0)), 0);
+            const subtotal = manoObra + valorRepuestos + valorInsumos + valorRepSimple;
+            const iva = subtotal ? Math.round(subtotal * 0.19) : 0;
+            const total = subtotal + iva;
+            // Cuerpo del detalle (solo se ve al desplegar). Letras grandes y oscuras.
+            let cuerpo;
+            if (!subtotal) {
+              cuerpo = '<div style="font-size:14px;color:var(--texto)">Sin precio de venta aún.</div>';
+            } else {
+              const sub = (txt,col) => '<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:'+col+';margin:10px 0 3px">' + txt + '</div>';
+              const fila = (lbl,val) => '<div style="display:flex;justify-content:space-between;gap:8px;font-size:14.5px;padding:5px 0;border-bottom:1px solid var(--gris-borde)"><span style="color:var(--texto);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + lbl + '</span><span style="font-weight:700;color:var(--texto);flex-shrink:0">' + fmt(val) + '</span></div>';
+              const filasMO = etapas.filter(e=>e.valor_venta).map(e => fila(escapeHtml(e.etapa||''), e.valor_venta)).join('');
+              const bloqueMO = filasMO ? sub('🔧 Mano de obra','#1D4ED8') + filasMO : '';
+              const bloqueRep = (valorRepuestos || repSimple.length)
+                ? sub('🧰 Repuestos','#0F766E')
+                  + (valorRepuestos ? fila('Repuestos recibidos', valorRepuestos) : '')
+                  + repSimple.map(i => { const cant=(+i.cantidad)||0, val=(+i.valor)||0; return fila(escapeHtml(i.nombre||'Repuesto') + (cant && cant !== 1 ? ' ×'+cant : ''), cant*val); }).join('')
+                : '';
+              const bloqueIns = insumos.length
+                ? sub('🛢 Insumos','#B45309') + insumos.map(i => {
+                    const cant = (+i.cantidad)||0, val = (+i.valor)||0;
+                    return fila(escapeHtml(i.nombre||'Insumo') + (cant && cant !== 1 ? ' ×'+cant : ''), cant*val);
+                  }).join('')
+                : '';
+              cuerpo = bloqueMO + bloqueRep + bloqueIns +
+                '<div style="display:flex;justify-content:space-between;font-size:14.5px;padding:7px 0 2px"><span style="color:var(--texto)">Subtotal</span><span style="font-weight:700;color:var(--texto)">' + fmt(subtotal) + '</span></div>' +
+                '<div style="display:flex;justify-content:space-between;font-size:14.5px;padding:2px 0"><span style="color:var(--texto)">IVA (19%)</span><span style="font-weight:700;color:var(--texto)">' + fmt(iva) + '</span></div>' +
+                '<div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:8px;border-top:2px solid var(--azul-mid)"><span style="font-size:15px;font-weight:800;color:var(--azul)">Total con IVA</span><span style="font-size:17px;font-weight:800;color:var(--azul)">' + fmt(total) + '</span></div>';
+            }
+            const pill = subtotal
+              ? `<span style="flex-shrink:0;font-size:14px;font-weight:800;color:var(--azul);background:#fff;border:1px solid var(--azul-mid);border-radius:99px;padding:2px 11px;white-space:nowrap">${fmt(total)}</span>`
+              : `<span style="flex-shrink:0;font-size:11px;font-weight:700;color:#B45309;background:#FEF3C7;border-radius:99px;padding:2px 9px;white-space:nowrap">Sin valor</span>`;
+            return `
           <div class="sidebar-card">
-            <div class="sidebar-card-header" style="background:var(--azul-light);color:var(--azul);display:flex;align-items:center;justify-content:space-between;gap:8px">
-              <span>Valor total de la orden</span>
-              ${esJefe() ? `<button class="btn btn-ghost btn-xs" style="color:var(--azul)" onclick="abrirEditorValor(${orden.id})">✏️ Editar</button>` : ''}
+            <div onclick="_toggleValorTotal()" class="sidebar-card-header" style="background:var(--azul-light);color:var(--azul);display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+              <svg id="valor-total-chev" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_valorTotalAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
+              <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px">Valor total de la orden</span>
+              ${pill}
             </div>
-            <div class="sidebar-card-body">
-              ${(() => {
-                const fmt = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
-                const manoObra = etapas.reduce((s,e) => s + (e.valor_venta||0), 0);
-                let insumos = [];
-                try { const raw = orden.insumos; insumos = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch(e) { insumos = []; }
-                const valorInsumos = insumos.reduce((s,i) => s + (((+i.cantidad)||0) * ((+i.valor)||0)), 0);
-                let repSimple = [];
-                try { const raw = orden.repuestos_simple; repSimple = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch(e) { repSimple = []; }
-                const valorRepSimple = repSimple.reduce((s,i) => s + (((+i.cantidad)||0) * ((+i.valor)||0)), 0);
-                const subtotal = manoObra + valorRepuestos + valorInsumos + valorRepSimple;
-                if (!subtotal) return '<div style="font-size:13px;color:var(--gris-mid)">Sin precio de venta aún.</div>';
-                const iva = Math.round(subtotal * 0.19);
-                const total = subtotal + iva;
-                const sub = (txt,col) => '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:'+col+';margin:8px 0 2px">' + txt + '</div>';
-                const fila = (lbl,val) => '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px solid var(--gris-borde)"><span style="color:var(--gris-mid);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + lbl + '</span><span style="font-weight:600;flex-shrink:0">' + fmt(val) + '</span></div>';
-                // Mano de obra (procesos / etapas)
-                const filasMO = etapas.filter(e=>e.valor_venta).map(e => fila(escapeHtml(e.etapa||''), e.valor_venta)).join('');
-                const bloqueMO = filasMO ? sub('🔧 Mano de obra','#1D4ED8') + filasMO : '';
-                // Repuestos (de taller con proveedores + repuestos simples listados)
-                const bloqueRep = (valorRepuestos || repSimple.length)
-                  ? sub('🧰 Repuestos','#0F766E')
-                    + (valorRepuestos ? fila('Repuestos recibidos', valorRepuestos) : '')
-                    + repSimple.map(i => { const cant=(+i.cantidad)||0, val=(+i.valor)||0; return fila(escapeHtml(i.nombre||'Repuesto') + (cant && cant !== 1 ? ' ×'+cant : ''), cant*val); }).join('')
-                  : '';
-                // Insumos (cada uno listado)
-                const bloqueIns = insumos.length
-                  ? sub('🛢 Insumos','#B45309') + insumos.map(i => {
-                      const cant = (+i.cantidad)||0, val = (+i.valor)||0;
-                      return fila(escapeHtml(i.nombre||'Insumo') + (cant && cant !== 1 ? ' ×'+cant : ''), cant*val);
-                    }).join('')
-                  : '';
-                return bloqueMO + bloqueRep + bloqueIns +
-                  '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0 2px"><span style="color:var(--gris-mid)">Subtotal</span><span style="font-weight:600">' + fmt(subtotal) + '</span></div>' +
-                  '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--gris-mid)">IVA (19%)</span><span style="font-weight:600">' + fmt(iva) + '</span></div>' +
-                  '<div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:8px;border-top:2px solid var(--azul-mid)"><span style="font-size:13px;font-weight:700;color:var(--azul)">Total con IVA</span><span style="font-size:15px;font-weight:700;color:var(--azul)">' + fmt(total) + '</span></div>';
-              })()}
+            <div id="valor-total-body" class="sidebar-card-body" style="${_valorTotalAbierto?'':'display:none'}">
+              ${esJefe() ? `<div style="text-align:right;margin-bottom:6px"><button class="btn btn-ghost btn-xs" style="color:var(--azul)" onclick="abrirEditorValor(${orden.id})">✏️ Editar</button></div>` : ''}
+              ${cuerpo}
             </div>
-          </div>
+          </div>`;
+          })()}
           ${typeof _panelItemsOrden === 'function' ? _panelItemsOrden(orden, 'insumos') + _panelItemsOrden(orden, 'repuestos') : ''}
           ${orden.tipo_cliente === 'aseguradora' && esJefe() ? `
           <div class="sidebar-card">
@@ -916,8 +936,8 @@ function _panelComentariosOrden(orden, novedades, etapas) {
   const _delNov = n => `<button class="btn btn-ghost btn-xs" title="Eliminar novedad" style="flex-shrink:0;color:#DC2626;padding:1px 6px;font-size:13px;line-height:1" onclick="event.stopPropagation();_eliminarNovedadEstado(${ordenId},'${encodeURIComponent(n.en || '')}')">✕</button>`;
   const histHtml = hist.map(n => `<div style="display:flex;align-items:flex-start;gap:6px;border-left:3px solid #7C3AED;background:#F8FAFC;border-radius:6px;padding:7px 10px;margin-bottom:6px">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;color:#1E293B;white-space:pre-wrap">${escapeHtml(n.texto || '—')}</div>
-        <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(n.por || '—')} · ${formatTS(n.en)}</div>
+        <div style="font-size:15px;color:var(--texto);white-space:pre-wrap">${escapeHtml(n.texto || '—')}</div>
+        <div style="font-size:12.5px;color:var(--gris-mid);margin-top:2px">${escapeHtml(n.por || '—')} · ${formatTS(n.en)}</div>
       </div>
       ${_delNov(n)}
     </div>`).join('');
@@ -942,14 +962,14 @@ function _panelComentariosOrden(orden, novedades, etapas) {
       <!-- ENCABEZADO COLAPSABLE -->
       <div onclick="_toggleComentBar(${ordenId})" style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#E6F1FB;cursor:pointer;user-select:none">
         <svg id="coment-bar-chev-${ordenId}" width="15" height="15" fill="none" stroke="#185FA5" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_ab ? '90' : '0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
-        <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#0C447C;flex-shrink:0">📝 Descripción y estado</span>
-        <span id="coment-bar-prev-${ordenId}" style="font-size:12px;color:#185FA5;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;${_ab ? 'visibility:hidden' : ''}">${_preview ? escapeHtml(_preview) : 'Sin descripción'}</span>
+        <span style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#0C447C;flex-shrink:0">📝 Descripción y estado</span>
+        <span id="coment-bar-prev-${ordenId}" style="font-size:13.5px;color:#185FA5;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;${_ab ? 'visibility:hidden' : ''}">${_preview ? escapeHtml(_preview) : 'Sin descripción'}</span>
       </div>
       <div id="coment-bar-body-${ordenId}" style="${_ab ? '' : 'display:none;'}padding:0 12px 11px">
       <!-- DESCRIPCIÓN -->
       <div style="display:flex;align-items:flex-start;gap:10px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13.5px;color:${desc ? '#1E293B' : 'var(--gris-mid)'};white-space:pre-wrap;line-height:1.4">${desc ? escapeHtml(desc) : 'Sin descripción. Toca “Editar” para escribirla.'}</div>
+          <div style="font-size:16px;color:${desc ? 'var(--texto)' : 'var(--gris-mid)'};white-space:pre-wrap;line-height:1.45">${desc ? escapeHtml(desc) : 'Sin descripción. Toca “Editar” para escribirla.'}</div>
         </div>
         <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="event.stopPropagation();_toggleComentOrden(${ordenId})">✏ Editar</button>
       </div>
@@ -963,16 +983,16 @@ function _panelComentariosOrden(orden, novedades, etapas) {
 
       <!-- ESTADO / HISTORIAL -->
       <div style="margin-top:10px;border-top:1px solid var(--gris-borde);padding-top:10px">
-        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7C3AED;margin-bottom:4px">🔄 Estado del proceso</div>
+        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7C3AED;margin-bottom:4px">🔄 Estado del proceso</div>
         ${ultimo
           ? `<div style="display:flex;align-items:flex-start;gap:6px">
                <div style="flex:1;min-width:0">
-                 <div style="font-size:13.5px;color:#1E293B;white-space:pre-wrap;line-height:1.4">${escapeHtml(ultimo.texto || '—')}</div>
-                 <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${escapeHtml(ultimo.por || '—')} · ${formatTS(ultimo.en)}</div>
+                 <div style="font-size:16px;color:var(--texto);white-space:pre-wrap;line-height:1.45">${escapeHtml(ultimo.texto || '—')}</div>
+                 <div style="font-size:12.5px;color:var(--gris-mid);margin-top:2px">${escapeHtml(ultimo.por || '—')} · ${formatTS(ultimo.en)}</div>
                </div>
                ${_delNov(ultimo)}
              </div>`
-          : `<div style="font-size:12px;color:var(--gris-mid)">Sin novedades de estado todavía.</div>`}
+          : `<div style="font-size:14px;color:var(--gris-mid)">Sin novedades de estado todavía.</div>`}
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
           ${acciones}
           ${_b('+ Agregar novedad', `_toggleNovedadEstado(${ordenId})`)}
@@ -1176,19 +1196,19 @@ function _panelItemsOrden(orden, tipo) {
         const cant = (+i.cantidad) || 0, val = (+i.valor) || 0;
         return `<div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--gris-borde);border-radius:8px;margin-bottom:6px">
           <div style="flex:1;min-width:0">
-            <div style="font-size:12.5px;font-weight:600;color:#1E293B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(i.nombre || cfg.singular)}</div>
-            <div style="font-size:11px;color:var(--gris-mid)">${cant} × ${fmt(val)} = <strong>${fmt(cant * val)}</strong></div>
+            <div style="font-size:14px;font-weight:700;color:var(--texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(i.nombre || cfg.singular)}</div>
+            <div style="font-size:13px;color:var(--texto)">${cant} × ${fmt(val)} = <strong>${fmt(cant * val)}</strong></div>
           </div>
           <button class="btn btn-ghost btn-xs" style="flex-shrink:0;color:#DC2626" title="Quitar" onclick="_eliminarItem(${oid},'${tipo}',${idx})">✕</button>
         </div>`;
       }).join('')
-    : `<div style="font-size:12px;color:var(--gris-mid);padding:2px 0 6px">Aún no hay ${cfg.titulo.toLowerCase()}.</div>`;
+    : `<div style="font-size:13.5px;color:var(--gris-mid);padding:2px 0 6px">Aún no hay ${cfg.titulo.toLowerCase()}.</div>`;
 
   return `<div class="sidebar-card">
       <div onclick="_toggleItems('${tipo}')" id="${tipo}-header" class="sidebar-card-header" style="gap:8px;cursor:pointer;user-select:none;${abierto ? '' : `background:${cfg.headBg};color:${cfg.color}`}">
         <svg id="${tipo}-chev" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${abierto ? '90' : '0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
-        <span style="flex:1;min-width:0">${cfg.icono} ${cfg.titulo}</span>
-        <span style="flex-shrink:0;font-size:10.5px;font-weight:700;text-transform:none;letter-spacing:0;color:${total ? cfg.color : 'var(--gris-mid)'}">${total ? fmt(total) : (arr.length ? '' : 'Ninguno')}</span>
+        <span style="flex:1;min-width:0;font-size:14px">${cfg.icono} ${cfg.titulo}</span>
+        <span style="flex-shrink:0;font-size:12.5px;font-weight:800;text-transform:none;letter-spacing:0;color:${total ? cfg.color : 'var(--gris-mid)'}">${total ? fmt(total) : (arr.length ? '' : 'Ninguno')}</span>
       </div>
       <div id="${tipo}-body" class="sidebar-card-body" style="${abierto ? '' : 'display:none'}">
         ${lista}
