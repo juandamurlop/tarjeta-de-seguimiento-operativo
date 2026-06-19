@@ -718,11 +718,13 @@ async function abrirPanelValorTaller() {
     const ahora = new Date();
     const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
     const anio = ahora.getFullYear(), mesNum = ahora.getMonth() + 1;
-    const [ords, metas, etMes] = await Promise.all([
+    const [ords, metasAll, etMes] = await Promise.all([
       api(`/ordenes?or=(estado.eq.Activa,estado.is.null)&pulmon=not.eq.true&select=id,placa,propietario,precio_venta_cliente,insumos,repuestos_simple&limit=300`).catch(() => []) || [],
-      api(`/metas_taller?ano=eq.${anio}&mes_num=eq.${mesNum}&limit=1`).catch(() => []) || [],
+      api(`/metas_taller?order=ano.desc,mes_num.desc&limit=36`).catch(() => []) || [],   // igual que el módulo Metas
       api(`/etapas?fin=gte.${inicioMes}&fin=not.is.null&select=valor`).catch(() => []) || []
     ]);
+    // Buscar la meta del mes igual que el módulo Metas (con coerción de tipo).
+    const metaMes = metasAll.find(m => Number(m.ano) === anio && Number(m.mes_num) === mesNum);
     const ids = ords.map(o => o.id).join(',');
     const ets = ids ? (await api(`/etapas?orden_id=in.(${ids})&select=orden_id,valor_venta`).catch(() => []) || []) : [];
     const valItems = (o, campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (e) { return 0; } };
@@ -733,7 +735,7 @@ async function abrirPanelValorTaller() {
     }).filter(f => f.v > 0).sort((a, b) => b.v - a.v);
     const totalTaller = filas.reduce((s, f) => s + f.v, 0);
     const maxV = Math.max(1, ...filas.map(f => f.v));
-    const meta = metas[0]?.meta_ingresos || 0;
+    const meta = Number(metaMes?.meta_ingresos) || 0;
     const ingresosMes = etMes.reduce((s, e) => s + (e.valor || 0), 0);
     const falta = Math.max(0, meta - ingresosMes);
     const pctReal = meta > 0 ? Math.round(ingresosMes / meta * 100) : 0;
