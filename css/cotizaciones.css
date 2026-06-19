@@ -82,7 +82,7 @@
 .ord-row:last-child { border-bottom: none; }
 .ord-row:hover { background: var(--gris-bg); }
 .ord-row td { padding: 12px 14px; vertical-align: middle; }
-.ord-row td:first-child { padding-left: 0; }
+.ord-row td:first-child { text-align: center; }
 .ord-placa {
   font-family: 'DM Mono', monospace;
   font-size: 15px;

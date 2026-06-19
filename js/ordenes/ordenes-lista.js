@@ -159,7 +159,7 @@ function _buildOrdenRow(o, etapas) {
 
   const ti = _tipoOrdenInfo(o);
   return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-oid="${o.id}" data-search="${escapeHtml(searchStr)}" style="background:${ti.color}12">
-    <td style="border-left:4px solid ${ti.color}">
+    <td style="text-align:center">
       <div class="ord-placa">${escapeHtml(o.placa)}</div>
       <div class="ord-ot">${otDe(o)}${contactAlert}</div>
     </td>
@@ -249,7 +249,7 @@ async function cargarOrdenesPulmon() {
       const _fmtP = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
       const ti = _tipoOrdenInfo(o);
       return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-search="${escapeHtml(searchStr)}" style="background:${ti.color}12">
-        <td style="border-left:4px solid ${ti.color}">
+        <td style="text-align:center">
           <div class="ord-placa">${escapeHtml(o.placa)}</div>
           <div class="ord-ot">${otDe(o)}</div>
         </td>
@@ -357,11 +357,45 @@ async function montarHistorialOrdenes() {
     _historialData = data;
     cont.innerHTML = `<div style="padding:18px 20px">
       <div style="font-size:16px;font-weight:700;margin-bottom:12px">Historial de órdenes <span style="font-size:13px;color:var(--gris-mid);font-weight:500">(${data.length})</span></div>
-      <input id="hist-buscar" type="text" oninput="_filtrarHistorial(this.value)" autocomplete="off" placeholder="🔎 Buscar por placa, cliente, organización, N° de orden..." style="width:100%;padding:9px 13px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;outline:none;margin-bottom:14px;box-sizing:border-box">
+      <input id="hist-buscar" type="text" oninput="_filtrarHistorial(this.value)" autocomplete="off" placeholder="🔎 Buscar por placa, cliente, organización, N° de orden..." style="width:100%;padding:9px 13px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;outline:none;margin-bottom:12px;box-sizing:border-box">
+      <div id="hist-tabs" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px"></div>
       <div id="hist-lista"></div>
     </div>`;
-    _renderHistorial(data);
+    _renderHistTabs();
+    _renderHistorial(_histFiltrarTipo(data));
   } catch (e) { cont.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+}
+
+// Pestañas del historial por tipo de cliente. "Todas" + un tab por categoría,
+// cada uno con su contador. Al cambiar de tab se re-renderiza la lista filtrada
+// y se vuelve a aplicar el texto de búsqueda actual.
+let _histTipoActual = 'todas';
+function _renderHistTabs() {
+  const cont = document.getElementById('hist-tabs'); if (!cont) return;
+  const data = _historialData || [];
+  const tipos = [
+    { key: 'todas',       label: 'Todas',       color: '#334155' },
+    { key: 'particular',  label: 'Particular',  color: '#2563EB' },
+    { key: 'empresa',     label: 'Empresa',     color: '#D97706' },
+    { key: 'flotilla',    label: 'Flotilla',    color: '#0891B2' },
+    { key: 'aseguradora', label: 'Aseguradora', color: '#7C3AED' }
+  ];
+  const cuenta = k => k === 'todas' ? data.length : data.filter(o => _tipoOrdenInfo(o).key === k).length;
+  cont.innerHTML = tipos.map(t => {
+    const act = _histTipoActual === t.key;
+    return `<button onclick="_setHistTipo('${t.key}')" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;padding:6px 13px;border-radius:99px;cursor:pointer;border:1.5px solid ${t.color}${act ? '' : '33'};background:${act ? t.color : '#fff'};color:${act ? '#fff' : t.color}">${t.label}<span style="font-size:11px;font-weight:800;opacity:.85">${cuenta(t.key)}</span></button>`;
+  }).join('');
+}
+function _histFiltrarTipo(data) {
+  if (_histTipoActual === 'todas') return data;
+  return (data || []).filter(o => _tipoOrdenInfo(o).key === _histTipoActual);
+}
+function _setHistTipo(tipo) {
+  _histTipoActual = tipo;
+  _renderHistTabs();
+  _renderHistorial(_histFiltrarTipo(_historialData || []));
+  const q = document.getElementById('hist-buscar')?.value;
+  if (q) _filtrarHistorial(q);
 }
 
 function _histEstadoPill(o) {
@@ -377,11 +411,10 @@ function _renderHistorial(data) {
   if (!cont) return;
   if (!data.length) { cont.innerHTML = '<div class="empty-state"><p>Sin órdenes.</p></div>'; return; }
   const rows = data.map(o => {
-    const ti = _tipoOrdenInfo(o);
     const veh = [o.marca, o.linea, o.modelo].filter(Boolean).map(escapeHtml).join(' ');
     const org = o.aseguradora ? ` · ${escapeHtml(o.aseguradora)}` : '';
     const search = [(o.placa || ''), (o.propietario || ''), (o.aseguradora || ''), (o.marca || ''), (o.linea || ''), otDe(o)].join(' ').toLowerCase();
-    return `<div data-hsearch="${escapeHtml(search)}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--gris-borde);border-left:4px solid ${ti.color};border-radius:9px;margin-bottom:7px;background:${ti.color}10;cursor:pointer" onclick="abrirOrden(${o.id})">
+    return `<div data-hsearch="${escapeHtml(search)}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--gris-borde);border-radius:9px;margin-bottom:7px;background:#fff;cursor:pointer" onclick="abrirOrden(${o.id})">
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="font-family:'DM Mono',monospace;font-weight:800;font-size:14px">${escapeHtml(o.placa || '—')}</span>
@@ -393,7 +426,6 @@ function _renderHistorial(data) {
       </div>
       <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
         ${_histEstadoPill(o)}
-        <button class="btn btn-ghost btn-xs" style="color:var(--azul)" onclick="event.stopPropagation();abrirMoverOrganizacion(${o.id})">🏢 Mover</button>
       </div>
     </div>`;
   }).join('');
