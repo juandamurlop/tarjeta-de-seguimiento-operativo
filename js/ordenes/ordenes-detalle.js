@@ -373,7 +373,10 @@ async function abrirOrden(id) {
             </div>
           </div>` : ''}
           <div class="sidebar-card">
-            <div class="sidebar-card-header" style="background:var(--azul-light);color:var(--azul)">Valor total de la orden</div>
+            <div class="sidebar-card-header" style="background:var(--azul-light);color:var(--azul);display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <span>Valor total de la orden</span>
+              ${esJefe() ? `<button class="btn btn-ghost btn-xs" style="color:var(--azul)" onclick="abrirEditorValor(${orden.id})">✏️ Editar</button>` : ''}
+            </div>
             <div class="sidebar-card-body">
               ${(() => {
                 const fmt = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
@@ -1232,6 +1235,113 @@ async function _eliminarItem(ordenId, tipo, idx) {
     toast('Eliminado');
     abrirOrden(ordenId);
   } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ============================================================
+// EDITOR DE VALOR DE LA ORDEN (solo jefe/gerente) — en una pantalla edita el
+// precio de cada servicio/etapa, los insumos y los repuestos, con sumatoria viva.
+// ============================================================
+let _edvState = { ordenId: null, etapas: [], insumos: [], repuestos: [] };
+const _edvFmt = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
+
+async function abrirEditorValor(ordenId) {
+  const etapas = await api(`/etapas?orden_id=eq.${ordenId}&order=creado_en.asc&select=id,etapa,servicio,valor_venta`).catch(() => []) || [];
+  const o = (ordenActual && ordenActual.id === ordenId) ? ordenActual : await api(`/ordenes?id=eq.${ordenId}&select=insumos,repuestos_simple`).then(r => r?.[0]).catch(() => null);
+  _edvState = {
+    ordenId,
+    etapas: etapas.map(e => ({ id: e.id, nombre: e.etapa || (typeof CATALOGO !== 'undefined' && CATALOGO[e.servicio]?.nombre) || e.servicio || 'Servicio', valor: +e.valor_venta || 0 })),
+    insumos: _leerItems(o || {}, 'insumos').map(i => ({ nombre: i.nombre || '', cantidad: +i.cantidad || 1, valor: +i.valor || 0 })),
+    repuestos: _leerItems(o || {}, 'repuestos_simple').map(i => ({ nombre: i.nombre || '', cantidad: +i.cantidad || 1, valor: +i.valor || 0 }))
+  };
+  document.getElementById('modal-editor-valor')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'modal-editor-valor';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.28);font-family:'DM Sans',sans-serif">
+      <div style="padding:16px 18px 10px;border-bottom:1px solid var(--gris-borde)">
+        <div style="font-size:16px;font-weight:800;color:var(--azul)">Editar valor de la orden</div>
+      </div>
+      <div id="edv-body" style="padding:14px 18px;overflow:auto;flex:1"></div>
+      <div style="padding:12px 18px;border-top:1px solid var(--gris-borde);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div id="edv-tot" style="font-size:12.5px;color:var(--gris-mid)"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-editor-valor').remove()">Cancelar</button>
+          <button class="btn btn-primary btn-sm" onclick="_guardarEditorValor()">Guardar</button>
+        </div>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  _edvRender();
+}
+
+function _edvSync() {
+  document.querySelectorAll('#edv-body [data-edv-et]').forEach(inp => {
+    const i = +inp.dataset.edvEt; if (_edvState.etapas[i]) _edvState.etapas[i].valor = parseFloat(inp.value) || 0;
+  });
+  ['insumos', 'repuestos'].forEach(tipo => {
+    document.querySelectorAll(`#edv-body [data-edv-row="${tipo}"]`).forEach(row => {
+      const it = _edvState[tipo][+row.dataset.edvIdx]; if (!it) return;
+      it.nombre = row.querySelector('.edv-nom')?.value.trim() || '';
+      it.cantidad = parseFloat(row.querySelector('.edv-cant')?.value) || 0;
+      it.valor = parseFloat(row.querySelector('.edv-val')?.value) || 0;
+    });
+  });
+}
+function _edvTotales() {
+  const mo = _edvState.etapas.reduce((s, e) => s + (+e.valor || 0), 0);
+  const ins = _edvState.insumos.reduce((s, i) => s + ((+i.cantidad || 0) * (+i.valor || 0)), 0);
+  const rep = _edvState.repuestos.reduce((s, i) => s + ((+i.cantidad || 0) * (+i.valor || 0)), 0);
+  const sub = mo + ins + rep, iva = Math.round(sub * 0.19);
+  return { sub, iva, tot: sub + iva };
+}
+function _edvActualizarTot() {
+  _edvSync();
+  const t = _edvTotales(); const el = document.getElementById('edv-tot');
+  if (el) el.innerHTML = `Subtotal <strong>${_edvFmt(t.sub)}</strong> · IVA <strong>${_edvFmt(t.iva)}</strong> · Total <strong style="color:var(--azul)">${_edvFmt(t.tot)}</strong>`;
+}
+function _edvRender() {
+  const body = document.getElementById('edv-body'); if (!body) return;
+  const lbl = (txt, col) => `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${col};margin:10px 0 6px">${txt}</div>`;
+  const inCss = 'box-sizing:border-box;padding:6px 8px;border:1px solid var(--gris-borde);border-radius:6px;font-size:12.5px';
+  const mo = _edvState.etapas.length
+    ? _edvState.etapas.map((e, i) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(e.nombre)}</span>
+        <input data-edv-et="${i}" type="number" min="0" step="1000" value="${e.valor || ''}" placeholder="0" oninput="_edvActualizarTot()" style="${inCss};width:120px;font-family:'DM Mono',monospace;text-align:right">
+      </div>`).join('')
+    : '<div style="font-size:12px;color:var(--gris-mid)">Sin servicios.</div>';
+  const listaItems = (tipo, color) => {
+    const arr = _edvState[tipo];
+    const filas = arr.length ? arr.map((it, idx) => `<div data-edv-row="${tipo}" data-edv-idx="${idx}" style="display:flex;gap:5px;margin-bottom:6px">
+        <input class="edv-nom" value="${escapeHtml(it.nombre)}" placeholder="Nombre" oninput="_edvActualizarTot()" style="${inCss};flex:2;min-width:0">
+        <input class="edv-cant" type="number" min="0" step="1" value="${it.cantidad}" oninput="_edvActualizarTot()" style="${inCss};flex:.6;min-width:42px" title="Cantidad">
+        <input class="edv-val" type="number" min="0" step="1000" value="${it.valor || ''}" placeholder="Valor" oninput="_edvActualizarTot()" style="${inCss};flex:1;min-width:70px;font-family:'DM Mono',monospace" title="Valor unitario">
+        <button class="btn btn-ghost btn-xs" style="flex-shrink:0;color:#DC2626" onclick="_edvDelItem('${tipo}',${idx})">✕</button>
+      </div>`).join('') : `<div style="font-size:12px;color:var(--gris-mid);margin-bottom:4px">Ninguno.</div>`;
+    return filas + `<button class="btn btn-ghost btn-sm" style="width:100%;color:${color};border:1px dashed var(--gris-borde)" onclick="_edvAddItem('${tipo}')">➕ Agregar</button>`;
+  };
+  body.innerHTML =
+    lbl('🔧 Mano de obra (servicios)', '#1D4ED8') + mo +
+    lbl('🛢 Insumos', '#B45309') + listaItems('insumos', '#B45309') +
+    lbl('🔧 Repuestos', '#0F766E') + listaItems('repuestos', '#0F766E');
+  _edvActualizarTot();
+}
+function _edvAddItem(tipo) { _edvSync(); _edvState[tipo].push({ nombre: '', cantidad: 1, valor: 0 }); _edvRender(); }
+function _edvDelItem(tipo, idx) { _edvSync(); _edvState[tipo].splice(idx, 1); _edvRender(); }
+async function _guardarEditorValor() {
+  _edvSync();
+  const oid = _edvState.ordenId;
+  try {
+    for (const e of _edvState.etapas) { await api(`/etapas?id=eq.${e.id}`, 'PATCH', { valor_venta: +e.valor || 0 }); }
+    const insumos = _edvState.insumos.filter(i => i.nombre || i.valor);
+    const repuestos = _edvState.repuestos.filter(i => i.nombre || i.valor);
+    await api(`/ordenes?id=eq.${oid}`, 'PATCH', { insumos, repuestos_simple: repuestos });
+    if (ordenActual && ordenActual.id === oid) { ordenActual.insumos = insumos; ordenActual.repuestos_simple = repuestos; }
+    document.getElementById('modal-editor-valor')?.remove();
+    toast('Valor actualizado ✓');
+    abrirOrden(oid);
+  } catch (e) { toast('Error guardando: ' + e.message, 'err'); }
 }
 
 // ============================================================

@@ -379,10 +379,10 @@ async function cargarKPITaller() {
       return s + (o.precio_venta_cliente && o.precio_venta_cliente > 0 ? o.precio_venta_cliente : etsVal);
     }, 0);
     const valorTallerHtml = `
-      <div class="kpi-valor-taller">
+      <div class="kpi-valor-taller" onclick="abrirPanelValorTaller()" style="cursor:pointer" title="Ver valor por orden y la meta del mes">
         <div>
           <div class="kpi-vt-lbl">💰 Valor en el taller</div>
-          <div class="kpi-vt-sub">Suma de los procesos de las ${ordenesActivas.length} órdenes activas</div>
+          <div class="kpi-vt-sub">Suma de las ${ordenesActivas.length} órdenes activas · <span style="text-decoration:underline">ver detalle y meta →</span></div>
         </div>
         <div class="kpi-vt-num">${_fmtCOP(totalValorTaller)}</div>
       </div>`;
@@ -692,4 +692,70 @@ async function cargarKPITaller() {
       <div style="font-size:13px;color:var(--gris-mid)">${escapeHtml(err.message)}</div>
     </div>`;
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// PANEL "Valor en el taller + Meta del mes" (clic en el valor del taller).
+// Muestra el valor por orden activa que suma el total, y la meta mensual de
+// ingresos (del módulo Metas) con cuánto se lleva, cuánto falta y barra/gráfico.
+// ═══════════════════════════════════════════════════════════
+async function abrirPanelValorTaller() {
+  const _fmt = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
+  document.getElementById('panel-valor-taller')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'panel-valor-taller';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:800;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div style="background:#fff;border-radius:16px;max-width:640px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;font-family:'DM Sans',sans-serif">
+    <div style="background:#1E3A5F;color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:15px;font-weight:700">💰 Valor en el taller y meta del mes</div>
+      <button onclick="document.getElementById('panel-valor-taller').remove()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div id="pvt-body" style="padding:16px 18px;overflow:auto;flex:1"><div class="loading-state">Cargando...</div></div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  try {
+    const ahora = new Date();
+    const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
+    const anio = ahora.getFullYear(), mesNum = ahora.getMonth() + 1;
+    const [ords, metas, etMes] = await Promise.all([
+      api(`/ordenes?or=(estado.eq.Activa,estado.is.null)&pulmon=not.eq.true&select=id,placa,propietario,precio_venta_cliente,insumos,repuestos_simple&limit=300`).catch(() => []) || [],
+      api(`/metas_taller?ano=eq.${anio}&mes_num=eq.${mesNum}&limit=1`).catch(() => []) || [],
+      api(`/etapas?fin=gte.${inicioMes}&fin=not.is.null&select=valor`).catch(() => []) || []
+    ]);
+    const ids = ords.map(o => o.id).join(',');
+    const ets = ids ? (await api(`/etapas?orden_id=in.(${ids})&select=orden_id,valor_venta`).catch(() => []) || []) : [];
+    const valItems = (o, campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (e) { return 0; } };
+    const filas = ords.map(o => {
+      const mo = ets.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
+      const v = (o.precio_venta_cliente && o.precio_venta_cliente > 0) ? o.precio_venta_cliente : (mo + valItems(o, 'insumos') + valItems(o, 'repuestos_simple'));
+      return { placa: o.placa, v };
+    }).filter(f => f.v > 0).sort((a, b) => b.v - a.v);
+    const totalTaller = filas.reduce((s, f) => s + f.v, 0);
+    const maxV = Math.max(1, ...filas.map(f => f.v));
+    const meta = metas[0]?.meta_ingresos || 0;
+    const ingresosMes = etMes.reduce((s, e) => s + (e.valor || 0), 0);
+    const falta = Math.max(0, meta - ingresosMes);
+    const pctReal = meta > 0 ? Math.round(ingresosMes / meta * 100) : 0;
+    const pctBar = Math.min(pctReal, 100);
+    const colorBar = pctReal >= 100 ? '#059669' : pctReal >= 70 ? '#D97706' : '#DC2626';
+
+    const ordRows = filas.length ? filas.map(f => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-family:'DM Mono',monospace;font-weight:800;font-size:12.5px;width:62px;flex-shrink:0">${escapeHtml(f.placa || '—')}</span>
+        <div style="flex:1;height:13px;background:var(--gris-bg);border-radius:99px;overflow:hidden"><div style="height:100%;width:${Math.round(f.v / maxV * 100)}%;background:#2A5298;border-radius:99px"></div></div>
+        <span style="font-size:12px;font-weight:700;font-family:'DM Mono',monospace;flex-shrink:0;width:98px;text-align:right">${_fmt(f.v)}</span>
+      </div>`).join('') : '<div style="color:var(--gris-mid);font-size:13px">Sin órdenes con valor.</div>';
+
+    const body = document.getElementById('pvt-body');
+    if (body) body.innerHTML = `
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#1D4ED8;margin-bottom:8px">Valor por orden activa (${filas.length})</div>
+      ${ordRows}
+      <div style="display:flex;justify-content:space-between;border-top:2px solid var(--azul-mid);margin-top:8px;padding-top:8px;font-weight:800;color:var(--azul);font-size:14px"><span>Total en el taller</span><span style="font-family:'DM Mono',monospace">${_fmt(totalTaller)}</span></div>
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#047857;margin:20px 0 8px">📈 Meta del mes</div>
+      ${meta > 0 ? `
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span style="color:var(--gris-mid)">Logrado este mes</span><strong>${_fmt(ingresosMes)}</strong></div>
+        <div style="height:22px;background:var(--gris-bg);border-radius:99px;overflow:hidden;margin-bottom:7px"><div style="height:100%;width:${pctBar}%;min-width:34px;background:${colorBar};border-radius:99px;display:flex;align-items:center;justify-content:flex-end;padding-right:9px;color:#fff;font-size:11px;font-weight:800;transition:width .5s ease">${pctReal}%</div></div>
+        <div style="display:flex;justify-content:space-between;font-size:12.5px"><span style="color:var(--gris-mid)">Meta: <strong style="color:var(--texto)">${_fmt(meta)}</strong></span><span style="color:${falta > 0 ? '#DC2626' : '#059669'};font-weight:700">${falta > 0 ? 'Faltan ' + _fmt(falta) : '¡Meta cumplida! 🎉'}</span></div>
+      ` : `<div style="font-size:13px;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:10px 12px">No hay meta cargada para este mes. Cárgala en el módulo <strong>Metas</strong>.</div>`}`;
+  } catch (e) { const b = document.getElementById('pvt-body'); if (b) b.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
 }
