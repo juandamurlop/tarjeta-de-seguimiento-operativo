@@ -504,10 +504,7 @@ function montarJefe() {
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
           <span class="nav-label">Cotizaciones</span>
         </button>
-        <button class="nav-item" id="nav-repuestos" onclick="navJefe('repuestos')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
-          <span class="nav-label">Repuestos</span>
-        </button>
+        <!-- [Oculto] Menú "Repuestos" (flujo con proveedores) — retirado por pedido; el módulo y su código se conservan para una futura versión. -->
       </div>
 
       ${_grupoHeader('registro','Registro')}

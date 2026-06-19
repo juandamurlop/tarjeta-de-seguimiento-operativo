@@ -358,7 +358,7 @@ async function abrirOrden(id) {
                 : serviciosHtml}
             </div>
           </div>
-            ${typeof _panelRepuestosOrden === 'function' ? _panelRepuestosOrden(solicitudesRep, repItems, etapas) : ''}
+            ${/* [Oculto] Panel "Repuestos de la orden" (flujo con proveedores) — retirado de la UI por pedido; el código se conserva. */ ''}
         </div>
         <div class="detalle-sidebar">
           ${(!(orden.numero_ot && String(orden.numero_ot).trim()) && orden.estado !== 'Programada') ? `
@@ -690,12 +690,8 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
       <div class="etapa-body" id="eb-${k}">
         <div class="etapa-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           ${acc}
-          <button class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:5px;color:#92400E;border-color:#FCD34D;background:#FFFBEB"
-            data-eid="${eid}" data-placa="${escapeHtml(ordenActual?.placa||'')}"
-            onclick="abrirModalSolicitudRepuesto(${ordenActual?.id||0},+this.dataset.eid,this.dataset.placa)">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-            Pedir repuesto
-          </button>
+          <!-- [Oculto] Botón "Pedir repuesto" (flujo de repuestos con proveedores).
+               Se retira de la UI por pedido; el código del flujo se conserva. -->
         </div>
         ${e.descripcion ? `<div style="background:#F0F7FF;border:1px solid #BFDBFE;border-radius:7px;padding:9px 12px;margin-bottom:10px;font-size:12.5px;color:#1E293B;line-height:1.5;white-space:pre-wrap"><span style="font-size:10px;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:3px">Descripción</span>${escapeHtml(e.descripcion)}</div>` : ''}
         <div class="timestamps">
