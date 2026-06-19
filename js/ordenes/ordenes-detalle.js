@@ -27,6 +27,16 @@ function _toggleDatosOrden() {
   if (chev) chev.style.transform = `rotate(${_datosOrdenAbierto ? '90' : '0'}deg)`;
 }
 
+// "Estado de la orden" — minimizable; arranca abierto (tiene las acciones).
+let _estadoOrdenAbierto = true;
+function _toggleEstadoOrden() {
+  _estadoOrdenAbierto = !_estadoOrdenAbierto;
+  const body = document.getElementById('estado-orden-body');
+  const chev = document.getElementById('estado-orden-chev');
+  if (body) body.style.display = _estadoOrdenAbierto ? '' : 'none';
+  if (chev) chev.style.transform = `rotate(${_estadoOrdenAbierto ? '90' : '0'}deg)`;
+}
+
 // "Servicios y etapas" también arranca colapsado; se recuerda el estado entre
 // refrescos del polling.
 let _serviciosAbierto = false;
@@ -500,8 +510,12 @@ async function abrirOrden(id) {
           </div>` : ''}
           ${esJefe() ? `
           <div class="sidebar-card">
-            <div class="sidebar-card-header">Estado de la orden</div>
-            <div class="sidebar-card-body">
+            <div onclick="_toggleEstadoOrden()" id="estado-orden-header" class="sidebar-card-header" style="gap:8px;cursor:pointer;user-select:none">
+              <svg id="estado-orden-chev" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_estadoOrdenAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
+              <span style="flex:1;min-width:0">Estado de la orden</span>
+              <span style="flex-shrink:0;font-size:10px;font-weight:800;text-transform:none;letter-spacing:0;color:${orden.pulmon?'#92400E':'#1D4ED8'};background:${orden.pulmon?'#FEF3C7':'#EFF6FF'};border-radius:99px;padding:2px 8px">${orden.pulmon?'En pulmón':(orden.estado||'Activa')}</span>
+            </div>
+            <div id="estado-orden-body" class="sidebar-card-body" style="${_estadoOrdenAbierto?'':'display:none'}">
               ${typeof _barraAccionesEstado === 'function' ? _barraAccionesEstado(orden) : ''}
               ${orden.estado === 'Programada'
                 ? `<div style="display:flex;flex-direction:column;gap:10px">
@@ -521,6 +535,7 @@ async function abrirOrden(id) {
                        <span style="width:8px;height:8px;border-radius:50%;background:var(--azul-mid);display:inline-block"></span>
                        <span style="font-size:13px;font-weight:700;color:var(--azul)">${orden.estado === 'Entregada' ? 'Finalizada' : 'Archivada'}</span>
                      </div>
+                     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gris-mid);margin:2px 0 -2px">📄 Generar orden de trabajo</div>
                      <div style="display:flex;gap:6px;width:100%">
                        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},false)">📋 Sin precios</button>
                        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},true)">💰 Con precios</button>
@@ -540,6 +555,7 @@ async function abrirOrden(id) {
                           </div>`
                      }
                      ${typeof _bloqueIngreso === 'function' ? _bloqueIngreso(orden) : ''}
+                     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gris-mid);margin:2px 0 -2px">📄 Generar orden de trabajo</div>
                      <div style="display:flex;gap:6px;width:100%">
                        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},false)">📋 Sin precios</button>
                        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},true)">💰 Con precios</button>
