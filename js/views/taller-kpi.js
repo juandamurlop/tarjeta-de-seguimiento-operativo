@@ -513,9 +513,19 @@ async function cargarKPITaller() {
     window._kpiPrevSig = _sigMap;
     const _ordCambia = (filas, getId) => filas.slice().sort((a, b) => (_cambiados.has(getId(b)) ? 1 : 0) - (_cambiados.has(getId(a)) ? 1 : 0));
 
+    // Valor (subtotal sin IVA) por orden, para mostrarlo al frente de cada chip.
+    const _valOrd = {};
+    const _valItemsKpi = (o, campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (e) { return 0; } };
+    ordenesActivas.forEach(o => {
+      const mo = todasEtapas.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
+      _valOrd[o.id] = (o.precio_venta_cliente && o.precio_venta_cliente > 0) ? o.precio_venta_cliente : (mo + _valItemsKpi(o, 'insumos') + _valItemsKpi(o, 'repuestos_simple'));
+    });
+    const _fmtValKpi = n => '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n || 0);
+
     const _chipO = (id, placa, info) => `<div class="kpi-ord-chip${_cambiados.has(id) ? ' kpi-ord-shake' : ''}" onclick="_kpiAbrirOrden(${id})" style="display:flex;align-items:center;gap:6px;padding:2px 5px;border-radius:5px;cursor:pointer;line-height:1.2">
         <span style="font-family:'DM Mono',monospace;font-weight:800;font-size:12.5px;color:var(--texto);flex-shrink:0">${escapeHtml(placa || '—')}</span>
         <span style="font-size:11px;font-weight:600;color:#334155;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(info || '')}</span>
+        ${_valOrd[id] ? `<span style="font-size:10.5px;font-weight:800;color:#047857;font-family:'DM Mono',monospace;flex-shrink:0">${_fmtValKpi(_valOrd[id])}</span>` : ''}
       </div>`;
     const _secO = (ico, titulo, color, filas, mapFn, getId) => `<div class="kpi-sec" style="border:1px solid ${color}33;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 8px;background:${color}14;border-left:4px solid ${color}">
