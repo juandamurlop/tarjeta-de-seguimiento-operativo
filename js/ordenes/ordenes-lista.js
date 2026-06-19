@@ -162,9 +162,6 @@ function _buildOrdenRow(o, etapas) {
     <td style="border-left:4px solid ${ti.color}">
       <div class="ord-placa">${escapeHtml(o.placa)}</div>
       <div class="ord-ot">${otDe(o)}${contactAlert}</div>
-      ${sinValor
-        ? `<div style="margin-top:3px"><span title="La orden no tiene precio de venta asignado" style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:.03em;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;padding:1px 6px;border-radius:99px">💲 SIN VALOR</span></div>`
-        : (subtotalOrden ? `<div style="margin-top:3px;font-size:12px;font-weight:800;color:#047857;font-family:'DM Mono',monospace" title="Subtotal (sin IVA): mano de obra + insumos + repuestos">${_fmtCOProw(subtotalOrden)}</div>` : '')}
     </td>
     <td><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">${_chipTipoOrden(o)}<button class="btn btn-ghost btn-xs" style="font-size:10px;padding:1px 6px;color:var(--azul)" title="Mover a una organización" onclick="event.stopPropagation();abrirMoverOrganizacion(${o.id})">🏢 Mover</button></div></td>
     <td>
@@ -183,6 +180,9 @@ function _buildOrdenRow(o, etapas) {
     <td class="ord-resp">${escapeHtml(tecnico) || '<span style="color:var(--gris-mid)">—</span>'}</td>
     <td class="ord-fecha-ent">${fechaEnt}</td>
     <td class="ord-dias">${diasTaller}d</td>
+    <td class="ord-valor" style="text-align:right;white-space:nowrap">${sinValor
+      ? `<span title="La orden no tiene precio de venta asignado" style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:.03em;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;padding:1px 6px;border-radius:99px">SIN VALOR</span>`
+      : (subtotalOrden ? `<span style="font-size:12.5px;font-weight:800;color:#047857;font-family:'DM Mono',monospace" title="Subtotal sin IVA: mano de obra + insumos + repuestos">${_fmtCOProw(subtotalOrden)}</span>` : '<span style="color:var(--gris-mid)">—</span>')}</td>
     <td><span class="ord-pill ${pillCls}">${pillTxt}</span>${o.estado === 'Archivada' ? `<button class="btn btn-ghost btn-xs" style="color:#DC2626;margin-left:6px;padding:2px 6px" onclick="event.stopPropagation();eliminarOrdenPermanente(${o.id})" title="Eliminar permanentemente">🗑️</button>` : ''}</td>
   </tr>`;
 }
@@ -198,7 +198,7 @@ function renderTablaOrdenes(data, etapas) {
   renderSinParpadeo(lista, `<div class="ordenes-tabla-wrap"><table class="ordenes-tabla">
     <thead><tr>
       <th>Orden</th><th>Tipo</th><th>Vehículo</th><th>Etapa actual</th>
-      <th>Responsable</th><th>Entrega est.</th><th>Días</th><th>Estado</th>
+      <th>Responsable</th><th>Entrega est.</th><th>Días</th><th style="text-align:right">Valor</th><th>Estado</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`);
@@ -228,7 +228,7 @@ async function cargarOrdenesPulmon() {
       return;
     }
     const ids = data.map(o => o.id).join(',');
-    const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico,tercero`).catch(() => []) || [];
+    const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico,tercero,valor_venta`).catch(() => []) || [];
     _ordenesTablaData = data;
     _etapasTablaData  = etapas;
 
@@ -244,6 +244,9 @@ async function cargarOrdenesPulmon() {
       const diasTaller = o.creado_en ? Math.floor((Date.now() - new Date(o.creado_en)) / 86400000) : 0;
       const comentario = o.descripcion_general || '';
       const searchStr  = [(o.placa||''), (o.propietario||''), (tecnico||''), (o.marca||''), (o.linea||''), (comentario||'')].join(' ').toLowerCase();
+      const _valItemsP = (campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (e) { return 0; } };
+      const subtotalP = etapasO.reduce((s, e) => s + (e.valor_venta || 0), 0) + _valItemsP('insumos') + _valItemsP('repuestos_simple');
+      const _fmtP = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
       const ti = _tipoOrdenInfo(o);
       return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-search="${escapeHtml(searchStr)}" style="background:${ti.color}12">
         <td style="border-left:4px solid ${ti.color}">
@@ -267,6 +270,7 @@ async function cargarOrdenesPulmon() {
         <td class="ord-resp">${escapeHtml(tecnico) || '<span style="color:var(--gris-mid)">—</span>'}</td>
         <td class="ord-fecha-ent">${diasPulmon !== null ? `${diasPulmon}d en pulmón` : '—'}</td>
         <td class="ord-dias">${diasTaller}d</td>
+        <td class="ord-valor" style="text-align:right;white-space:nowrap">${subtotalP ? `<span style="font-size:12.5px;font-weight:800;color:#047857;font-family:'DM Mono',monospace">${_fmtP(subtotalP)}</span>` : '<span style="color:var(--gris-mid)">—</span>'}</td>
         <td><span class="ord-pill pill-pulmon">En pulmón</span></td>
       </tr>`;
     }).join('');
@@ -274,7 +278,7 @@ async function cargarOrdenesPulmon() {
     lista.innerHTML = `<div class="ordenes-tabla-wrap"><table class="ordenes-tabla">
       <thead><tr>
         <th>Orden</th><th>Tipo</th><th>Vehículo</th><th>Etapa actual</th>
-        <th>Responsable</th><th>Tiempo pulmón</th><th>Días</th><th>Estado</th>
+        <th>Responsable</th><th>Tiempo pulmón</th><th>Días</th><th style="text-align:right">Valor</th><th>Estado</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
