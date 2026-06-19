@@ -320,7 +320,7 @@
 .det-datos-filas { padding: 2px 0; }
 .det-dato-fila {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;          /* baseline causaba desalineación en Android cuando el valor se parte en 2 líneas */
   justify-content: space-between;
   gap: 8px;
   padding: 5px 11px;
@@ -340,6 +340,8 @@
   font-weight: 600;
   color: var(--texto);
   text-align: right;
+  min-width: 0;                 /* permite que el valor encoja en flex (Android) */
+  overflow-wrap: anywhere;      /* parte correos/VIN largos de forma fiable en todos los navegadores */
   word-break: break-word;
 }
 .det-dato-vacio {
