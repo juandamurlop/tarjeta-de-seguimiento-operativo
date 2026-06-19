@@ -200,7 +200,7 @@ async function cargarOrdenesCliente() {
         estadoBanner = `<div style="background:${paus ? '#FFFBEB' : '#ECFDF5'};border:1px solid ${paus ? '#FDE68A' : '#6EE7B7'};border-radius:10px;padding:12px 14px;margin-bottom:16px">
           <div style="font-weight:700;color:${paus ? '#92400E' : '#065F46'};font-size:14px">🔧 ${paus ? 'En pausa' : 'En proceso ahora'}: ${escapeHtml(activa.etapa)}</div>
           <div style="font-size:12px;color:var(--gris-mid);margin-top:2px">${escapeHtml(CATALOGO[activa.servicio]?.nombre || activa.servicio || '')}</div>
-          ${activa.descripcion ? `<div style="font-size:12.5px;color:#1E293B;margin-top:6px;line-height:1.4;white-space:pre-wrap">📝 ${escapeHtml(activa.descripcion)}</div>` : ''}
+          ${activa.descripcion ? `<div style="font-size:12.5px;color:var(--texto);margin-top:6px;line-height:1.4;white-space:pre-wrap">📝 ${escapeHtml(activa.descripcion)}</div>` : ''}
           ${paus ? `<div style="font-size:11.5px;color:#B45309;margin-top:6px;font-weight:600">⏸ En pausa, esperando un repuesto.</div>` : ''}
         </div>`;
       } else if (total > 0 && comp === total) {

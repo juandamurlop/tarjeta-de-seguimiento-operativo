@@ -104,7 +104,7 @@ function kpiDrilldown(key) {
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
   ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
   ov.innerHTML = `
-    <div style="background:white;border-radius:14px;width:100%;max-width:580px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+    <div style="background:var(--surface);border-radius:14px;width:100%;max-width:580px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1.5px solid var(--gris-borde);flex-shrink:0">
         <div style="font-size:15px;font-weight:700;color:var(--texto)">${escapeHtml(titulo)}</div>
         <button onclick="document.getElementById('_kpiModal').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--gris-mid);line-height:1">✕</button>
@@ -715,7 +715,7 @@ async function abrirPanelValorTaller() {
   const ov = document.createElement('div');
   ov.id = 'panel-valor-taller';
   ov.style.cssText = 'position:fixed;inset:0;z-index:800;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
-  ov.innerHTML = `<div style="background:#fff;border-radius:16px;max-width:640px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;font-family:'DM Sans',sans-serif">
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:16px;max-width:640px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;font-family:'DM Sans',sans-serif">
     <div style="background:#1E3A5F;color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between">
       <div style="font-size:15px;font-weight:700">💰 Valor en el taller y meta del mes</div>
       <button onclick="document.getElementById('panel-valor-taller').remove()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1">×</button>

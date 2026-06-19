@@ -45,10 +45,10 @@ async function abrirPopupConsumibles(placa, kmActual) {
   const overlay = document.createElement('div');
   overlay.id = 'popup-consumibles';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8000;display:flex;align-items:center;justify-content:center;padding:16px';
-  overlay.innerHTML = `<div style="background:#fff;border-radius:14px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column">
-    <div style="padding:16px 20px 12px;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;border-radius:14px 14px 0 0">
+  overlay.innerHTML = `<div style="background:var(--surface);border-radius:14px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column">
+    <div style="padding:16px 20px 12px;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:1;border-radius:14px 14px 0 0">
       <div>
-        <div style="font-size:16px;font-weight:700;color:#111827">🔧 Consumibles & Docs</div>
+        <div style="font-size:16px;font-weight:700;color:var(--texto)">🔧 Consumibles & Docs</div>
         <div style="font-size:12px;color:#6B7280;font-family:'DM Mono',monospace;letter-spacing:1px">${escapeHtml(placa)}${kmActual ? ' · ' + Number(kmActual).toLocaleString() + ' km' : ''}</div>
       </div>
       <button onclick="document.getElementById('popup-consumibles').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:#6B7280;padding:4px 8px;border-radius:6px;line-height:1">&times;</button>
@@ -102,7 +102,7 @@ async function abrirPopupConsumibles(placa, kmActual) {
       consHtml += `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;${border}">
         <span style="font-size:18px;flex-shrink:0;width:24px;text-align:center">${cfg.icon}</span>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:#111827">${cfg.label}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--texto)">${cfg.label}</div>
           ${marcaRef ? `<div style="font-size:11px;color:#6B7280">${escapeHtml(marcaRef)}</div>` : ''}
         </div>
         <div style="text-align:right;flex-shrink:0">${estadoHtml}</div>
@@ -134,7 +134,7 @@ async function abrirPopupConsumibles(placa, kmActual) {
       docsHtml += `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;${border}">
         <span style="font-size:18px;flex-shrink:0;width:24px;text-align:center">${cfg.icon}</span>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:#111827">${cfg.label}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--texto)">${cfg.label}</div>
           ${d?.numero ? `<div style="font-size:11px;color:#6B7280">${escapeHtml(d.numero)}</div>` : ''}
         </div>
         <div style="text-align:right;flex-shrink:0">${estadoHtml}</div>
@@ -162,9 +162,9 @@ function abrirModalEditarConsumible(placa, tipo, consumibleActual, kmActual) {
   const kmDefVal = c.km_vida_util || cfg.kmDefault || '';
   const kmInstVal = c.km_instalacion ?? (kmActual || '');
 
-  modal.innerHTML = `<div style="background:#fff;border-radius:12px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+  modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
     <div style="padding:16px 20px 12px;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:15px;font-weight:700;color:#111827">${cfg.icon || ''} ${cfg.label || tipo}</div>
+      <div style="font-size:15px;font-weight:700;color:var(--texto)">${cfg.icon || ''} ${cfg.label || tipo}</div>
       <button onclick="document.getElementById('modal-cons-edit').remove()" style="background:none;border:none;cursor:pointer;font-size:18px;color:#6B7280">&times;</button>
     </div>
     <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
@@ -199,7 +199,7 @@ function abrirModalEditarConsumible(placa, tipo, consumibleActual, kmActual) {
       </div>
     </div>
     <div style="padding:12px 20px 16px;border-top:1px solid #E5E7EB;display:flex;justify-content:flex-end;gap:8px">
-      <button onclick="document.getElementById('modal-cons-edit').remove()" style="padding:8px 16px;border:1px solid #D1D5DB;border-radius:7px;background:#fff;cursor:pointer;font-size:13px;font-weight:500">Cancelar</button>
+      <button onclick="document.getElementById('modal-cons-edit').remove()" style="padding:8px 16px;border:1px solid #D1D5DB;border-radius:7px;background:var(--surface);cursor:pointer;font-size:13px;font-weight:500">Cancelar</button>
       <button onclick="_guardarConsumible('${escapeHtml(placa)}','${tipo}',${kmActual||0})" style="padding:8px 16px;background:var(--azul,#1E3A5F);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600">Guardar</button>
     </div>
   </div>`;
@@ -239,9 +239,9 @@ function abrirModalEditarDocumento(placa, tipo, docActual) {
   modal.id = 'modal-doc-edit';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
 
-  modal.innerHTML = `<div style="background:#fff;border-radius:12px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+  modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
     <div style="padding:16px 20px 12px;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:15px;font-weight:700;color:#111827">${cfg.icon || ''} ${cfg.label || tipo}</div>
+      <div style="font-size:15px;font-weight:700;color:var(--texto)">${cfg.icon || ''} ${cfg.label || tipo}</div>
       <button onclick="document.getElementById('modal-doc-edit').remove()" style="background:none;border:none;cursor:pointer;font-size:18px;color:#6B7280">&times;</button>
     </div>
     <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
@@ -269,7 +269,7 @@ function abrirModalEditarDocumento(placa, tipo, docActual) {
       </div>
     </div>
     <div style="padding:12px 20px 16px;border-top:1px solid #E5E7EB;display:flex;justify-content:flex-end;gap:8px">
-      <button onclick="document.getElementById('modal-doc-edit').remove()" style="padding:8px 16px;border:1px solid #D1D5DB;border-radius:7px;background:#fff;cursor:pointer;font-size:13px;font-weight:500">Cancelar</button>
+      <button onclick="document.getElementById('modal-doc-edit').remove()" style="padding:8px 16px;border:1px solid #D1D5DB;border-radius:7px;background:var(--surface);cursor:pointer;font-size:13px;font-weight:500">Cancelar</button>
       <button onclick="_guardarDocumento('${escapeHtml(placa)}','${tipo}','${d.id||''}')" style="padding:8px 16px;background:var(--azul,#1E3A5F);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600">Guardar</button>
     </div>
   </div>`;

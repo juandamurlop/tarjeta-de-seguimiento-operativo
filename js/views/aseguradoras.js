@@ -395,7 +395,7 @@ async function cargarModuloAseguradoras() {
           <div class="aseg-filtros">
             <input id="aseg-buscar" type="text" placeholder="Placa, propietario..."
               class="aseg-input" style="flex:1;min-width:200px" oninput="filtrarAseguradoras()">
-            <select id="aseg-filtro-estado" onchange="filtrarAseguradoras()" class="aseg-input" style="background:#fff">
+            <select id="aseg-filtro-estado" onchange="filtrarAseguradoras()" class="aseg-input" style="background:var(--surface)">
               <option value="">Todos los estados</option>
               ${Object.entries(ESTADOS_ASEG).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
             </select>
@@ -856,7 +856,7 @@ function renderDatosAseguradora(orden) {
       <div class="field" style="margin:0">
         <label style="font-size:10px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px">Estado pago</label>
         <select id="da-pago-${orden.id}"
-          style="width:100%;padding:6px 8px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:12px;background:white;box-sizing:border-box">
+          style="width:100%;padding:6px 8px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:12px;background:var(--surface);box-sizing:border-box">
           <option value="pendiente" ${(datos.estado_pago||'pendiente')==='pendiente'?'selected':''}>Pendiente</option>
           <option value="parcial"   ${datos.estado_pago==='parcial'?'selected':''}>Parcial</option>
           <option value="pagado"    ${datos.estado_pago==='pagado'?'selected':''}>Pagado</option>
@@ -1054,7 +1054,7 @@ function _elegirTipoPulmon() {
             { val:'externo_aseguradora', label:'🏢 Externo — En manos de la aseguradora', color:'#7C3AED' }
           ].map(op => `
             <button onclick="this.closest('.modal-overlay')._resolve('${op.val}')"
-              style="padding:12px 16px;border:2px solid ${op.color}20;border-radius:8px;background:white;cursor:pointer;text-align:left;font-size:13px;font-weight:600;color:${op.color};display:flex;align-items:center;gap:8px;transition:background .15s"
+              style="padding:12px 16px;border:2px solid ${op.color}20;border-radius:8px;background:var(--surface);cursor:pointer;text-align:left;font-size:13px;font-weight:600;color:${op.color};display:flex;align-items:center;gap:8px;transition:background .15s"
               onmouseenter="this.style.background='${op.color}10'"
               onmouseleave="this.style.background='white'">
               ${op.label}
@@ -1130,13 +1130,13 @@ function _filaRepuesto(r, i) {
   ];
   return `<div class="aseg-rep-fila" style="display:grid;grid-template-columns:1fr auto 1fr auto;gap:8px;align-items:center;background:var(--gris-bg);border-radius:8px;padding:10px">
     <input type="text" placeholder="Nombre del repuesto" value="${escapeHtml(r.item||'')}"
-      class="aseg-rep-item" style="padding:7px 10px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:13px;outline:none;background:white">
-    <select class="aseg-rep-estado" style="padding:7px 10px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:12px;background:white">
+      class="aseg-rep-item" style="padding:7px 10px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:13px;outline:none;background:var(--surface)">
+    <select class="aseg-rep-estado" style="padding:7px 10px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:12px;background:var(--surface)">
       ${opciones.map(op => `<option value="${op.val}" ${r.estado===op.val?'selected':''}>${op.label}</option>`).join('')}
     </select>
     <input type="text" placeholder="Observación (opcional)" value="${escapeHtml(r.descripcion||'')}"
-      class="aseg-rep-desc" style="padding:7px 10px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:13px;outline:none;background:white">
-    <button onclick="this.closest('.aseg-rep-fila').remove()" style="width:28px;height:28px;border:1.5px solid var(--gris-borde);border-radius:6px;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--rojo);flex-shrink:0">
+      class="aseg-rep-desc" style="padding:7px 10px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:13px;outline:none;background:var(--surface)">
+    <button onclick="this.closest('.aseg-rep-fila').remove()" style="width:28px;height:28px;border:1.5px solid var(--gris-borde);border-radius:6px;background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--rojo);flex-shrink:0">
       <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>`;

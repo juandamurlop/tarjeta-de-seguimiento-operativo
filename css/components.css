@@ -25,7 +25,7 @@
   margin-bottom: 16px;
 }
 .card {
-  background: white;
+  background: var(--surface);
   border-radius: var(--radio);
   border: 1px solid var(--gris-borde);
   box-shadow: var(--shadow-sm);
@@ -52,7 +52,7 @@
   border-radius: 6px;
   font-size: 14px;
   color: var(--texto);
-  background: white;
+  background: var(--surface);
   transition: border-color 0.15s;
   outline: none;
 }
@@ -86,7 +86,7 @@
 .btn-success:hover { opacity: 1; box-shadow: 0 3px 10px rgba(13,122,78,0.28); }
 .btn-danger  { background: var(--rojo); color: white; box-shadow: 0 1px 4px rgba(192,57,43,0.2); }
 .btn-danger:hover  { opacity: 1; box-shadow: 0 3px 10px rgba(192,57,43,0.28); }
-.btn-ghost   { background: white; color: var(--gris-texto); border: 1px solid var(--gris-borde); }
+.btn-ghost   { background: var(--surface); color: var(--gris-texto); border: 1px solid var(--gris-borde); }
 .btn-ghost:hover { background: var(--gris-bg); opacity: 1; border-color: #C5CBD5; }
 .btn-outline { background: transparent; color: var(--azul); border: 1.5px solid var(--azul); }
 .btn-outline:hover { background: var(--azul-light); opacity: 1; }
@@ -205,7 +205,7 @@
 }
 .modal-overlay.show { display: flex; animation: fadeIn 0.2s ease-out; }
 .modal {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   width: 100%;
   max-width: 580px;
@@ -231,7 +231,7 @@
   justify-content: space-between;
   position: sticky;
   top: 0;
-  background: white;
+  background: var(--surface);
   z-index: 1;
 }
 .modal-header h2 {
@@ -248,7 +248,7 @@
   justify-content: flex-end;
   position: sticky;
   bottom: 0;
-  background: white;
+  background: var(--surface);
 }
 .modal-step { display: none; }
 .modal-step.active { display: block; }

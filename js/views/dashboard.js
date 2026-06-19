@@ -187,7 +187,7 @@ async function cargarDashboardMes() {
         <svg width="11" height="11" fill="none" stroke="#DC2626" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span style="font-size:11px;font-weight:700;color:#DC2626;white-space:nowrap">${ordenesRetraso.length} con retraso:</span>
         ${ordenesRetraso.map(o => `
-          <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:10px;color:#DC2626;background:white;border:1px solid #FECACA;border-radius:99px;padding:1px 7px;cursor:pointer;letter-spacing:.3px" onclick="abrirOrden(${o.id})">${escapeHtml(o.placa)} <span style="opacity:.7">+${o.diasRetraso}d</span></span>`).join('')}
+          <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:10px;color:#DC2626;background:var(--surface);border:1px solid #FECACA;border-radius:99px;padding:1px 7px;cursor:pointer;letter-spacing:.3px" onclick="abrirOrden(${o.id})">${escapeHtml(o.placa)} <span style="opacity:.7">+${o.diasRetraso}d</span></span>`).join('')}
       </div>` : '';
 
     // — Pipeline —
@@ -608,7 +608,7 @@ async function cargarDashboard() {
       <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:8px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <svg width="14" height="14" fill="none" stroke="#DC2626" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span style="font-size:12px;font-weight:700;color:#DC2626">${retrasos.length} ${retrasos.length===1?'vehículo':'vehículos'} con retraso en el proceso</span>
-        ${retrasos.map(o=>`<span onclick="abrirOrden(${o.id})" style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:#DC2626;background:white;border:1px solid #FECACA;border-radius:6px;padding:2px 8px;cursor:pointer">${escapeHtml(o.placa)}</span>`).join('')}
+        ${retrasos.map(o=>`<span onclick="abrirOrden(${o.id})" style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:#DC2626;background:var(--surface);border:1px solid #FECACA;border-radius:6px;padding:2px 8px;cursor:pointer">${escapeHtml(o.placa)}</span>`).join('')}
       </div>` : '';
 
     // ════════════════════════════════════════════════════
@@ -1122,7 +1122,7 @@ async function cargarDashboardFinanciero() {
           <div style="font-size:10px;opacity:.5;margin-top:4px">MO: ${fmt(wipMO)} · Rep: ${fmt(wipRep)}</div>
           <div style="font-size:10px;opacity:.4;margin-top:2px">${ordenesActivas.length} órdenes activas</div>
         </div>
-        <div style="background:white;border:1px solid var(--gris-borde);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:5px">
+        <div style="background:var(--surface);border:1px solid var(--gris-borde);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:5px">
           <div style="width:28px;height:28px;background:#E6F5EF;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
             <svg width="14" height="14" fill="none" stroke="#059669" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           </div>
@@ -1130,7 +1130,7 @@ async function cargarDashboardFinanciero() {
           <div style="font-size:11px;font-weight:600;color:var(--texto)">Total facturado</div>
           <div style="font-size:10px;color:var(--gris-mid)">${ordenesEntregadas.length} órdenes entregadas</div>
         </div>
-        <div style="background:white;border:1px solid var(--gris-borde);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:5px">
+        <div style="background:var(--surface);border:1px solid var(--gris-borde);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:5px">
           <div style="width:28px;height:28px;background:#FEF3C7;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
             <svg width="14" height="14" fill="none" stroke="#D97706" stroke-width="2" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></svg>
           </div>
@@ -1138,7 +1138,7 @@ async function cargarDashboardFinanciero() {
           <div style="font-size:11px;font-weight:600;color:var(--texto)">Ticket promedio</div>
           <div style="font-size:10px;color:var(--gris-mid)">Por orden entregada</div>
         </div>
-        <div style="background:white;border:1px solid var(--gris-borde);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:5px">
+        <div style="background:var(--surface);border:1px solid var(--gris-borde);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:5px">
           <div style="width:28px;height:28px;background:#FEE2E2;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
             <svg width="14" height="14" fill="none" stroke="#DC2626" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </div>
@@ -1158,7 +1158,7 @@ async function cargarDashboardFinanciero() {
           <div style="display:flex;gap:4px;flex-wrap:wrap">
             ${['semanal','mensual','anual'].map(p => `
               <button id="fin-btn-${p}" onclick="cargarGraficoFinanciero('${p}')"
-                style="padding:4px 10px;border-radius:20px;border:1px solid var(--gris-borde);background:white;font-size:10px;font-weight:600;color:var(--gris-mid);cursor:pointer;transition:all .15s"
+                style="padding:4px 10px;border-radius:20px;border:1px solid var(--gris-borde);background:var(--surface);font-size:10px;font-weight:600;color:var(--gris-mid);cursor:pointer;transition:all .15s"
                 onmouseenter="if(!this.dataset.active)this.style.background='var(--gris-bg)'"
                 onmouseleave="if(!this.dataset.active)this.style.background='white'">
                 ${{semanal:'Semanal',mensual:'Mensual',anual:'Anual'}[p]}

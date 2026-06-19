@@ -53,7 +53,22 @@
       "Bash(grep -n \"^/\\\\* ═\\\\|^/\\\\* ─\\\\|^/\\\\* =\\\\|^/\\\\* [A-Z]\" \"C:\\\\Users\\\\juanm\\\\OneDrive\\\\Documentos\\\\appProcesos\\\\css\\\\styles.css\")",
       "Bash(grep -n \"^/\\\\* ═══\\\\|^@media\" \"C:\\\\Users\\\\juanm\\\\OneDrive\\\\Documentos\\\\appProcesos\\\\css\\\\styles.css\")",
       "Bash(grep -r \"api\\\\\\(\\\\`/\\\\w\\\\+\" js/core/api.js js/ordenes/*.js)",
-      "Bash(node --check service-worker.js)"
+      "Bash(node --check service-worker.js)",
+      "Bash(git fetch *)",
+      "Bash(git rev-list *)",
+      "Bash(xxd)",
+      "WebFetch(domain:freimanautos-web-seguimiento-operativo.qs0sgf.easypanel.host)",
+      "Bash(Select-Object -Last 5)",
+      "Bash(curl -s -o /tmp/n8nresp.txt -w \"HTTP %{http_code}\\\\n\" -X POST \"https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa\" -H \"Content-Type: application/json\" -d '{\"evento\":\"repuesto_solicitado\",\"placa\":\"TEST-DEBUG\",\"marca\":\"PRUEBA\",\"modelo\":\"DIAGNOSTICO\",\"vin\":\"VIN123456789\",\"repuesto\":\"Item prueba A \\(x1\\), Item prueba B \\(x2\\)\",\"solicitado_por\":\"Claude \\(prueba\\)\"}')",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /tmp/n8nresp2.txt -w \"HTTP %{http_code}\\\\n\" -X POST \"https://automatizacionesfreimanautos-n8n.qs0sgf.easypanel.host/webhook/notificar-etapa\" -H \"Content-Type: application/json\" -d '{\"evento\":\"repuesto_solicitado\",\"placa\":\"JQV319\",\"marca\":\"TOYOTA\",\"modelo\":\"HILUX\",\"vin\":\"8AJCX3DB7N1519052\",\"repuesto\":\"Pastillas de freno delanteras \\(x2\\), Disco delantero \\(x1\\)\",\"solicitado_por\":\"Javier Cepeda\"}')",
+      "Bash(grep -iv \"aprobado_por\\\\|//.*aprob\")",
+      "Bash(node -e \"const d=require\\('./docs/n8n-asistente-whatsapp.json'\\); console.log\\('JSON valido. Nodos:', d.nodes.length\\); console.log\\('Nombres:', d.nodes.map\\(n=>n.name\\).join\\(' | '\\)\\);\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('docs/n8n-asistente-whatsapp.json', encoding='utf-8'\\)\\); print\\('JSON valido. Nodos:', len\\(d['nodes']\\)\\); print\\(' | '.join\\(n['name'] for n in d['nodes']\\)\\)\")",
+      "PowerShell($d = Get-Content \"docs/n8n-asistente-whatsapp.json\" -Raw -Encoding UTF8 | ConvertFrom-Json; \"JSON valido. Nodos: $\\($d.nodes.Count\\)\"; \\($d.nodes | ForEach-Object { $_.name }\\) -join \" | \")",
+      "WebSearch",
+      "WebFetch(domain:formbeep.com)",
+      "WebFetch(domain:whautomate.com)"
     ]
   }
 }

@@ -384,7 +384,7 @@ function abrirNovedadMenu(etapaId, ordenId, placa) {
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.innerHTML = `
-    <div style="background:white;border-radius:14px;padding:24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.25)" onclick="event.stopPropagation()">
+    <div style="background:var(--surface);border-radius:14px;padding:24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.25)" onclick="event.stopPropagation()">
       <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;margin-bottom:4px">${escapeHtml(placa)}</div>
       <div style="font-size:12px;color:var(--gris-mid);margin-bottom:20px">¿Por qué se detiene la etapa?</div>
 
@@ -531,7 +531,7 @@ async function cargarHistorialMecanico() {
       .catch(e => { console.error('[Mecanico.historial.satItems]', e); return []; }) || [];
     const sat = (typeof Encuestas !== 'undefined') ? Encuestas.statsMecanico(satItems) : null;
     const satCard = (sat && sat.evaluadas) ? `
-      <div style="background:white;border:1.5px solid var(--gris-borde);border-radius:var(--radio);padding:16px 18px;margin-bottom:16px;display:flex;align-items:center;gap:18px">
+      <div style="background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:var(--radio);padding:16px 18px;margin-bottom:16px;display:flex;align-items:center;gap:18px">
         <div style="text-align:center;flex-shrink:0">
           <div style="font-size:34px;font-weight:800;font-family:'DM Mono',monospace;line-height:1;color:${Encuestas.colorScore(sat.promedio)}">${sat.promedio!=null?sat.promedio.toFixed(1):'—'}<span style="font-size:16px;color:var(--gris-mid)">/5</span></div>
           <div style="font-size:10px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-top:3px">Satisfacción</div>
@@ -559,20 +559,20 @@ async function cargarHistorialMecanico() {
     cont.innerHTML = `
       ${satCard}
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
-        <div style="background:white;border:1.5px solid var(--gris-borde);border-radius:var(--radio);padding:16px;text-align:center">
+        <div style="background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:var(--radio);padding:16px;text-align:center">
           <div style="font-size:26px;font-weight:700;color:var(--azul);font-family:'DM Mono',monospace">${etapas.length}</div>
           <div style="font-size:11px;color:var(--gris-mid);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">Etapas hechas</div>
         </div>
-        <div style="background:white;border:1.5px solid var(--gris-borde);border-radius:var(--radio);padding:16px;text-align:center">
+        <div style="background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:var(--radio);padding:16px;text-align:center">
           <div style="font-size:26px;font-weight:700;color:var(--verde);font-family:'DM Mono',monospace">${hTot}h ${mTot}m</div>
           <div style="font-size:11px;color:var(--gris-mid);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">Tiempo total</div>
         </div>
-        <div style="background:white;border:1.5px solid var(--gris-borde);border-radius:var(--radio);padding:16px;text-align:center">
+        <div style="background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:var(--radio);padding:16px;text-align:center">
           <div style="font-size:26px;font-weight:700;color:#D97706;font-family:'DM Mono',monospace">${hProm>0?hProm+'h ':''}${mProm}m</div>
           <div style="font-size:11px;color:var(--gris-mid);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">Prom. por etapa</div>
         </div>
       </div>
-      ${srvTop ? `<div style="background:white;border:1.5px solid var(--gris-borde);border-radius:var(--radio);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+      ${srvTop ? `<div style="background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:var(--radio);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
         <div style="width:10px;height:10px;border-radius:50%;background:${srvColor[srvTop[0]]||'#6B7280'};flex-shrink:0"></div>
         <div><div style="font-size:12px;color:var(--gris-mid)">Especialidad más frecuente</div>
           <div style="font-size:15px;font-weight:600">${CATALOGO[srvTop[0]]?.nombre||srvTop[0]} · ${srvTop[1]} etapa${srvTop[1]>1?'s':''}</div></div>

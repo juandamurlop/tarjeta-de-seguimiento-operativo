@@ -414,7 +414,7 @@ function _renderHistorial(data) {
     const veh = [o.marca, o.linea, o.modelo].filter(Boolean).map(escapeHtml).join(' ');
     const org = o.aseguradora ? ` · ${escapeHtml(o.aseguradora)}` : '';
     const search = [(o.placa || ''), (o.propietario || ''), (o.aseguradora || ''), (o.marca || ''), (o.linea || ''), otDe(o)].join(' ').toLowerCase();
-    return `<div data-hsearch="${escapeHtml(search)}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--gris-borde);border-radius:9px;margin-bottom:7px;background:#fff;cursor:pointer" onclick="abrirOrden(${o.id})">
+    return `<div data-hsearch="${escapeHtml(search)}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--gris-borde);border-radius:9px;margin-bottom:7px;background:var(--surface);cursor:pointer" onclick="abrirOrden(${o.id})">
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="font-family:'DM Mono',monospace;font-weight:800;font-size:14px">${escapeHtml(o.placa || '—')}</span>
@@ -457,7 +457,7 @@ async function abrirMoverOrganizacion(ordenId) {
   ov.id = 'modal-mover-org';
   ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
   ov.innerHTML = `
-    <div style="background:#fff;border-radius:14px;max-width:440px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
+    <div style="background:var(--surface);border-radius:14px;max-width:440px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
       <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:2px">Mover orden a organización</div>
       <div style="font-size:12px;color:var(--gris-mid);margin-bottom:14px">${escapeHtml(o.placa || '')}</div>
       <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:4px">Tipo de cliente</label>

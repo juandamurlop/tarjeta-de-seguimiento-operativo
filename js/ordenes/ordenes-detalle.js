@@ -209,7 +209,7 @@ async function abrirOrden(id) {
           const cajas = _entriesResumen.map(([s,r]) =>
             '<div style="background:' + (_srvBg[s]||'#F1F5F9') + ';border:1px solid ' + (_srvColor[s]||'#CBD5E1') + '55;border-radius:8px;padding:7px 10px">' +
               '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:' + (_srvColor[s]||'#475569') + '">' + (_srvNombres[s]||s) + ' · ' + r.n + '</div>' +
-              '<div style="font-size:14px;font-weight:800;color:#1E293B;font-family:\'DM Mono\',monospace">' + _fmtCOP(r.total) + '</div>' +
+              '<div style="font-size:14px;font-weight:800;color:var(--texto);font-family:\'DM Mono\',monospace">' + _fmtCOP(r.total) + '</div>' +
             '</div>');
           // Rellenar hasta completar la última fila de 3
           const faltan = (3 - (cajas.length % 3)) % 3;
@@ -431,7 +431,7 @@ async function abrirOrden(id) {
                 '<div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:8px;border-top:2px solid var(--azul-mid)"><span style="font-size:15px;font-weight:800;color:var(--azul)">Total con IVA</span><span style="font-size:17px;font-weight:800;color:var(--azul)">' + fmt(total) + '</span></div>';
             }
             const pill = subtotal
-              ? `<span style="flex-shrink:0;font-size:14px;font-weight:800;color:var(--azul);background:#fff;border:1px solid var(--azul-mid);border-radius:99px;padding:2px 11px;white-space:nowrap">${fmt(total)}</span>`
+              ? `<span style="flex-shrink:0;font-size:14px;font-weight:800;color:var(--azul);background:var(--surface);border:1px solid var(--azul-mid);border-radius:99px;padding:2px 11px;white-space:nowrap">${fmt(total)}</span>`
               : `<span style="flex-shrink:0;font-size:11px;font-weight:700;color:#B45309;background:#FEF3C7;border-radius:99px;padding:2px 9px;white-space:nowrap">Sin valor</span>`;
             return `
           <div class="sidebar-card">
@@ -732,7 +732,7 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
           <!-- [Oculto] Botón "Pedir repuesto" (flujo de repuestos con proveedores).
                Se retira de la UI por pedido; el código del flujo se conserva. -->
         </div>
-        ${e.descripcion ? `<div style="background:#F0F7FF;border:1px solid #BFDBFE;border-radius:7px;padding:9px 12px;margin-bottom:10px;font-size:12.5px;color:#1E293B;line-height:1.5;white-space:pre-wrap"><span style="font-size:10px;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:3px">Descripción</span>${escapeHtml(e.descripcion)}</div>` : ''}
+        ${e.descripcion ? `<div style="background:#F0F7FF;border:1px solid #BFDBFE;border-radius:7px;padding:9px 12px;margin-bottom:10px;font-size:12.5px;color:var(--texto);line-height:1.5;white-space:pre-wrap"><span style="font-size:10px;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:3px">Descripción</span>${escapeHtml(e.descripcion)}</div>` : ''}
         <div class="timestamps">
           <div class="ts-chip">Inicio: <strong>${e.inicio?formatTS(e.inicio):'—'}</strong></div>
           <div class="ts-chip">Fin: <strong>${e.fin?formatTS(e.fin):'—'}</strong></div>
@@ -947,7 +947,7 @@ function _panelComentariosOrden(orden, novedades, etapas) {
   const pausada = etapas.find(e => e.inicio && !e.fin && e.pausado);
   const enPulmon = !!orden.pulmon;
   // Botones neutros y compactos (sin colores llamativos: el color lo dan los íconos).
-  const _b = (txt, onclick) => `<button class="btn" style="background:#fff;color:#475569;border:1px solid var(--gris-borde);padding:4px 9px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer" onclick="${onclick}">${txt}</button>`;
+  const _b = (txt, onclick) => `<button class="btn" style="background:var(--surface);color:#475569;border:1px solid var(--gris-borde);padding:4px 9px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer" onclick="${onclick}">${txt}</button>`;
   let acciones = '';
   if (activaEnProceso) acciones += _b('⏸ Pausar', `_estadoPausar(${ordenId})`);
   if (pausada || enPulmon) acciones += _b('▶ Continuar', `_estadoContinuar(${ordenId})`);
@@ -958,7 +958,7 @@ function _panelComentariosOrden(orden, novedades, etapas) {
   const _ab = _comentOrdenAbierto;
 
   return `
-    <div class="orden-coment-bar" style="background:#fff;border:1px solid #B5D4F4;border-radius:10px;overflow:hidden;margin-bottom:14px;box-shadow:0 1px 6px rgba(37,99,235,.08)">
+    <div class="orden-coment-bar" style="background:var(--surface);border:1px solid #B5D4F4;border-radius:10px;overflow:hidden;margin-bottom:14px;box-shadow:0 1px 6px rgba(37,99,235,.08)">
       <!-- ENCABEZADO COLAPSABLE -->
       <div onclick="_toggleComentBar(${ordenId})" style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#E6F1FB;cursor:pointer;user-select:none">
         <svg id="coment-bar-chev-${ordenId}" width="15" height="15" fill="none" stroke="#185FA5" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_ab ? '90' : '0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
@@ -1228,7 +1228,7 @@ function abrirModalAgregarItems(oid, tipo) {
   ov.id = 'modal-agregar-items';
   ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
   ov.innerHTML = `
-    <div style="background:#fff;border-radius:14px;max-width:520px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.28);font-family:'DM Sans',sans-serif">
+    <div style="background:var(--surface);border-radius:14px;max-width:520px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.28);font-family:'DM Sans',sans-serif">
       <div style="padding:16px 18px 8px"><div style="font-size:16px;font-weight:800;color:var(--azul)">${cfg.icono} Agregar ${cfg.titulo.toLowerCase()}</div>
         <div style="font-size:11.5px;color:var(--gris-mid);margin-top:2px">Agrega uno o varios a la vez. Usa el desplegable para elegir de los frecuentes o escribe.</div></div>
       <datalist id="mai-dl">${_itemFrecuentes(tipo).map(n => `<option value="${escapeHtml(n)}"></option>`).join('')}</datalist>
@@ -1349,7 +1349,7 @@ async function abrirEditorValor(ordenId) {
   ov.id = 'modal-editor-valor';
   ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
   ov.innerHTML = `
-    <div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.28);font-family:'DM Sans',sans-serif">
+    <div style="background:var(--surface);border-radius:14px;max-width:560px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.28);font-family:'DM Sans',sans-serif">
       <div style="padding:16px 18px 10px;border-bottom:1px solid var(--gris-borde)">
         <div style="font-size:16px;font-weight:800;color:var(--azul)">Editar valor de la orden</div>
       </div>
@@ -1475,7 +1475,7 @@ function _panelInsumosOrden(orden) {
         const cant = (+i.cantidad) || 0, val = (+i.valor) || 0;
         return `<div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--gris-borde);border-radius:8px;margin-bottom:6px">
           <div style="flex:1;min-width:0">
-            <div style="font-size:12.5px;font-weight:600;color:#1E293B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(i.nombre || 'Insumo')}</div>
+            <div style="font-size:12.5px;font-weight:600;color:var(--texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(i.nombre || 'Insumo')}</div>
             <div style="font-size:11px;color:var(--gris-mid)">${cant} × ${fmt(val)} = <strong>${fmt(cant * val)}</strong></div>
           </div>
           <button class="btn btn-ghost btn-xs" style="flex-shrink:0;color:#DC2626" title="Quitar" onclick="_eliminarInsumo(${oid},${idx})">✕</button>
@@ -1521,7 +1521,7 @@ function abrirModalInsumo(oid) {
   ov.id = 'modal-insumo';
   ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
   ov.innerHTML = `
-    <div style="background:#fff;border-radius:14px;max-width:440px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
+    <div style="background:var(--surface);border-radius:14px;max-width:440px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
       <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:12px">🛢 Agregar insumo</div>
       ${chips ? `<div style="font-size:11px;color:var(--gris-mid);margin-bottom:5px">Frecuentes:</div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">${chips}</div>` : ''}
       <div style="margin-bottom:11px"><label style="${inLbl}">Insumo</label><input id="insumo-nom-${oid}" placeholder="Ej. Aceite 15W40" style="${inCss}"></div>
@@ -1612,7 +1612,7 @@ function _panelRepuestosOrden(solicitudes, items, etapas) {
       const on = s.estado !== 'rechazado' && inf.paso >= p;
       return `<span style="width:14px;height:5px;border-radius:3px;background:${on ? inf.color : '#E5E7EB'};display:inline-block"></span>`;
     }).join('');
-    return `<div style="border:1px solid var(--gris-borde);border-left:3px solid ${inf.color};border-radius:8px;padding:10px 12px;margin-bottom:8px;background:white">
+    return `<div style="border:1px solid var(--gris-borde);border-left:3px solid ${inf.color};border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--surface)">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">
         <div style="font-weight:700;font-size:13px;min-width:0">${listaItems}</div>
         <span style="flex-shrink:0;font-size:11px;font-weight:800;color:${inf.color};background:${inf.bg};padding:3px 10px;border-radius:99px;white-space:nowrap">${inf.icon} ${inf.label}</span>

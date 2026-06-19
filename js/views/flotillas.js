@@ -49,7 +49,7 @@ async function montarIngresoVehiculos() {
 
   pag.innerHTML = `
     <style>
-      .ingveh-chip{padding:7px 14px;border:1px solid var(--gris-borde);background:#fff;border-radius:99px;font-size:12.5px;font-weight:600;color:var(--gris-mid);cursor:pointer;white-space:nowrap;transition:all .15s}
+      .ingveh-chip{padding:7px 14px;border:1px solid var(--gris-borde);background:var(--surface);border-radius:99px;font-size:12.5px;font-weight:600;color:var(--gris-mid);cursor:pointer;white-space:nowrap;transition:all .15s}
       .ingveh-chip.active{background:var(--cc);border-color:var(--cc);color:#fff}
       .ingveh-chip:hover:not(.active){color:var(--texto);border-color:var(--cc)}
     </style>
@@ -133,7 +133,7 @@ function _renderGruposBar() {
     if (v.empresa_id)  conteo['e'+v.empresa_id]  = (conteo['e'+v.empresa_id]||0)+1;
   });
   const card = (nombre, sub, n, onEdit, color) => `
-    <div style="display:flex;align-items:center;gap:10px;border:1px solid var(--gris-borde);border-left:3px solid ${color};border-radius:9px;padding:8px 12px;background:#fff">
+    <div style="display:flex;align-items:center;gap:10px;border:1px solid var(--gris-borde);border-left:3px solid ${color};border-radius:9px;padding:8px 12px;background:var(--surface)">
       <div style="min-width:0">
         <div style="font-weight:700;font-size:13px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${escapeHtml(nombre)}</div>
         <div style="font-size:11px;color:var(--gris-mid)">${sub}${sub?' · ':''}${n} veh.</div>
@@ -574,7 +574,7 @@ function _abrirModalVehiculo(flotillaId, vehiculo) {
   modal.innerHTML = `
     <style>
       .tcv-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}
-      .tcv-btn{padding:9px 6px;border:1.5px solid var(--gris-borde);background:#fff;border-radius:9px;font-size:12.5px;font-weight:700;color:var(--gris-mid);cursor:pointer;transition:all .15s}
+      .tcv-btn{padding:9px 6px;border:1.5px solid var(--gris-borde);background:var(--surface);border-radius:9px;font-size:12.5px;font-weight:700;color:var(--gris-mid);cursor:pointer;transition:all .15s}
       .tcv-btn.active{background:var(--cc);border-color:var(--cc);color:#fff}
       .tcv-btn:hover:not(.active){border-color:var(--cc);color:var(--texto)}
     </style>

@@ -109,7 +109,7 @@ function abrirNuevaOrg(tipo) {
       <input id="${id}" ${type ? `type="${type}"` : ''} placeholder="${ph}" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--gris-borde);border-radius:7px;font-size:13px">
     </div>`;
   ov.innerHTML = `
-    <div style="background:#fff;border-radius:14px;max-width:480px;width:100%;max-height:88vh;overflow:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
+    <div style="background:var(--surface);border-radius:14px;max-width:480px;width:100%;max-height:88vh;overflow:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
       <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:14px">${meta.titulo}</div>
       <div style="display:flex;flex-direction:column;gap:11px">
         ${f('no-nombre', 'Nombre *', tipo === 'empresa' ? 'Razón social' : 'Nombre')}
@@ -235,7 +235,7 @@ async function cargarCarteraCliente(tipo) {
           <div class="aseg-filtros">
             <input id="cartera-buscar-${tipo}" type="text" placeholder="Placa, propietario..."
               class="aseg-input" style="flex:1;min-width:200px" oninput="filtrarCarteraOrdenes('${tipo}')">
-            <select id="cartera-estado-${tipo}" onchange="filtrarCarteraOrdenes('${tipo}')" class="aseg-input" style="background:#fff">
+            <select id="cartera-estado-${tipo}" onchange="filtrarCarteraOrdenes('${tipo}')" class="aseg-input" style="background:var(--surface)">
               <option value="">Todas</option>
               <option value="Activa">Activas</option>
               <option value="Entregada">Entregadas</option>
@@ -443,7 +443,7 @@ async function abrirEditarContactoOrg(btn) {
   ov.dataset.ctabla = tabla; ov.dataset.ckey = ckey; ov.dataset.cval = cval; ov.dataset.cfield = cfield; ov.dataset.cref = cref;
   ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
   ov.innerHTML = `
-    <div style="background:#fff;border-radius:14px;max-width:520px;width:100%;max-height:88vh;overflow:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
+    <div style="background:var(--surface);border-radius:14px;max-width:520px;width:100%;max-height:88vh;overflow:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
       <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:12px">Editar datos</div>
       <div style="margin-bottom:10px">
         <label style="font-size:11px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:4px">Nombre</label>

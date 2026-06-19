@@ -115,8 +115,8 @@ const Encuestas = (() => {
       .enc-tab-btn{padding:9px 18px;font-size:13px;font-weight:600;color:var(--gris-mid);background:none;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:color .15s,border-color .15s}
       .enc-tab-btn.active{color:var(--azul);border-bottom-color:var(--azul)}
       .enc-tab-btn:hover:not(.active){color:var(--texto)}
-      .enc-card{background:white;border:1.5px solid var(--gris-borde);border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-      .enc-kpi{background:white;border:1.5px solid var(--gris-borde);border-radius:12px;padding:14px 16px;text-align:center}
+      .enc-card{background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+      .enc-kpi{background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:12px;padding:14px 16px;text-align:center}
       .enc-kpi-num{font-size:24px;font-weight:800;color:var(--texto);font-family:'DM Mono',monospace}
       .enc-kpi-lbl{font-size:11px;color:var(--gris-mid);margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
       .enc-seg{display:inline-flex;gap:4px;flex-wrap:wrap}
@@ -135,7 +135,7 @@ const Encuestas = (() => {
       .enc-mec-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--gris-borde);flex-wrap:wrap}
       .enc-mec-row:last-child{border-bottom:none}
       .enc-dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:16px}
-      .enc-panel-card{background:white;border:1.5px solid var(--gris-borde);border-radius:12px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:16px}
+      .enc-panel-card{background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:12px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:16px}
       .enc-panel-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-mid);margin-bottom:14px}
       .enc-bar-row{display:grid;grid-template-columns:104px 1fr 38px;align-items:center;gap:10px;margin-bottom:11px}
       .enc-bar-lbl{font-size:12px;color:var(--texto);font-weight:600}

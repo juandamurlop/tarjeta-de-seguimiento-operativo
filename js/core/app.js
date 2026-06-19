@@ -2,6 +2,27 @@
 // INICIALIZACIÓN Y NAVEGACIÓN PRINCIPAL
 // ═══════════════════════════════════════════════════════════
 
+// ── Tema claro / oscuro ────────────────────────────────────
+// El tema se guarda en localStorage y se aplica a <html data-theme>. El init
+// sin parpadeo está en el <head> de index.html; aquí solo el interruptor.
+function toggleTema() {
+  const html = document.documentElement;
+  const esOscuro = html.getAttribute('data-theme') === 'dark';
+  if (esOscuro) html.removeAttribute('data-theme');
+  else html.setAttribute('data-theme', 'dark');
+  try { localStorage.setItem('tema_freiman', esOscuro ? 'light' : 'dark'); } catch (e) {}
+  _actualizarBotonTema();
+}
+function _actualizarBotonTema() {
+  const oscuro = document.documentElement.getAttribute('data-theme') === 'dark';
+  const lbl = document.getElementById('btn-tema-label');
+  if (lbl) lbl.textContent = oscuro ? 'Modo claro' : 'Modo oscuro';
+  const ico = document.getElementById('btn-tema-icon');
+  if (ico) ico.innerHTML = oscuro
+    ? '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>'  // sol
+    : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';  // luna
+}
+
 function montarApp() {
   document.getElementById('pantalla-login').style.display = 'none';
   document.getElementById('app').classList.add('show');
@@ -31,6 +52,8 @@ function montarApp() {
 
   const capEl = document.getElementById('sidebar-capacidad');
   if (capEl) capEl.style.display = esJefe() ? 'block' : 'none';
+
+  _actualizarBotonTema();
 
   switch (sesion.perfil) {
     case 'gerente':   montarJefe();      break;
@@ -82,7 +105,7 @@ function _mostrarBannerInstalar() {
   banner.innerHTML = `
     <svg width="16" height="16" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v13M5 9l7 7 7-7"/><path d="M3 19h18"/></svg>
     <span>Instalar app — oculta la barra de URL</span>
-    <button onclick="_instalarPWA()" style="background:white;color:#1E3A5F;border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">Instalar</button>
+    <button onclick="_instalarPWA()" style="background:var(--surface);color:#1E3A5F;border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">Instalar</button>
     <button onclick="document.getElementById('pwa-install-banner').remove()" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:18px;line-height:1;padding:0 4px">×</button>
   `;
   document.body.appendChild(banner);

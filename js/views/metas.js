@@ -58,7 +58,7 @@ async function cargarDashboardMetas() {
           </div>
         </div>
         <!-- Órdenes -->
-        <div style="background:white;border:1px solid var(--gris-borde);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px">
+        <div style="background:var(--surface);border:1px solid var(--gris-borde);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px">
           <div style="width:28px;height:28px;background:#EBF2FF;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
             <svg width="14" height="14" fill="none" stroke="#2563EB" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg>
           </div>

@@ -234,7 +234,7 @@ async function abrirModalOperario(mec) {
           <label>Contraseña inicial</label>
           <div style="display:flex;gap:8px;align-items:center">
             <input id="op-pass" type="password" placeholder="Dejar vacío = usar cédula como clave" style="flex:1">
-            <button type="button" onclick="const i=document.getElementById('op-pass');i.type=i.type==='password'?'text':'password'" style="flex-shrink:0;width:38px;height:38px;border:1.5px solid var(--gris-borde);border-radius:6px;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--gris-mid)">
+            <button type="button" onclick="const i=document.getElementById('op-pass');i.type=i.type==='password'?'text':'password'" style="flex-shrink:0;width:38px;height:38px;border:1.5px solid var(--gris-borde);border-radius:6px;background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--gris-mid)">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
           </div>
@@ -349,7 +349,7 @@ async function abrirGestionRoles() {
 function _rolFila(r) {
   const perms = r.permisos || {};
   const cant  = Object.values(perms).filter(Boolean).length;
-  return `<div style="background:white;border:1.5px solid var(--gris-borde);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+  return `<div style="background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px">
     <div style="width:10px;height:10px;border-radius:50%;background:${r.color||'#6B7280'};flex-shrink:0"></div>
     <div style="flex:1;min-width:0">
       <div style="font-weight:600;font-size:13px">${escapeHtml(r.nombre)}</div>
@@ -558,7 +558,7 @@ async function cargarVehiculos() {
           const _plEsc = escapeHtml(info.placa || '');
           const clk = ultimaOT ? `abrirOrden(${ultimaOT.id});navJefe('detalle')` : `verHistorialVehiculo('${_plEsc}')`;
 
-          return `<div class="hover-lift" style="background:white;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 11px;min-width:0">
+          return `<div class="hover-lift" style="background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 11px;min-width:0">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:4px">
               <span onclick="${clk}" style="font-family:'DM Mono',monospace;font-size:13px;font-weight:800;color:var(--texto);letter-spacing:.05em;cursor:pointer">${escapeHtml(info.placa||'—')}</span>
               <span style="font-size:9px;font-weight:700;color:${badgeCol};background:${badgeCol}18;padding:1px 6px;border-radius:3px">${ots.length} OT${ots.length!==1?'s':''}</span>
@@ -593,7 +593,7 @@ async function cargarVehiculos() {
         <div style="flex:1;min-width:200px;position:relative">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--gris-mid);pointer-events:none"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input type="text" placeholder="Buscar por placa, propietario, marca..." id="veh-buscar"
-            style="width:100%;padding:7px 12px 7px 30px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;background:white"
+            style="width:100%;padding:7px 12px 7px 30px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;background:var(--surface)"
             oninput="_vehiculosFiltrar(this.value)" value="${escapeHtml(_vehiculosBusqueda)}">
         </div>
         <div style="font-size:12px;color:var(--gris-mid);flex-shrink:0">${vehiculos.length} vehículo${vehiculos.length!==1?'s':''}</div>
@@ -658,7 +658,7 @@ function _modalPass(titulo, cedula, nombre) {
           <label>Nueva contraseña</label>
           <div style="display:flex;gap:8px;align-items:center">
             <input id="pass-nueva" type="password" placeholder="Mínimo 6 caracteres" style="flex:1;min-width:0;padding:10px 13px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:14px;color:var(--texto);outline:none;transition:border-color 0.15s">
-            <button type="button" onclick="const i=document.getElementById('pass-nueva');i.type=i.type==='password'?'text':'password'" style="flex-shrink:0;width:42px;height:42px;border:1.5px solid var(--gris-borde);border-radius:6px;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--gris-mid)">
+            <button type="button" onclick="const i=document.getElementById('pass-nueva');i.type=i.type==='password'?'text':'password'" style="flex-shrink:0;width:42px;height:42px;border:1.5px solid var(--gris-borde);border-radius:6px;background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--gris-mid)">
               <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
           </div>
@@ -1596,11 +1596,11 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
           <tbody>
             ${ets.map(e => `
               <tr style="border-bottom:1px solid #F1F5F9">
-                <td style="padding:8px 10px;font-weight:600;color:#1E293B">${escapeHtml(e.etapa)||'—'}</td>
+                <td style="padding:8px 10px;font-weight:600;color:var(--texto)">${escapeHtml(e.etapa)||'—'}</td>
                 <td style="padding:8px 10px;color:#64748B">${escapeHtml(e.tecnico)||'—'}</td>
                 <td style="padding:8px 10px;text-align:center;color:#64748B;font-family:monospace">${durMin(e.inicio,e.fin)}</td>
                 <td style="padding:8px 10px;text-align:center;color:#64748B">${e.horas_facturadas||'—'}</td>
-                <td style="padding:8px 10px;text-align:right;font-weight:600;color:#1E293B;font-family:monospace">${fmt(e.valor)}</td>
+                <td style="padding:8px 10px;text-align:right;font-weight:600;color:var(--texto);font-family:monospace">${fmt(e.valor)}</td>
               </tr>`).join('')}
             <tr style="background:#F8FAFC;font-weight:700">
               <td colspan="4" style="padding:8px 10px;color:#374151;font-size:12px">Subtotal ${srvNombres[srv]||srv}</td>
@@ -1638,11 +1638,11 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
               const filas = items.length ? items : [{ repuesto: sol.repuesto, unidades: sol.unidades||1 }];
               return filas.map((item, idx) => `
                 <tr style="border-bottom:1px solid #F1F5F9">
-                  <td style="padding:7px 10px;font-weight:600;color:#1E293B">${escapeHtml(item.repuesto||'—')}</td>
+                  <td style="padding:7px 10px;font-weight:600;color:var(--texto)">${escapeHtml(item.repuesto||'—')}</td>
                   <td style="padding:7px 10px;text-align:center;color:#64748B">${item.unidades||1}</td>
                   <td style="padding:7px 10px;color:#64748B">${escapeHtml(cot?.proveedores?.nombre||'—')}</td>
                   <td style="padding:7px 10px;text-align:center;color:#64748B">${cot?.es_original === false ? 'Genérico' : 'Original'}</td>
-                  ${conPrecios ? `<td style="padding:7px 10px;text-align:right;font-family:monospace;font-weight:600;color:#1E293B">${idx === 0 ? fmt(cot?.precio_venta_jefe) : ''}</td>` : ''}
+                  ${conPrecios ? `<td style="padding:7px 10px;text-align:right;font-family:monospace;font-weight:600;color:var(--texto)">${idx === 0 ? fmt(cot?.precio_venta_jefe) : ''}</td>` : ''}
                 </tr>`).join('');
             }).join('')}
           </tbody>
@@ -1799,7 +1799,7 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
 <title>Preliquidación ${escapeHtml(orden.placa)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;font-size:9px;line-height:1.35;background:#fff}
+body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;font-size:9px;line-height:1.35;background:var(--surface)}
 @page{size:A4 landscape;margin:5mm 7mm}
 
 /* Tablas */
@@ -2417,7 +2417,7 @@ function _actualizarListaCritica(criticas) {
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         ${criticas.map(({ etapa, orden, minutos }) => `
-          <div class="hover-lift" onclick="_alertaVerOrden(${etapa.orden_id})" title="${escapeHtml((etapa.etapa||etapa.servicio||'Etapa')+' · '+(etapa.tecnico||'Sin técnico'))}" style="display:inline-flex;align-items:center;gap:6px;background:white;border-radius:7px;padding:5px 9px;cursor:pointer;border:1px solid #FECACA">
+          <div class="hover-lift" onclick="_alertaVerOrden(${etapa.orden_id})" title="${escapeHtml((etapa.etapa||etapa.servicio||'Etapa')+' · '+(etapa.tecnico||'Sin técnico'))}" style="display:inline-flex;align-items:center;gap:6px;background:var(--surface);border-radius:7px;padding:5px 9px;cursor:pointer;border:1px solid #FECACA">
             <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:11px;color:#7F1D1D">${orden.placa || '—'}</span>
             <span style="font-size:10px;color:#991B1B;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${etapa.etapa || etapa.servicio || 'Etapa'}</span>
             <span style="font-size:10px;font-weight:700;color:#DC2626">${_fmtMin(minutos)}</span>
@@ -2464,7 +2464,7 @@ async function abrirPanelCapacidad() {
   `;
   overlay.addEventListener('click', e => { if (e.target === overlay) cerrarPanelCapacidad(); });
   overlay.innerHTML = `
-    <div style="background:white;border-radius:16px;width:100%;max-width:780px;max-height:90vh;
+    <div style="background:var(--surface);border-radius:16px;width:100%;max-width:780px;max-height:90vh;
       display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden">
       <div style="background:#1E3A5F;color:white;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
         <div>

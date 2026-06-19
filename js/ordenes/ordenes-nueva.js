@@ -741,7 +741,7 @@ function editarMensajeIngreso() {
   ov.id = 'wa-msg-modal';
   ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
   ov.innerHTML = `
-    <div style="background:#fff;border-radius:14px;max-width:460px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
+    <div style="background:var(--surface);border-radius:14px;max-width:460px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
       <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:4px">Mensaje de ingreso al cliente</div>
       <div style="font-size:12px;color:var(--gris-mid);margin-bottom:12px">Se envía al recibir el vehículo, con el link de seguimiento en tiempo real.</div>
       <textarea id="wa-msg-text" rows="6" style="width:100%;border:1px solid var(--gris-borde);border-radius:8px;padding:10px;font-size:13px;font-family:inherit;resize:vertical">${escapeHtml(_waIngresoTemplate())}</textarea>
@@ -805,7 +805,7 @@ function editarMensajeEntrega() {
   ov.id = 'wa-msg-modal';
   ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px';
   ov.innerHTML = `
-    <div style="background:#fff;border-radius:14px;max-width:460px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
+    <div style="background:var(--surface);border-radius:14px;max-width:460px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);font-family:'DM Sans',sans-serif">
       <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:4px">Mensaje de WhatsApp al cliente</div>
       <div style="font-size:12px;color:var(--gris-mid);margin-bottom:12px">Se envía cuando el vehículo está listo para entrega.</div>
       <textarea id="wa-msg-text" rows="6" style="width:100%;border:1px solid var(--gris-borde);border-radius:8px;padding:10px;font-size:13px;font-family:inherit;resize:vertical">${escapeHtml(_waEntregaTemplate())}</textarea>
@@ -1041,7 +1041,7 @@ async function verHistorialVehiculo(placa) {
     ov.id = 'hist-veh-modal';
     ov.style.cssText = 'position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:18px';
     ov.innerHTML = `
-      <div style="background:#fff;border-radius:14px;max-width:480px;width:100%;max-height:85vh;display:flex;flex-direction:column;font-family:'DM Sans',sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+      <div style="background:var(--surface);border-radius:14px;max-width:480px;width:100%;max-height:85vh;display:flex;flex-direction:column;font-family:'DM Sans',sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.3)">
         <div style="padding:16px 18px;border-bottom:1px solid var(--gris-borde);display:flex;justify-content:space-between;align-items:center">
           <div>
             <div style="font-size:16px;font-weight:800;color:var(--azul)">Historial · ${escapeHtml(placa)}</div>
@@ -1108,7 +1108,7 @@ async function pedirPin(onOk, titulo, subtitulo) {
   ov.id = 'pin-cierre-modal';
   ov.style.cssText = 'position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:18px';
   ov.innerHTML = `
-    <div style="background:#fff;border-radius:14px;max-width:340px;width:100%;padding:22px;text-align:center;font-family:'DM Sans',sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+    <div style="background:var(--surface);border-radius:14px;max-width:340px;width:100%;padding:22px;text-align:center;font-family:'DM Sans',sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.3)">
       <div style="font-size:34px">🔒</div>
       <div style="font-size:16px;font-weight:800;color:var(--azul);margin:6px 0 2px">${titulo || 'Confirmar con PIN'}</div>
       <div style="font-size:12px;color:var(--gris-mid);margin-bottom:14px">${subtitulo || 'Ingresa el PIN del jefe de taller / gerente.'}</div>
@@ -1149,7 +1149,7 @@ async function configurarPinCierre() {
   ov.id = 'pin-config-modal';
   ov.style.cssText = 'position:fixed;inset:0;z-index:10003;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:18px';
   ov.innerHTML = `
-    <div style="background:#fff;border-radius:14px;max-width:360px;width:100%;padding:22px;font-family:'DM Sans',sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+    <div style="background:var(--surface);border-radius:14px;max-width:360px;width:100%;padding:22px;font-family:'DM Sans',sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.3)">
       <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:2px">${actual ? 'Cambiar' : 'Configurar'} PIN de cierre</div>
       <div style="font-size:12px;color:var(--gris-mid);margin-bottom:14px">Solo el jefe de taller y el gerente deben conocerlo.</div>
       ${actual ? `<input id="pin-cfg-actual" type="password" inputmode="numeric" maxlength="8" placeholder="PIN actual" style="width:100%;padding:9px;border:1px solid var(--gris-borde);border-radius:8px;font-family:'DM Mono',monospace;margin-bottom:8px">` : ''}

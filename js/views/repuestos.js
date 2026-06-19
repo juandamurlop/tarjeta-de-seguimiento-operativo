@@ -610,11 +610,11 @@ async function cargarRepuestosJefe() {
 
           return `<div class="card" data-id="${s.id}" style="display:flex;align-items:center;gap:12px;padding:9px 12px">
             <div style="min-width:80px;flex-shrink:0">
-              <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;color:#0F172A;letter-spacing:.5px">${escapeHtml(o.placa||'—')}</div>
+              <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;color:var(--texto);letter-spacing:.5px">${escapeHtml(o.placa||'—')}</div>
               <div style="font-size:10px;color:var(--gris-mid);font-family:'DM Mono',monospace">${formatOT(s.orden_id)}</div>
             </div>
             <div style="flex:1;min-width:0">
-              <div title="${escapeHtml(repNames.join(', '))}" style="font-size:13px;font-weight:600;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${repResumen || '—'}</div>
+              <div title="${escapeHtml(repNames.join(', '))}" style="font-size:13px;font-weight:600;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${repResumen || '—'}</div>
               <div style="font-size:11px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(o.propietario||'Cliente —')} · ${timerEstado}${espera}</div>
             </div>
             <div style="width:118px;flex-shrink:0">${_barraEstadoMini(s.estado)}</div>
@@ -696,7 +696,7 @@ async function _verSolicitud(id) {
     div.id = 'modal-ver-solicitud';
     div.style.cssText = 'position:fixed;inset:0;z-index:11000;background:rgba(0,0,0,.4);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto';
     div.onclick = (e) => { if (e.target === div) _cerrarVerSolicitud(); };
-    div.innerHTML = `<div style="background:#fff;border-radius:14px;max-width:480px;width:100%;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.2)">
+    div.innerHTML = `<div style="background:var(--surface);border-radius:14px;max-width:480px;width:100%;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.2)">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
         <div>
           <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:18px;letter-spacing:.5px">${escapeHtml(o?.placa || '—')}</div>
@@ -872,7 +872,7 @@ async function abrirModalPrecioVenta(solicitudId) {
                 border:2px solid ${seleccionado ? 'var(--azul)' : 'var(--gris-mid)'};
                 background:${seleccionado ? 'var(--azul)' : 'transparent'};
                 display:flex;align-items:center;justify-content:center;
-              ">${seleccionado ? '<div style="width:7px;height:7px;border-radius:50%;background:#fff"></div>' : ''}</div>
+              ">${seleccionado ? '<div style="width:7px;height:7px;border-radius:50%;background:var(--surface)"></div>' : ''}</div>
               <div style="font-weight:700;font-size:13px;color:${seleccionado ? 'var(--azul)' : 'var(--texto)'}">
                 ${_OP_LABELS[c.opcion] || 'Opción ' + c.opcion}
               </div>
@@ -935,7 +935,7 @@ function _pvSeleccionar(cotId, todosIds) {
     if (radio) {
       radio.style.borderColor = sel ? 'var(--azul)' : 'var(--gris-mid)';
       radio.style.background  = sel ? 'var(--azul)' : 'transparent';
-      radio.innerHTML = sel ? '<div style="width:7px;height:7px;border-radius:50%;background:#fff"></div>' : '';
+      radio.innerHTML = sel ? '<div style="width:7px;height:7px;border-radius:50%;background:var(--surface)"></div>' : '';
     }
     if (lbl) lbl.style.color = sel ? 'var(--azul)' : 'var(--texto)';
   });
@@ -1138,11 +1138,11 @@ async function cargarSolicitudesRepuestos() {
 
           return `<div class="card" data-id="${s.id}" style="display:flex;align-items:center;gap:12px;padding:9px 12px">
             <div style="min-width:80px;flex-shrink:0">
-              <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;color:#0F172A;letter-spacing:.5px">${escapeHtml(o.placa||'—')}</div>
+              <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:14px;color:var(--texto);letter-spacing:.5px">${escapeHtml(o.placa||'—')}</div>
               <div style="font-size:10px;color:var(--gris-mid);font-family:'DM Mono',monospace">${formatOT(s.orden_id)}</div>
             </div>
             <div style="flex:1;min-width:0">
-              <div title="${escapeHtml(repNames.join(', '))}" style="font-size:13px;font-weight:600;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${repResumen || '—'}</div>
+              <div title="${escapeHtml(repNames.join(', '))}" style="font-size:13px;font-weight:600;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${repResumen || '—'}</div>
               <div style="font-size:11px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(o.propietario||'Cliente —')} · ${tEstado}${espera}</div>
             </div>
             <div style="width:118px;flex-shrink:0">${_barraEstadoMini(s.estado)}</div>
@@ -1162,7 +1162,7 @@ async function cargarSolicitudesRepuestos() {
             const its = todosItems.filter(i => i.solicitud_id === s.id);
             const reps = (its.length ? its.map(i => i.repuesto) : [s.repuesto].filter(Boolean)).slice(0, 2).map(escapeHtml).join(', ');
             return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--gris-borde);border-radius:8px;background:#F8FAFC">
-              <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:13px;color:#0F172A;min-width:64px">${escapeHtml(o.placa || '—')}</span>
+              <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:13px;color:var(--texto);min-width:64px">${escapeHtml(o.placa || '—')}</span>
               <span style="flex:1;min-width:0;font-size:12px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${reps || '—'}</span>
               <span class="badge badge-completada" style="flex-shrink:0">Entregado</span>
               <button class="btn btn-ghost btn-xs" onclick="_verSolicitud(${s.id})">Ver</button>
@@ -2187,7 +2187,7 @@ async function cargarRepuestosCliente(ordenId) {
       if (!conPrecio.length) return '';
       return `<div style="margin-bottom:14px;padding:14px;background:var(--gris-bg);border-radius:8px;border:1px solid var(--gris-borde)">
         <div style="font-weight:700;margin-bottom:8px">${escapeHtml(s.repuesto)} · ${escapeHtml(String(s.unidades))} und</div>
-        ${conPrecio.map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:white;border-radius:6px;border:1px solid var(--gris-borde);margin-bottom:5px">
+        ${conPrecio.map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface);border-radius:6px;border:1px solid var(--gris-borde);margin-bottom:5px">
           <div><div style="font-size:13px;font-weight:600">Opción ${c.opcion}</div><div style="font-size:11px;color:var(--gris-mid)">${escapeHtml(c.proveedores?.nombre||'—')}</div></div>
           <div style="font-size:15px;font-weight:700;color:var(--verde);font-family:'DM Mono',monospace">${formatCOP(c.precio_venta_jefe)}</div>
         </div>`).join('')}

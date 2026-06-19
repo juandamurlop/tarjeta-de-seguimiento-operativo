@@ -147,7 +147,7 @@ async function montarReportes() {
       .rep-tab-btn{padding:9px 18px;font-size:13px;font-weight:600;color:var(--gris-mid);background:none;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;transition:color .15s,border-color .15s}
       .rep-tab-btn.active{color:var(--azul);border-bottom-color:var(--azul)}
       .rep-tab-btn:hover:not(.active){color:var(--texto)}
-      .rep-card{background:white;border:1.5px solid var(--gris-borde);border-radius:12px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+      .rep-card{background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:12px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
       .rep-card-title{font-size:13px;font-weight:700;color:var(--texto);margin-bottom:4px;display:flex;align-items:center;gap:8px}
       .rep-card-desc{font-size:12px;color:var(--gris-mid);margin-bottom:14px;line-height:1.5}
       .rep-card-accent{border-left:4px solid var(--azul)}
@@ -1542,7 +1542,7 @@ function _generarPDF(d, titulo, subtitulo) {
 <html lang="es"><head><meta charset="UTF-8"><title>${titulo}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a2e;background:#fff;font-size:12px;line-height:1.5}
+  body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a2e;background:var(--surface);font-size:12px;line-height:1.5}
   .page{max-width:960px;margin:0 auto;padding:32px 36px}
   .rpt-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1E3A5F;padding-bottom:16px;margin-bottom:24px}
   .rpt-brand{font-size:22px;font-weight:800;color:#1E3A5F;letter-spacing:1px}

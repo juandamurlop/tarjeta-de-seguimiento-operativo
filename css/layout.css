@@ -23,7 +23,7 @@
     radial-gradient(ellipse 40% 60% at 10% 80%, rgba(30,58,95,0.6) 0%, transparent 60%);
 }
 .login-card {
-  background: white;
+  background: var(--surface);
   border-radius: 20px;
   padding: 48px 44px;
   width: 100%;
@@ -382,7 +382,7 @@ tr.destello-nuevo { animation: destelloBg 1.3s var(--ease-out) 3; }
 }
 .topbar {
   height: var(--header-h);
-  background: white;
+  background: var(--surface);
   border-bottom: 1px solid var(--gris-borde);
   display: flex;
   align-items: center;
@@ -420,7 +420,7 @@ tr.destello-nuevo { animation: destelloBg 1.3s var(--ease-out) 3; }
   position: fixed;
   bottom: 0; left: 0; right: 0;
   height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
-  background: white;
+  background: var(--surface);
   border-top: 1.5px solid var(--gris-borde);
   z-index: 200;
   padding: 0 8px;
@@ -456,7 +456,7 @@ tr.destello-nuevo { animation: destelloBg 1.3s var(--ease-out) 3; }
 /* DASHBOARD */
 .dash-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; margin-bottom: 20px; }
 @media(min-width:600px){ .dash-grid { grid-template-columns: repeat(4,1fr); } }
-.dash-card { background: white; border: 1px solid var(--gris-borde); border-radius: 10px; padding: 18px; box-shadow: var(--shadow-sm); transition: box-shadow 0.18s var(--ease-out), border-color 0.18s var(--ease-out), transform 0.18s var(--ease-out); }
+.dash-card { background: var(--surface); border: 1px solid var(--gris-borde); border-radius: 10px; padding: 18px; box-shadow: var(--shadow-sm); transition: box-shadow 0.18s var(--ease-out), border-color 0.18s var(--ease-out), transform 0.18s var(--ease-out); }
 .dash-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04); border-color: #D0D6E0; transform: translateY(-2px); }
 /* DRAG & DROP */
 .orden-card[draggable] { cursor: grab; }
@@ -472,7 +472,7 @@ tr.destello-nuevo { animation: destelloBg 1.3s var(--ease-out) 3; }
 .dash-procesos-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 20px; }
 @media(min-width:700px){ .dash-procesos-grid { grid-template-columns: repeat(3,1fr); } }
 @media(min-width:1000px){ .dash-procesos-grid { grid-template-columns: repeat(4,1fr); } }
-.proceso-col { background: white; border: 1px solid var(--gris-borde); border-radius: 10px; overflow: hidden; }
+.proceso-col { background: var(--surface); border: 1px solid var(--gris-borde); border-radius: 10px; overflow: hidden; }
 .proceso-col-header { padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--gris-borde); }
 .proceso-col-nombre { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
 .proceso-col-count { font-size: 12px; font-weight: 700; font-family: 'DM Mono', monospace; }

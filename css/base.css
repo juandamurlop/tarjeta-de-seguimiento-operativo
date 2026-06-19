@@ -17,6 +17,10 @@
   --gris-mid:    #8A94A6;
   --gris-texto:  #4A5568;
   --texto:       #111827;
+  /* Superficies (tarjetas, modales). En claro = blanco; el modo oscuro las
+     redefine más abajo. Todo lo que antes usaba "#fff/white" ahora usa esto. */
+  --surface:     #FFFFFF;
+  --surface-2:   #F8FAFC;
   --verde:       #0D7A4E;
   --verde-bg:    #E6F5EF;
   --rojo:        #C0392B;
@@ -33,6 +37,49 @@
   --shadow-sm:   0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06);
   --shadow-md:   0 4px 12px rgba(16,24,40,0.06), 0 2px 6px rgba(16,24,40,0.05);
   --shadow-lg:   0 16px 48px rgba(16,24,40,0.12), 0 4px 14px rgba(16,24,40,0.06);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MODO OSCURO — se activa con <html data-theme="dark">. Solo redefine
+   las variables de color; el resto del CSS las usa y se adapta solo.
+   La pantalla TV (#pag-taller) se fuerza en claro más abajo.
+═══════════════════════════════════════════════════════════ */
+html[data-theme="dark"] {
+  --gris-bg:     #0E1622;   /* fondo de página */
+  --surface:     #1A2334;   /* tarjetas / modales */
+  --surface-2:   #141C2A;   /* paneles sutiles */
+  --blanco:      #1A2334;
+  --gris-borde:  #2A3447;
+  --gris-mid:    #98A2B6;
+  --gris-texto:  #C3CBDA;
+  --texto:       #E8ECF4;
+  --azul:        #6AA3DD;
+  --azul-mid:    #5B8FC9;
+  --azul-hover:  #5B8FC9;
+  --azul-light:  #1E2A3D;
+  --verde:       #34D399;
+  --verde-bg:    #11271D;
+  --rojo:        #F87171;
+  --rojo-bg:     #2C1715;
+  --amarillo:    #FBBF24;
+  --amarillo-bg: #2A2310;
+  --shadow-sm:   0 1px 2px rgba(0,0,0,0.30), 0 1px 3px rgba(0,0,0,0.34);
+  --shadow-md:   0 4px 12px rgba(0,0,0,0.36), 0 2px 6px rgba(0,0,0,0.30);
+  --shadow-lg:   0 16px 48px rgba(0,0,0,0.50), 0 4px 14px rgba(0,0,0,0.36);
+}
+/* En oscuro el azul es claro: el texto de los botones primarios va oscuro
+   para que contraste bien. */
+html[data-theme="dark"] .btn-primary { color: #0E1622; }
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea { background: var(--surface-2); color: var(--texto); }
+html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #3A465C; }
+
+/* La pantalla TV del taller SIEMPRE en claro (aunque el app esté en oscuro). */
+html[data-theme="dark"] #pag-taller {
+  --gris-bg: #F4F5F7; --surface: #FFFFFF; --surface-2: #F8FAFC; --blanco: #FFFFFF;
+  --gris-borde: #E1E5EC; --gris-mid: #8A94A6; --gris-texto: #4A5568; --texto: #111827;
+  --azul: #1E3A5F; --azul-mid: #2A5298; --azul-light: #EBF2FF;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
