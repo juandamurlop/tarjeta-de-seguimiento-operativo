@@ -1377,6 +1377,15 @@ async function guardarEdicionOrden() {
     // fecha de entrega), así que un VIN imperfecto impedía editar cualquier dato.
     if (vin && vin.length !== 17) { toast('Aviso: el VIN no tiene 17 caracteres (se guardó igual)', 'warn'); }
 
+    // Cédula / NIT OBLIGATORIA: arma el link de seguimiento del cliente. El
+    // botón se rehabilita solo en el finally, así que basta con cortar aquí.
+    const _cedEd = (typeof normDoc === 'function' ? normDoc(document.getElementById('ed-cedula')?.value) : (document.getElementById('ed-cedula')?.value.trim())) || '';
+    if (!_cedEd) {
+      toast('La cédula / NIT del cliente es obligatoria (se usa para el link de seguimiento)', 'err');
+      document.getElementById('ed-cedula')?.focus();
+      return;
+    }
+
     // Aseguradora / flotilla según tipo
     let aseguradora = null;
     if (tipoCliente === 'aseguradora') {

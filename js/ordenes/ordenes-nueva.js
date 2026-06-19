@@ -977,22 +977,21 @@ function _bloquePreliqCierre(orden) {
     <button class="btn btn-sm" style="width:100%;background:#25D366;border-color:#25D366;color:#fff" onclick="enviarPreliquidacionCliente(${orden.id})">📲 ${enviada ? 'Reenviar' : 'Enviar'} preliquidación (WhatsApp)</button>`;
   h += enviada
     ? `<div style="font-size:11px;color:var(--verde);font-weight:600;margin-top:6px">✓ Preliquidación enviada el ${formatTS(orden.preliquidacion_enviada_en)}</div>`
-    : `<div style="font-size:11px;color:#B45309;margin-top:6px">⚠ Debes enviar la preliquidación al cliente antes de cerrar la orden.</div>`;
+    : `<div style="font-size:11px;color:var(--gris-mid);margin-top:6px">La preliquidación es opcional: puedes enviarla o cerrar directamente.</div>`;
   h += `</div>`;
-  // Botón cerrar (bloqueado hasta enviar la preliquidación) — requiere PIN
-  h += enviada
-    ? `<button class="btn btn-success" style="width:100%" onclick="intentarCerrarOrden(${orden.id})">🔒 Cerrar orden (con PIN)</button>`
-    : `<button class="btn" style="width:100%;opacity:.45;cursor:not-allowed" disabled>🔒 Cerrar orden (con PIN)</button>`;
+  // Botón cerrar — requiere PIN. Ya NO exige la preliquidación (se puede cerrar
+  // una vez avisado el cliente).
+  h += `<button class="btn btn-success" style="width:100%" onclick="intentarCerrarOrden(${orden.id})">🔒 Cerrar orden (con PIN)</button>`;
   h += `<div style="text-align:center;margin-top:4px"><button class="btn btn-ghost btn-sm" style="font-size:10px;color:var(--gris-mid)" onclick="configurarPinCierre()">⚙ Configurar PIN de cierre</button></div>`;
   return h;
 }
 
-// Verifica preliquidación enviada + abre el modal de PIN para cerrar.
+// Abre el modal de PIN para cerrar. Se puede cerrar una vez avisado el cliente
+// (la preliquidación ya NO es obligatoria; queda como paso opcional/recomendado).
 async function intentarCerrarOrden(ordenId) {
   let o = (ordenActual && ordenActual.id === ordenId) ? ordenActual : null;
   if (!o) o = await api(`/ordenes?id=eq.${ordenId}`).then(r => r && r[0]).catch(() => null);
   if (!o) { toast('Orden no encontrada', 'err'); return; }
-  if (!o.preliquidacion_enviada_en) { toast('Primero envía la preliquidación al cliente', 'err'); return; }
   pedirPin(() => cambiarEstado('Entregada'), 'Cerrar orden', 'Ingresa el PIN del jefe / gerente para cerrar.');
 }
 
@@ -1248,7 +1247,18 @@ async function crearOrden() {
   const kmVal = document.getElementById('n-km')?.value;
   if (!kmOmitir && (!kmVal || parseInt(kmVal) < 0)) { toast('El kilometraje es obligatorio (o marca "Sin odómetro")', 'err'); document.getElementById('n-km')?.focus(); return; }
 
-  const cedulaCliente = ((typeof normDoc === 'function') ? normDoc(document.getElementById('n-cedula-cliente')?.value) : (document.getElementById('n-cedula-cliente')?.value.trim())) || '';
+  // La cédula puede estar en el campo de cliente (particular/empresa/flotilla) o
+  // en el de la sección de aseguradora, según el tipo seleccionado.
+  const _cedRaw = (document.getElementById('n-cedula-cliente')?.value || document.getElementById('n-cedula-aseg')?.value || '');
+  const cedulaCliente = ((typeof normDoc === 'function') ? normDoc(_cedRaw) : _cedRaw.trim()) || '';
+  // Cédula / NIT OBLIGATORIA: es la que arma el link de seguimiento del cliente.
+  if (!cedulaCliente) {
+    toast('La cédula / NIT del cliente es obligatoria (se usa para el link de seguimiento)', 'err');
+    const _cedEl = document.getElementById('n-cedula-aseg')?.offsetParent ? document.getElementById('n-cedula-aseg') : document.getElementById('n-cedula-cliente');
+    _cedEl?.focus();
+    _cedEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
   const vin = document.getElementById('n-vin')?.value.trim().toUpperCase() || null;
   const correoCliente = document.getElementById('n-correo-cliente')?.value.trim() || null;
 
