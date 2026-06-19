@@ -728,10 +728,11 @@ async function abrirPanelValorTaller() {
     const ahora = new Date();
     const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
     const anio = ahora.getFullYear(), mesNum = ahora.getMonth() + 1;
-    const [ords, ventasAll, etMes] = await Promise.all([
+    const [ords, ventasAll, ordsEnt] = await Promise.all([
       api(`/ordenes?or=(estado.eq.Activa,estado.is.null)&pulmon=not.eq.true&select=id,placa,propietario,precio_venta_cliente,insumos,repuestos_simple&limit=300`).catch(() => []) || [],
       api(`/ventas_mensuales?order=ano.desc,mes_num.desc&limit=36`).catch(() => []) || [],   // las metas viven aquí (meta_base)
-      api(`/etapas?fin=gte.${inicioMes}&fin=not.is.null&select=valor`).catch(() => []) || []
+      // Órdenes FACTURADAS este mes = entregadas este mes (con su valor).
+      api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${inicioMes}&select=id,precio_venta_cliente,insumos,repuestos_simple&limit=500`).catch(() => []) || []
     ]);
     // La meta del mes = meta_base de la fila del mes actual en ventas_mensuales.
     const metaMes = ventasAll.find(m => Number(m.ano) === anio && Number(m.mes_num) === mesNum);
@@ -746,11 +747,18 @@ async function abrirPanelValorTaller() {
     const totalTaller = filas.reduce((s, f) => s + f.v, 0);
     const maxV = Math.max(1, ...filas.map(f => f.v));
     const meta = Number(metaMes?.meta_base) || 0;
-    // Logrado del mes: la venta reportada del contador (ventas_mensuales) si ya está
-    // cargada; si no, el valor en vivo del taller (etapas finalizadas este mes).
+    // FACTURADO del mes = valor de las órdenes entregadas este mes.
+    const idsEnt = ordsEnt.map(o => o.id).join(',');
+    const etsEnt = idsEnt ? (await api(`/etapas?orden_id=in.(${idsEnt})&select=orden_id,valor_venta`).catch(() => []) || []) : [];
+    const facturadoMes = ordsEnt.reduce((s, o) => {
+      const mo = etsEnt.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
+      const v = (o.precio_venta_cliente && o.precio_venta_cliente > 0) ? o.precio_venta_cliente : (mo + valItems(o, 'insumos') + valItems(o, 'repuestos_simple'));
+      return s + v;
+    }, 0);
+    // Logrado/facturado del mes: la venta reportada del contador (ventas_mensuales)
+    // si ya está cargada; si no, lo que el taller entregó este mes.
     const ventaMes = Number(metaMes?.ventas) || 0;
-    const ingresosTaller = etMes.reduce((s, e) => s + (e.valor || 0), 0);
-    const ingresosMes = ventaMes > 0 ? ventaMes : ingresosTaller;
+    const ingresosMes = ventaMes > 0 ? ventaMes : facturadoMes;
     const falta = Math.max(0, meta - ingresosMes);
     const pctReal = meta > 0 ? Math.round(ingresosMes / meta * 100) : 0;
     const pctBar = Math.min(pctReal, 100);
@@ -764,6 +772,18 @@ async function abrirPanelValorTaller() {
 
     const body = document.getElementById('pvt-body');
     if (body) body.innerHTML = `
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:150px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;padding:12px 14px">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#047857">💵 Facturado este mes</div>
+          <div style="font-size:21px;font-weight:800;color:#065F46;font-family:'DM Mono',monospace;margin-top:3px">${_fmt(ingresosMes)}</div>
+          <div style="font-size:10.5px;color:#059669;margin-top:1px">${ventaMes > 0 ? 'Reportado por el contador' : `${ordsEnt.length} orden${ordsEnt.length === 1 ? '' : 'es'} entregada${ordsEnt.length === 1 ? '' : 's'}`}</div>
+        </div>
+        <div style="flex:1;min-width:150px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:12px 14px">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#1D4ED8">🔧 En el taller ahora</div>
+          <div style="font-size:21px;font-weight:800;color:#1E3A5F;font-family:'DM Mono',monospace;margin-top:3px">${_fmt(totalTaller)}</div>
+          <div style="font-size:10.5px;color:#2563EB;margin-top:1px">${filas.length} orden${filas.length === 1 ? '' : 'es'} activa${filas.length === 1 ? '' : 's'}</div>
+        </div>
+      </div>
       <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#1D4ED8;margin-bottom:8px">Valor por orden activa (${filas.length})</div>
       ${ordRows}
       <div style="display:flex;justify-content:space-between;border-top:2px solid var(--azul-mid);margin-top:8px;padding-top:8px;font-weight:800;color:var(--azul);font-size:14px"><span>Total en el taller</span><span style="font-family:'DM Mono',monospace">${_fmt(totalTaller)}</span></div>
