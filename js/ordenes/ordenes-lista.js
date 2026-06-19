@@ -60,9 +60,9 @@ async function buscarOrdenesGlobal(q) {
     const s = [(o.placa || ''), (o.propietario || ''), tec, (o.marca || ''), (o.linea || ''), (o.descripcion_general || ''), (o.aseguradora || ''), (typeof otDe === 'function' ? otDe(o) : '')].join(' ').toLowerCase();
     return s.includes(q);
   });
-  renderTablaOrdenes(filtradas, etapas);
+  renderTablaOrdenes(filtradas, etapas, { ubicacion: true });
   document.getElementById('ord-busq-nota')?.remove();
-  if (lista) lista.insertAdjacentHTML('afterbegin', `<div id="ord-busq-nota" style="font-size:12px;color:var(--gris-mid);margin-bottom:8px">🔎 Resultados en <strong>todos los estados</strong> · ${filtradas.length}</div>`);
+  if (lista) lista.insertAdjacentHTML('afterbegin', `<div id="ord-busq-nota" style="font-size:12px;color:var(--gris-mid);margin-bottom:8px">🔎 Resultados en <strong>todos los estados</strong> · ${filtradas.length} · cada uno muestra 📍 dónde está</div>`);
 }
 
 let _ordenesTablaData  = [];
@@ -109,7 +109,22 @@ function _chipTipoOrden(o) {
   return `<span style="display:inline-block;font-size:10px;font-weight:800;letter-spacing:.02em;color:${ti.color};background:${ti.bg};border:1px solid ${ti.color}44;padding:2px 8px;border-radius:99px;white-space:nowrap">${ti.label}</span>`;
 }
 
-function _buildOrdenRow(o, etapas) {
+// Ubicación de una orden = en qué pestaña/sección del apartado Órdenes vive.
+// Se muestra en los resultados de la búsqueda global para saber de un vistazo
+// dónde está la orden (Activas, Programada, En pulmón, Entregada o Archivada).
+function _ubicacionOrden(o) {
+  if (o.pulmon)                  return { label: 'En pulmón',  color: '#92400E', bg: '#FEF3C7' };
+  if (o.estado === 'Programada') return { label: 'Programada', color: '#6D28D9', bg: '#EDE9FE' };
+  if (o.estado === 'Entregada')  return { label: 'Entregada',  color: '#0D7A4E', bg: '#E6F5EF' };
+  if (o.estado === 'Archivada')  return { label: 'Archivada',  color: '#64748B', bg: '#F1F5F9' };
+  return { label: 'Activas', color: '#1D4ED8', bg: '#DBEAFE' };
+}
+function _badgeUbicacion(o) {
+  const u = _ubicacionOrden(o);
+  return `<div style="margin-top:4px"><span style="display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.02em;color:${u.color};background:${u.bg};padding:2px 7px;border-radius:99px;white-space:nowrap">📍 ${u.label}</span></div>`;
+}
+
+function _buildOrdenRow(o, etapas, opts) {
   const comentario = o.descripcion_general || '';
   const etapasO  = etapas.filter(e => e.orden_id === o.id);
   // "Sin valor": la orden no tiene precio de venta (ni en etapas ni el total de
@@ -162,6 +177,7 @@ function _buildOrdenRow(o, etapas) {
     <td style="text-align:center">
       <div class="ord-placa">${escapeHtml(o.placa)}</div>
       <div class="ord-ot">${otDe(o)}${contactAlert}</div>
+      ${opts && opts.ubicacion ? _badgeUbicacion(o) : ''}
     </td>
     <td><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">${_chipTipoOrden(o)}<button class="btn btn-ghost btn-xs" style="font-size:10px;padding:1px 6px;color:var(--azul)" title="Mover a una organización" onclick="event.stopPropagation();abrirMoverOrganizacion(${o.id})">🏢 Mover</button></div></td>
     <td>
@@ -187,14 +203,14 @@ function _buildOrdenRow(o, etapas) {
   </tr>`;
 }
 
-function renderTablaOrdenes(data, etapas) {
+function renderTablaOrdenes(data, etapas, opts) {
   const lista = document.getElementById('lista-ordenes');
   if (!lista) return;
   if (!data.length) {
     lista.innerHTML = `<div class="empty-state"><div class="empty-state-icon">${ico('clipboard',32)}</div>No hay órdenes.</div>`;
     return;
   }
-  const rows = data.map(o => _buildOrdenRow(o, etapas)).join('');
+  const rows = data.map(o => _buildOrdenRow(o, etapas, opts)).join('');
   renderSinParpadeo(lista, `<div class="ordenes-tabla-wrap"><table class="ordenes-tabla">
     <thead><tr>
       <th>Orden</th><th>Tipo</th><th>Vehículo</th><th>Etapa actual</th>
