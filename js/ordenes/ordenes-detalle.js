@@ -83,6 +83,28 @@ function _toggleConsumibles() {
   if (pill) pill.style.display = _consumiblesAbierto ? 'none' : '';
 }
 
+// Para órdenes de organización (aseguradora / flotilla / empresa) trae el
+// registro de la organización (nombre, NIT, dirección, teléfono, correo) para
+// mostrar SUS datos en la tarjeta del cliente. La persona pasa a ser "contacto".
+// Devuelve null si es particular o si no se encuentra la organización.
+async function _cargarOrgDeOrden(orden) {
+  const tipo = (orden?.tipo_cliente || '').toLowerCase();
+  const nombre = orden?.aseguradora;
+  if (!nombre || !['aseguradora', 'flotilla', 'empresa'].includes(tipo)) return null;
+  const enc = encodeURIComponent(nombre);
+  try {
+    if (tipo === 'aseguradora') {
+      const r = await api(`/aseguradoras?nombre=eq.${enc}&limit=1`).catch(() => []);
+      return (r && r[0]) || null;
+    }
+    // Flotilla y empresa comparten la tabla flotillas; fallback a /empresas.
+    let r = await api(`/flotillas?nombre=eq.${enc}&limit=1`).catch(() => []);
+    if (r && r[0]) return r[0];
+    r = await api(`/empresas?nombre=eq.${enc}&limit=1`).catch(() => []);
+    return (r && r[0]) || null;
+  } catch (e) { return null; }
+}
+
 async function abrirOrden(id) {
   mostrarPagina('pag-detalle');
   document.getElementById('topbar-title').textContent = 'Detalle de Orden';
@@ -109,6 +131,9 @@ async function abrirOrden(id) {
       api(`/solicitudes_repuesto?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || []
     ]);
     ordenActual = orden;
+
+    // Datos de la organización (si la orden es de aseguradora/flotilla/empresa).
+    const orgCliente = await _cargarOrgDeOrden(orden);
 
     // Ítems de cada solicitud de repuesto (para el panel de repuestos de la orden)
     const _repIds = solicitudesRep.map(s => s.id).filter(Boolean);
@@ -306,7 +331,7 @@ async function abrirOrden(id) {
               <svg id="det-datos-chev" width="15" height="15" fill="none" stroke="#0F6E56" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_datosOrdenAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
               <svg width="16" height="16" fill="none" stroke="#0F6E56" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
               <div class="seccion-titulo" style="margin-bottom:0;color:#085041">Datos del vehículo y cliente</div>
-              <span style="margin-left:auto;font-size:12px;color:#0F6E56;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml([orden.propietario, [orden.marca,orden.linea].filter(Boolean).join(' ')].filter(Boolean).join(' · ')) || '—'}</span>
+              <span style="margin-left:auto;font-size:12px;color:#0F6E56;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml([(['aseguradora','flotilla','empresa'].includes((orden.tipo_cliente||'').toLowerCase()) && orden.aseguradora) ? orden.aseguradora : orden.propietario, [orden.marca,orden.linea].filter(Boolean).join(' ')].filter(Boolean).join(' · ')) || '—'}</span>
             </div>
             <div id="det-datos-body" style="${_datosOrdenAbierto?'':'display:none;'}padding:12px">
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
@@ -342,22 +367,50 @@ async function abrirOrden(id) {
                 ${orden.fecha_entrega_2 ? `<div class="det-dato-fila"><span class="det-dato-lbl">Entrega 2</span><span class="det-dato-val">${formatFecha(orden.fecha_entrega_2)}</span></div>` : ''}
               </div>
             </div>
-            <!-- Cliente -->
-            <div class="det-datos-card" style="border-left:3px solid #059669">
-              <div class="det-datos-card-titulo" style="color:#059669">
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                Cliente
-              </div>
-              <div class="det-datos-filas">
-                <div class="det-dato-fila"><span class="det-dato-lbl">Nombre</span><span class="det-dato-val${!orden.propietario?' det-dato-vacio':''}">${escapeHtml(orden.propietario||'')||'—'}</span></div>
-                <div class="det-dato-fila"><span class="det-dato-lbl">Teléfono</span><span class="det-dato-val${!orden.telefono?' det-dato-vacio':''}">${orden.telefono?`<a href="tel:${escapeHtml(orden.telefono)}" style="color:var(--azul-mid)">${escapeHtml(orden.telefono)}</a>`:'—'}</span></div>
-                <div class="det-dato-fila"><span class="det-dato-lbl">Correo</span><span class="det-dato-val${!orden.correo_cliente?' det-dato-vacio':''}">${orden.correo_cliente?`<a href="mailto:${escapeHtml(orden.correo_cliente)}" style="color:var(--azul-mid)">${escapeHtml(orden.correo_cliente)}</a>`:'—'}</span></div>
-                <div class="det-dato-fila"><span class="det-dato-lbl">Cédula / NIT</span><span class="det-dato-val${!orden.cedula_cliente?' det-dato-vacio':''}" style="font-family:'DM Mono',monospace;font-size:12px">${escapeHtml(orden.cedula_cliente||'')||'—'}</span></div>
-                <div class="det-dato-fila"><span class="det-dato-lbl">Dirección</span><span class="det-dato-val${!orden.direccion?' det-dato-vacio':''}">${escapeHtml(orden.direccion||'')||'—'}</span></div>
-                <div class="det-dato-fila"><span class="det-dato-lbl">Tipo cliente</span><span class="det-dato-val">${escapeHtml(orden.tipo_cliente||'')||'—'}</span></div>
-                <div class="det-dato-fila"><span class="det-dato-lbl">${orden.tipo_cliente==='flotilla'?'Flotilla':orden.tipo_cliente==='empresa'?'Empresa':'Aseguradora'}</span><span class="det-dato-val">${escapeHtml(orden.aseguradora||'')||'—'}</span></div>
-              </div>
-            </div>
+            <!-- Cliente / Organización -->
+            ${(() => {
+              const tipo = (orden.tipo_cliente || '').toLowerCase();
+              const esOrg = ['aseguradora','flotilla','empresa'].includes(tipo) && orden.aseguradora;
+              const fila = (lbl, valHtml) => `<div class="det-dato-fila"><span class="det-dato-lbl">${lbl}</span><span class="det-dato-val${valHtml?'':' det-dato-vacio'}">${valHtml||'—'}</span></div>`;
+              const tel  = v => v ? `<a href="tel:${escapeHtml(v)}" style="color:var(--azul-mid)">${escapeHtml(v)}</a>` : '';
+              const mail = v => v ? `<a href="mailto:${escapeHtml(v)}" style="color:var(--azul-mid)">${escapeHtml(v)}</a>` : '';
+              const mono = v => v ? `<span style="font-family:'DM Mono',monospace;font-size:12px">${escapeHtml(v)}</span>` : '';
+              const txt  = v => v ? escapeHtml(v) : '';
+              if (esOrg) {
+                const titulo = tipo === 'flotilla' ? 'Flotilla' : tipo === 'empresa' ? 'Empresa' : 'Aseguradora';
+                const o = orgCliente || {};
+                return `<div class="det-datos-card" style="border-left:3px solid #7C3AED">
+                <div class="det-datos-card-titulo" style="color:#7C3AED">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18M6 21V8l6-4 6 4v13M10 9h0M14 9h0M10 13h0M14 13h0"/></svg>
+                  ${titulo}
+                </div>
+                <div class="det-datos-filas">
+                  ${fila('Nombre', txt(orden.aseguradora))}
+                  ${fila('NIT', mono(o.nit))}
+                  ${fila('Dirección', txt(o.direccion))}
+                  ${fila('Teléfono', tel(o.telefono))}
+                  ${fila('Correo', mail(o.correo))}
+                  <div class="det-dato-fila" style="border-top:1px dashed var(--gris-borde);margin-top:3px;padding-top:7px"><span class="det-dato-lbl">👤 Contacto</span><span class="det-dato-val${orden.propietario?'':' det-dato-vacio'}">${txt(orden.propietario) || '—'}</span></div>
+                  ${fila('Tel. contacto', tel(orden.telefono))}
+                  ${fila('Cédula / NIT', mono(orden.cedula_cliente))}
+                </div>
+              </div>`;
+              }
+              return `<div class="det-datos-card" style="border-left:3px solid #059669">
+                <div class="det-datos-card-titulo" style="color:#059669">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  Cliente
+                </div>
+                <div class="det-datos-filas">
+                  ${fila('Nombre', txt(orden.propietario))}
+                  ${fila('Teléfono', tel(orden.telefono))}
+                  ${fila('Correo', mail(orden.correo_cliente))}
+                  ${fila('Cédula / NIT', mono(orden.cedula_cliente))}
+                  ${fila('Dirección', txt(orden.direccion))}
+                  ${fila('Tipo cliente', txt(orden.tipo_cliente))}
+                </div>
+              </div>`;
+            })()}
           </div>
             </div>
           </div>
