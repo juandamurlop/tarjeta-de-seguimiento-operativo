@@ -115,6 +115,10 @@ function _buildOrdenRow(o, etapas) {
   // "Sin valor": la orden no tiene precio de venta (ni en etapas ni el total de
   // aseguradora). Solo aplica a órdenes reales (no programadas).
   const valorVenta = etapasO.reduce((s, e) => s + (e.valor_venta || 0), 0);
+  // Subtotal de la orden (sin IVA): mano de obra + insumos + repuestos simples.
+  const _valItems = (campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (e) { return 0; } };
+  const subtotalOrden = valorVenta + _valItems('insumos') + _valItems('repuestos_simple');
+  const _fmtCOProw = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
   const sinValor = o.estado !== 'Programada' && !valorVenta && !o.precio_venta_cliente;
   const total    = etapasO.length;
   const comp     = etapasO.filter(e => e.fin).length;
@@ -158,7 +162,9 @@ function _buildOrdenRow(o, etapas) {
     <td style="border-left:4px solid ${ti.color}">
       <div class="ord-placa">${escapeHtml(o.placa)}</div>
       <div class="ord-ot">${otDe(o)}${contactAlert}</div>
-      ${sinValor ? `<div style="margin-top:3px"><span title="La orden no tiene precio de venta asignado" style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:.03em;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;padding:1px 6px;border-radius:99px">💲 SIN VALOR</span></div>` : ''}
+      ${sinValor
+        ? `<div style="margin-top:3px"><span title="La orden no tiene precio de venta asignado" style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:.03em;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;padding:1px 6px;border-radius:99px">💲 SIN VALOR</span></div>`
+        : (subtotalOrden ? `<div style="margin-top:3px;font-size:12px;font-weight:800;color:#047857;font-family:'DM Mono',monospace" title="Subtotal (sin IVA): mano de obra + insumos + repuestos">${_fmtCOProw(subtotalOrden)}</div>` : '')}
     </td>
     <td><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">${_chipTipoOrden(o)}<button class="btn btn-ghost btn-xs" style="font-size:10px;padding:1px 6px;color:var(--azul)" title="Mover a una organización" onclick="event.stopPropagation();abrirMoverOrganizacion(${o.id})">🏢 Mover</button></div></td>
     <td>

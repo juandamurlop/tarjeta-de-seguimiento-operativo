@@ -381,7 +381,10 @@ async function abrirOrden(id) {
                 let insumos = [];
                 try { const raw = orden.insumos; insumos = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch(e) { insumos = []; }
                 const valorInsumos = insumos.reduce((s,i) => s + (((+i.cantidad)||0) * ((+i.valor)||0)), 0);
-                const subtotal = manoObra + valorRepuestos + valorInsumos;
+                let repSimple = [];
+                try { const raw = orden.repuestos_simple; repSimple = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch(e) { repSimple = []; }
+                const valorRepSimple = repSimple.reduce((s,i) => s + (((+i.cantidad)||0) * ((+i.valor)||0)), 0);
+                const subtotal = manoObra + valorRepuestos + valorInsumos + valorRepSimple;
                 if (!subtotal) return '<div style="font-size:13px;color:var(--gris-mid)">Sin precio de venta aún.</div>';
                 const iva = Math.round(subtotal * 0.19);
                 const total = subtotal + iva;
@@ -390,8 +393,12 @@ async function abrirOrden(id) {
                 // Mano de obra (procesos / etapas)
                 const filasMO = etapas.filter(e=>e.valor_venta).map(e => fila(escapeHtml(e.etapa||''), e.valor_venta)).join('');
                 const bloqueMO = filasMO ? sub('🔧 Mano de obra','#1D4ED8') + filasMO : '';
-                // Repuestos de taller
-                const bloqueRep = valorRepuestos ? sub('🧰 Repuestos','#0F766E') + fila('Repuestos recibidos', valorRepuestos) : '';
+                // Repuestos (de taller con proveedores + repuestos simples listados)
+                const bloqueRep = (valorRepuestos || repSimple.length)
+                  ? sub('🧰 Repuestos','#0F766E')
+                    + (valorRepuestos ? fila('Repuestos recibidos', valorRepuestos) : '')
+                    + repSimple.map(i => { const cant=(+i.cantidad)||0, val=(+i.valor)||0; return fila(escapeHtml(i.nombre||'Repuesto') + (cant && cant !== 1 ? ' ×'+cant : ''), cant*val); }).join('')
+                  : '';
                 // Insumos (cada uno listado)
                 const bloqueIns = insumos.length
                   ? sub('🛢 Insumos','#B45309') + insumos.map(i => {
@@ -406,7 +413,7 @@ async function abrirOrden(id) {
               })()}
             </div>
           </div>
-          ${typeof _panelInsumosOrden === 'function' ? _panelInsumosOrden(orden) : ''}
+          ${typeof _panelItemsOrden === 'function' ? _panelItemsOrden(orden, 'insumos') + _panelItemsOrden(orden, 'repuestos') : ''}
           ${orden.tipo_cliente === 'aseguradora' && esJefe() ? `
           <div class="sidebar-card">
             <div onclick="_togglePrecioVenta()" class="sidebar-card-header" style="background:#ECFDF5;color:#047857;gap:8px;cursor:pointer;user-select:none">
@@ -1107,10 +1114,132 @@ async function _guardarComentarioOrden(ordenId) {
 }
 
 // ============================================================
-// PANEL DE INSUMOS DE LA ORDEN (solo jefe/gerente)
-// Insumos = aceite, filtros, gasolina, etc. (distintos de los "repuestos de
-// taller" que tienen proveedores/estados). Cada uno: nombre + cantidad + valor
-// unitario. Se guardan en ordenes.insumos (jsonb) — requiere docs/sql-insumos.sql.
+// PANELES DE INSUMOS y REPUESTOS (simples) DE LA ORDEN — solo jefe/gerente.
+// Lista con buscador (datalist de frecuentes): nombre + cantidad + valor unitario.
+// Cada uno se agrega a la lista al instante. Insumos → ordenes.insumos;
+// Repuestos → ordenes.repuestos_simple. (docs/sql-insumos.sql, docs/sql-repuestos.sql)
+// ============================================================
+const ITEM_CFG = {
+  insumos:   { campo: 'insumos',          icono: '🛢', titulo: 'Insumos',   singular: 'Insumo',   color: '#B45309', headBg: '#FEF3C7', lsKey: 'insumos_frecuentes',   ph: 'Ej. Aceite 15W40',
+               def: ['Aceite de motor', 'Filtro de aceite', 'Filtro de aire', 'Filtro de combustible', 'Gasolina', 'Refrigerante', 'Líquido de frenos', 'Grasa'] },
+  repuestos: { campo: 'repuestos_simple', icono: '🔧', titulo: 'Repuestos', singular: 'Repuesto', color: '#0F766E', headBg: '#CCFBF1', lsKey: 'repuestos_frecuentes', ph: 'Ej. Pastillas de freno',
+               def: ['Pastillas de freno', 'Discos de freno', 'Bujías', 'Batería', 'Amortiguador', 'Rótula', 'Terminal de dirección', 'Correa', 'Banda', 'Filtro de cabina'] }
+};
+const _itemsAbierto = { insumos: false, repuestos: false };
+
+function _itemFrecuentes(tipo) {
+  const cfg = ITEM_CFG[tipo]; let custom = [];
+  try { custom = JSON.parse(localStorage.getItem(cfg.lsKey) || '[]'); } catch (e) { custom = []; }
+  if (!Array.isArray(custom)) custom = [];
+  const seen = new Set(); const out = [];
+  [...cfg.def, ...custom].forEach(n => { const k = String(n || '').trim().toLowerCase(); if (k && !seen.has(k)) { seen.add(k); out.push(String(n).trim()); } });
+  return out.slice(0, 40);
+}
+function _recordarItemFrecuente(tipo, nombre) {
+  const cfg = ITEM_CFG[tipo]; const k = String(nombre || '').trim();
+  if (!k || cfg.def.some(d => d.toLowerCase() === k.toLowerCase())) return;
+  let custom = []; try { custom = JSON.parse(localStorage.getItem(cfg.lsKey) || '[]'); } catch (e) { custom = []; }
+  if (!Array.isArray(custom)) custom = [];
+  if (custom.some(c => String(c).toLowerCase() === k.toLowerCase())) return;
+  custom.push(k);
+  try { localStorage.setItem(cfg.lsKey, JSON.stringify(custom.slice(-50))); } catch (e) {}
+}
+function _leerItems(orden, campo) {
+  try { const raw = orden && orden[campo]; return Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); } catch (e) { return []; }
+}
+
+function _panelItemsOrden(orden, tipo) {
+  if (typeof esJefe === 'function' && !esJefe()) return '';
+  const cfg = ITEM_CFG[tipo]; const oid = orden.id;
+  const arr = _leerItems(orden, cfg.campo);
+  const fmt = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
+  const total = arr.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0);
+  const abierto = _itemsAbierto[tipo];
+
+  const lista = arr.length
+    ? arr.map((i, idx) => {
+        const cant = (+i.cantidad) || 0, val = (+i.valor) || 0;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--gris-borde);border-radius:8px;margin-bottom:6px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12.5px;font-weight:600;color:#1E293B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(i.nombre || cfg.singular)}</div>
+            <div style="font-size:11px;color:var(--gris-mid)">${cant} × ${fmt(val)} = <strong>${fmt(cant * val)}</strong></div>
+          </div>
+          <button class="btn btn-ghost btn-xs" style="flex-shrink:0;color:#DC2626" title="Quitar" onclick="_eliminarItem(${oid},'${tipo}',${idx})">✕</button>
+        </div>`;
+      }).join('')
+    : `<div style="font-size:12px;color:var(--gris-mid);padding:2px 0 6px">Aún no hay ${cfg.titulo.toLowerCase()}.</div>`;
+
+  const dlId = `dl-${tipo}-${oid}`;
+  const datalist = `<datalist id="${dlId}">${_itemFrecuentes(tipo).map(n => `<option value="${escapeHtml(n)}"></option>`).join('')}</datalist>`;
+  const inLbl = 'font-size:9.5px;font-weight:700;color:var(--gris-mid);display:block;margin-bottom:2px';
+  const inCss = 'width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--gris-borde);border-radius:6px;font-size:12.5px';
+
+  return `<div class="sidebar-card">
+      <div onclick="_toggleItems('${tipo}')" id="${tipo}-header" class="sidebar-card-header" style="gap:8px;cursor:pointer;user-select:none;${abierto ? '' : `background:${cfg.headBg};color:${cfg.color}`}">
+        <svg id="${tipo}-chev" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${abierto ? '90' : '0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
+        <span style="flex:1;min-width:0">${cfg.icono} ${cfg.titulo}</span>
+        <span style="flex-shrink:0;font-size:10.5px;font-weight:700;text-transform:none;letter-spacing:0;color:${total ? cfg.color : 'var(--gris-mid)'}">${total ? fmt(total) : (arr.length ? '' : 'Ninguno')}</span>
+      </div>
+      <div id="${tipo}-body" class="sidebar-card-body" style="${abierto ? '' : 'display:none'}">
+        ${lista}
+        ${datalist}
+        <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:flex-end;margin-top:8px;border-top:1px dashed var(--gris-borde);padding-top:9px">
+          <div style="flex:2;min-width:108px"><label style="${inLbl}">${cfg.singular} (busca o escribe)</label><input id="item-nom-${tipo}-${oid}" list="${dlId}" placeholder="${cfg.ph}" autocomplete="off" style="${inCss}"></div>
+          <div style="flex:.6;min-width:44px"><label style="${inLbl}">Cant.</label><input id="item-cant-${tipo}-${oid}" type="number" min="0" step="1" value="1" style="${inCss}"></div>
+          <div style="flex:1;min-width:78px"><label style="${inLbl}">Valor c/u</label><input id="item-val-${tipo}-${oid}" type="number" min="0" step="1000" placeholder="0" style="${inCss};font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')_agregarItem(${oid},'${tipo}')"></div>
+          <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="_agregarItem(${oid},'${tipo}')">Agregar</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function _toggleItems(tipo) {
+  _itemsAbierto[tipo] = !_itemsAbierto[tipo];
+  const cfg = ITEM_CFG[tipo]; const ab = _itemsAbierto[tipo];
+  const body = document.getElementById(tipo + '-body');
+  const chev = document.getElementById(tipo + '-chev');
+  const head = document.getElementById(tipo + '-header');
+  if (body) body.style.display = ab ? '' : 'none';
+  if (chev) chev.style.transform = `rotate(${ab ? '90' : '0'}deg)`;
+  if (head) { head.style.background = ab ? '' : cfg.headBg; head.style.color = ab ? '' : cfg.color; }
+}
+
+async function _agregarItem(ordenId, tipo) {
+  const cfg = ITEM_CFG[tipo];
+  const nom = (document.getElementById(`item-nom-${tipo}-${ordenId}`)?.value || '').trim();
+  const cant = parseFloat(document.getElementById(`item-cant-${tipo}-${ordenId}`)?.value) || 1;
+  const val = parseFloat(document.getElementById(`item-val-${tipo}-${ordenId}`)?.value) || 0;
+  if (!nom) { toast(`Escribe el nombre del ${cfg.singular.toLowerCase()}`, 'err'); return; }
+  if (!val) { toast('Escribe el valor', 'err'); return; }
+  _itemsAbierto[tipo] = true;
+  try {
+    const o = await api(`/ordenes?id=eq.${ordenId}&select=${cfg.campo}`).then(r => r?.[0]).catch(() => null);
+    const arr = _leerItems(o || {}, cfg.campo);
+    arr.push({ nombre: nom, cantidad: cant, valor: val });
+    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { [cfg.campo]: arr });
+    if (ordenActual && ordenActual.id === ordenId) ordenActual[cfg.campo] = arr;
+    _recordarItemFrecuente(tipo, nom);
+    toast(`${cfg.singular} agregado ✓`);
+    abrirOrden(ordenId);
+  } catch (e) { toast(`Error agregando (¿falta la columna ${cfg.campo}? corre el SQL): ` + e.message, 'err'); }
+}
+
+async function _eliminarItem(ordenId, tipo, idx) {
+  const cfg = ITEM_CFG[tipo];
+  _itemsAbierto[tipo] = true;
+  try {
+    const o = await api(`/ordenes?id=eq.${ordenId}&select=${cfg.campo}`).then(r => r?.[0]).catch(() => null);
+    const arr = _leerItems(o || {}, cfg.campo);
+    arr.splice(idx, 1);
+    await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { [cfg.campo]: arr });
+    if (ordenActual && ordenActual.id === ordenId) ordenActual[cfg.campo] = arr;
+    toast('Eliminado');
+    abrirOrden(ordenId);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ============================================================
+// [Obsoleto] Panel de insumos anterior (modal). Reemplazado por _panelItemsOrden.
 // ============================================================
 const _INSUMOS_FRECUENTES_DEFAULT = ['Aceite de motor', 'Filtro de aceite', 'Filtro de aire', 'Filtro de combustible', 'Gasolina', 'Refrigerante', 'Líquido de frenos', 'Grasa'];
 
