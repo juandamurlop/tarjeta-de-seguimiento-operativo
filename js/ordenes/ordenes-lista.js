@@ -430,7 +430,7 @@ function _renderHistorial(data) {
     const veh = [o.marca, o.linea, o.modelo].filter(Boolean).map(escapeHtml).join(' ');
     const org = o.aseguradora ? ` · ${escapeHtml(o.aseguradora)}` : '';
     const search = [(o.placa || ''), (o.propietario || ''), (o.aseguradora || ''), (o.marca || ''), (o.linea || ''), otDe(o)].join(' ').toLowerCase();
-    return `<div data-hsearch="${escapeHtml(search)}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--gris-borde);border-radius:9px;margin-bottom:7px;background:var(--surface);cursor:pointer" onclick="abrirOrden(${o.id})">
+    return `<div class="hover-lift" data-hsearch="${escapeHtml(search)}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--gris-borde);border-radius:9px;margin-bottom:7px;background:var(--surface);cursor:pointer" onclick="abrirOrden(${o.id})">
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="font-family:'DM Mono',monospace;font-weight:800;font-size:14px">${escapeHtml(o.placa || '—')}</span>

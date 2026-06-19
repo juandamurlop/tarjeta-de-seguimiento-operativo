@@ -1,0 +1,362 @@
+/* =====================================================
+   IDENTIDAD VISUAL — Estilo Apple / Mac
+   Capa de refinamiento que se carga AL FINAL y sobrescribe.
+   Objetivo: vidrio esmerilado, tipografía fina, animaciones
+   tipo "spring" (rebote suave), esquinas más redondeadas y
+   sombras difusas. No cambia la lógica ni la estructura.
+   Para revertir todo: borra este archivo y su @import en main.css.
+===================================================== */
+
+/* ── Tokens nuevos / refinados ───────────────────────── */
+:root {
+  /* Escala de esquinas (Apple redondea generoso) */
+  --radio: 10px;
+  --r-sm:  8px;
+  --r-md:  10px;
+  --r-lg:  14px;
+  --r-xl:  20px;
+  /* Rebote suave estilo iOS para micro-interacciones */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Vidrio esmerilado (frosted glass) */
+  --glass-bg:   rgba(255, 255, 255, 0.72);
+  --glass-blur: saturate(180%) blur(20px);
+  /* Sombras más difusas y suaves (luz ambiente, no negro duro) */
+  --shadow-sm: 0 1px 2px rgba(16,24,40,0.04), 0 2px 6px rgba(16,24,40,0.05);
+  --shadow-md: 0 6px 18px rgba(16,24,40,0.07), 0 2px 6px rgba(16,24,40,0.05);
+  --shadow-lg: 0 24px 60px rgba(16,24,40,0.16), 0 6px 18px rgba(16,24,40,0.06);
+}
+html[data-theme="dark"] {
+  --glass-bg: rgba(26, 35, 52, 0.72);
+}
+
+/* ── Pulido global ───────────────────────────────────── */
+html { scroll-behavior: smooth; }
+body {
+  letter-spacing: -0.011em;            /* tracking ligeramente negativo, look SF */
+  text-rendering: optimizeLegibility;
+}
+::selection { background: rgba(30, 58, 95, 0.16); }
+html[data-theme="dark"] ::selection { background: rgba(106, 163, 221, 0.28); }
+
+/* Anillo de foco accesible y suave (solo con teclado/clic real) */
+:focus-visible {
+  outline: 2px solid rgba(30, 58, 95, 0.45);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+html[data-theme="dark"] :focus-visible { outline-color: rgba(106, 163, 221, 0.6); }
+
+/* ── Barra superior: VIDRIO ESMERILADO (gesto Apple) ─── */
+.topbar {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid rgba(16, 24, 40, 0.06);
+}
+html[data-theme="dark"] .topbar { border-bottom-color: rgba(255,255,255,0.06); }
+.topbar-title { letter-spacing: -0.2px; font-weight: 600; }
+
+/* ── Botones: presión con rebote ─────────────────────── */
+.btn {
+  border-radius: 9px;
+  transition: transform 0.2s var(--ease-spring),
+              background 0.14s, box-shadow 0.2s var(--ease-out), opacity 0.14s;
+}
+.btn:active { transform: scale(0.96); }
+.btn-sm { border-radius: 8px; }
+.btn-xs { border-radius: 7px; }
+
+/* ── Tarjetas y superficies: esquinas suaves ─────────── */
+.card,
+.dash-card,
+.proceso-col { border-radius: var(--r-lg); }
+.dash-card {
+  transition: box-shadow 0.28s var(--ease-out),
+              border-color 0.28s var(--ease-out),
+              transform 0.28s var(--ease-spring);
+}
+
+/* ── Campos de formulario ────────────────────────────── */
+.field input,
+.field select,
+.field textarea { border-radius: 9px; }
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  box-shadow: 0 0 0 4px rgba(30, 58, 95, 0.10);
+}
+html[data-theme="dark"] .field input:focus,
+html[data-theme="dark"] .field select:focus,
+html[data-theme="dark"] .field textarea:focus {
+  box-shadow: 0 0 0 4px rgba(106, 163, 221, 0.16);
+}
+
+/* ── Modal: fondo esmerilado + entrada con rebote ────── */
+.modal-overlay {
+  background: rgba(16, 24, 40, 0.40);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(12px);
+}
+.modal {
+  border-radius: 18px;
+  animation: appleModalIn 0.42s var(--ease-spring);
+}
+@keyframes appleModalIn {
+  from { opacity: 0; transform: scale(0.92) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── Toast: cápsula más suave ────────────────────────── */
+#toast { border-radius: 16px; }
+
+/* ── Transición de página un pelín más viva ──────────── */
+.pagina.activa { animation: pageInApple 0.32s var(--ease-out); }
+@keyframes pageInApple {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Login: más refinado ─────────────────────────────── */
+.login-card { border-radius: 22px; }
+.login-titulo { letter-spacing: -0.6px; font-weight: 600; }
+.login-input { border-radius: 12px; }
+.login-input:focus { box-shadow: 0 0 0 4px rgba(30, 58, 95, 0.10); }
+.login-btn {
+  border-radius: 12px;
+  transition: background 0.18s var(--ease-out),
+              transform 0.2s var(--ease-spring), box-shadow 0.18s;
+}
+.login-btn:active { transform: scale(0.97); }
+.login-eye { border-radius: 12px; }
+
+/* =====================================================
+   APPLE PURO — Fuera el neón. Acentos sólidos y sobrios.
+   Sustituye los brillos cian/halos por la selección limpia
+   estilo macOS. Las notificaciones siguen siendo visibles,
+   pero discretas (punto sólido, sin resplandor).
+===================================================== */
+
+/* Acento azul "sistema" Apple en lugar del cian neón.
+   Se propaga a sidebar, avatar, hovers de tarjetas y filas. */
+:root {
+  --neon:         10, 132, 255;   /* azul sistema Apple (antes cian neón) */
+  --neon-naranja: 255, 159, 10;   /* ámbar Apple para avisos (discreto) */
+}
+
+/* ── Sidebar: selección sólida tipo macOS, sin glow ──── */
+.nav-item {
+  transition: background 0.18s var(--ease-out), color 0.18s var(--ease-out);
+  border-radius: 7px;
+}
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: none;                /* Apple no desliza los ítems */
+}
+.nav-item.active {
+  color: #fff;
+  font-weight: 600;
+  background: rgb(var(--neon));   /* relleno sólido del acento */
+  box-shadow: none;               /* fuera el resplandor */
+}
+.nav-item.active::before { display: none; }      /* fuera la barra neón */
+.nav-item.active svg { opacity: 1; filter: none; }
+.nav-item.nav-notif { box-shadow: none; }
+
+/* Punto de notificación: sólido, discreto, parpadeo suave sin halo */
+.nav-badge {
+  width: 8px; height: 8px; min-width: 8px;
+  background: rgb(var(--neon-naranja));
+  box-shadow: none;
+  animation: appleDot 2s ease-in-out infinite;
+}
+@keyframes appleDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.nav-badge.visto {
+  background: rgba(var(--neon-naranja), 0.4);
+  box-shadow: none;
+  animation: none;
+}
+
+/* Destello al llegar novedad: resalte limpio, sin glow neón */
+.nav-flash svg { filter: none !important; }
+@keyframes destelloGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--neon-naranja), 0); }
+  30%      { box-shadow: 0 0 0 2px rgba(var(--neon-naranja), 0.5); }
+}
+
+/* Avatar del usuario: limpio, sin resplandor */
+.sidebar-user-avatar {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+/* Donut de capacidad: sin glow en arcos ni en el hover */
+#cap-fill-activas,
+#cap-fill-pulmon,
+#cap-pct { filter: none; }
+.sidebar-capacidad:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+}
+
+/* ── Tarjetas/filas de repuestos: sin halo neón ──────── */
+.rep-card:hover,
+.rep-form-card:hover {
+  border-color: rgba(var(--neon), 0.4);
+  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.08);
+}
+.cap-row:hover,
+.kpi-tec-row:hover,
+.kpi-drill-fila:hover {
+  background-color: rgba(var(--neon), 0.08);
+  box-shadow: inset 3px 0 0 rgb(var(--neon));
+}
+
+/* =====================================================
+   HOVER ZOOM — al pasar el mouse, las tarjetas se elevan
+   y hacen un zoom sutil (estilo Apple), con sombra difusa.
+   Reemplaza el glow neón cian de la regla compartida.
+===================================================== */
+.card, .login-card, .dash-card, .dash-panel, .orden-card, .detalle-header-card,
+.det-datos-card, .sidebar-card, .srv-panel, .etapa-card, .pulmon-card, .srv-card-select,
+.historial-item, .mec-orden-card, .cliente-orden-card, .cot-card, .no-card, .solicitud-card,
+.kpi-res-item, .kpi-card, .kpi-panel, .aseg-kpi, .aseg-card, .aseg-comp-card, .aseg-ficha-card,
+.cap-donut, .rep-card, .rep-form-card, .kpi-valor-taller, .aseg-panel, .novedad-item,
+.info-chip, .hover-lift, .enc-card, .enc-panel-card, .mec-etapa-item, .org-panel,
+.aprob-box, .nov-box, .aseg-rep-item, .placa-sug-item {
+  transition: transform 0.26s var(--ease-spring),
+              box-shadow 0.26s var(--ease-out),
+              border-color 0.2s var(--ease-out);
+  will-change: transform;
+}
+.card:hover, .dash-card:hover, .dash-panel:hover, .orden-card:hover,
+.detalle-header-card:hover, .det-datos-card:hover, .sidebar-card:hover, .srv-panel:hover,
+.etapa-card:hover, .pulmon-card:hover, .srv-card-select:hover, .historial-item:hover,
+.mec-orden-card:hover, .cliente-orden-card:hover, .cot-card:hover, .no-card:hover,
+.solicitud-card:hover, .kpi-res-item:hover, .kpi-card:hover, .kpi-panel:hover, .aseg-kpi:hover,
+.aseg-card:hover, .aseg-comp-card:hover, .aseg-ficha-card:hover, .cap-donut:hover,
+.rep-card:hover, .rep-form-card:hover, .kpi-valor-taller:hover, .aseg-panel:hover, .novedad-item:hover,
+.info-chip:hover, .hover-lift:hover, .enc-card:hover, .enc-panel-card:hover, .mec-etapa-item:hover,
+.org-panel:hover, .aprob-box:hover, .nov-box:hover, .aseg-rep-item:hover, .placa-sug-item:hover {
+  transform: translateY(-3px) scale(1.02);
+  border-color: rgba(var(--neon), 0.28);
+  box-shadow: 0 14px 32px rgba(16, 24, 40, 0.13), 0 4px 10px rgba(16, 24, 40, 0.06);
+}
+/* El info-chip "vacío" (amarillo de aviso) conserva su color al elevarse */
+.info-chip.info-chip-empty:hover { border-color: var(--amarillo-bg); }
+/* Las sugerencias de autocompletar son más planas: zoom más leve */
+.placa-sug-item:hover { transform: scale(1.015); box-shadow: 0 6px 16px rgba(16,24,40,0.10); }
+/* El panel azul "Valor en el taller" mantiene su color, solo se eleva */
+.kpi-valor-taller:hover { border-color: transparent; }
+
+/* Filas de tabla: sin glow, solo el realce de fondo (ya definido) */
+.row-hover:hover, .dash-entrega-row:hover,
+.proceso-orden-row:hover, .inv-item:hover, .cliente-etapa-row:hover, .kpi-tabla-fila:hover {
+  box-shadow: inset 3px 0 0 rgb(var(--neon));
+}
+
+/* LISTADO DE ÓRDENES — la fila se eleva como una tarjeta flotante (mismo
+   efecto que las tarjetas). Para que la sombra se renderice se cambia la
+   tabla a border-collapse: separate y los separadores pasan a las celdas. */
+.ordenes-tabla { border-collapse: separate; border-spacing: 0; }
+.ordenes-tabla .ord-row td { border-bottom: 1px solid var(--gris-borde); }
+.ordenes-tabla .ord-row:last-child td { border-bottom: none; }
+.ord-row {
+  transition: transform 0.24s var(--ease-spring),
+              box-shadow 0.24s var(--ease-out),
+              background-color 0.16s var(--ease-out);
+}
+.ord-row:hover {
+  transform: scale(1.015);
+  position: relative;
+  z-index: 2;
+  background: var(--surface) !important;   /* gana sobre el tinte inline del tipo */
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.16);
+}
+.ord-row:hover td { border-bottom-color: transparent; }
+
+/* Otras filas clicables de registros (operarios, cotizaciones, encuestas…):
+   se elevan con sombra real + zoom + barra de acento. */
+.op-row, .cot-item-row, .kpi-drill-fila,
+.enc-rank-row, .enc-mec-row, .tcv-row, .aseg-mini-row {
+  transition: transform 0.22s var(--ease-spring),
+              background-color 0.16s var(--ease-out),
+              box-shadow 0.22s var(--ease-out);
+}
+.op-row:hover, .cot-item-row:hover, .kpi-drill-fila:hover,
+.enc-rank-row:hover, .enc-mec-row:hover, .tcv-row:hover, .aseg-mini-row:hover {
+  transform: scale(1.015);
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 8px 22px rgba(16, 24, 40, 0.12),
+              inset 3px 0 0 rgb(var(--neon));
+}
+
+/* =====================================================
+   LOGIN — Rediseño con marca, fondo animado y entrada.
+===================================================== */
+/* Fondo: aurora suave que respira (estilo Big Sur) */
+#pantalla-login { background: #16233b; }
+#pantalla-login::before {
+  background:
+    radial-gradient(ellipse 52% 46% at 78% 16%, rgba(58,120,200,0.55) 0%, transparent 60%),
+    radial-gradient(ellipse 46% 56% at 12% 84%, rgba(30,58,95,0.75) 0%, transparent 62%),
+    radial-gradient(ellipse 40% 40% at 88% 92%, rgba(86,150,225,0.32) 0%, transparent 60%);
+  background-size: 165% 165%;
+  background-position: 0% 0%;
+  animation: loginAurora 22s ease-in-out infinite alternate;
+}
+@keyframes loginAurora {
+  from { background-position: 0% 0%;     opacity: 0.9; }
+  to   { background-position: 100% 100%; opacity: 1; }
+}
+
+/* Marca circular arriba del título */
+.login-brand {
+  width: 84px; height: 84px;
+  margin: 0 auto 20px;
+  border-radius: 22px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #244468, #16233b);
+  box-shadow: 0 14px 32px rgba(22,35,59,0.40), inset 0 0 0 1px rgba(255,255,255,0.08);
+  animation: brandFloat 4.5s ease-in-out infinite;
+}
+.login-brand img { width: 62px; height: 62px; object-fit: contain; }
+
+/* Logo más grande y visible en el resto de puntos */
+.sidebar-user-avatar { width: 46px; height: 46px; }
+.cli-brand-logo { width: 62px !important; height: 62px !important; }
+.cli-foot-logo { width: 40px !important; height: 40px !important; }
+@keyframes brandFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
+/* Tarjeta: glass sutil (consciente del tema) + entrada con rebote */
+.login-card {
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.40), 0 0 0 1px rgba(255,255,255,0.06);
+  animation: loginCardIn 0.6s var(--ease-spring) both;
+  text-align: center;
+}
+@keyframes loginCardIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* El contenido del formulario se alinea a la izquierda otra vez */
+.login-card .login-label,
+.login-card .login-input,
+.login-card .login-pass-row { text-align: left; }
+
+/* Botón: degradado de marca y elevación al pasar el mouse */
+.login-btn {
+  background: linear-gradient(135deg, var(--azul-mid), var(--azul));
+}
+.login-btn:hover {
+  background: linear-gradient(135deg, var(--azul), var(--azul-hover));
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(30,58,95,0.40);
+}
+.login-btn:active { transform: scale(0.97); }

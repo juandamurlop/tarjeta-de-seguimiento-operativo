@@ -114,6 +114,7 @@ function montarTaller() {
         display:flex;align-items:center;justify-content:space-between;
       }
       .tv-brand { display:flex;align-items:center;gap:.8vw; }
+      .tv-brand-logo { height:4.6vh;width:auto;object-fit:contain;flex-shrink:0; }
       .tv-brand-dot {
         width:.6vw;height:.6vw;border-radius:50%;background:#22C55E;
         animation:pulse-dot 2s infinite;
@@ -1336,6 +1337,7 @@ async function cargarPantallaTaller() {
         <div class="tv-shell">
           <div class="tv-header">
             <div class="tv-brand">
+              <img src="assets/icons/Logo_Fondo_Taller.png" alt="Freimanautos" class="tv-brand-logo">
               <div class="tv-brand-dot"></div>
               <span class="tv-brand-name">Freimanautos · Sistema Operativo</span>
             </div>
