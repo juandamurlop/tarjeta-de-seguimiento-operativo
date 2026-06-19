@@ -222,10 +222,9 @@
                 <div style="display:flex;flex-direction:column;gap:12px">
                   <div class="field" style="margin:0">
                     <label>N.º de Orden (OT)</label>
-                    <input id="n-numero-ot" placeholder="Opcional"
-                      style="font-family:'DM Mono',monospace;font-weight:600;font-size:13px"
-                      oninput="this.value=this.value.toUpperCase()">
-                    <div style="font-size:10.5px;color:var(--gris-mid);margin-top:4px">Déjalo vacío y el sistema lo numera solo (siguiente: <strong id="ot-next-hint">…</strong>). <a href="javascript:void(0)" onclick="configurarNumeracionOT()" style="color:var(--azul);text-decoration:underline">Cambiar</a></div>
+                    <div style="font-size:13px;color:var(--texto);padding:7px 0">Se asigna automáticamente: <strong id="ot-next-hint" style="font-family:'DM Mono',monospace">…</strong>
+                      <a href="javascript:void(0)" onclick="configurarNumeracionOT()" style="color:var(--azul);text-decoration:underline;font-size:11px;margin-left:6px">Cambiar</a>
+                    </div>
                   </div>
                   <div class="field" style="margin:0">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px">
