@@ -30,6 +30,7 @@ function resetNuevaOrden() {
   const historial = document.getElementById('historial-previo');
   if (resultado) resultado.style.display = 'none';
   if (historial) historial.style.display = 'none';
+  if (typeof _actualizarHintNumeroOT === 'function') _actualizarHintNumeroOT();
 }
 
 function cancelarNuevaOrden() {
@@ -1177,6 +1178,53 @@ async function _guardarPinCierre(requiereActual) {
   } catch (e) { setErr('Error guardando: ' + e.message); }
 }
 
+// ── Autonumeración de órdenes (OT) ──────────────────────────────────────────
+// El número de la PRÓXIMA orden se guarda en config_app (clave 'proximo_numero_ot').
+// Arranca en 3719 si nunca se configuró y se autoincrementa con cada orden nueva.
+// Es editable por orden (al crear o en "Editar datos") y el contador con
+// configurarNumeracionOT(). Las órdenes existentes no se tocan.
+const _OT_INICIO = 3719;
+
+async function _leerProximoNumeroOT() {
+  try {
+    const r = await api(`/config_app?clave=eq.proximo_numero_ot&select=valor`).catch(() => []);
+    if (r && r[0] && String(r[0].valor || '').trim() !== '') {
+      const n = parseInt(String(r[0].valor).replace(/\D/g, ''), 10);
+      if (!isNaN(n) && n > 0) return n;
+    }
+  } catch (e) {}
+  return _OT_INICIO;
+}
+async function _setProximoNumeroOT(n) {
+  try {
+    await api('/config_app', 'POST', { clave: 'proximo_numero_ot', valor: String(n) }, { Prefer: 'resolution=merge-duplicates' });
+  } catch (e) { console.warn('No se pudo guardar el contador de OT:', e?.message); }
+}
+// Devuelve el número a usar AHORA y avanza el contador para la próxima orden.
+async function _siguienteNumeroOT() {
+  const actual = await _leerProximoNumeroOT();
+  await _setProximoNumeroOT(actual + 1);
+  return actual;
+}
+// Cambiar el número que se asignará a la PRÓXIMA orden.
+async function configurarNumeracionOT() {
+  const actual = await _leerProximoNumeroOT();
+  const v = prompt('Número que se asignará a la PRÓXIMA orden:', String(actual));
+  if (v == null) return;
+  const n = parseInt(String(v).replace(/\D/g, ''), 10);
+  if (isNaN(n) || n <= 0) { toast('Número no válido', 'err'); return; }
+  await _setProximoNumeroOT(n);
+  toast(`La próxima orden será la N° ${n} ✓`);
+  const hint = document.getElementById('ot-next-hint');
+  if (hint) hint.textContent = String(n);
+}
+// Muestra en el formulario el número que se asignaría automáticamente.
+function _actualizarHintNumeroOT() {
+  const hint = document.getElementById('ot-next-hint');
+  if (!hint) return;
+  _leerProximoNumeroOT().then(n => { const h = document.getElementById('ot-next-hint'); if (h) h.textContent = String(n); });
+}
+
 async function crearOrden() {
   const placa = document.getElementById('n-placa')?.value.trim().toUpperCase();
   if (!placa) { toast('La placa es obligatoria', 'err'); document.getElementById('n-placa')?.focus(); return; }
@@ -1282,6 +1330,17 @@ async function crearOrden() {
 
   try {
     const completando = _ordenCompletandoId;
+    // Autonumeración: si no se escribió un N° manual, asignar el siguiente
+    // automático (arranca en 3719 y se autoincrementa). En órdenes agendadas que
+    // se completan, solo si todavía no tenían número.
+    if (!body.numero_ot) {
+      let asignar = true;
+      if (completando) {
+        const ex = await api(`/ordenes?id=eq.${completando}&select=numero_ot`).then(r => r?.[0]).catch(() => null);
+        if (ex && String(ex.numero_ot || '').trim()) asignar = false;
+      }
+      if (asignar) body.numero_ot = String(await _siguienteNumeroOT());
+    }
     let ordenId;
     if (completando) {
       // Completar una orden agendada (Programada): actualizar con todos los

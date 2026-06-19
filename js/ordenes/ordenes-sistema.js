@@ -1181,6 +1181,7 @@ async function abrirEditarOrden(ordenId) {
       <!-- VEHÍCULO -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="field"><label>Placa</label><input id="ed-placa" value="${escapeHtml(orden.placa||'')}" style="font-family:'DM Mono',monospace;letter-spacing:2px;font-size:16px" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="field"><label>N.º de orden (OT)</label><input id="ed-numero-ot" value="${escapeHtml(orden.numero_ot||'')}" placeholder="Automático si se deja vacío" style="font-family:'DM Mono',monospace;font-weight:600" oninput="this.value=this.value.toUpperCase()"></div>
         <div class="field"><label>Marca</label><input id="ed-marca" value="${escapeHtml(orden.marca||'')}"></div>
         <div class="field"><label>Línea</label><input id="ed-linea" value="${escapeHtml(orden.linea||'')}"></div>
         <div class="field"><label>Año</label><input id="ed-modelo" type="number" value="${escapeHtml(orden.modelo||'')}"></div>
@@ -1387,6 +1388,7 @@ async function guardarEdicionOrden() {
     }
 
     const patch = {
+      numero_ot:       document.getElementById('ed-numero-ot')?.value.trim() || null,
       placa:           (document.getElementById('ed-placa')?.value.trim().toUpperCase()) || ordenActual.placa,
       marca:           document.getElementById('ed-marca')?.value.trim()    || null,
       linea:           document.getElementById('ed-linea')?.value.trim()    || null,
