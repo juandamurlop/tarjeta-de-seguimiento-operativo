@@ -294,7 +294,7 @@
 /* Grid vehículo + cliente */
 .det-datos-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);  /* minmax(0,…) evita que un valor largo agrande la columna y se salga de pantalla */
   gap: 10px;
   margin-bottom: 12px;
 }
@@ -303,6 +303,7 @@
   border: 1.5px solid var(--gris-borde);
   border-radius: 8px;
   overflow: hidden;
+  min-width: 0;                /* la tarjeta no puede crecer más que su columna */
 }
 .det-datos-card-titulo {
   display: flex;
@@ -1076,7 +1077,7 @@
   .det-ps-divider { width: 100%; height: 1px; }
 
   /* ── Grid datos vehículo/cliente: 1 col ── */
-  .det-datos-grid { grid-template-columns: 1fr; gap: 10px; margin-bottom: 12px; }
+  .det-datos-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; margin-bottom: 12px; }
 
   /* ── Banner datos faltantes ── */
   .det-datos-faltantes-banner {
