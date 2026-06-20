@@ -115,8 +115,8 @@ function montarTaller() {
       }
       .tv-brand { display:flex;align-items:center;gap:.9vw; }
       .tv-brand-logo {
-        height:5.2vh;width:auto;object-fit:contain;flex-shrink:0;
-        filter:brightness(.55) contrast(1.15);   /* oscurece el plateado para que resalte en el header blanco */
+        height:5.6vh;width:auto;object-fit:contain;flex-shrink:0;
+        filter:brightness(.32) contrast(1.25);   /* plateado -> gris oscuro solido para que resalte en el header blanco */
       }
       .tv-brand-dot {
         width:.6vw;height:.6vw;border-radius:50%;background:#22C55E;
