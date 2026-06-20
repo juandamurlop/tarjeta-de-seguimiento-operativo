@@ -1631,7 +1631,7 @@ function _renderPendLista() {
     cont.innerHTML = '<div style="font-size:12px;color:var(--gris-mid);text-align:center;padding:10px">Aún no agregaste procesos. Elige uno arriba y dale "Agregar a la lista".</div>';
     return;
   }
-  const srvColor = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
+  const srvColor = { latoneria:'#BC5A57', pintura:'#BE8A3D', mecanica:'#5A7CB3', adicionales:'#4F9079' };
   cont.innerHTML = `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gris-mid);margin-bottom:6px">Procesos a agregar (${_etapasPend.length})</div>` +
     _etapasPend.map((e, i) => {
       const sinTec = !e.mecanico_id && !e.tercero;

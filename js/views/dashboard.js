@@ -85,7 +85,7 @@ async function cargarDashboardMes() {
     // ── Helpers ──────────────────────────────────────────────
     const fmt     = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
     const mesLabel = ahora.toLocaleDateString('es-CO',{month:'long',year:'numeric'});
-    const srvColor  = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
+    const srvColor  = { latoneria:'#BC5A57', pintura:'#BE8A3D', mecanica:'#5A7CB3', adicionales:'#4F9079' };
     const srvNombre = { latoneria:'Latonería', pintura:'Pintura', mecanica:'Mecánica', adicionales:'Adicionales' };
     const srvBgMap  = { latoneria:'#FEE2E2', pintura:'#FEF3C7', mecanica:'#EBF2FF', adicionales:'#E6F5EF' };
 
@@ -381,7 +381,7 @@ async function cargarDashboard() {
 
     // ── Helpers ──────────────────────────────────────────
     const fmt       = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
-    const srvColor  = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
+    const srvColor  = { latoneria:'#BC5A57', pintura:'#BE8A3D', mecanica:'#5A7CB3', adicionales:'#4F9079' };
     const srvNombre = { latoneria:'Latonería', pintura:'Pintura', mecanica:'Mecánica', adicionales:'Adicionales' };
     const srvBg     = { latoneria:'#FEE2E2', pintura:'#FEF3C7', mecanica:'#EBF2FF', adicionales:'#E6F5EF' };
 
@@ -952,7 +952,7 @@ async function cargarDashboardFinanciero() {
     ]);
 
     const fmt       = n => n!=null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
-    const srvColor  = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
+    const srvColor  = { latoneria:'#BC5A57', pintura:'#BE8A3D', mecanica:'#5A7CB3', adicionales:'#4F9079' };
     const srvNombre = { latoneria:'Latonería', pintura:'Pintura', mecanica:'Mecánica', adicionales:'Adicionales' };
     const srvBg     = { latoneria:'#FEE2E2', pintura:'#FEF3C7', mecanica:'#EBF2FF', adicionales:'#E6F5EF' };
 

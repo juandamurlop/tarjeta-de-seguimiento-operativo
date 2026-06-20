@@ -554,7 +554,7 @@ async function cargarHistorialMecanico() {
     const srvConteo = {};
     etapas.forEach(e => { const s = e.servicio||'otro'; srvConteo[s]=(srvConteo[s]||0)+1; });
     const srvTop = Object.entries(srvConteo).sort((a,b)=>b[1]-a[1])[0];
-    const srvColor = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
+    const srvColor = { latoneria:'#BC5A57', pintura:'#BE8A3D', mecanica:'#5A7CB3', adicionales:'#4F9079' };
 
     cont.innerHTML = `
       ${satCard}

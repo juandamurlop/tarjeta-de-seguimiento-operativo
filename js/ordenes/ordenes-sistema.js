@@ -26,7 +26,7 @@ async function cargarMecanicosVista() {
       ? await api(`/ordenes?id=in.(${ids.join(',')})&select=id,placa,marca,linea,propietario`).catch(() => []) || []
       : [];
 
-    const srvColor = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
+    const srvColor = { latoneria:'#BC5A57', pintura:'#BE8A3D', mecanica:'#5A7CB3', adicionales:'#4F9079' };
     const esGerente = sesion?.perfil === 'gerente';
 
     // Agrupar por rol
@@ -866,7 +866,7 @@ async function abrirCalModal(ordenId) {
     const activa = etapas.find(e => e.inicio && !e.fin);
     const fmt = n => n != null ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
     const totalVal = etapas.reduce((s,e) => s+(e.valor||0), 0);
-    const srvColor = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
+    const srvColor = { latoneria:'#BC5A57', pintura:'#BE8A3D', mecanica:'#5A7CB3', adicionales:'#4F9079' };
     const srvs = [...new Set(etapas.map(e=>e.servicio).filter(Boolean))];
 
     document.getElementById('mcal-titulo').textContent = orden.placa;
@@ -1585,7 +1585,7 @@ async function generarPreliquidacion(ordenId, conPrecios = false) {
     });
 
     const srvNombres = { latoneria:'Latonería', pintura:'Pintura', mecanica:'Mecánica', adicionales:'Adicionales' };
-    const srvColor   = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
+    const srvColor   = { latoneria:'#BC5A57', pintura:'#BE8A3D', mecanica:'#5A7CB3', adicionales:'#4F9079' };
 
     const etapasHtml = Object.entries(servicios).map(([srv, ets]) => `
       <div style="margin-bottom:20px">

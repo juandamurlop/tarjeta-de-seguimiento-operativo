@@ -213,7 +213,7 @@ async function abrirOrden(id) {
       (new Date(a.creado_en||0) - new Date(b.creado_en||0)) || ((a.id||0) - (b.id||0)));
 
     const _srvNombres = { latoneria:'Latonería', pintura:'Pintura', mecanica:'Mecánica', adicionales:'Adicionales' };
-    const _srvColor   = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
+    const _srvColor   = { latoneria:'#BC5A57', pintura:'#BE8A3D', mecanica:'#5A7CB3', adicionales:'#4F9079' };
     const _srvBg      = { latoneria:'#FEF2F2', pintura:'#FFFBEB', mecanica:'#EFF6FF', adicionales:'#ECFDF5' };
     const _fmtCOP = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
 

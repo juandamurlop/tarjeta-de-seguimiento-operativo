@@ -703,7 +703,7 @@ async function generarReporteServicio(servicio, fechaIni, fechaFin, formato) {
     }
 
     // PDF
-    const colSrv = {latoneria:'#DC2626',pintura:'#D97706',mecanica:'#2563EB',adicionales:'#059669'}[servicio]||'#1E3A5F';
+    const colSrv = {latoneria:'#BC5A57',pintura:'#BE8A3D',mecanica:'#5A7CB3',adicionales:'#4F9079'}[servicio]||'#1E3A5F';
     const opHtml = operarios.map(o => `<tr>
       <td><strong>${escapeHtml(o.nombre)}</strong></td>
       <td>${o.etapas}</td>
@@ -1103,7 +1103,7 @@ async function generarReporteMecanico(mecId, fechaIni, fechaFin, formato) {
     }
 
     // PDF
-    const srvColor = { latoneria:'#DC2626', pintura:'#D97706', mecanica:'#2563EB', adicionales:'#059669' };
+    const srvColor = { latoneria:'#BC5A57', pintura:'#BE8A3D', mecanica:'#5A7CB3', adicionales:'#4F9079' };
     const serviciosHtml = Object.entries(srvMap).map(([srv, d]) => {
       const h = Math.floor(d.neto/60), m = d.neto%60;
       const color = srvColor[srv]||'#6B7280';
