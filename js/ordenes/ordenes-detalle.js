@@ -424,7 +424,7 @@ async function abrirOrden(id) {
             </div>
             <div id="serv-body" style="${_serviciosAbierto?'':'display:none;'}padding:12px">
               ${orden.estado === 'Programada'
-                ? `<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px 20px;background:#F8FAFC;border:1.5px dashed #CBD5E1;border-radius:10px;text-align:center">
+                ? `<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px 20px;background:var(--surface-2);border:1.5px dashed var(--gris-borde);border-radius:10px;text-align:center">
                      <svg width="32" height="32" fill="none" stroke="#94A3B8" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="16" r="1"/></svg>
                      <div style="font-size:13px;font-weight:600;color:#64748B">Vehículo aún no ha ingresado</div>
                      <div style="font-size:12px;color:#94A3B8">Las etapas de trabajo estarán disponibles cuando el vehículo llegue al taller y el jefe confirme su ingreso.</div>
@@ -987,7 +987,7 @@ function _panelComentariosOrden(orden, novedades, etapas) {
   const ultimo = hist[0];
   // Botón ✕ para eliminar una novedad (se identifica por su marca de tiempo 'en').
   const _delNov = n => `<button class="btn btn-ghost btn-xs" title="Eliminar novedad" style="flex-shrink:0;color:#DC2626;padding:1px 6px;font-size:13px;line-height:1" onclick="event.stopPropagation();_eliminarNovedadEstado(${ordenId},'${encodeURIComponent(n.en || '')}')">✕</button>`;
-  const histHtml = hist.map(n => `<div style="display:flex;align-items:flex-start;gap:6px;border-left:3px solid #7C3AED;background:#F8FAFC;border-radius:6px;padding:7px 10px;margin-bottom:6px">
+  const histHtml = hist.map(n => `<div style="display:flex;align-items:flex-start;gap:6px;border-left:3px solid #7C3AED;background:var(--surface-2);border-radius:6px;padding:7px 10px;margin-bottom:6px">
       <div style="flex:1;min-width:0">
         <div style="font-size:15px;color:var(--texto);white-space:pre-wrap">${escapeHtml(n.texto || '—')}</div>
         <div style="font-size:12.5px;color:var(--gris-mid);margin-top:2px">${escapeHtml(n.por || '—')} · ${formatTS(n.en)}</div>
@@ -1644,7 +1644,7 @@ function _panelRepuestosOrden(solicitudes, items, etapas) {
       <span>🔧 Repuestos de la orden</span>${extra || ''}</div>`;
 
   if (!solicitudes.length) {
-    return tituloHtml('') + `<div style="font-size:13px;color:var(--gris-mid);background:#F8FAFC;border:1px dashed var(--gris-borde);border-radius:8px;padding:14px;text-align:center">Sin repuestos solicitados en esta orden.</div>`;
+    return tituloHtml('') + `<div style="font-size:13px;color:var(--gris-mid);background:var(--surface-2);border:1px dashed var(--gris-borde);border-radius:8px;padding:14px;text-align:center">Sin repuestos solicitados en esta orden.</div>`;
   }
 
   const activos     = solicitudes.filter(s => s.estado !== 'rechazado');

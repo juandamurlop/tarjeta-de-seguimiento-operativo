@@ -329,7 +329,7 @@ async function abrirModalSolicitudRepuesto(ordenId, etapaId, placa) {
 
         <input type="hidden" name="sol-tipo" id="sol-tipo-taller" value="taller">
 
-        <div style="font-size:12px;margin-bottom:10px;padding:8px 12px;background:#F8FAFC;border-radius:6px;border:1px solid var(--gris-borde)">
+        <div style="font-size:12px;margin-bottom:10px;padding:8px 12px;background:var(--surface-2);border-radius:6px;border:1px solid var(--gris-borde)">
           <div style="font-weight:600;margin-bottom:6px;color:var(--texto)">¿Hay otro proceso en curso mientras llega el repuesto?</div>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:4px">
             <input type="radio" name="sol-otro-proceso" value="si" checked style="accent-color:var(--azul)">
@@ -1161,7 +1161,7 @@ async function cargarSolicitudesRepuestos() {
             const o = om[s.orden_id] || {};
             const its = todosItems.filter(i => i.solicitud_id === s.id);
             const reps = (its.length ? its.map(i => i.repuesto) : [s.repuesto].filter(Boolean)).slice(0, 2).map(escapeHtml).join(', ');
-            return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--gris-borde);border-radius:8px;background:#F8FAFC">
+            return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--gris-borde);border-radius:8px;background:var(--surface-2)">
               <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:13px;color:var(--texto);min-width:64px">${escapeHtml(o.placa || '—')}</span>
               <span style="flex:1;min-width:0;font-size:12px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${reps || '—'}</span>
               <span class="badge badge-completada" style="flex-shrink:0">Entregado</span>

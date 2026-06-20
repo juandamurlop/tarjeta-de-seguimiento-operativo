@@ -168,7 +168,7 @@ function abrirModalEditarConsumible(placa, tipo, consumibleActual, kmActual) {
       <button onclick="document.getElementById('modal-cons-edit').remove()" style="background:none;border:none;cursor:pointer;font-size:18px;color:#6B7280">&times;</button>
     </div>
     <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
-      <div style="font-size:12px;color:#6B7280;background:#F8FAFC;border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace">${escapeHtml(placa)}</div>
+      <div style="font-size:12px;color:var(--gris-mid);background:var(--surface-2);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace">${escapeHtml(placa)}</div>
 
       <div class="field" style="margin:0">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Marca</label>
@@ -245,7 +245,7 @@ function abrirModalEditarDocumento(placa, tipo, docActual) {
       <button onclick="document.getElementById('modal-doc-edit').remove()" style="background:none;border:none;cursor:pointer;font-size:18px;color:#6B7280">&times;</button>
     </div>
     <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
-      <div style="font-size:12px;color:#6B7280;background:#F8FAFC;border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace">${escapeHtml(placa)}</div>
+      <div style="font-size:12px;color:var(--gris-mid);background:var(--surface-2);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace">${escapeHtml(placa)}</div>
 
       <div class="field" style="margin:0">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Fecha de vencimiento</label>

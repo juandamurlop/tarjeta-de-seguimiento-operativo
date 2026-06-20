@@ -25,9 +25,41 @@
   --shadow-md: 0 6px 18px rgba(16,24,40,0.07), 0 2px 6px rgba(16,24,40,0.05);
   --shadow-lg: 0 24px 60px rgba(16,24,40,0.16), 0 6px 18px rgba(16,24,40,0.06);
 }
+/* ── MODO OSCURO NEGRO (no azul) ──────────────────────
+   El tema oscuro original era navy/azul. Aquí se neutraliza
+   a negro/gris real (estilo Apple), manteniendo el azul SOLO
+   como acento de marca (botones, enlaces, selección). */
 html[data-theme="dark"] {
-  --glass-bg: rgba(26, 35, 52, 0.72);
+  --gris-bg:     #0B0B0C;   /* fondo de página: casi negro */
+  --surface:     #1A1A1C;   /* tarjetas / modales */
+  --surface-2:   #131314;   /* paneles sutiles */
+  --blanco:      #1A1A1C;
+  --gris-borde:  #2C2C2F;   /* bordes neutros */
+  --gris-mid:    #9A9AA1;   /* gris medio neutro (antes azulado) */
+  --gris-texto:  #C9C9CE;
+  --texto:       #ECECEF;
+  --azul-light:  #222227;   /* fondo de chips/estados activos, neutro */
+  --glass-bg:    rgba(22, 22, 24, 0.72);
+  /* Sombras más marcadas sobre negro */
+  --shadow-sm:   0 1px 2px rgba(0,0,0,0.40), 0 1px 3px rgba(0,0,0,0.44);
+  --shadow-md:   0 6px 18px rgba(0,0,0,0.46), 0 2px 6px rgba(0,0,0,0.40);
+  --shadow-lg:   0 24px 60px rgba(0,0,0,0.60), 0 6px 18px rgba(0,0,0,0.46);
 }
+/* Sidebar y barras también en negro neutro (no navy) en oscuro */
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .sidebar-footer { background: #0E0E0F; }
+html[data-theme="dark"] .bottom-nav { background: var(--surface); border-top-color: var(--gris-borde); }
+
+/* Panel de capacidad del taller: tenía colores claros fijos que se rompían
+   en oscuro (fondo #F9FAFB, textos #555/#888, bordes negros). Se pasan a
+   variables que se adaptan a ambos temas (en claro queda igual). */
+.cap-detalle        { background: var(--surface-2); }
+.cap-detalle-count  { background: rgba(127,127,127,.16); color: var(--gris-texto); }
+.cap-row            { border-top: 1px solid var(--gris-borde); }
+.cap-row:hover      { background: var(--gris-bg); }
+.cap-nombre         { color: var(--gris-texto); }
+.cap-meta           { color: var(--gris-mid); }
+.cap-btn-ver        { background: var(--azul-light); color: var(--azul); border-color: var(--gris-borde); }
 
 /* ── Pulido global ───────────────────────────────────── */
 html { scroll-behavior: smooth; }
