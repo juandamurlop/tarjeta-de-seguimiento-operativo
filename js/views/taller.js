@@ -110,11 +110,14 @@ function montarTaller() {
       /* ── HEADER ── */
       .tv-header {
         background:#FFFFFF;border-bottom:2px solid #D1D5DB;
-        padding:0 2vw;height:6vh;flex-shrink:0;
+        padding:0 2vw;height:6.5vh;flex-shrink:0;
         display:flex;align-items:center;justify-content:space-between;
       }
-      .tv-brand { display:flex;align-items:center;gap:.8vw; }
-      .tv-brand-logo { height:4.6vh;width:auto;object-fit:contain;flex-shrink:0; }
+      .tv-brand { display:flex;align-items:center;gap:.9vw; }
+      .tv-brand-logo {
+        height:5.2vh;width:auto;object-fit:contain;flex-shrink:0;
+        filter:brightness(.55) contrast(1.15);   /* oscurece el plateado para que resalte en el header blanco */
+      }
       .tv-brand-dot {
         width:.6vw;height:.6vw;border-radius:50%;background:#22C55E;
         animation:pulse-dot 2s infinite;
@@ -1417,7 +1420,7 @@ async function cargarPantallaTaller() {
 
         <div class="tv-watermark">
           <img src="assets/icons/Icono_Redondo_Fondo_Taller.png"
-            style="width:100%;height:100%;object-fit:contain;opacity:0.06" alt="">
+            style="width:100%;height:100%;object-fit:contain;opacity:0.12" alt="">
         </div>
       `;
 
