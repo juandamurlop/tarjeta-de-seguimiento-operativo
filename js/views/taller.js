@@ -1420,7 +1420,7 @@ async function cargarPantallaTaller() {
 
         <div class="tv-watermark">
           <img src="assets/icons/Icono_Redondo_Fondo_Taller.png"
-            style="width:100%;height:100%;object-fit:contain;opacity:0.12" alt="">
+            style="width:100%;height:100%;object-fit:contain;opacity:0.22;filter:brightness(.5)" alt="">
         </div>
       `;
 
