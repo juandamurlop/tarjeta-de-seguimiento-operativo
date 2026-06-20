@@ -297,13 +297,15 @@ html[data-theme="dark"] .field textarea:focus {
   transition: transform 0.24s var(--ease-spring),
               box-shadow 0.24s var(--ease-out),
               background-color 0.16s var(--ease-out);
+  /* Identidad de color sobria: fila neutra + barra lateral fina del tipo */
+  box-shadow: inset 3px 0 0 var(--tipo, transparent);
 }
 .ord-row:hover {
   transform: scale(1.015);
   position: relative;
   z-index: 2;
-  background: var(--surface) !important;   /* gana sobre el tinte inline del tipo */
-  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.16);
+  background: var(--surface);
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.16), inset 3px 0 0 var(--tipo, transparent);
 }
 .ord-row:hover td { border-bottom-color: transparent; }
 

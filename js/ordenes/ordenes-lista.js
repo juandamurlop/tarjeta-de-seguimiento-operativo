@@ -106,7 +106,9 @@ function _tipoOrdenInfo(o) {
 }
 function _chipTipoOrden(o) {
   const ti = _tipoOrdenInfo(o);
-  return `<span style="display:inline-block;font-size:10px;font-weight:800;letter-spacing:.02em;color:${ti.color};background:${ti.bg};border:1px solid ${ti.color}44;padding:2px 8px;border-radius:99px;white-space:nowrap">${ti.label}</span>`;
+  // Chip sobrio (neutro): el color del tipo lo lleva la barra lateral de la fila.
+  // Un punto pequeño del color da la pista visual sin saturar.
+  return `<span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.02em;color:var(--gris-texto);background:var(--gris-bg);border:1px solid var(--gris-borde);padding:2px 9px;border-radius:99px;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:${ti.color};flex-shrink:0"></span>${ti.label}</span>`;
 }
 
 // Ubicación de una orden = en qué pestaña/sección del apartado Órdenes vive.
@@ -173,7 +175,7 @@ function _buildOrdenRow(o, etapas, opts) {
     : '';
 
   const ti = _tipoOrdenInfo(o);
-  return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-oid="${o.id}" data-search="${escapeHtml(searchStr)}" style="background:${ti.color}12">
+  return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-oid="${o.id}" data-search="${escapeHtml(searchStr)}" style="--tipo:${ti.color}">
     <td style="text-align:center">
       <div class="ord-placa">${escapeHtml(o.placa)}</div>
       <div class="ord-ot">${otDe(o)}${contactAlert}</div>
@@ -264,7 +266,7 @@ async function cargarOrdenesPulmon() {
       const subtotalP = etapasO.reduce((s, e) => s + (e.valor_venta || 0), 0) + _valItemsP('insumos') + _valItemsP('repuestos_simple');
       const _fmtP = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
       const ti = _tipoOrdenInfo(o);
-      return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-search="${escapeHtml(searchStr)}" style="background:${ti.color}12">
+      return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-search="${escapeHtml(searchStr)}" style="--tipo:${ti.color}">
         <td style="text-align:center">
           <div class="ord-placa">${escapeHtml(o.placa)}</div>
           <div class="ord-ot">${otDe(o)}</div>
