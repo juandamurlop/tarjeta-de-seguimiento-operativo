@@ -61,6 +61,15 @@ html[data-theme="dark"] .bottom-nav { background: var(--surface); border-top-col
 .cap-meta           { color: var(--gris-mid); }
 .cap-btn-ver        { background: var(--azul-light); color: var(--azul); border-color: var(--gris-borde); }
 
+/* Encabezados de sección del detalle: todos neutros (antes cada uno de un
+   color: azul/verde/morado/ámbar). El estado colapsado se ve por la flecha,
+   no por el color. Identidad de color sobria. */
+.sidebar-card-header {
+  background: var(--gris-bg) !important;
+  color: var(--gris-mid) !important;
+}
+.sidebar-card-header svg { color: var(--gris-mid) !important; }
+
 /* ── Pulido global ───────────────────────────────────── */
 html { scroll-behavior: smooth; }
 body {
