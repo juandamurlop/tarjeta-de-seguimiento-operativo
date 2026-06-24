@@ -428,7 +428,9 @@ function _renderHistorial(data) {
   const cont = document.getElementById('hist-lista');
   if (!cont) return;
   if (!data.length) { cont.innerHTML = '<div class="empty-state"><p>Sin órdenes.</p></div>'; return; }
-  const rows = data.map(o => {
+
+  // Una fila de orden (tarjeta clicable).
+  const filaHtml = o => {
     const veh = [o.marca, o.linea, o.modelo].filter(Boolean).map(escapeHtml).join(' ');
     const org = o.aseguradora ? ` · ${escapeHtml(o.aseguradora)}` : '';
     const search = [(o.placa || ''), (o.propietario || ''), (o.aseguradora || ''), (o.marca || ''), (o.linea || ''), otDe(o)].join(' ').toLowerCase();
@@ -446,14 +448,43 @@ function _renderHistorial(data) {
         ${_histEstadoPill(o)}
       </div>
     </div>`;
+  };
+
+  // Agrupar por mes/año del ingreso (creado_en), respetando el orden (desc).
+  const grupos = [];
+  const idx = {};
+  data.forEach(o => {
+    const d = o.creado_en ? new Date(o.creado_en) : null;
+    const key = d ? `${d.getFullYear()}-${d.getMonth()}` : 'sin-fecha';
+    const label = d ? d.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }) : 'Sin fecha';
+    if (idx[key] == null) { idx[key] = grupos.length; grupos.push({ label, items: [] }); }
+    grupos[idx[key]].items.push(o);
+  });
+
+  const html = grupos.map((g, i) => {
+    const titulo = g.label.charAt(0).toUpperCase() + g.label.slice(1);
+    return `<div class="hist-mes">
+      <div class="hist-mes-head" style="display:flex;align-items:center;gap:10px;margin:${i === 0 ? '2px' : '18px'} 0 9px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--gris-mid)">
+        <span>${escapeHtml(titulo)}</span>
+        <span style="flex:1;height:1px;background:var(--gris-borde)"></span>
+        <span style="font-weight:800;color:var(--gris-texto)">${g.items.length}</span>
+      </div>
+      ${g.items.map(filaHtml).join('')}
+    </div>`;
   }).join('');
-  renderSinParpadeo(cont, rows);
+
+  renderSinParpadeo(cont, html);
 }
 
 function _filtrarHistorial(q) {
   q = (q || '').trim().toLowerCase();
   document.querySelectorAll('#hist-lista [data-hsearch]').forEach(el => {
     el.style.display = (!q || el.dataset.hsearch.includes(q)) ? '' : 'none';
+  });
+  // Ocultar los encabezados de mes que se quedaron sin resultados visibles.
+  document.querySelectorAll('#hist-lista .hist-mes').forEach(g => {
+    const algunoVisible = [...g.querySelectorAll('[data-hsearch]')].some(el => el.style.display !== 'none');
+    g.style.display = algunoVisible ? '' : 'none';
   });
 }
 
