@@ -816,6 +816,13 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
             const fmt = n => n != null && n !== '' ? new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n) : '—';
             const lbl1 = e.servicio==='pintura'?'Piezas a pintar':'H. Facturadas';
             const lbl2 = e.servicio==='pintura'?'Piezas adic.':'H. Adicionales';
+            // Indicador: ¿el técnico asignado puede recibir su precio por Telegram personal?
+            const _mecAsig = (typeof mecanicos !== 'undefined' && e.mecanico_id) ? mecanicos.find(m => Number(m.id) === Number(e.mecanico_id)) : null;
+            const _tgInd = !e.mecanico_id
+              ? ''  // sin técnico interno asignado (o externo): no aplica aviso personal
+              : (_mecAsig && _mecAsig.telegram_chat_id)
+                ? `<span title="El técnico tiene Telegram personal: recibirá su precio" style="font-size:9px;font-weight:700;color:var(--verde);background:var(--verde-bg);border:1px solid var(--verde);border-radius:99px;padding:0 6px;white-space:nowrap;text-transform:none;letter-spacing:0">✓ Telegram</span>`
+                : `<span title="El técnico NO tiene Telegram personal configurado (Operarios). No recibirá su precio." style="font-size:9px;font-weight:700;color:var(--amarillo);background:var(--amarillo-bg);border:1px solid var(--amarillo);border-radius:99px;padding:0 6px;white-space:nowrap;text-transform:none;letter-spacing:0">⚠ sin Telegram</span>`;
             if (yaGuardado) {
               return `
               <div class="field etapa-campo-sm">
@@ -827,7 +834,7 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
                 <div style="font-size:14px;font-weight:700;padding:6px 0;color:var(--texto)">${e.horas_adicionales||'—'}</div>
               </div>
               <div class="field etapa-campo-sm">
-                <label style="display:flex;align-items:center;gap:4px">Precio técnico <span style="color:var(--gris-mid);font-size:10px">🔒</span></label>
+                <label style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">Precio técnico <span style="color:var(--gris-mid);font-size:10px">🔒</span> ${_tgInd}</label>
                 <div style="font-size:13px;font-weight:700;padding:6px 0;color:var(--verde)">${fmt(e.valor)}</div>
               </div>
               ${esJefe() ? `<div class="field etapa-campo-sm" style="display:flex;align-items:flex-end;padding-bottom:4px">
@@ -841,7 +848,7 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
               <div class="field etapa-campo-sm"><label>${lbl2}</label>
                 <input id="ha-${k}" type="number" step="${e.servicio==='pintura'?'1':'0.5'}" value="${e.horas_adicionales||''}" placeholder="0">
               </div>
-              <div class="field etapa-campo-sm"><label>Precio técnico</label>
+              <div class="field etapa-campo-sm"><label style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">Precio técnico ${_tgInd}</label>
                 <input id="val-${k}" type="number" step="1000" value="${e.valor||''}" placeholder="0" style="font-weight:600;color:var(--verde)">
               </div>
               ${esJefe() ? `<div class="field etapa-campo-sm"><label>Precio venta</label>
@@ -1791,16 +1798,25 @@ async function guardarCamposEtapaJefe(eid, k) {
 // Notifica al técnico, a su chat PERSONAL de Telegram (n8n usa telegram_chat_id
 // para mandarlo solo a él, no al grupo), el precio técnico que el jefe asignó.
 async function _notificarPrecioTecnico(eid, valor) {
+  const fmtCOP = n => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0 }).format(n || 0);
   try {
     const et = await api(`/etapas?id=eq.${eid}&select=mecanico_id,etapa,servicio,orden_id,tecnico`).then(r => r?.[0]).catch(() => null);
-    if (!et || !et.mecanico_id) return;                 // técnico externo → sin chat personal
+    if (!et) return;
+    // Técnico externo: no tiene chat personal → avisar al jefe para que no quede en silencio.
+    if (!et.mecanico_id) {
+      toast(`⚠ ${et.tecnico || 'Técnico externo'}: no tiene Telegram personal, no se le pudo avisar el precio (${fmtCOP(valor)})`, 'warn');
+      return;
+    }
     const mec = await api(`/mecanicos?id=eq.${et.mecanico_id}&select=nombre,telegram_chat_id`).then(r => r?.[0]).catch(() => null);
-    if (!mec?.telegram_chat_id) return;                 // sin chat personal configurado
+    // Sin chat personal configurado → avisar al jefe con acción clara.
+    if (!mec?.telegram_chat_id) {
+      toast(`⚠ ${mec?.nombre || 'El técnico'} no tiene Telegram personal configurado. Configúralo en Operarios para que reciba su precio.`, 'warn');
+      return;
+    }
     const orden = (ordenActual && ordenActual.id === et.orden_id)
       ? ordenActual
       : await api(`/ordenes?id=eq.${et.orden_id}&select=placa,marca,linea`).then(r => r?.[0]).catch(() => null);
-    const fmtCOP = n => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0 }).format(n || 0);
-    fetch(N8N_WEBHOOK, {
+    await fetch(N8N_WEBHOOK, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         evento: 'precio_tecnico',
@@ -1813,8 +1829,14 @@ async function _notificarPrecioTecnico(eid, valor) {
         precio_tecnico: valor,
         precio_tecnico_fmt: fmtCOP(valor)
       })
-    }).catch(() => {});
-  } catch (e) { console.warn('[precio técnico] notif:', e); }
+    });
+    // Confirmación al jefe + registro persistente en el historial de la orden.
+    toast(`✓ Precio ${fmtCOP(valor)} enviado al Telegram de ${mec.nombre}`, 'ok');
+    _logEstado(et.orden_id, `💰 Precio técnico ${fmtCOP(valor)} avisado a ${mec.nombre} por Telegram · ${et.etapa || et.servicio || 'etapa'}`);
+  } catch (e) {
+    console.warn('[precio técnico] notif:', e);
+    toast('⚠ No se pudo enviar el aviso de precio al técnico (revisa la conexión/automatización).', 'err');
+  }
 }
 
 // ── Guardar horas+valor de una sola vez y bloquear (técnico) ─
