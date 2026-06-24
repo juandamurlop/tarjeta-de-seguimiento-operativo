@@ -1416,6 +1416,16 @@ async function guardarEdicionOrden() {
       fecha_entrega_2: document.getElementById('ed-fecha2')?.value          || null,
     };
 
+    // Si se cambia la fecha de entrega Y la cita de recogida ya está vencida,
+    // se limpia esa cita: la anterior ya no aplica → desaparece "Cita vencida".
+    const _citaVieja   = ordenActual.cita_entrega ? new Date(ordenActual.cita_entrega).getTime() : null;
+    const _citaVencida = _citaVieja != null && _citaVieja < Date.now();
+    const _cambioFecha = (patch.fecha_entrega_1 || null) !== (ordenActual.fecha_entrega_1 || null);
+    if (_citaVencida && _cambioFecha) {
+      patch.cita_entrega = null;
+      document.querySelectorAll(`.cita-popup[data-cita-id="${ordenActual.id}"]`).forEach(p => p.remove());
+    }
+
     await api(`/ordenes?id=eq.${ordenActual.id}`, 'PATCH', patch);
     Object.assign(ordenActual, patch); // reflejar el cambio en memoria al instante
     toast('Datos actualizados ✓');
