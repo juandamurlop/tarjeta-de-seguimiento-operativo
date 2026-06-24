@@ -178,6 +178,10 @@ module.exports = [
         montarReportes: 'readonly',
         abrirModalReporte: 'readonly',
 
+        // ── caja.js ───────────────────────────────────────────
+        montarCaja: 'readonly',
+        Caja: 'readonly',
+
         // ── encuestas.js ──────────────────────────────────────
         Encuestas: 'readonly',
 

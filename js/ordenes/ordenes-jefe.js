@@ -519,6 +519,10 @@ function montarJefe() {
       </div>
 
       ${_grupoHeader('informes','Informes')}
+        ${sesion?.perfil === 'gerente' ? `<button class="nav-item" id="nav-caja" onclick="navJefe('caja')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="12" cy="15" r="1.5"/></svg>
+          <span class="nav-label">Caja</span>
+        </button>` : ''}
         <button class="nav-item" id="nav-metas" onclick="navJefe('metas')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <span class="nav-label">Metas</span>
@@ -683,7 +687,7 @@ function navJefe(pag) {
   // Actualizar clases active en sidebar y bottom nav
   // Detener polling KPI al salir de esa pantalla
   if (pag !== 'taller-kpi' && window._kpiInterval) { clearInterval(window._kpiInterval); window._kpiInterval = null; }
-  const pages = ['ordenes', 'historial', 'nueva', 'dashboard', 'taller-kpi', 'cotizaciones', 'calendario', 'mecanicos', 'repuestos', 'reportes', 'encuestas', 'flotillas', 'organizaciones', 'aseguradoras', 'cartera-flotillas', 'cartera-empresas', 'vehiculos', 'vehiculos-lista', 'metas'];
+  const pages = ['ordenes', 'historial', 'nueva', 'dashboard', 'taller-kpi', 'cotizaciones', 'calendario', 'mecanicos', 'repuestos', 'reportes', 'encuestas', 'flotillas', 'organizaciones', 'aseguradoras', 'cartera-flotillas', 'cartera-empresas', 'vehiculos', 'vehiculos-lista', 'metas', 'caja'];
   pages.forEach(p => {
     const navBtn = document.getElementById('nav-' + p);
     const bnavBtn = document.getElementById('bnav-' + p);
@@ -756,6 +760,11 @@ function navJefe(pag) {
       pagId = 'pag-reportes';
       titulo = 'Reportes';
       setTimeout(() => { if (typeof montarReportes === 'function') montarReportes(); }, 50);
+      break;
+    case 'caja':
+      pagId = 'pag-caja';
+      titulo = 'Caja';
+      setTimeout(() => { if (typeof montarCaja === 'function') montarCaja(); }, 50);
       break;
     case 'encuestas':
       pagId = 'pag-encuestas';

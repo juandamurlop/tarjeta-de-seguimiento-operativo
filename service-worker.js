@@ -1,4 +1,4 @@
-const CACHE_NAME = 'freimanautos-pwa-v335';
+const CACHE_NAME = 'freimanautos-pwa-v337';
 
 // Lista alineada con lo que carga index.html tras la reestructuración de
 // carpetas (css/main.css importa el resto; js dividido en core/ordenes/views).
@@ -16,6 +16,7 @@ const STATIC_ASSETS = [
   '/css/ordenes.css',
   '/css/cotizaciones.css',
   '/css/vistas.css',
+  '/css/caja.css',
 
   // Core: configuración, API, utilidades, estado global, autenticación
   '/js/config.js',
@@ -40,6 +41,7 @@ const STATIC_ASSETS = [
   '/js/views/taller-kpi.js',
   '/js/views/repuestos.js',
   '/js/views/reportes.js',
+  '/js/views/caja.js',
   '/js/views/encuestas.js',
   '/js/views/metas.js',
   '/js/views/ventas.js',
