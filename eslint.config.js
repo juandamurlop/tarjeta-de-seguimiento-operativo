@@ -136,6 +136,7 @@ module.exports = [
         cargarVehiculos: 'readonly',
         cerrarSugerenciasPlaca: 'readonly',
         iniciarSistemaAlertas: 'readonly',
+        detenerSistemaAlertas: 'readonly',
         renderPreviewIngreso: 'readonly',
         resetNuevaOrden: 'readonly',
 

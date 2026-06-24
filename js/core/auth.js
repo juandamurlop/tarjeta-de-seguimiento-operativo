@@ -167,6 +167,7 @@ async function logout() {
   // Detener timers antes de limpiar la sesión
   if (_tokenRefreshInterval) { clearInterval(_tokenRefreshInterval); _tokenRefreshInterval = null; }
   if (typeof detenerRealtime === 'function') detenerRealtime();
+  if (typeof detenerSistemaAlertas === 'function') detenerSistemaAlertas();
   if (sesion?.access_token) await supabaseSignOut(sesion.access_token);
   localStorage.removeItem('sesion_freiman');
   sessionStorage.removeItem('sesion_freiman'); // limpiar también el viejo

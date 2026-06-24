@@ -2167,6 +2167,7 @@ function detenerRealtime() {
 const _alertasYaMostradas = new Set();   // ids de etapas cuyo popup ya se mostró
 const _alertasRevisadas   = new Set();   // ids marcados "revisado" por el usuario
 let   _alertasInterval    = null;
+let   _citasInterval      = null;
 
 function iniciarSistemaAlertas() {
   if (!esJefe()) return;
@@ -2175,7 +2176,17 @@ function iniciarSistemaAlertas() {
   _alertasInterval = setInterval(_chequearAlertas, 5 * 60 * 1000); // cada 5 min
   // Las citas de recogida se revisan más seguido para que el aviso sea
   // persistente (reaparece si el jefe lo cierra y el cliente no ha llegado).
-  setInterval(_chequearCitas, 2 * 60 * 1000); // cada 2 min
+  _citasInterval = setInterval(_chequearCitas, 2 * 60 * 1000); // cada 2 min
+}
+
+// Detiene el sistema de alertas y quita los popups flotantes. Se llama al cerrar
+// sesión para que NO queden notificaciones (p. ej. "Cliente por llegar") flotando
+// encima de la pantalla de login.
+function detenerSistemaAlertas() {
+  if (_alertasInterval) { clearInterval(_alertasInterval); _alertasInterval = null; }
+  if (_citasInterval)   { clearInterval(_citasInterval);   _citasInterval = null; }
+  document.querySelectorAll('.alerta-popup-etapa').forEach(p => p.remove());
+  _alertasYaMostradas.clear();
 }
 
 async function _chequearAlertas() {
