@@ -101,8 +101,8 @@ async function cargarDashboardMetas() {
             <tbody>
               ${metas.map(m => {
                 const esActual = m.ano === anioActual && m.mes_num === mesNumActual;
-                return `<tr style="border-bottom:1px solid var(--gris-borde);${esActual?'background:#EBF2FF;':''}" onmouseenter="this.style.background='var(--gris-bg)'" onmouseleave="this.style.background='${esActual?'#EBF2FF':''}'" >
-                  <td style="padding:6px 10px;font-weight:${esActual?'700':'500'};color:${esActual?'#2563EB':'var(--texto)'}">${m.mes||''} ${m.ano}</td>
+                return `<tr style="border-bottom:1px solid var(--gris-borde);${esActual?'background:var(--azul-light);':''}" onmouseenter="this.style.background='var(--gris-bg)'" onmouseleave="this.style.background='${esActual?'var(--azul-light)':''}'" >
+                  <td style="padding:6px 10px;font-weight:${esActual?'700':'500'};color:${esActual?'var(--azul)':'var(--texto)'}">${m.mes||''} ${m.ano}</td>
                   <td style="padding:6px 10px;font-weight:600">${m.meta_ordenes}</td>
                   <td style="padding:6px 10px;font-family:'DM Mono',monospace;font-weight:600">${fmt(m.meta_ingresos)}</td>
                   <td style="padding:6px 10px;color:var(--gris-mid)">${m.nota||'—'}</td>

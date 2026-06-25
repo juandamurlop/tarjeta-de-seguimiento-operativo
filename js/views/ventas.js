@@ -205,7 +205,7 @@ function _renderVentasGeneral(cont, D) {
           ${D.filas.map((f,i) => {
             const p = _pctV(f.ventas, f.metaBase);
             const enCurso = (i+1) === D.ultimoMes;
-            return `<tr class="row-hover" style="border-top:1px solid var(--gris-borde);${enCurso?'background:#EBF2FF':''}">
+            return `<tr class="row-hover" style="border-top:1px solid var(--gris-borde);${enCurso?'background:var(--azul-light)':''}">
               <td style="padding:7px 12px;font-weight:${enCurso?'700':'400'}">${f.mes}${enCurso?' ·':''}</td>
               <td style="padding:7px 12px;text-align:right;color:var(--gris-mid)">${f.metaBase?_fmtV(f.metaBase):'—'}</td>
               <td style="padding:7px 12px;text-align:right;font-weight:600">${f.ventas?_fmtV(f.ventas):'—'}</td>
@@ -283,7 +283,7 @@ function _renderVentasDetalle(cont, D) {
             const varMeta = f.ventas - f.metaBase;
             const tk = f.facturas > 0 ? f.ventas/f.facturas : 0;
             const enCurso = (i+1) === D.ultimoMes;
-            return `<tr class="row-hover" style="border-top:1px solid var(--gris-borde);${enCurso?'background:#EBF2FF':''}">
+            return `<tr class="row-hover" style="border-top:1px solid var(--gris-borde);${enCurso?'background:var(--azul-light)':''}">
               <td style="padding:7px 10px;font-weight:${enCurso?'700':'500'}">${f.mes}</td>
               <td style="padding:7px 10px;text-align:right;color:var(--gris-mid)">${f.metaBase?_fmtVc(f.metaBase):'—'}</td>
               <td style="padding:7px 10px;text-align:right;color:var(--gris-mid)">${f.metaIdeal?_fmtVc(f.metaIdeal):'—'}</td>
