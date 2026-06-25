@@ -149,6 +149,11 @@ html[data-theme="dark"] [style*="color:#1E40AF"] {
 [style*="solid #FDE68A"],
 [style*="solid #FCD34D"] { border-color: var(--naranja-bd) !important; }
 
+/* Calendario en oscuro: celdas de días pasados (#FAFAFA fijo) y el texto del
+   vehículo (rgba oscuro fijo) que quedaban claros/ilegibles. */
+html[data-theme="dark"] .cal-cell.cal-pasado { background: var(--gris-bg) !important; }
+html[data-theme="dark"] .cal-orden-meta { color: var(--gris-texto) !important; }
+
 /* ── Pulido global ───────────────────────────────────── */
 html { scroll-behavior: smooth; }
 body {

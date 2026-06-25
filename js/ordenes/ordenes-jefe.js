@@ -911,8 +911,8 @@ function renderCalendario(cont, ordenes, mesDate) {
     const ordsHtml = ords.slice(0, 4).map(o => {
       const prog    = o.esProgramada;
       const urgente = !prog && !o.esFecha2 && o.fecha_entrega_1 && new Date(o.fecha_entrega_1) <= hoy;
-      const color = prog ? '#7C3AED' : urgente ? '#DC2626' : o.esFecha2 ? '#D97706' : '#2A5298';
-      const bg    = prog ? '#F3E8FF' : urgente ? '#FEE2E2' : o.esFecha2 ? '#FEF3C7' : '#EBF2FF';
+      const color = prog ? '#7C3AED' : urgente ? '#DC2626' : o.esFecha2 ? '#D97706' : '#3B82F6';
+      const bg    = color + '26';  // tinte del propio color (claro sobre celda clara, oscuro sobre celda oscura)
       return `<div class="cal-orden" style="background:${bg};color:${color};border-left-color:${color}" onclick="abrirOrden(${o.id})">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
           <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:11px">${escapeHtml(o.placa) || '---'}</span>
@@ -941,8 +941,8 @@ function renderCalendario(cont, ordenes, mesDate) {
     const filas = ords.map(o => {
       const prog    = o.esProgramada;
       const urgente = !prog && !o.esFecha2 && o.fecha_entrega_1 && new Date(o.fecha_entrega_1) <= hoy;
-      const color = prog ? '#7C3AED' : urgente ? '#DC2626' : o.esFecha2 ? '#D97706' : '#2A5298';
-      const bg    = prog ? '#F3E8FF' : urgente ? '#FEE2E2' : o.esFecha2 ? '#FEF3C7' : '#EBF2FF';
+      const color = prog ? '#7C3AED' : urgente ? '#DC2626' : o.esFecha2 ? '#D97706' : '#3B82F6';
+      const bg    = color + '26';  // tinte del propio color (claro sobre celda clara, oscuro sobre celda oscura)
       const tag   = prog ? '📅 Agendada' : urgente ? 'Vencida' : o.esFecha2 ? 'Entrega 2' : 'Entrega 1';
       return `<div class="cal-ag-orden" style="border-left-color:${color}" onclick="abrirOrden(${o.id})">
         <span class="cal-ag-placa">${escapeHtml(o.placa) || '---'}</span>
@@ -974,10 +974,10 @@ function renderCalendario(cont, ordenes, mesDate) {
       <button class="btn btn-ghost btn-sm" onclick="calCambiarMes(1)">Siguiente →</button>
     </div>
     <div class="cal-leyenda">
-      <span class="cal-ley-dot" style="background:#F3E8FF;border:1px solid #7C3AED"></span><span style="font-size:11px;color:var(--gris-mid)">📅 Agendada</span>
-      <span class="cal-ley-dot" style="background:#EBF2FF;border:1px solid #2A5298;margin-left:12px"></span><span style="font-size:11px;color:var(--gris-mid)">Entrega 1</span>
-      <span class="cal-ley-dot" style="background:#FEF3C7;border:1px solid #D97706;margin-left:12px"></span><span style="font-size:11px;color:var(--gris-mid)">Entrega 2</span>
-      <span class="cal-ley-dot" style="background:#FEE2E2;border:1px solid #DC2626;margin-left:12px"></span><span style="font-size:11px;color:var(--gris-mid)">Vencida</span>
+      <span class="cal-ley-dot" style="background:#7C3AED26;border:1px solid #7C3AED"></span><span style="font-size:11px;color:var(--gris-mid)">📅 Agendada</span>
+      <span class="cal-ley-dot" style="background:#3B82F626;border:1px solid #3B82F6;margin-left:12px"></span><span style="font-size:11px;color:var(--gris-mid)">Entrega 1</span>
+      <span class="cal-ley-dot" style="background:#D9770626;border:1px solid #D97706;margin-left:12px"></span><span style="font-size:11px;color:var(--gris-mid)">Entrega 2</span>
+      <span class="cal-ley-dot" style="background:#DC262626;border:1px solid #DC2626;margin-left:12px"></span><span style="font-size:11px;color:var(--gris-mid)">Vencida</span>
     </div>
     <div class="cal-grid">
       ${headHtml}
