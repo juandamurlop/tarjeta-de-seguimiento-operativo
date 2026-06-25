@@ -83,6 +83,44 @@ html[data-theme="dark"] .det-sec-bar .seccion-titulo { color: var(--texto) !impo
 html[data-theme="dark"] .det-sec-bar > span { color: var(--gris-texto) !important; }
 html[data-theme="dark"] .det-sec-bar .btn { color: var(--azul) !important; }
 
+/* ── Barrido general modo oscuro: cajas/paneles con fondo claro fijo ──
+   Convierte los fondos NEUTROS y AZUL-INFO (cuyo texto es neutro/azul,
+   legible en oscuro) a superficie oscura, en toda la app. NO toca los
+   chips de color semánticos (ámbar/verde/rojo/morado), que se leen bien
+   como insignias. Solo aplica en modo oscuro. */
+html[data-theme="dark"] [style*="background:#F8FAFC"],
+html[data-theme="dark"] [style*="background:#F9FAFB"],
+html[data-theme="dark"] [style*="background:#FAFBFC"],
+html[data-theme="dark"] [style*="background:#F4F5F7"],
+html[data-theme="dark"] [style*="background:#F1F5F9"],
+html[data-theme="dark"] [style*="background:#EFF6FF"],
+html[data-theme="dark"] [style*="background:#EBF2FF"],
+html[data-theme="dark"] [style*="background:#E6F1FB"],
+html[data-theme="dark"] [style*="background:#DBEAFE"],
+html[data-theme="dark"] [style*="background:#EEF2FF"],
+html[data-theme="dark"] [style*="background:#F0F7FF"] {
+  background: var(--surface-2) !important;
+}
+/* Texto oscuro fijo (gris/pizarra/navy del texto principal, pensado para
+   fondo claro) → claro en modo oscuro. Los colores semánticos (ámbar, verde,
+   rojo, morado de chips) NO están aquí: se dejan como están. */
+html[data-theme="dark"] [style*="color:#111827"],
+html[data-theme="dark"] [style*="color:#0F172A"],
+html[data-theme="dark"] [style*="color:#1E293B"],
+html[data-theme="dark"] [style*="color:#1F2937"],
+html[data-theme="dark"] [style*="color:#334155"],
+html[data-theme="dark"] [style*="color:#374151"],
+html[data-theme="dark"] [style*="color:#475569"],
+html[data-theme="dark"] [style*="color:#4A5568"],
+html[data-theme="dark"] [style*="color:#0C447C"] {
+  color: var(--gris-texto) !important;
+}
+html[data-theme="dark"] [style*="color:#1E3A5F"],
+html[data-theme="dark"] [style*="color:#1D4ED8"],
+html[data-theme="dark"] [style*="color:#1E40AF"] {
+  color: var(--azul) !important;
+}
+
 /* ── Pulido global ───────────────────────────────────── */
 html { scroll-behavior: smooth; }
 body {
