@@ -147,6 +147,9 @@
   gap: 16px;
   align-items: start;
 }
+/* Los items del grid también necesitan min-width:0; si no, su contenido
+   (nombres largos, etc.) los ensancha más que la columna y se sale/recorta. */
+.detalle-grid > * { min-width: 0; }
 .detalle-header-card {
   background: var(--surface);
   border: 1px solid var(--gris-borde);
