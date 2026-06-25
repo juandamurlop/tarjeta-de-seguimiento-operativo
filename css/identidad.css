@@ -24,6 +24,10 @@
   --shadow-sm: 0 1px 2px rgba(16,24,40,0.04), 0 2px 6px rgba(16,24,40,0.05);
   --shadow-md: 0 6px 18px rgba(16,24,40,0.07), 0 2px 6px rgba(16,24,40,0.05);
   --shadow-lg: 0 24px 60px rgba(16,24,40,0.16), 0 6px 18px rgba(16,24,40,0.06);
+  /* Naranja de "falta algo / pendiente" (atención, sin ser error rojo) */
+  --naranja:    #C2410C;
+  --naranja-bg: #FFEDD5;
+  --naranja-bd: #FDBA74;
 }
 /* ── MODO OSCURO NEGRO (no azul) ──────────────────────
    El tema oscuro original era navy/azul. Aquí se neutraliza
@@ -39,6 +43,9 @@ html[data-theme="dark"] {
   --gris-texto:  #C9C9CE;
   --texto:       #ECECEF;
   --azul-light:  #222227;   /* fondo de chips/estados activos, neutro */
+  --naranja:     #FB923C;   /* texto naranja claro, legible en oscuro */
+  --naranja-bg:  #2A1A0E;   /* fondo naranja oscuro */
+  --naranja-bd:  #9A4A1E;
   --glass-bg:    rgba(22, 22, 24, 0.72);
   /* Sombras más marcadas sobre negro */
   --shadow-sm:   0 1px 2px rgba(0,0,0,0.40), 0 1px 3px rgba(0,0,0,0.44);
@@ -69,6 +76,10 @@ html[data-theme="dark"] .bottom-nav { background: var(--surface); border-top-col
   color: var(--gris-mid) !important;
 }
 .sidebar-card-header svg { color: var(--gris-mid) !important; }
+/* En oscuro, los títulos del sidebar derecho con gris medio quedaban tenues
+   ("borrosos"). Se suben a gris-texto (más claro y nítido). */
+html[data-theme="dark"] .sidebar-card-header { color: var(--gris-texto) !important; }
+html[data-theme="dark"] .sidebar-card-header svg { color: var(--gris-texto) !important; }
 
 /* Barras colapsables del detalle (Descripción, Datos, Servicios): en CLARO
    conservan su tinte; en OSCURO pasan a superficie oscura con texto/íconos
@@ -121,14 +132,22 @@ html[data-theme="dark"] [style*="color:#1E40AF"] {
   color: var(--azul) !important;
 }
 
-/* Banner "Faltan datos por completar": en oscuro, caja ámbar OSCURA (no crema
-   clara), manteniendo el acento de advertencia. */
-html[data-theme="dark"] .det-datos-faltantes-banner {
-  background: var(--amarillo-bg) !important;
-  border-color: var(--amarillo) !important;
-  color: var(--amarillo) !important;
+/* Avisos de "falta algo / pendiente" en NARANJA (atención, no error rojo),
+   theme-aware. Cubre el banner "Faltan datos" y los chips inline ámbar
+   (Sin valor, pendientes, etc.) en toda la app. */
+.det-datos-faltantes-banner {
+  background: var(--naranja-bg) !important;
+  border-color: var(--naranja-bd) !important;
+  color: var(--naranja) !important;
 }
-html[data-theme="dark"] .det-datos-faltantes-list { color: var(--amarillo) !important; }
+.det-datos-faltantes-list { color: var(--naranja) !important; }
+[style*="color:#92400E"],
+[style*="color:#B45309"] { color: var(--naranja) !important; }
+[style*="background:#FEF3C7"],
+[style*="background:#FFFBEB"],
+[style*="background:#FDE68A"] { background: var(--naranja-bg) !important; }
+[style*="solid #FDE68A"],
+[style*="solid #FCD34D"] { border-color: var(--naranja-bd) !important; }
 
 /* ── Pulido global ───────────────────────────────────── */
 html { scroll-behavior: smooth; }
