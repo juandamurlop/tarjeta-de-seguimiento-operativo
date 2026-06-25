@@ -121,6 +121,15 @@ html[data-theme="dark"] [style*="color:#1E40AF"] {
   color: var(--azul) !important;
 }
 
+/* Banner "Faltan datos por completar": en oscuro, caja ámbar OSCURA (no crema
+   clara), manteniendo el acento de advertencia. */
+html[data-theme="dark"] .det-datos-faltantes-banner {
+  background: var(--amarillo-bg) !important;
+  border-color: var(--amarillo) !important;
+  color: var(--amarillo) !important;
+}
+html[data-theme="dark"] .det-datos-faltantes-list { color: var(--amarillo) !important; }
+
 /* ── Pulido global ───────────────────────────────────── */
 html { scroll-behavior: smooth; }
 body {
