@@ -785,7 +785,24 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
           <!-- [Oculto] Botón "Pedir repuesto" (flujo de repuestos con proveedores).
                Se retira de la UI por pedido; el código del flujo se conserva. -->
         </div>
-        ${e.descripcion ? `<div style="background:#F0F7FF;border:1px solid #BFDBFE;border-radius:7px;padding:9px 12px;margin-bottom:10px;font-size:12.5px;color:var(--texto);line-height:1.5;white-space:pre-wrap"><span style="font-size:10px;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:3px">Descripción</span>${escapeHtml(e.descripcion)}</div>` : ''}
+        ${(() => {
+          const _esJ = (typeof esJefe === 'function') && esJefe();
+          if (!e.descripcion && !_esJ) return '';   // técnicos: solo si hay descripción
+          return `<div style="background:var(--azul-light);border:1px solid var(--gris-borde);border-radius:7px;padding:9px 12px;margin-bottom:10px;font-size:12.5px;color:var(--texto);line-height:1.5">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+              <span style="font-size:10px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:.06em">Descripción</span>
+              ${_esJ ? `<button class="btn btn-ghost btn-xs" style="flex-shrink:0;font-size:10.5px;padding:2px 8px" onclick="_editarDescEtapa('${k}')">✏ Editar</button>` : ''}
+            </div>
+            <div id="desc-etapa-text-${k}" style="margin-top:3px;white-space:pre-wrap">${e.descripcion ? escapeHtml(e.descripcion) : '<span style="color:var(--gris-mid)">Sin descripción</span>'}</div>
+            ${_esJ ? `<div id="desc-etapa-editor-${k}" style="display:none;margin-top:8px">
+              <textarea id="desc-etapa-input-${k}" placeholder="Descripción del servicio / etapa" style="width:100%;min-height:50px;resize:vertical;box-sizing:border-box">${escapeHtml(e.descripcion || '')}</textarea>
+              <div class="btn-row" style="margin-top:6px;justify-content:flex-end;gap:8px">
+                <button class="btn btn-ghost btn-sm" onclick="_editarDescEtapa('${k}')">Cancelar</button>
+                <button class="btn btn-primary btn-sm" onclick="_guardarDescEtapa(${eid},'${k}')">Guardar</button>
+              </div>
+            </div>` : ''}
+          </div>`;
+        })()}
         <div class="timestamps">
           <div class="ts-chip">Inicio: <strong>${e.inicio?formatTS(e.inicio):'—'}</strong></div>
           <div class="ts-chip">Fin: <strong>${e.fin?formatTS(e.fin):'—'}</strong></div>
@@ -1793,6 +1810,27 @@ async function guardarCamposEtapaJefe(eid, k) {
   } else {
     guardar();
   }
+}
+
+// Editar la descripción de una etapa/servicio (solo jefe/gerente). Abre/cierra
+// el editor en línea dentro de la tarjeta de la etapa.
+function _editarDescEtapa(k) {
+  const ed = document.getElementById('desc-etapa-editor-' + k);
+  const tx = document.getElementById('desc-etapa-text-' + k);
+  if (!ed) return;
+  const abrir = ed.style.display === 'none';
+  ed.style.display = abrir ? 'block' : 'none';
+  if (tx) tx.style.display = abrir ? 'none' : '';
+}
+async function _guardarDescEtapa(eid, k) {
+  if (typeof esJefe === 'function' && !esJefe()) { toast('Solo jefe/gerente puede editar la descripción', 'err'); return; }
+  const inp = document.getElementById('desc-etapa-input-' + k);
+  const txt = inp ? inp.value.trim() : '';
+  try {
+    await api(`/etapas?id=eq.${eid}`, 'PATCH', { descripcion: txt || null });
+    toast('Descripción guardada ✓');
+    if (ordenActual) abrirOrden(ordenActual.id);
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
 // Notifica al técnico, a su chat PERSONAL de Telegram (n8n usa telegram_chat_id
