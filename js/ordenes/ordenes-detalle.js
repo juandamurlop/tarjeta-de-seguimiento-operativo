@@ -326,8 +326,8 @@ async function abrirOrden(id) {
               ${esJefe() && orden.estado !== 'Entregada' ? `<button class="btn btn-sm" style="margin-left:auto;flex-shrink:0;background:#FEF3C7;color:#B45309;border:1px solid #FDE68A" onclick="abrirEditarOrden(${orden.id})">Completar datos</button>` : ''}
             </div>`;
           })()}
-          <div style="border:1px solid #9FE1CB;border-radius:10px;overflow:hidden;margin-bottom:12px">
-            <div onclick="_toggleDatosOrden()" style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#E1F5EE;cursor:pointer;user-select:none">
+          <div class="det-sec-box" style="border:1px solid #9FE1CB;border-radius:10px;overflow:hidden;margin-bottom:12px">
+            <div class="det-sec-bar" onclick="_toggleDatosOrden()" style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#E1F5EE;cursor:pointer;user-select:none">
               <svg id="det-datos-chev" width="15" height="15" fill="none" stroke="#0F6E56" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_datosOrdenAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
               <svg width="16" height="16" fill="none" stroke="#0F6E56" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
               <div class="seccion-titulo" style="margin-bottom:0;color:#085041">Datos del vehículo y cliente</div>
@@ -414,8 +414,8 @@ async function abrirOrden(id) {
           </div>
             </div>
           </div>
-          <div style="border:1px solid #DDD6FE;border-radius:10px;overflow:hidden;margin-bottom:12px">
-            <div onclick="_toggleServiciosOrden()" style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#EEEDFE;cursor:pointer;user-select:none">
+          <div class="det-sec-box" style="border:1px solid #DDD6FE;border-radius:10px;overflow:hidden;margin-bottom:12px">
+            <div class="det-sec-bar" onclick="_toggleServiciosOrden()" style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#EEEDFE;cursor:pointer;user-select:none">
               <svg id="serv-chev" width="15" height="15" fill="none" stroke="#534AB7" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_serviciosAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
               <svg width="16" height="16" fill="none" stroke="#534AB7" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
               <div class="seccion-titulo" style="margin-bottom:0;color:#3C3489">Servicios y etapas</div>
@@ -1035,9 +1035,9 @@ function _panelComentariosOrden(orden, novedades, etapas) {
   const _ab = _comentOrdenAbierto;
 
   return `
-    <div class="orden-coment-bar" style="background:var(--surface);border:1px solid #B5D4F4;border-radius:10px;overflow:hidden;margin-bottom:14px;box-shadow:0 1px 6px rgba(37,99,235,.08)">
+    <div class="orden-coment-bar det-sec-box" style="background:var(--surface);border:1px solid #B5D4F4;border-radius:10px;overflow:hidden;margin-bottom:14px;box-shadow:0 1px 6px rgba(37,99,235,.08)">
       <!-- ENCABEZADO COLAPSABLE -->
-      <div onclick="_toggleComentBar(${ordenId})" style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#E6F1FB;cursor:pointer;user-select:none">
+      <div class="det-sec-bar" onclick="_toggleComentBar(${ordenId})" style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#E6F1FB;cursor:pointer;user-select:none">
         <svg id="coment-bar-chev-${ordenId}" width="15" height="15" fill="none" stroke="#185FA5" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_ab ? '90' : '0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
         <span style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#0C447C;flex-shrink:0">📝 Descripción y estado</span>
         <span id="coment-bar-prev-${ordenId}" style="font-size:13.5px;color:#185FA5;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;${_ab ? 'visibility:hidden' : ''}">${_preview ? escapeHtml(_preview) : 'Sin descripción'}</span>

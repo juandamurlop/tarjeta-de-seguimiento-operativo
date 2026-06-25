@@ -70,6 +70,19 @@ html[data-theme="dark"] .bottom-nav { background: var(--surface); border-top-col
 }
 .sidebar-card-header svg { color: var(--gris-mid) !important; }
 
+/* Barras colapsables del detalle (Descripción, Datos, Servicios): en CLARO
+   conservan su tinte; en OSCURO pasan a superficie oscura con texto/íconos
+   claros (antes eran azul/verde/morado claro fijo → ilegibles en oscuro). */
+html[data-theme="dark"] .det-sec-box {
+  border-color: var(--gris-borde) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+html[data-theme="dark"] .det-sec-bar { background: var(--surface-2) !important; }
+html[data-theme="dark"] .det-sec-bar svg { stroke: var(--gris-texto) !important; }
+html[data-theme="dark"] .det-sec-bar .seccion-titulo { color: var(--texto) !important; }
+html[data-theme="dark"] .det-sec-bar > span { color: var(--gris-texto) !important; }
+html[data-theme="dark"] .det-sec-bar .btn { color: var(--azul) !important; }
+
 /* ── Pulido global ───────────────────────────────────── */
 html { scroll-behavior: smooth; }
 body {
