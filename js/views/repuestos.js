@@ -511,6 +511,8 @@ async function enviarSolicitudRepuesto(ordenId, etapaId) {
       ? 'Agregado a la solicitud en curso'
       : (items.length > 1 ? items.length + ' repuestos solicitados' : 'Solicitud enviada');
     toast(`${_accion} ✓${pausaMensaje}`);
+    const _resDesc = items.map(i => i.repuesto).join(', ');
+    _logEvento('repuesto_solicitado', '🔩', `Repuesto solicitado: ${_resDesc} — ${orden?.placa || ''}`.trimEnd().replace(/— $/, ''), ordenId, orden?.placa || null, '#0891B2');
 
     if (typeof actualizarBadgeRepuestos === 'function') actualizarBadgeRepuestos();
     if (typeof cargarEtapasMecanico === 'function') cargarEtapasMecanico();
@@ -804,6 +806,10 @@ async function jefeConfirmarEntrega(solicitudId, etapaId) {
     } else {
       toast('Repuesto entregado ✓');
     }
+    if (sol?.orden_id) {
+      const _ordPlaca = await api(`/ordenes?id=eq.${sol.orden_id}&select=placa`).then(r => r?.[0]?.placa).catch(() => null);
+      _logEvento('repuesto_entregado', '📦', `Repuesto entregado: ${sol.repuesto || ''}${_ordPlaca ? ' — ' + _ordPlaca : ''}`, sol.orden_id, _ordPlaca, '#059669');
+    }
     cargarRepuestosJefe();
     if (sol?.orden_id) setTimeout(() => _pedirFotosRepuesto(solicitudId, sol.orden_id, sol.repuesto || ''), 500);
   } catch(e) { toast('Error: ' + e.message, 'err'); }
@@ -1062,6 +1068,9 @@ async function guardarPrecioVentaSeleccionado(solicitudId) {
       pedido_en: new Date().toISOString()
     });
     toast('Precio definido ✓ — ahora espera que llegue el repuesto');
+    const _fmtCOP = n => '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n || 0);
+    const _ordPlacaPV = sol?.orden_id ? await api(`/ordenes?id=eq.${sol.orden_id}&select=placa`).then(r => r?.[0]?.placa).catch(() => null) : null;
+    _logEvento('precio_definido', '💰', `Precio definido: ${sol?.repuesto || ''} → ${_fmtCOP(val)}${_ordPlacaPV ? ' — ' + _ordPlacaPV : ''}`, sol?.orden_id || null, _ordPlacaPV, '#7C3AED');
     _pvCerrarModal();
     cargarRepuestosJefe();
   } catch(e) { toast('Error: ' + e.message, 'err'); }

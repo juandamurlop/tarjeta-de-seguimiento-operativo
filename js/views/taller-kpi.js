@@ -285,6 +285,64 @@ function kpiHoverPreviewOut(inmediato) {
   }, 150);
 }
 
+// ── Centro de Actividad ──────────────────────────────────
+function _haceCuanto(isoStr) {
+  if (!isoStr) return '';
+  const s = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
+  if (s < 60) return 'ahora';
+  if (s < 3600) return Math.floor(s / 60) + 'm';
+  if (s < 86400) return Math.floor(s / 3600) + 'h';
+  return Math.floor(s / 86400) + 'd';
+}
+
+async function _kpiFeed() {
+  const el = document.getElementById('kpi-feed');
+  if (!el) return;
+  try {
+    const evs = await api('/eventos_taller?order=creado_en.desc&limit=50').catch(() => null);
+    if (evs === null) return;
+    const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const horaEl = el.querySelector('.kpi-feed-hora');
+    if (horaEl) horaEl.textContent = hora;
+    const lista = el.querySelector('.kpi-feed-list');
+    if (!lista) return;
+    if (!evs.length) {
+      lista.innerHTML = '<div class="kpi-feed-vacio">Sin actividad reciente — las acciones del taller aparecerán aquí en tiempo real</div>';
+      return;
+    }
+    lista.innerHTML = evs.map(e => {
+      const c = escapeHtml(e.color || '#64748B');
+      const clic = e.orden_id ? `class="kpi-ev clic" onclick="_kpiAbrirOrden(${e.orden_id})"` : 'class="kpi-ev"';
+      return `<div ${clic}>
+        <span class="kpi-ev-ico">${escapeHtml(e.icono || '📋')}</span>
+        <span class="kpi-ev-body">
+          <div class="kpi-ev-desc">${escapeHtml(e.descripcion || '')}</div>
+          <div class="kpi-ev-meta">
+            <span class="kpi-ev-tag" style="background:${c}20;color:${c}">${escapeHtml(e.tipo || '')}</span>
+            <span>${_haceCuanto(e.creado_en)}</span>
+            ${e.autor && e.autor !== '—' ? `<span>· ${escapeHtml(e.autor)}</span>` : ''}
+          </div>
+        </span>
+        ${e.orden_id ? '<span class="kpi-ev-arr">→</span>' : ''}
+      </div>`;
+    }).join('');
+  } catch (_) {}
+}
+
+function _kpiFeedIniciar() {
+  _kpiFeed();
+  if (!window._kpiFeedInterval) {
+    window._kpiFeedInterval = setInterval(() => {
+      if (!document.getElementById('kpi-feed')) {
+        clearInterval(window._kpiFeedInterval);
+        window._kpiFeedInterval = null;
+        return;
+      }
+      _kpiFeed();
+    }, 8000);
+  }
+}
+
 // Botón "Actualizar": gira el ícono una vez (feedback) y recarga.
 function _kpiActualizar(btn) {
   const ico = btn?.querySelector('.kpi-refresh-ico');
@@ -714,7 +772,26 @@ async function cargarKPITaller() {
         '.kpi-ocup-clic{cursor:pointer}' +
         // Tarjeta rápida de cambio.
         '.kpi-cambio-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px}' +
-        '.kpi-cambio-card{background:var(--surface);border-radius:14px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}';
+        '.kpi-cambio-card{background:var(--surface);border-radius:14px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}' +
+        // Centro de Actividad — feed de eventos en tiempo real.
+        '.kpi-feed{background:var(--surface);border:1px solid var(--gris-borde);border-radius:14px;overflow:hidden;margin-top:10px}' +
+        '.kpi-feed-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px;border-bottom:1px solid var(--gris-borde)}' +
+        '.kpi-feed-title{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--gris-mid);display:flex;align-items:center;gap:7px}' +
+        '.kpi-feed-live{width:7px;height:7px;border-radius:50%;background:#DC2626;box-shadow:0 0 0 0 rgba(220,38,38,.4);animation:kpiFeedPulse 2s infinite;flex-shrink:0}' +
+        '@keyframes kpiFeedPulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.4)}50%{box-shadow:0 0 0 5px rgba(220,38,38,0)}}' +
+        '.kpi-feed-hora{font-size:10px;color:var(--gris-mid);font-family:"DM Mono",monospace}' +
+        '.kpi-feed-list{padding:4px 0;max-height:300px;overflow-y:auto}' +
+        '.kpi-ev{display:flex;align-items:center;gap:9px;padding:6px 14px;cursor:default;transition:background .12s}' +
+        '.kpi-ev.clic{cursor:pointer}' +
+        '.kpi-ev:hover.clic{background:var(--azul-light)}' +
+        '.kpi-ev-ico{font-size:14px;flex-shrink:0;width:18px;text-align:center;line-height:1}' +
+        '.kpi-ev-body{flex:1;min-width:0}' +
+        '.kpi-ev-desc{font-size:12.5px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+        '.kpi-ev-meta{font-size:10px;color:var(--gris-mid);margin-top:1px;display:flex;align-items:center;gap:5px}' +
+        '.kpi-ev-tag{font-size:9.5px;font-weight:700;padding:1px 7px;border-radius:99px;white-space:nowrap;flex-shrink:0}' +
+        '.kpi-ev-arr{font-size:11px;color:var(--gris-mid);flex-shrink:0}' +
+        '.kpi-ev+.kpi-ev{border-top:1px solid var(--gris-borde)}' +
+        '.kpi-feed-vacio{padding:18px;text-align:center;font-size:13px;color:var(--gris-mid)}';
       document.head.appendChild(_st);
     }
     // (Se retiró la rotación por pasos: ahora cada sección es colapsable y
@@ -821,7 +898,14 @@ async function cargarKPITaller() {
         ${_secO('repuestos','🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k4')}
       </div>
       <div class="kpi-hover-panel" id="kpi-hover-panel"></div>
-      <div class="kpi-cambio-ticker" id="kpi-cambio-ticker"></div>`;
+      <div class="kpi-cambio-ticker" id="kpi-cambio-ticker"></div>
+      <div class="kpi-feed" id="kpi-feed">
+        <div class="kpi-feed-head">
+          <div class="kpi-feed-title"><span class="kpi-feed-live"></span>Centro de actividad</div>
+          <span class="kpi-feed-hora"></span>
+        </div>
+        <div class="kpi-feed-list"><div class="kpi-feed-vacio">Cargando actividad…</div></div>
+      </div>`;
 
     renderSinParpadeo(cont, `
       <div class="kpi-shell">
@@ -976,6 +1060,9 @@ async function cargarKPITaller() {
     // Alertas de cambio: a las secciones colapsadas con un cambio les pone la
     // alerta pulsante (10 s); a las abiertas les re-dispara el destello.
     _kpiAplicarAlertasSecciones();
+
+    // Centro de actividad: carga eventos y arranca el polling independiente (8s).
+    _kpiFeedIniciar();
 
   } catch (err) {
     if (cont) cont.innerHTML = `<div class="empty-state" style="padding:40px">

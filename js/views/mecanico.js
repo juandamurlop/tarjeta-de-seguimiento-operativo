@@ -208,6 +208,8 @@ async function mecIniciarEtapa(eid, nombre, oid) {
   try {
     await api(`/etapas?id=eq.${eid}`, 'PATCH', { inicio: new Date().toISOString() });
     toast(`${nombre} iniciada ✓`);
+    const _o = oid ? await api(`/ordenes?id=eq.${oid}&select=placa`).then(r => r?.[0]).catch(() => null) : null;
+    _logEvento('proceso_iniciado', '▶', `Proceso iniciado: ${nombre}`, oid || null, _o?.placa || null, '#2563EB');
     await new Promise(r => setTimeout(r, 250));
     cargarEtapasMecanico();
   } catch(e) { toast('Error: ' + e.message, 'err'); }
@@ -217,6 +219,8 @@ async function mecFinalizarEtapa(eid, nombre, servicio, oid) {
   try {
     await api(`/etapas?id=eq.${eid}`, 'PATCH', { fin: new Date().toISOString() });
     toast(`${nombre} finalizada ✓`);
+    // Nota: orden ya se consulta más abajo para el webhook — no repetimos.
+    _logEvento('proceso_finalizado', '✅', `Proceso completado: ${nombre}`, oid || null, null, '#059669');
     
     const etapasOrden = await api(`/etapas?orden_id=eq.${oid}&order=creado_en.asc`);
     const etapaActual = etapasOrden.find(e => e.id === eid);

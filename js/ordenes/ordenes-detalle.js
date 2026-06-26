@@ -1163,6 +1163,8 @@ async function _agregarNovedadEstado(ordenId) {
   try {
     await _appendEstadoHistorial(ordenId, txt);
     toast('Novedad agregada ✓');
+    const _placa = ordenActual?.id === ordenId ? (ordenActual?.placa || null) : null;
+    _logEvento('novedad', '📝', `Novedad: ${txt}${_placa ? ' — ' + _placa : ''}`, ordenId, _placa, '#6366F1');
     abrirOrden(ordenId);
   } catch (e) {
     console.error('[novedadEstado]', e);

@@ -41,6 +41,23 @@ function escapeHtml(str) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// CENTRO DE ACTIVIDAD — logger de eventos del taller.
+// No-op si la tabla aún no existe o falla la red; nunca bloquea al caller.
+// ═══════════════════════════════════════════════════════════
+function _logEvento(tipo, icono, descripcion, ordenId, placa, color) {
+  if (!tipo || !descripcion) return;
+  try {
+    api('/eventos_taller', 'POST', {
+      tipo, icono, descripcion,
+      orden_id: ordenId ? Number(ordenId) : null,
+      placa:    placa  || null,
+      autor:    (typeof sesion !== 'undefined' && sesion?.nombre) || '—',
+      color:    color  || '#64748B'
+    }, { Prefer: 'return=minimal' }).catch(() => {});
+  } catch (_) {}
+}
+
+// ═══════════════════════════════════════════════════════════
 // REPUESTOS — fuente ÚNICA de estados (nombre, color, icono, paso).
 // La usan el detalle de orden, el módulo de repuestos, la vista del
 // técnico y la TV, para que TODOS vean lo mismo con el mismo nombre.

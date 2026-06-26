@@ -250,6 +250,7 @@ const Caja = (function () {
     try {
       await api('/caja_aperturas', 'POST', { fecha: hoyISO(), saldo_inicial: monto, nota, usuario: usuarioActual() });
       toast('✓ Caja abierta correctamente');
+      _logEvento('caja_apertura', '🏦', `Caja abierta — saldo inicial: ${fmt(monto)}`, null, null, '#2563EB');
       await cargarHoy();
     } catch (e) {
       toast('Error: ' + e.message, 'bad');
@@ -277,6 +278,12 @@ const Caja = (function () {
       toast(tipo === 'ingreso'
         ? `✓ Ingreso registrado — ${fmt(monto)}`
         : `✓ Egreso registrado — ${fmt(monto)}. Queda pendiente de justificar con factura.`);
+      _logEvento(
+        tipo === 'ingreso' ? 'caja_ingreso' : 'caja_egreso',
+        tipo === 'ingreso' ? '💵' : '💸',
+        `${tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}: ${fmt(monto)} — ${descripcion || categoria}`,
+        null, null, tipo === 'ingreso' ? '#059669' : '#D97706'
+      );
       limpiarFormMov();
       await cargarHoy();
     } catch (e) {

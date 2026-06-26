@@ -313,7 +313,12 @@ async function cambiarEstado(v) {
     await api(`/ordenes?id=eq.${ordenActual.id}`, 'PATCH', patch);
     ordenActual.estado = v;
     toast(`Estado: ${v} ✓`);
-    if (v === 'Entregada') _enviarResenaGoogle(ordenActual); // envío automático de la reseña
+    if (v === 'Entregada') {
+      _logEvento('orden_entregada', '✅', `Orden entregada: ${ordenActual.placa || ''} — ${ordenActual.propietario || ''}`.trimEnd().replace(/— $/, ''), ordenActual.id, ordenActual.placa, '#059669');
+      _enviarResenaGoogle(ordenActual);
+    } else if (v === 'Archivada') {
+      _logEvento('orden_archivada', '🗄', `Orden archivada: ${ordenActual.placa || ''}`, ordenActual.id, ordenActual.placa, '#64748B');
+    } // envío automático de la reseña
     if (filtroEstado === null) await cargarOrdenesPulmon();
     else await cargarOrdenes();
     if (ordenActual) abrirOrden(ordenActual.id);

@@ -778,6 +778,7 @@ async function avisarIngresoCliente(ordenId) {
     const _msg  = _waIngresoMsg(o) + (_link ? `\n${_link}` : '');
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(_msg)}`, '_blank');
     try { await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { ingreso_avisado_en: new Date().toISOString() }); } catch (e) {}
+    _logEvento('whatsapp_enviado', '📱', `WhatsApp enviado: link de ingreso — ${o.placa || ''}`, ordenId, o.placa || null, '#25D366');
     abrirOrden(ordenId);
   } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
@@ -843,6 +844,7 @@ async function avisarClienteWhatsapp(ordenId) {
     const _msg  = _waEntregaMsg(o) + (_link ? `\n\n📲 Y aquí puede ver el estado de su vehículo en vivo:\n${_link}` : '');
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(_msg)}`, '_blank');
     try { await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { entrega_avisada_en: new Date().toISOString() }); } catch (e) {}
+    _logEvento('whatsapp_enviado', '📱', `WhatsApp enviado: listo para entrega — ${o.placa || ''}`, ordenId, o.placa || null, '#25D366');
     abrirOrden(ordenId); // refrescar para mostrar el agendamiento de la cita
   } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
@@ -1389,6 +1391,7 @@ async function crearOrden() {
     fotosIngresoPendientes = [];
     modalOrdenId = ordenId;
     toast(completando ? '✓ Vehículo recibido — orden activada' : 'Orden creada ✓');
+    _logEvento('orden_abierta', '🚗', completando ? `Vehículo recibido: ${placa}` : `Nueva orden: ${placa}`, ordenId, placa, '#059669');
     abrirModalServicios();
   } catch(e) { toast('Error: ' + e.message, 'err'); }
 }
