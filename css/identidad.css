@@ -454,6 +454,45 @@ html[data-theme="dark"] .field textarea:focus {
 .sidebar-user-avatar { width: 46px; height: 46px; }
 .cli-brand-logo { width: 62px !important; height: 62px !important; }
 
+/* ══════════════════════════════════════════════════════
+   MARCA DE AGUA + VIDRIO EN TARJETAS
+   Logo Freimanautos fijo de fondo (muy sutil) + tarjetas
+   semitransparentes para que el logo se vea a través.
+══════════════════════════════════════════════════════ */
+
+/* Logo de fondo — fijo, centrado en la ventana completa */
+body::before {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(580px, 70vmin);
+  height: min(580px, 70vmin);
+  background: url('../assets/icons/Logo_Fondo_Taller.png') center / contain no-repeat;
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 0;
+}
+html[data-theme="dark"] body::before { opacity: 0.08; }
+
+/* --surface semitransparente → todos los cards que usan var(--surface) heredan */
+:root                    { --surface: rgba(255, 255, 255, 0.82); }
+html[data-theme="dark"]  { --surface: rgba(26,  35,  52,  0.82); }
+
+/* Efecto vidrio (backdrop-filter) en los principales contenedores */
+:is(
+  .card, .kpi-res-item, .kpi-chip, .kpi-card, .kpi-panel, .kpi-valor-taller,
+  .sidebar-card, .det-datos-card, .srv-panel, .etapa-card, .historial-item,
+  .pulmon-card, .solicitud-card, .rep-card, .rep-form-card, .cot-card, .no-card,
+  .enc-card, .enc-panel-card, .mec-orden-card, .cliente-orden-card,
+  .aseg-kpi, .aseg-card, .aseg-comp-card, .aseg-ficha-card, .aseg-rep-item,
+  .aprob-box, .nov-box, .mec-etapa-item, .ord-row, .kpi-cambio-card
+) {
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+}
+
 /* ── KPI stats (fila de resumen): número como watermark + tarjetas más compactas ── */
 .kpi-res-item { position: relative; overflow: hidden; padding: 8px 10px; }
 .kpi-res-num  { position: absolute; right: 5px; bottom: 3px; font-size: 20px; opacity: 0.28; line-height: 1; pointer-events: none; z-index: 0; transition: opacity .2s; }
