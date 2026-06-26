@@ -793,6 +793,7 @@ async function jefeConfirmarLlegada(solicitudId) {
 // Jefe entrega el repuesto al técnico y reanuda su timer (paso 2 de 2)
 async function jefeConfirmarEntrega(solicitudId, etapaId) {
   try {
+    const sol = await api(`/solicitudes_repuesto?id=eq.${solicitudId}&select=orden_id,repuesto`).then(r => r?.[0]).catch(() => null);
     await api(`/solicitudes_repuesto?id=eq.${solicitudId}`, 'PATCH', {
       estado: 'entregado',
       nota_jefe: '✅ Repuesto entregado — puedes continuar con tu trabajo.'
@@ -804,6 +805,7 @@ async function jefeConfirmarEntrega(solicitudId, etapaId) {
       toast('Repuesto entregado ✓');
     }
     cargarRepuestosJefe();
+    if (sol?.orden_id) setTimeout(() => _pedirFotosRepuesto(solicitudId, sol.orden_id, sol.repuesto || ''), 500);
   } catch(e) { toast('Error: ' + e.message, 'err'); }
 }
 
@@ -811,6 +813,7 @@ async function jefeConfirmarEntrega(solicitudId, etapaId) {
 // y reanuda el timer del técnico.
 async function jefeLlegadaYEntrega(solicitudId, etapaId) {
   try {
+    const sol = await api(`/solicitudes_repuesto?id=eq.${solicitudId}&select=orden_id,repuesto`).then(r => r?.[0]).catch(() => null);
     await api(`/solicitudes_repuesto?id=eq.${solicitudId}`, 'PATCH', {
       estado: 'entregado',
       recibido_en: new Date().toISOString(),
@@ -823,7 +826,99 @@ async function jefeLlegadaYEntrega(solicitudId, etapaId) {
       toast('Repuesto entregado ✓');
     }
     if (typeof cargarRepuestosJefe === 'function') cargarRepuestosJefe();
+    if (sol?.orden_id) setTimeout(() => _pedirFotosRepuesto(solicitudId, sol.orden_id, sol.repuesto || ''), 500);
   } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ── Modal de fotos antes/después del cambio de repuesto ─────────────────────
+// Se abre automáticamente tras entregar el repuesto. Sube las fotos a Storage
+// y crea novedades visibles en el portal del cliente.
+function _pedirFotosRepuesto(solicitudId, ordenId, repuesto) {
+  const modalId = 'modal-fotos-rep';
+  document.getElementById(modalId)?.remove();
+  const div = document.createElement('div');
+  div.id = modalId;
+  div.style.cssText = 'position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+  div.onclick = (e) => { if (e.target === div) div.remove(); };
+  div.innerHTML = `
+    <div style="background:var(--surface);border-radius:14px;max-width:440px;width:100%;padding:20px;box-shadow:0 16px 48px rgba(0,0,0,.28)">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div style="font-size:15px;font-weight:700">📷 Registro del cambio</div>
+          <div style="font-size:12px;color:var(--gris-mid);margin-top:2px">Repuesto: <strong>${escapeHtml(repuesto || '—')}</strong></div>
+          <div style="font-size:11px;color:var(--azul);margin-top:3px">Las fotos quedan visibles para el cliente en su portal</div>
+        </div>
+        <button onclick="document.getElementById('${modalId}').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gris-mid);line-height:1;flex-shrink:0">×</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--gris-mid);margin-bottom:6px">Repuesto retirado</div>
+          <div id="rfv-prev" style="display:none;margin-bottom:6px"><img id="rfv-img" style="width:100%;height:90px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="abrirLightbox(this.src)"></div>
+          <div class="upload-zone" onclick="document.getElementById('rfv-inp').click()" style="padding:16px 8px;text-align:center">
+            <input type="file" id="rfv-inp" accept="image/*" capture="environment" style="display:none" onchange="_rfPreview(this,'rfv')">
+            <div style="font-size:22px;opacity:.55">🔧</div>
+            <div style="font-size:11px;color:var(--gris-mid);margin-top:4px">Foto del viejo</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--gris-mid);margin-bottom:6px">Repuesto instalado</div>
+          <div id="rfn-prev" style="display:none;margin-bottom:6px"><img id="rfn-img" style="width:100%;height:90px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="abrirLightbox(this.src)"></div>
+          <div class="upload-zone" onclick="document.getElementById('rfn-inp').click()" style="padding:16px 8px;text-align:center">
+            <input type="file" id="rfn-inp" accept="image/*" capture="environment" style="display:none" onchange="_rfPreview(this,'rfn')">
+            <div style="font-size:22px;opacity:.55">✅</div>
+            <div style="font-size:11px;color:var(--gris-mid);margin-top:4px">Foto del nuevo</div>
+          </div>
+        </div>
+      </div>
+      <textarea id="rf-nota" placeholder="Nota adicional (opcional)" style="width:100%;min-height:38px;resize:vertical;box-sizing:border-box;font-size:13px;border:1px solid var(--gris-borde);border-radius:8px;padding:6px 10px;margin-bottom:12px"></textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('${modalId}').remove()">Omitir</button>
+        <button class="btn btn-primary btn-sm" id="rf-guardar-btn" onclick="_guardarFotosRepuesto(${solicitudId},${ordenId},'${(repuesto || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">💾 Guardar fotos</button>
+      </div>
+    </div>`;
+  document.body.appendChild(div);
+}
+
+function _rfPreview(input, pref) {
+  const file = input.files[0];
+  if (!file) return;
+  const img  = document.getElementById(pref + '-img');
+  const prev = document.getElementById(pref + '-prev');
+  if (img && prev) { img.src = URL.createObjectURL(file); prev.style.display = ''; }
+}
+
+async function _guardarFotosRepuesto(solicitudId, ordenId, repuesto) {
+  const btn   = document.getElementById('rf-guardar-btn');
+  const fileV = document.getElementById('rfv-inp')?.files[0];
+  const fileN = document.getElementById('rfn-inp')?.files[0];
+  const nota  = document.getElementById('rf-nota')?.value?.trim() || '';
+  if (!fileV && !fileN) { toast('Adjunta al menos una foto', 'err'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Subiendo...'; }
+  try {
+    if (fileV) {
+      const comp = await comprimirImagenFile(fileV, 1200, 0.75);
+      const url  = await storageUpload(comp, `${ordenId}/repuestos/${solicitudId}_viejo_${Date.now()}.jpg`);
+      await api('/novedades', 'POST', {
+        orden_id: ordenId, tipo: 'Repuesto cambiado',
+        motivo: `Repuesto retirado: ${repuesto}`,
+        responsable: sesion?.nombre || '—', foto_url: url
+      }, { Prefer: 'return=minimal' });
+    }
+    if (fileN) {
+      const comp = await comprimirImagenFile(fileN, 1200, 0.75);
+      const url  = await storageUpload(comp, `${ordenId}/repuestos/${solicitudId}_nuevo_${Date.now()}.jpg`);
+      await api('/novedades', 'POST', {
+        orden_id: ordenId, tipo: 'Repuesto cambiado',
+        motivo: `Repuesto instalado: ${repuesto}${nota ? ' — ' + nota : ''}`,
+        responsable: sesion?.nombre || '—', foto_url: url
+      }, { Prefer: 'return=minimal' });
+    }
+    document.getElementById('modal-fotos-rep')?.remove();
+    toast('Fotos registradas ✓ · Visibles para el cliente');
+  } catch(e) {
+    toast('Error al subir: ' + (e.message || 'error'), 'err');
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar fotos'; }
+  }
 }
 
 async function abrirModalPrecioVenta(solicitudId) {

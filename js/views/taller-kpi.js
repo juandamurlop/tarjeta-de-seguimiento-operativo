@@ -134,13 +134,13 @@ function _kpiAplicarAlertasSecciones() {
     ['vencidas','sinMov','repuestos','sinTecnico','sinIniciar','pulmonInt','pulmonExt','enProceso'].forEach(key => {
       (cambios[key] || []).forEach(id => {
         const c = _kCambios[id] || {};
-        _items.push({ placa: c.placa || 'OT-'+id, desc: c.desc || 'Actualizada', cat: _catLabel[key] || key, color: _catColor[key] || '#666' });
+        _items.push({ placa: c.placa || 'OT-'+id, desc: c.desc || 'Actualizada', cat: _catLabel[key] || key, color: _catColor[key] || '#666', ordenId: id });
       });
     });
     if (_items.length) {
       const _ts = new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
       const _iHtml = _items.slice(0, 3).map(it =>
-        `<div class="kpi-ticker-item"><span style="font-family:'DM Mono',monospace;font-weight:800;color:${it.color}">${it.placa}</span><span style="font-size:10px;color:${it.color};background:${it.color}22;border-radius:99px;padding:1px 7px;font-weight:700;white-space:nowrap">${it.cat}</span><span style="color:var(--gris-texto);flex:1;min-width:0">${it.desc}</span></div>`
+        `<div class="kpi-ticker-item" onclick="document.getElementById('kpi-cambio-ticker')?.classList.remove('show');document.getElementById('kpi-cambio-ticker')?.classList.add('hide');_kpiAbrirOrden(${it.ordenId})"><span style="font-family:'DM Mono',monospace;font-weight:800;color:${it.color}">${it.placa}</span><span style="font-size:10px;color:${it.color};background:${it.color}22;border-radius:99px;padding:1px 7px;font-weight:700;white-space:nowrap">${it.cat}</span><span style="color:var(--gris-texto);flex:1;min-width:0">${it.desc}</span><span style="font-size:10px;color:var(--gris-mid);flex-shrink:0">→</span></div>`
       ).join('') + (_items.length > 3 ? `<div style="font-size:10px;color:var(--gris-mid);padding-top:4px">y ${_items.length - 3} más…</div>` : '');
       _tickerEl.innerHTML = `<div class="kpi-ticker-inner"><div class="kpi-ticker-items">${_iHtml}</div><div class="kpi-ticker-meta"><span class="kpi-ticker-ts">${_ts}</span><button class="kpi-ticker-close" onclick="const el=document.getElementById('kpi-cambio-ticker');if(el){el.classList.remove('show');el.classList.add('hide')}" title="Cerrar">×</button></div></div>`;
       _tickerEl.classList.remove('hide');
@@ -638,7 +638,8 @@ async function cargarKPITaller() {
         '.kpi-cambio-ticker.hide{animation:kpiTickUp .25s ease-in forwards}' +
         '.kpi-ticker-inner{background:var(--surface-2);border:1px solid var(--gris-borde);border-radius:10px;padding:9px 12px;display:flex;align-items:flex-start;gap:10px}' +
         '.kpi-ticker-items{flex:1;min-width:0}' +
-        '.kpi-ticker-item{font-size:12px;display:flex;align-items:center;gap:6px;line-height:1.4;flex-wrap:wrap}' +
+        '.kpi-ticker-item{font-size:12px;display:flex;align-items:center;gap:6px;line-height:1.4;flex-wrap:wrap;cursor:pointer;border-radius:6px;padding:3px 4px;margin:-3px -4px;transition:background .15s}' +
+        '.kpi-ticker-item:hover{background:rgba(var(--neon),.10)}' +
         '.kpi-ticker-item+.kpi-ticker-item{border-top:1px dashed var(--gris-borde);margin-top:5px;padding-top:5px}' +
         '.kpi-ticker-meta{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}' +
         '.kpi-ticker-ts{font-size:10px;color:var(--gris-mid);white-space:nowrap}' +
