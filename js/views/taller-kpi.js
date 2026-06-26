@@ -766,8 +766,7 @@ async function cargarKPITaller() {
         // Alerta de cambio en categoría (pulsa por 10 s).
         '@keyframes kpiAlertPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.55)}50%{box-shadow:0 0 0 5px rgba(245,158,11,0)}}' +
         // Chips de categoría (Vencidas, Pulmón…): fila compacta, abren el popup.
-        '.kpi-chips-row{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;margin-top:10px}' +
-        '@media(max-width:1100px){.kpi-chips-row{grid-template-columns:repeat(4,minmax(0,1fr))}}' +
+        '.kpi-chips-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:10px}' +
         '@media(max-width:560px){.kpi-chips-row{grid-template-columns:repeat(2,minmax(0,1fr))}}' +
         '.kpi-chip{min-width:0;position:relative;overflow:hidden;display:flex;align-items:center;gap:6px;padding:8px 9px;border:1px solid var(--gris-borde);border-left:4px solid;border-radius:10px;background:var(--surface);cursor:pointer;text-align:left;box-shadow:var(--shadow-sm);transition:transform .16s var(--ease-out),box-shadow .16s,background .16s}' +
         '.kpi-chip:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);background:var(--surface-2)}' +
@@ -963,13 +962,7 @@ async function cargarKPITaller() {
           <div class="kpi-ua-list"><div class="kpi-ua-vacio">Cargando…</div></div>
         </div>
       </div>
-      <div class="kpi-feed" id="kpi-feed">
-        <div class="kpi-feed-head">
-          <div class="kpi-feed-title"><span class="kpi-feed-live"></span>Centro de actividad</div>
-          <span class="kpi-feed-hora"></span>
-        </div>
-        <div class="kpi-feed-list"><div class="kpi-feed-vacio">Cargando actividad…</div></div>
-      </div>`;
+`;
 
     renderSinParpadeo(cont, `
       <div class="kpi-shell">
@@ -983,6 +976,14 @@ async function cargarKPITaller() {
             <svg class="kpi-refresh-ico" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
             Actualizar
           </button>
+        </div>
+
+        <div class="kpi-feed" id="kpi-feed">
+          <div class="kpi-feed-head">
+            <div class="kpi-feed-title"><span class="kpi-feed-live"></span>Centro de actividad</div>
+            <span class="kpi-feed-hora"></span>
+          </div>
+          <div class="kpi-feed-list"><div class="kpi-feed-vacio">Cargando actividad…</div></div>
         </div>
 
         <div class="kpi-fila-top">
