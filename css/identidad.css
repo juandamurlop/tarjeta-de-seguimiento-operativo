@@ -460,21 +460,35 @@ html[data-theme="dark"] .field textarea:focus {
    semitransparentes para que el logo se vea a través.
 ══════════════════════════════════════════════════════ */
 
-/* Logo de fondo — fijo, centrado en la ventana completa */
+/* Logo de fondo — fijo, centrado en el ÁREA DE CONTENIDO (desplazado por el sidebar) */
 body::before {
   content: '';
   position: fixed;
   top: 50%;
-  left: 50%;
+  /* Centro del área blanca = 50vw + la mitad del sidebar */
+  left: calc(50vw + var(--sidebar-w) / 2);
   transform: translate(-50%, -50%);
-  width: min(580px, 70vmin);
-  height: min(580px, 70vmin);
+  /* Proporcional al área útil, máximo 420px en escritorio */
+  width:  min(420px, calc(100vw - var(--sidebar-w) - 60px));
+  height: min(420px, calc(100vw - var(--sidebar-w) - 60px));
   background: url('../assets/icons/Logo_Fondo_Taller.png') center / contain no-repeat;
-  opacity: 0.05;
+  /* brightness(0) = silueta negra — visible sobre fondo claro */
+  filter: brightness(0) opacity(0.16);
   pointer-events: none;
   z-index: 0;
 }
-html[data-theme="dark"] body::before { opacity: 0.08; }
+/* Móvil: sin sidebar, tamaño más compacto */
+@media (max-width: 768px) {
+  body::before {
+    left: 50vw;
+    width:  min(240px, 62vw);
+    height: min(240px, 62vw);
+  }
+}
+/* Modo oscuro: silueta blanca para verse sobre fondo negro */
+html[data-theme="dark"] body::before {
+  filter: brightness(0) invert(1) opacity(0.20);
+}
 
 /* --surface semitransparente → todos los cards que usan var(--surface) heredan */
 :root                    { --surface: rgba(255, 255, 255, 0.82); }
