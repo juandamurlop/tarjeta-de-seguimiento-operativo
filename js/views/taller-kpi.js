@@ -476,8 +476,7 @@ async function cargarKPITaller() {
     if (!document.getElementById('kpi-sec-style')) {
       const _st = document.createElement('style'); _st.id = 'kpi-sec-style';
       // Destello al actualizar IDÉNTICO a la pantalla de taller (taller.js):
-      // animación tv-row-shake (ámbar→azul con anillo) + borde ámbar a la izquierda,
-      // y la onda única de brillo (.tv-sweep) que recorre el tablero cada 7 s.
+      // animación tv-row-shake (ámbar→azul con anillo) + borde ámbar a la izquierda.
       _st.textContent =
         '@keyframes kpiRowShake{' +
         '0%{transform:translateX(0) scale(1);background:transparent;box-shadow:none}' +
@@ -491,10 +490,7 @@ async function cargarKPITaller() {
         '55%{transform:translateX(0) scale(1);background:rgba(37,99,235,.08);box-shadow:0 0 0 1px rgba(59,130,246,.5)}' +
         '100%{transform:translateX(0) scale(1);background:transparent;box-shadow:none}}' +
         '.kpi-ord-flash{animation:kpiRowShake 3s cubic-bezier(.36,.07,.19,.97) forwards;position:relative;z-index:2;border-radius:5px;border-left:3px solid #F59E0B}' +
-        '.kpi-ord-chip:hover{background:#EFF6FF}' +
-        '.kpi-secciones{position:relative;overflow:hidden}' +
-        '.kpi-sweep{position:absolute;top:0;bottom:0;width:13%;background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.40) 50%,rgba(255,255,255,0) 100%);pointer-events:none;z-index:6;will-change:left;animation:kpiSweepMove 7s linear infinite}' +
-        '@keyframes kpiSweepMove{0%{left:-15%}100%{left:115%}}';
+        '.kpi-ord-chip:hover{background:#EFF6FF}';
       document.head.appendChild(_st);
     }
     // Si quedó corriendo el bucle viejo (oscilación continua), detenerlo.
@@ -585,7 +581,6 @@ async function cargarKPITaller() {
         ${_secO('⏳','Sin iniciar','#92400E', k2Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId)}
         ${_secO('🕐','Sin movimiento +4h','#9333EA', k8Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId)}
         ${_secO('🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId)}
-        <div class="kpi-sweep"></div>
       </div>`;
 
     renderSinParpadeo(cont, `
