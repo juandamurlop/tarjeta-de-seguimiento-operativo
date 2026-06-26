@@ -297,11 +297,44 @@ function _haceCuanto(isoStr) {
 
 async function _kpiFeed() {
   const el = document.getElementById('kpi-feed');
-  if (!el) return;
+  const ua = document.getElementById('kpi-ult-act');
+  if (!el && !ua) return;
   try {
     const evs = await api('/eventos_taller?order=creado_en.desc&limit=50').catch(() => null);
     if (evs === null) return;
     const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    // ── Panel lateral "Últimas 5 actividades" ──
+    if (ua) {
+      const horaUa = ua.querySelector('.kpi-ua-hora');
+      if (horaUa) horaUa.textContent = hora;
+      const listaUa = ua.querySelector('.kpi-ua-list');
+      if (listaUa) {
+        if (!evs.length) {
+          listaUa.innerHTML = '<div class="kpi-ua-vacio">Sin actividad reciente</div>';
+        } else {
+          listaUa.innerHTML = evs.slice(0, 5).map(e => {
+            const c = escapeHtml(e.color || '#64748B');
+            const attrs = e.orden_id
+              ? `class="kpi-ua-item clic" onclick="_kpiAbrirOrden(${e.orden_id})"`
+              : 'class="kpi-ua-item"';
+            return `<div ${attrs}>
+              <span class="kpi-ua-ico">${escapeHtml(e.icono || '📋')}</span>
+              <span class="kpi-ua-cuerpo">
+                <div class="kpi-ua-desc">${escapeHtml(e.descripcion || '')}</div>
+                <div class="kpi-ua-sub">
+                  <span style="color:${c};font-weight:700">${_haceCuanto(e.creado_en)}</span>
+                  ${e.autor && e.autor !== '—' ? `<span>· ${escapeHtml(e.autor)}</span>` : ''}
+                </div>
+              </span>
+            </div>`;
+          }).join('');
+        }
+      }
+    }
+
+    // ── Feed completo "Centro de actividad" ──
+    if (!el) return;
     const horaEl = el.querySelector('.kpi-feed-hora');
     if (horaEl) horaEl.textContent = hora;
     const lista = el.querySelector('.kpi-feed-list');
@@ -791,7 +824,26 @@ async function cargarKPITaller() {
         '.kpi-ev-tag{font-size:9.5px;font-weight:700;padding:1px 7px;border-radius:99px;white-space:nowrap;flex-shrink:0}' +
         '.kpi-ev-arr{font-size:11px;color:var(--gris-mid);flex-shrink:0}' +
         '.kpi-ev+.kpi-ev{border-top:1px solid var(--gris-borde)}' +
-        '.kpi-feed-vacio{padding:18px;text-align:center;font-size:13px;color:var(--gris-mid)}';
+        '.kpi-feed-vacio{padding:18px;text-align:center;font-size:13px;color:var(--gris-mid)}' +
+        // Layout de dos columnas: chips a la izquierda, últimas actividades a la derecha.
+        '.kpi-secciones-wrap{display:flex;gap:12px;align-items:flex-start}' +
+        '.kpi-chips-area{flex:1;min-width:0}' +
+        '.kpi-ult-act{width:262px;flex-shrink:0;background:var(--surface);border:1px solid var(--gris-borde);border-radius:14px;overflow:hidden}' +
+        '.kpi-ua-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 8px;border-bottom:1px solid var(--gris-borde)}' +
+        '.kpi-ua-titulo{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--gris-mid);display:flex;align-items:center;gap:6px}' +
+        '.kpi-ua-live{width:6px;height:6px;border-radius:50%;background:#DC2626;animation:kpiFeedPulse 2s infinite;flex-shrink:0}' +
+        '.kpi-ua-hora{font-size:9.5px;color:var(--gris-mid);font-family:"DM Mono",monospace}' +
+        '.kpi-ua-list{padding:2px 0}' +
+        '.kpi-ua-item{display:flex;align-items:flex-start;gap:8px;padding:7px 12px;transition:background .12s;cursor:default}' +
+        '.kpi-ua-item.clic{cursor:pointer}' +
+        '.kpi-ua-item.clic:hover{background:var(--azul-light)}' +
+        '.kpi-ua-item+.kpi-ua-item{border-top:1px solid var(--gris-borde)}' +
+        '.kpi-ua-ico{font-size:13px;flex-shrink:0;width:16px;text-align:center;margin-top:1px}' +
+        '.kpi-ua-cuerpo{flex:1;min-width:0}' +
+        '.kpi-ua-desc{font-size:11.5px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}' +
+        '.kpi-ua-sub{font-size:10px;color:var(--gris-mid);margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}' +
+        '.kpi-ua-vacio{padding:16px;text-align:center;font-size:12px;color:var(--gris-mid)}' +
+        '@media(max-width:768px){.kpi-secciones-wrap{flex-direction:column}.kpi-ult-act{width:100%}}';
       document.head.appendChild(_st);
     }
     // (Se retiró la rotación por pasos: ahora cada sección es colapsable y
@@ -887,18 +939,30 @@ async function cargarKPITaller() {
         <span class="kpi-chip-title" style="color:${color}">${titulo}</span>
       </button>`;
     };
-    const seccionesHtml = `<div class="kpi-chips-row">
-        ${_secO('vencidas','🚨','Vencidas','#DC2626', k5Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k5')}
-        ${_secO('pulmonInt','🫁','Pulmón interno','#D97706', _pulmonInt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id, 'pulmonInt')}
-        ${_secO('pulmonExt','🫁','Pulmón externo','#2563EB', _pulmonExt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id, 'pulmonExt')}
-        ${_secO('enProceso','🔧','En proceso','#059669', _enProceso, o => _chipO(o.id, o.placa, o.info), o => o.id, 'enProceso')}
-        ${_secO('sinTecnico','📋','Sin técnico','#B45309', k1Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k1')}
-        ${_secO('sinIniciar','⏳','Sin iniciar','#92400E', k2Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k2')}
-        ${_secO('sinMov','🕐','Sin movimiento +4h','#9333EA', k8Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k8')}
-        ${_secO('repuestos','🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k4')}
+    const seccionesHtml = `
+      <div class="kpi-secciones-wrap">
+        <div class="kpi-chips-area">
+          <div class="kpi-chips-row">
+            ${_secO('vencidas','🚨','Vencidas','#DC2626', k5Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k5')}
+            ${_secO('pulmonInt','🫁','Pulmón interno','#D97706', _pulmonInt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id, 'pulmonInt')}
+            ${_secO('pulmonExt','🫁','Pulmón externo','#2563EB', _pulmonExt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id, 'pulmonExt')}
+            ${_secO('enProceso','🔧','En proceso','#059669', _enProceso, o => _chipO(o.id, o.placa, o.info), o => o.id, 'enProceso')}
+            ${_secO('sinTecnico','📋','Sin técnico','#B45309', k1Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k1')}
+            ${_secO('sinIniciar','⏳','Sin iniciar','#92400E', k2Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k2')}
+            ${_secO('sinMov','🕐','Sin movimiento +4h','#9333EA', k8Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k8')}
+            ${_secO('repuestos','🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k4')}
+          </div>
+          <div class="kpi-hover-panel" id="kpi-hover-panel"></div>
+          <div class="kpi-cambio-ticker" id="kpi-cambio-ticker"></div>
+        </div>
+        <div class="kpi-ult-act" id="kpi-ult-act">
+          <div class="kpi-ua-head">
+            <div class="kpi-ua-titulo"><span class="kpi-ua-live"></span>Últimas actividades</div>
+            <span class="kpi-ua-hora"></span>
+          </div>
+          <div class="kpi-ua-list"><div class="kpi-ua-vacio">Cargando…</div></div>
+        </div>
       </div>
-      <div class="kpi-hover-panel" id="kpi-hover-panel"></div>
-      <div class="kpi-cambio-ticker" id="kpi-cambio-ticker"></div>
       <div class="kpi-feed" id="kpi-feed">
         <div class="kpi-feed-head">
           <div class="kpi-feed-title"><span class="kpi-feed-live"></span>Centro de actividad</div>
