@@ -546,3 +546,16 @@ html[data-theme="dark"]  { --surface: rgba(26,  35,  52,  0.82); }
   box-shadow: 0 8px 22px rgba(30,58,95,0.40);
 }
 .login-btn:active { transform: scale(0.97); }
+
+/* ── Escritorio mediano (1081–1440px) — PWA en PC a 1366px ──
+   La tabla de órdenes (9 col, ~1127px) no cabe con los paddings
+   normales. Se reducen márgenes y celdas para ganar ~150px sin
+   cambiar estructura ni ocultar columnas. */
+@media (min-width: 1081px) and (max-width: 1440px) {
+  .content                { padding: 16px 16px; }
+  .ordenes-tabla-wrap     { padding: 8px 10px 4px; }
+  .ord-row td             { padding: 10px 8px; }
+  .ordenes-tabla thead th { padding: 6px 8px 10px; }
+  /* El sidebar puede bajar un poco para dar aún más espacio al contenido */
+  :root { --sidebar-w: 210px; }
+}
