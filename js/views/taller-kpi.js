@@ -230,6 +230,61 @@ function _kpiAbrirOrden(ordenId) {
   if (typeof abrirOrden === 'function') abrirOrden(ordenId);
 }
 
+// ── Vista previa al pasar el mouse por los chips ─────────────────────────────
+// Muestra las órdenes de esa categoría en el espacio bajo los chips, sin
+// abrir el popup. Desaparece cuando el mouse sale del chip Y del panel.
+function kpiHoverPreview(storeKey, color, titulo) {
+  clearTimeout(window._kpiHoverTimer);
+  const panel = document.getElementById('kpi-hover-panel');
+  if (!panel) return;
+  const { filas } = window._kpiStore?.[storeKey] || { filas: [] };
+
+  const MAX = 6;
+  const filasHtml = filas.length
+    ? filas.slice(0, MAX).map(f => {
+        const badge = f.badge
+          ? `<span style="font-size:10px;font-weight:700;color:${color};background:${color}1A;border-radius:99px;padding:1px 8px;white-space:nowrap;flex-shrink:0">${escapeHtml(f.badge)}</span>`
+          : '';
+        const ot = f.ot
+          ? `<span style="font-size:10px;color:var(--gris-mid);flex-shrink:0;font-family:'DM Mono',monospace">${escapeHtml(f.ot)}</span>`
+          : '';
+        return `<div class="kpi-ord-chip" onclick="kpiHoverPreviewOut(true);_kpiAbrirOrden(${f.ordenId || 0})">
+          <span class="kc-pl">${escapeHtml(f.placa || '—')}</span>
+          <span class="kc-nf">${escapeHtml(f.titulo || f.sub || '')}</span>
+          ${badge}${ot}
+        </div>`;
+      }).join('') +
+      (filas.length > MAX
+        ? `<div class="kpi-hp-mas">y ${filas.length - MAX} más · clic en la categoría para ver todas →</div>`
+        : '')
+    : `<div class="kpi-hp-vacio">Sin órdenes activas en esta categoría ✓</div>`;
+
+  panel.innerHTML = `
+    <div class="kpi-hover-inner"
+      onmouseenter="clearTimeout(window._kpiHoverTimer)"
+      onmouseleave="kpiHoverPreviewOut()">
+      <div class="kpi-hp-titulo" style="color:${color};border-bottom:1px solid ${color}28">
+        <span>${titulo}</span>
+        <span style="font-weight:400;color:var(--gris-mid)">${filas.length} orden${filas.length !== 1 ? 'es' : ''}</span>
+      </div>
+      <div class="kpi-hp-filas">${filasHtml}</div>
+    </div>`;
+  panel.classList.add('show');
+}
+
+function kpiHoverPreviewOut(inmediato) {
+  if (inmediato) {
+    clearTimeout(window._kpiHoverTimer);
+    const panel = document.getElementById('kpi-hover-panel');
+    if (panel) panel.classList.remove('show');
+    return;
+  }
+  window._kpiHoverTimer = setTimeout(() => {
+    const panel = document.getElementById('kpi-hover-panel');
+    if (panel) panel.classList.remove('show');
+  }, 150);
+}
+
 // Botón "Actualizar": gira el ícono una vez (feedback) y recarga.
 function _kpiActualizar(btn) {
   const ico = btn?.querySelector('.kpi-refresh-ico');
@@ -645,6 +700,14 @@ async function cargarKPITaller() {
         '.kpi-ticker-ts{font-size:10px;color:var(--gris-mid);white-space:nowrap}' +
         '.kpi-ticker-close{background:none;border:none;font-size:18px;line-height:1;color:var(--gris-mid);cursor:pointer;padding:0;transition:color .15s}' +
         '.kpi-ticker-close:hover{color:var(--texto)}' +
+        // Panel de vista previa al pasar el mouse por los chips.
+        '.kpi-hover-panel{overflow:hidden;max-height:0;opacity:0;margin-top:0;transition:max-height .28s var(--ease-out),opacity .2s ease,margin-top .2s ease;pointer-events:none}' +
+        '.kpi-hover-panel.show{max-height:320px;opacity:1;margin-top:8px;pointer-events:auto}' +
+        '.kpi-hover-inner{background:var(--surface);border:1px solid var(--gris-borde);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow-md)}' +
+        '.kpi-hp-titulo{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;padding-bottom:7px;display:flex;align-items:center;gap:6px}' +
+        '.kpi-hp-filas{display:flex;flex-direction:column;gap:2px;max-height:240px;overflow-y:auto}' +
+        '.kpi-hp-vacio{font-size:13px;color:var(--gris-mid);text-align:center;padding:12px 0}' +
+        '.kpi-hp-mas{font-size:11px;color:var(--gris-mid);text-align:center;padding:5px 0;border-top:1px dashed var(--gris-borde);margin-top:4px}' +
         // Resumen de arriba clickeable.
         '.kpi-res-item.clic{cursor:pointer;transition:background .15s,transform .15s}' +
         '.kpi-res-item.clic:hover{background:var(--azul-light)}' +
@@ -737,7 +800,11 @@ async function cargarKPITaller() {
     // Chip compacto: ícono + título (baja a 2ª línea si es largo) + contador.
     // Al hacer clic abre el popup (kpiDrilldown), sin expandir inline.
     const _secO = (key, ico, titulo, color, filas, mapFn, getId, storeKey) => {
-      return `<button class="kpi-chip" id="kpi-sec-${key}" onclick="kpiDrilldown('${storeKey}')" style="border-left-color:${color}">
+      return `<button class="kpi-chip" id="kpi-sec-${key}"
+        onclick="kpiDrilldown('${storeKey}')"
+        onmouseenter="kpiHoverPreview('${storeKey}','${color}','${ico} ${titulo}')"
+        onmouseleave="kpiHoverPreviewOut()"
+        style="border-left-color:${color}">
         <span class="kpi-chip-bg-num" style="color:${color}">${filas.length}</span>
         <span class="kpi-chip-ico">${ico}</span>
         <span class="kpi-chip-title" style="color:${color}">${titulo}</span>
@@ -753,6 +820,7 @@ async function cargarKPITaller() {
         ${_secO('sinMov','🕐','Sin movimiento +4h','#9333EA', k8Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k8')}
         ${_secO('repuestos','🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k4')}
       </div>
+      <div class="kpi-hover-panel" id="kpi-hover-panel"></div>
       <div class="kpi-cambio-ticker" id="kpi-cambio-ticker"></div>`;
 
     renderSinParpadeo(cont, `
