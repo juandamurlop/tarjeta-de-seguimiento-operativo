@@ -124,6 +124,35 @@ function _kpiAplicarAlertasSecciones() {
     const abiertoAMano = document.getElementById('_kpiModal') && !window._kpiAutoClose;
     if (!abiertoAMano) kpiDrilldown(abrir, { autoCierre: 10000 });
   }
+  // Ticker de cambios: se despliega en el espacio bajo los chips mostrando qué cambió.
+  const _tickerEl = document.getElementById('kpi-cambio-ticker');
+  if (_tickerEl) {
+    const _kCambios = window._kpiCambios || {};
+    const _catLabel = { vencidas:'Vencida', sinMov:'Sin movimiento', repuestos:'Rep. atascado', sinTecnico:'Sin técnico', sinIniciar:'Sin iniciar', pulmonInt:'Pulmón int.', pulmonExt:'Pulmón ext.', enProceso:'En proceso' };
+    const _catColor = { vencidas:'#DC2626', sinMov:'#9333EA', repuestos:'#0891B2', sinTecnico:'#B45309', sinIniciar:'#92400E', pulmonInt:'#D97706', pulmonExt:'#2563EB', enProceso:'#059669' };
+    const _items = [];
+    ['vencidas','sinMov','repuestos','sinTecnico','sinIniciar','pulmonInt','pulmonExt','enProceso'].forEach(key => {
+      (cambios[key] || []).forEach(id => {
+        const c = _kCambios[id] || {};
+        _items.push({ placa: c.placa || 'OT-'+id, desc: c.desc || 'Actualizada', cat: _catLabel[key] || key, color: _catColor[key] || '#666' });
+      });
+    });
+    if (_items.length) {
+      const _ts = new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+      const _iHtml = _items.slice(0, 3).map(it =>
+        `<div class="kpi-ticker-item"><span style="font-family:'DM Mono',monospace;font-weight:800;color:${it.color}">${it.placa}</span><span style="font-size:10px;color:${it.color};background:${it.color}22;border-radius:99px;padding:1px 7px;font-weight:700;white-space:nowrap">${it.cat}</span><span style="color:var(--gris-texto);flex:1;min-width:0">${it.desc}</span></div>`
+      ).join('') + (_items.length > 3 ? `<div style="font-size:10px;color:var(--gris-mid);padding-top:4px">y ${_items.length - 3} más…</div>` : '');
+      _tickerEl.innerHTML = `<div class="kpi-ticker-inner"><div class="kpi-ticker-items">${_iHtml}</div><div class="kpi-ticker-meta"><span class="kpi-ticker-ts">${_ts}</span><button class="kpi-ticker-close" onclick="const el=document.getElementById('kpi-cambio-ticker');if(el){el.classList.remove('show');el.classList.add('hide')}" title="Cerrar">×</button></div></div>`;
+      _tickerEl.classList.remove('hide');
+      void _tickerEl.offsetWidth;
+      _tickerEl.classList.add('show');
+      if (window._kpiTickerTimer) clearTimeout(window._kpiTickerTimer);
+      window._kpiTickerTimer = setTimeout(() => {
+        const el = document.getElementById('kpi-cambio-ticker');
+        if (el && el.classList.contains('show')) { el.classList.remove('show'); el.classList.add('hide'); }
+      }, 8000);
+    }
+  }
 }
 
 // ── Modal de drilldown ───────────────────────────────────
@@ -594,12 +623,27 @@ async function cargarKPITaller() {
         '.kpi-chips-row{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;margin-top:10px}' +
         '@media(max-width:1100px){.kpi-chips-row{grid-template-columns:repeat(4,minmax(0,1fr))}}' +
         '@media(max-width:560px){.kpi-chips-row{grid-template-columns:repeat(2,minmax(0,1fr))}}' +
-        '.kpi-chip{min-width:0;display:flex;align-items:center;gap:6px;padding:8px 9px;border:1px solid var(--gris-borde);border-left:4px solid;border-radius:10px;background:var(--surface);cursor:pointer;text-align:left;box-shadow:var(--shadow-sm);transition:transform .16s var(--ease-out),box-shadow .16s,background .16s}' +
+        '.kpi-chip{min-width:0;position:relative;overflow:hidden;display:flex;align-items:center;gap:6px;padding:8px 9px;border:1px solid var(--gris-borde);border-left:4px solid;border-radius:10px;background:var(--surface);cursor:pointer;text-align:left;box-shadow:var(--shadow-sm);transition:transform .16s var(--ease-out),box-shadow .16s,background .16s}' +
         '.kpi-chip:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);background:var(--surface-2)}' +
-        '.kpi-chip-ico{flex-shrink:0;font-size:14px;line-height:1}' +
-        '.kpi-chip-title{flex:1;min-width:0;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.01em;line-height:1.15;white-space:normal}' +
-        '.kpi-chip-count{flex-shrink:0;color:#fff;border-radius:99px;min-width:22px;text-align:center;padding:2px 7px;font-size:12.5px;font-weight:800}' +
+        '.kpi-chip-bg-num{position:absolute;right:4px;bottom:-6px;font-size:44px;font-weight:900;opacity:0.12;line-height:1;user-select:none;pointer-events:none;transition:opacity .2s;font-family:"DM Mono",monospace}' +
+        '.kpi-chip:hover .kpi-chip-bg-num{opacity:0.22}' +
+        '.kpi-chip-ico{flex-shrink:0;font-size:14px;line-height:1;position:relative;z-index:1}' +
+        '.kpi-chip-title{flex:1;min-width:0;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.01em;line-height:1.15;white-space:normal;position:relative;z-index:1}' +
         '.kpi-chip.kpi-chip-alert{animation:kpiAlertPulse 1.4s ease-in-out infinite}' +
+        // Ticker de cambios (se despliega bajo los chips cuando algo cambia).
+        '@keyframes kpiTickDown{from{max-height:0;opacity:0;margin-top:0}to{max-height:220px;opacity:1;margin-top:8px}}' +
+        '@keyframes kpiTickUp{from{max-height:220px;opacity:1;margin-top:8px}to{max-height:0;opacity:0;margin-top:0}}' +
+        '.kpi-cambio-ticker{overflow:hidden;border-radius:10px;max-height:0}' +
+        '.kpi-cambio-ticker.show{animation:kpiTickDown .35s var(--ease-out) forwards}' +
+        '.kpi-cambio-ticker.hide{animation:kpiTickUp .25s ease-in forwards}' +
+        '.kpi-ticker-inner{background:var(--surface-2);border:1px solid var(--gris-borde);border-radius:10px;padding:9px 12px;display:flex;align-items:flex-start;gap:10px}' +
+        '.kpi-ticker-items{flex:1;min-width:0}' +
+        '.kpi-ticker-item{font-size:12px;display:flex;align-items:center;gap:6px;line-height:1.4;flex-wrap:wrap}' +
+        '.kpi-ticker-item+.kpi-ticker-item{border-top:1px dashed var(--gris-borde);margin-top:5px;padding-top:5px}' +
+        '.kpi-ticker-meta{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}' +
+        '.kpi-ticker-ts{font-size:10px;color:var(--gris-mid);white-space:nowrap}' +
+        '.kpi-ticker-close{background:none;border:none;font-size:18px;line-height:1;color:var(--gris-mid);cursor:pointer;padding:0;transition:color .15s}' +
+        '.kpi-ticker-close:hover{color:var(--texto)}' +
         // Resumen de arriba clickeable.
         '.kpi-res-item.clic{cursor:pointer;transition:background .15s,transform .15s}' +
         '.kpi-res-item.clic:hover{background:var(--azul-light)}' +
@@ -693,9 +737,9 @@ async function cargarKPITaller() {
     // Al hacer clic abre el popup (kpiDrilldown), sin expandir inline.
     const _secO = (key, ico, titulo, color, filas, mapFn, getId, storeKey) => {
       return `<button class="kpi-chip" id="kpi-sec-${key}" onclick="kpiDrilldown('${storeKey}')" style="border-left-color:${color}">
+        <span class="kpi-chip-bg-num" style="color:${color}">${filas.length}</span>
         <span class="kpi-chip-ico">${ico}</span>
         <span class="kpi-chip-title" style="color:${color}">${titulo}</span>
-        <span class="kpi-chip-count" style="background:${color}">${filas.length}</span>
       </button>`;
     };
     const seccionesHtml = `<div class="kpi-chips-row">
@@ -707,7 +751,8 @@ async function cargarKPITaller() {
         ${_secO('sinIniciar','⏳','Sin iniciar','#92400E', k2Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k2')}
         ${_secO('sinMov','🕐','Sin movimiento +4h','#9333EA', k8Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k8')}
         ${_secO('repuestos','🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k4')}
-      </div>`;
+      </div>
+      <div class="kpi-cambio-ticker" id="kpi-cambio-ticker"></div>`;
 
     renderSinParpadeo(cont, `
       <div class="kpi-shell">
