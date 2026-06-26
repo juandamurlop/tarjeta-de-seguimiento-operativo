@@ -653,9 +653,37 @@ async function abrirOrden(id) {
       _cargarConsumiblesSidebar(orden.placa, orden.kilometraje || 0);
     }
 
+    // Destello del apartado que cambió, si venimos desde una alerta de Gestión
+    // Operativa (taller-kpi deja la pista en window._kpiFlashEtapa).
+    if (window._kpiFlashEtapa && window._kpiFlashEtapa.ordenId === id) {
+      const _tgt = window._kpiFlashEtapa.etapaId;
+      window._kpiFlashEtapa = null;
+      setTimeout(() => { if (typeof _flashEtapaDetalle === 'function') _flashEtapaDetalle(_tgt); }, 140);
+    }
+
   } catch(e) {
     detalleCont.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
   }
+}
+
+// Resalta (destella) la etapa que cambió cuando se abre la orden desde una
+// alerta de Gestión Operativa. Si no hay etapa concreta, usa la primera.
+function _flashEtapaDetalle(etapaId) {
+  if (!document.getElementById('kpi-det-flash-style')) {
+    const st = document.createElement('style'); st.id = 'kpi-det-flash-style';
+    st.textContent =
+      '@keyframes kpiDetFlash{0%{box-shadow:0 0 0 0 rgba(245,158,11,0);background:transparent}10%{box-shadow:0 0 0 3px #F59E0B;background:rgba(245,158,11,.12)}45%{box-shadow:0 0 0 3px #3B82F6;background:rgba(37,99,235,.10)}100%{box-shadow:0 0 0 0 rgba(59,130,246,0);background:transparent}}' +
+      '.kpi-det-flash{animation:kpiDetFlash 2.8s ease forwards;border-radius:12px;position:relative;z-index:1}';
+    document.head.appendChild(st);
+  }
+  let card = etapaId ? document.querySelector(`.etapa-card[data-eid="${etapaId}"]`) : null;
+  if (!card) card = document.querySelector('#etapas-lista .etapa-card');
+  if (!card) return;
+  const body = card.querySelector('.etapa-body');
+  if (body && !body.classList.contains('open')) body.classList.add('open');
+  try { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+  card.classList.remove('kpi-det-flash'); void card.offsetWidth; card.classList.add('kpi-det-flash');
+  setTimeout(() => card.classList.remove('kpi-det-flash'), 3000);
 }
 
 function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
@@ -763,7 +791,7 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
     : '<div style="font-size:12px;color:var(--gris-mid);padding:4px 0">Sin novedades.</div>';
 
   return `
-    <div class="etapa-card">
+    <div class="etapa-card" data-eid="${eid}">
       <div class="etapa-header" onclick="toggleEtapa('eb-${k}')">
         <div style="flex:1;min-width:0">
           <div class="etapa-nombre">${escapeHtml(nombre)}${e.tercero?` <span style="font-size:11px;color:var(--gris-mid);font-weight:400">(${escapeHtml(e.tercero)}${e.tercero_desc?' · '+escapeHtml(e.tercero_desc):''})</span>`:''}</div>

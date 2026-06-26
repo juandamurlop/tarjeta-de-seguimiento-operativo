@@ -103,10 +103,17 @@ function _kpiVerCambio(id) {
     <div style="padding:16px">
       <div style="font-family:'DM Mono',monospace;font-weight:800;font-size:18px;color:var(--texto)">${escapeHtml(c.placa || '')}</div>
       <div style="margin-top:6px;font-size:14px;color:var(--gris-texto)">${escapeHtml(c.desc || 'Actualizada')}</div>
-      <button onclick="document.getElementById('_kpiCambioOv').remove();_kpiAbrirOrden(${id})" class="btn btn-primary btn-sm" style="margin-top:14px;width:100%">Abrir orden →</button>
+      <button onclick="document.getElementById('_kpiCambioOv').remove();_kpiAbrirConCambio(${id})" class="btn btn-primary btn-sm" style="margin-top:14px;width:100%">Abrir orden →</button>
     </div>
   </div>`;
   document.body.appendChild(ov);
+}
+// Abre la orden dejando una pista para que el detalle destelle el apartado
+// (la etapa) que cambió.
+function _kpiAbrirConCambio(id) {
+  const c = (window._kpiCambios || {})[id] || {};
+  window._kpiFlashEtapa = { ordenId: id, etapaId: c.etapaId || null };
+  if (typeof _kpiAbrirOrden === 'function') _kpiAbrirOrden(id);
 }
 // Tras cada refresco: a las secciones COLAPSADAS con un cambio les pone una
 // alerta pulsante por 10 s; a las ABIERTAS les re-dispara el destello.
@@ -642,11 +649,21 @@ async function cargarKPITaller() {
     window._kpiPrevSig = _sigMap;
     const _ordCambia = (filas, getId) => filas.slice().sort((a, b) => (_cambiados.has(getId(b)) ? 1 : 0) - (_cambiados.has(getId(a)) ? 1 : 0));
 
-    // Descripción legible del cambio de cada orden (para la tarjeta rápida).
+    // Descripción legible del cambio de cada orden + cuál etapa cambió (para
+    // destellar ese apartado al abrir el detalle de la orden).
     window._kpiCambios = window._kpiCambios || {};
     _cambiados.forEach(id => {
+      const ets = todasEtapas.filter(e => e.orden_id === id);
       const o = ordenesActivas.find(x => x.id === id) || {};
-      window._kpiCambios[id] = { placa: o.placa || ('OT-' + id), desc: _kpiDescribirCambio(_prevSig[id], _sigMap[id], todasEtapas.filter(e => e.orden_id === id)) };
+      const p = String(_prevSig[id] ?? '').split('|'), c = String(_sigMap[id]).split('|');
+      let etapaId = null;
+      if (c[1] && c[1] !== p[1]) etapaId = +c[1];               // etapa iniciada
+      else if (c[2] !== p[2] && c[1]) etapaId = +c[1];          // pausada / reanudada
+      else if ((+c[3] || 0) > (+p[3] || 0)) {                  // alguna finalizó
+        const fin = ets.filter(e => e.fin).sort((a, b) => new Date(b.fin) - new Date(a.fin))[0];
+        etapaId = fin ? fin.id : null;
+      }
+      window._kpiCambios[id] = { placa: o.placa || ('OT-' + id), desc: _kpiDescribirCambio(_prevSig[id], _sigMap[id], ets), etapaId };
     });
     // Stores de drilldown para las secciones que no tenían (pulmón / en proceso).
     const _dlPulmon = arr => arr.map(o => ({ placa: o.placa, ot: formatOT(o.id), ordenId: o.id, titulo: [o.marca, o.linea].filter(Boolean).join(' ') || '', sub: 'En pulmón hace ' + _kpiDur(_kpiMs(o.pulmon_desde)), badge: _kpiDur(_kpiMs(o.pulmon_desde)), color: 'amarillo' }));
