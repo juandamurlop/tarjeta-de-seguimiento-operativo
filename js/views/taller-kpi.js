@@ -475,39 +475,59 @@ async function cargarKPITaller() {
     // Estilo (sacudida) + bucle de auto-scroll, registrados una sola vez.
     if (!document.getElementById('kpi-sec-style')) {
       const _st = document.createElement('style'); _st.id = 'kpi-sec-style';
-      _st.textContent = '@keyframes kpiShake{0%,100%{transform:translateX(0)}15%{transform:translateX(-4px)}30%{transform:translateX(4px)}45%{transform:translateX(-3px)}60%{transform:translateX(3px)}75%{transform:translateX(-1px)}}.kpi-ord-shake{animation:kpiShake .55s ease 2;background:#FEF9C3}.kpi-ord-chip:hover{background:#EFF6FF}';
+      // Destello al actualizar IDÉNTICO a la pantalla de taller (taller.js):
+      // animación tv-row-shake (ámbar→azul con anillo) + borde ámbar a la izquierda,
+      // y la onda única de brillo (.tv-sweep) que recorre el tablero cada 7 s.
+      _st.textContent =
+        '@keyframes kpiRowShake{' +
+        '0%{transform:translateX(0) scale(1);background:transparent;box-shadow:none}' +
+        '4%{transform:translateX(-6px) scale(1.01);background:rgba(245,158,11,.25);box-shadow:0 0 0 3px #F59E0B}' +
+        '8%{transform:translateX(6px) scale(1.01);background:rgba(245,158,11,.30);box-shadow:0 0 0 3px #F59E0B}' +
+        '12%{transform:translateX(-5px) scale(1.01);background:rgba(37,99,235,.22);box-shadow:0 0 0 3px #3B82F6}' +
+        '16%{transform:translateX(5px) scale(1.01);background:rgba(37,99,235,.22);box-shadow:0 0 0 3px #3B82F6}' +
+        '20%{transform:translateX(-3px) scale(1);background:rgba(37,99,235,.18);box-shadow:0 0 0 3px #3B82F6}' +
+        '24%{transform:translateX(3px) scale(1);background:rgba(37,99,235,.18);box-shadow:0 0 0 3px #3B82F6}' +
+        '30%{transform:translateX(0) scale(1);background:rgba(37,99,235,.14);box-shadow:0 0 0 2px #3B82F6}' +
+        '55%{transform:translateX(0) scale(1);background:rgba(37,99,235,.08);box-shadow:0 0 0 1px rgba(59,130,246,.5)}' +
+        '100%{transform:translateX(0) scale(1);background:transparent;box-shadow:none}}' +
+        '.kpi-ord-flash{animation:kpiRowShake 3s cubic-bezier(.36,.07,.19,.97) forwards;position:relative;z-index:2;border-radius:5px;border-left:3px solid #F59E0B}' +
+        '.kpi-ord-chip:hover{background:#EFF6FF}' +
+        '.kpi-secciones{position:relative;overflow:hidden}' +
+        '.kpi-sweep{position:absolute;top:0;bottom:0;width:13%;background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.40) 50%,rgba(255,255,255,0) 100%);pointer-events:none;z-index:6;will-change:left;animation:kpiSweepMove 7s linear infinite}' +
+        '@keyframes kpiSweepMove{0%{left:-15%}100%{left:115%}}';
       document.head.appendChild(_st);
     }
-    if (!window._kpiScrollLoop) {
-      // Auto-scroll de las secciones que no caben. Mueve una PISTA interna con
-      // transform:translateY (sub-pixel + acelerado por GPU) en vez de scrollTop
-      // (que redondea a enteros y se ve "a pasos"). Resultado: totalmente fluido.
-      const VEL = 14;         // px por segundo
-      const PAUSA = 1500;     // ms de pausa al llegar a cada extremo
-      let _kpiLast = performance.now();
-      const _kpiTick = (now) => {
-        const dt = Math.min(80, now - _kpiLast) / 1000; // s (clamp si la pestaña estuvo en 2º plano)
-        _kpiLast = now;
+    // Si quedó corriendo el bucle viejo (oscilación continua), detenerlo.
+    if (window._kpiScrollLoop) { cancelAnimationFrame(window._kpiScrollLoop); window._kpiScrollLoop = null; }
+    // Rotación SUAVE por pasos: cada 5 s, las secciones que NO caben suben un
+    // renglón (las que caben se quedan quietas). Al llegar al final, vuelven
+    // arriba. Mucho menos invasivo que el desplazamiento continuo anterior.
+    if (!window._kpiRotInterval) {
+      window._kpiRotInterval = setInterval(() => {
+        const pag = document.getElementById('pag-taller-kpi');
+        if (!pag || !pag.classList.contains('activa')) return;
         document.querySelectorAll('#taller-kpi-contenido .kpi-sec-body').forEach(body => {
           const track = body.firstElementChild;
-          if (!track) return;
-          const max = track.offsetHeight - body.clientHeight;
-          if (max <= 2) {                              // cabe: nada que mover
-            if (body._pos) { body._pos = 0; track.style.transform = 'translateY(0)'; }
+          if (!track || track.children.length < 2) return;
+          if (body.matches(':hover')) return;                  // mouse encima: pausa
+          const max = track.scrollHeight - body.clientHeight;
+          if (max <= 2) {                                       // cabe entera: quieta
+            if (body._rotPos) { body._rotPos = 0; track.style.transition = 'none'; track.style.transform = 'translateY(0)'; }
             return;
           }
-          if (body.matches(':hover')) return;          // mouse encima: pausa
-          if (body._pos == null) body._pos = 0;
-          if (body._pauseUntil && now < body._pauseUntil) return;
-          body._dir = body._dir || 1;
-          body._pos += body._dir * VEL * dt;
-          if (body._pos >= max) { body._pos = max; body._dir = -1; body._pauseUntil = now + PAUSA; }
-          else if (body._pos <= 0) { body._pos = 0; body._dir = 1; body._pauseUntil = now + PAUSA; }
-          track.style.transform = `translateY(${(-body._pos).toFixed(2)}px)`;
+          const paso = track.children[0].offsetHeight || 20;
+          const next = (body._rotPos || 0) + paso;
+          if (next > max + 1) {                                 // llegó al final → arriba
+            body._rotPos = 0;
+            track.style.transition = 'none';
+            track.style.transform = 'translateY(0)';
+          } else {
+            body._rotPos = next;
+            track.style.transition = 'transform .55s var(--ease-out)';
+            track.style.transform = `translateY(-${next}px)`;
+          }
         });
-        window._kpiScrollLoop = requestAnimationFrame(_kpiTick);
-      };
-      window._kpiScrollLoop = requestAnimationFrame(_kpiTick);
+      }, 5000);
     }
 
     const _pulmonInt = ordenesActivas.filter(o => o.pulmon && o.pulmon_tipo === 'interno');
@@ -544,7 +564,7 @@ async function cargarKPITaller() {
     });
     const _fmtValKpi = n => '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n || 0);
 
-    const _chipO = (id, placa, info) => `<div class="kpi-ord-chip${_cambiados.has(id) ? ' kpi-ord-shake' : ''}" onclick="_kpiAbrirOrden(${id})" style="display:flex;align-items:center;gap:6px;padding:2px 5px;border-radius:5px;cursor:pointer;line-height:1.2">
+    const _chipO = (id, placa, info) => `<div class="kpi-ord-chip${_cambiados.has(id) ? ' kpi-ord-flash' : ''}" onclick="_kpiAbrirOrden(${id})" style="display:flex;align-items:center;gap:6px;padding:2px 5px;border-radius:5px;cursor:pointer;line-height:1.2">
         <span style="font-family:'DM Mono',monospace;font-weight:800;font-size:12.5px;color:var(--texto);flex-shrink:0">${escapeHtml(placa || '—')}</span>
         <span style="font-size:11px;font-weight:600;color:#334155;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(info || '')}</span>
         ${_valOrd[id] ? `<span style="font-size:10.5px;font-weight:800;color:#047857;font-family:'DM Mono',monospace;flex-shrink:0">${_fmtValKpi(_valOrd[id])}</span>` : ''}
@@ -565,6 +585,7 @@ async function cargarKPITaller() {
         ${_secO('⏳','Sin iniciar','#92400E', k2Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId)}
         ${_secO('🕐','Sin movimiento +4h','#9333EA', k8Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId)}
         ${_secO('🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId)}
+        <div class="kpi-sweep"></div>
       </div>`;
 
     renderSinParpadeo(cont, `
@@ -716,6 +737,14 @@ async function cargarKPITaller() {
 
     // Animar números (cuenta + flash en los que cambiaron) tras cada refresco.
     _kpiAnimarNumeros();
+
+    // Tras cada refresco, las secciones arrancan desde ARRIBA (así los cambios,
+    // que van de primeras, quedan visibles) y la rotación por pasos sigue desde 0.
+    document.querySelectorAll('#taller-kpi-contenido .kpi-sec-body').forEach(b => {
+      b._rotPos = 0;
+      const tr = b.firstElementChild;
+      if (tr) { tr.style.transition = 'none'; tr.style.transform = 'translateY(0)'; }
+    });
 
   } catch (err) {
     if (cont) cont.innerHTML = `<div class="empty-state" style="padding:40px">
