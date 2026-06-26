@@ -120,20 +120,29 @@ function _kpiAbrirConCambio(id) {
 function _kpiAplicarAlertasSecciones() {
   const cambios = window._kpiSecCambios || {};
   window._kpiAlertTimers = window._kpiAlertTimers || {};
-  Object.keys(cambios).forEach(key => {
+  const storeKeyDe = { vencidas:'k5', pulmonInt:'pulmonInt', pulmonExt:'pulmonExt', enProceso:'enProceso', sinTecnico:'k1', sinIniciar:'k2', sinMov:'k8', repuestos:'k4' };
+  // Prioridad: lo crítico primero — es lo que se auto-abre si hay varios cambios.
+  const prioridad = ['vencidas','sinMov','repuestos','sinTecnico','sinIniciar','pulmonInt','pulmonExt','enProceso'];
+  let abrir = null;
+  prioridad.forEach(key => {
     if (!(cambios[key] || []).length) return;
     const el = document.getElementById('kpi-sec-' + key);
-    if (!el) return;
-    if (el.classList.contains('collapsed')) {
-      el.classList.add('has-alert');
+    if (el) {
+      el.classList.add('kpi-chip-alert');
       if (window._kpiAlertTimers[key]) clearTimeout(window._kpiAlertTimers[key]);
       window._kpiAlertTimers[key] = setTimeout(() => {
-        document.getElementById('kpi-sec-' + key)?.classList.remove('has-alert');
+        document.getElementById('kpi-sec-' + key)?.classList.remove('kpi-chip-alert');
       }, 10000);
-    } else {
-      el.querySelectorAll('.kpi-ord-flash').forEach(ch => { ch.classList.remove('kpi-ord-flash'); void ch.offsetWidth; ch.classList.add('kpi-ord-flash'); });
     }
+    if (!abrir) abrir = storeKeyDe[key];
   });
+  // Auto-abrir el popup de la categoría más crítica que cambió, 10 s. Si ya
+  // había uno abierto por novedad, lo reemplaza (no se encima). Pero si el
+  // usuario abrió uno a mano (o lo fijó pasando el mouse), no se lo quita.
+  if (abrir && typeof kpiDrilldown === 'function') {
+    const abiertoAMano = document.getElementById('_kpiModal') && !window._kpiAutoClose;
+    if (!abiertoAMano) kpiDrilldown(abrir, { autoCierre: 10000 });
+  }
 }
 
 // ── Modal de drilldown ───────────────────────────────────
@@ -159,10 +168,12 @@ function _kpiBarras(items, colorDefault) {
   }).join('');
 }
 
-function kpiDrilldown(key) {
+function kpiDrilldown(key, opts) {
+  opts = opts || {};
   const { titulo, filas } = window._kpiStore[key] || { titulo: '—', filas: [] };
   const ex = document.getElementById('_kpiModal');
   if (ex) ex.remove();
+  if (window._kpiAutoClose) { clearTimeout(window._kpiAutoClose); window._kpiAutoClose = null; }
 
   const filasHtml = filas.length
     ? filas.map((f, i) => `
@@ -193,6 +204,12 @@ function kpiDrilldown(key) {
       <div style="overflow-y:auto;padding:12px 16px;flex:1">${filasHtml}</div>
     </div>`;
   document.body.appendChild(ov);
+  // Apertura automática por novedad: se cierra sola tras N ms, salvo que el
+  // usuario pase el mouse por encima (entonces se queda mientras lo lee).
+  if (opts.autoCierre) {
+    window._kpiAutoClose = setTimeout(() => { document.getElementById('_kpiModal')?.remove(); window._kpiAutoClose = null; }, opts.autoCierre);
+    ov.addEventListener('mouseenter', () => { if (window._kpiAutoClose) { clearTimeout(window._kpiAutoClose); window._kpiAutoClose = null; } });
+  }
 }
 
 function _kpiAbrirOrden(ordenId) {
@@ -607,6 +624,14 @@ async function cargarKPITaller() {
         '.kpi-sec-alert::before{content:"";width:8px;height:8px;border-radius:50%;background:#F59E0B;flex-shrink:0;animation:kpiAlertPulse 1.2s ease-in-out infinite}' +
         '.kpi-sec.has-alert .kpi-sec-alert{display:flex}' +
         'html[data-theme="dark"] .kpi-sec-alert{background:#2A2310;color:#FBBF24}' +
+        // Chips de categoría (Vencidas, Pulmón…): fila compacta, abren el popup.
+        '.kpi-chips-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}' +
+        '.kpi-chip{flex:1 1 130px;min-width:120px;display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--gris-borde);border-left:4px solid;border-radius:10px;background:var(--surface);cursor:pointer;text-align:left;box-shadow:var(--shadow-sm);transition:transform .16s var(--ease-out),box-shadow .16s,background .16s}' +
+        '.kpi-chip:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);background:var(--surface-2)}' +
+        '.kpi-chip-ico{flex-shrink:0;font-size:15px;line-height:1}' +
+        '.kpi-chip-title{flex:1;min-width:0;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;line-height:1.15;white-space:normal}' +
+        '.kpi-chip-count{flex-shrink:0;color:#fff;border-radius:99px;min-width:24px;text-align:center;padding:3px 8px;font-size:13px;font-weight:800}' +
+        '.kpi-chip.kpi-chip-alert{animation:kpiAlertPulse 1.4s ease-in-out infinite}' +
         // Resumen de arriba clickeable.
         '.kpi-res-item.clic{cursor:pointer;transition:background .15s,transform .15s}' +
         '.kpi-res-item.clic:hover{background:var(--azul-light)}' +
@@ -700,25 +725,16 @@ async function cargarKPITaller() {
     };
     // Sección colapsable: encabezado (toca para abrir/cerrar), alerta de cambio,
     // y cuerpo con máximo 4 órdenes + "Ver todas (N)".
+    // Chip compacto: ícono + título (baja a 2ª línea si es largo) + contador.
+    // Al hacer clic abre el popup (kpiDrilldown), sin expandir inline.
     const _secO = (key, ico, titulo, color, filas, mapFn, getId, storeKey) => {
-      const colap = _kpiSecColapsada(key);
-      const ord = _ordCambia(filas, getId);
-      const cuerpo = filas.length
-        ? ord.slice(0, 4).map(mapFn).join('') + (filas.length > 4 ? `<div class="kpi-sec-vertodas" onclick="kpiDrilldown('${storeKey}')">Ver todas (${filas.length}) →</div>` : '')
-        : '<div style="font-size:12px;color:var(--gris-mid);padding:5px 6px">—</div>';
-      return `<div class="kpi-sec${colap ? ' collapsed' : ''}" id="kpi-sec-${key}" style="border:1px solid ${color}33;border-radius:10px;overflow:hidden;background:${color}0a">
-        <div class="kpi-sec-head" style="background:${color}14;border-left:4px solid ${color}" onclick="_kpiToggleSec('${key}')">
-          <span class="kpi-sec-title" style="color:${color}">${ico} ${titulo}</span>
-          <div style="display:flex;align-items:center;gap:9px;flex-shrink:0">
-            <span class="kpi-sec-count" style="background:${color}">${filas.length}</span>
-            <svg class="kpi-sec-chev" width="14" height="14" fill="none" stroke="${color}" stroke-width="3" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-          </div>
-        </div>
-        <div class="kpi-sec-alert" onclick="_kpiToggleSec('${key}')">Nuevo cambio — toca para ver</div>
-        <div class="kpi-sec-body">${cuerpo}</div>
-      </div>`;
+      return `<button class="kpi-chip" id="kpi-sec-${key}" onclick="kpiDrilldown('${storeKey}')" style="border-left-color:${color}">
+        <span class="kpi-chip-ico">${ico}</span>
+        <span class="kpi-chip-title" style="color:${color}">${titulo}</span>
+        <span class="kpi-chip-count" style="background:${color}">${filas.length}</span>
+      </button>`;
     };
-    const seccionesHtml = `<div class="kpi-secciones" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px;align-items:start">
+    const seccionesHtml = `<div class="kpi-chips-row">
         ${_secO('vencidas','🚨','Vencidas','#DC2626', k5Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k5')}
         ${_secO('pulmonInt','🫁','Pulmón interno','#D97706', _pulmonInt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id, 'pulmonInt')}
         ${_secO('pulmonExt','🫁','Pulmón externo','#2563EB', _pulmonExt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id, 'pulmonExt')}
