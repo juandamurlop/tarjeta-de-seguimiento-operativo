@@ -55,26 +55,7 @@ function _kpiAnimarNumeros() {
   });
 }
 
-// ── Secciones colapsables + alertas de cambio ────────────
-// Estado de colapso por sección (en memoria). Por defecto: críticas abiertas
-// (Vencidas y Sin movimiento +4h), el resto minimizadas.
-function _kpiSecColapsada(key) {
-  const st = window._kpiSecState || (window._kpiSecState = {});
-  if (st[key] === undefined) st[key] = !['vencidas', 'sinMov'].includes(key);
-  return st[key];
-}
-function _kpiToggleSec(key) {
-  const st = window._kpiSecState || (window._kpiSecState = {});
-  st[key] = !st[key];
-  const el = document.getElementById('kpi-sec-' + key);
-  if (!el) return;
-  el.classList.toggle('collapsed', st[key]);
-  if (!st[key]) { // se abrió → apagar alerta y re-destellar las órdenes cambiadas
-    el.classList.remove('has-alert');
-    if (window._kpiAlertTimers && window._kpiAlertTimers[key]) clearTimeout(window._kpiAlertTimers[key]);
-    el.querySelectorAll('.kpi-ord-flash').forEach(ch => { ch.classList.remove('kpi-ord-flash'); void ch.offsetWidth; ch.classList.add('kpi-ord-flash'); });
-  }
-}
+// ── Alertas de cambio en las categorías ──────────────────
 // Describe en texto el cambio de una orden comparando su firma anterior/actual.
 function _kpiDescribirCambio(prevStr, curStr, ets) {
   if (prevStr === undefined || prevStr === curStr) return 'Actualizada';
@@ -607,30 +588,17 @@ async function cargarKPITaller() {
         '.kpi-ord-chip .kc-pl{font-family:"DM Mono",monospace;font-weight:800;font-size:15px;color:var(--texto);flex-shrink:0}' +
         '.kpi-ord-chip .kc-nf{font-size:13px;font-weight:600;color:var(--gris-texto);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
         '.kpi-ord-chip .kc-vl{font-size:12.5px;font-weight:800;color:var(--verde);font-family:"DM Mono",monospace;flex-shrink:0}' +
-        // Secciones colapsables.
-        '.kpi-sec-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;cursor:pointer;user-select:none}' +
-        '.kpi-sec-title{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}' +
-        '.kpi-sec-count{font-size:12.5px;font-weight:800;color:#fff;border-radius:99px;min-width:22px;text-align:center;padding:2px 7px}' +
-        '.kpi-sec-chev{transition:transform .25s var(--ease-out)}' +
-        '.kpi-sec.collapsed .kpi-sec-chev{transform:rotate(-90deg)}' +
-        '.kpi-sec.collapsed .kpi-sec-body{display:none}' +
-        '.kpi-sec-body{padding:4px 6px 7px}' +
-        '.kpi-sec-vertodas{margin-top:3px;font-size:12px;font-weight:700;color:var(--azul);cursor:pointer;padding:5px 6px;border-radius:6px}' +
-        '.kpi-sec-vertodas:hover{background:var(--azul-light)}' +
-        // Alerta de cambio en sección colapsada (pulsa por 10 s).
+        // Alerta de cambio en categoría (pulsa por 10 s).
         '@keyframes kpiAlertPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.55)}50%{box-shadow:0 0 0 5px rgba(245,158,11,0)}}' +
-        '.kpi-sec.has-alert{animation:kpiAlertPulse 1.4s ease-in-out infinite}' +
-        '.kpi-sec-alert{display:none;align-items:center;gap:7px;margin:0 8px 8px;padding:7px 10px;border-radius:8px;background:#FEF3C7;color:#92400E;font-size:12.5px;font-weight:800;cursor:pointer}' +
-        '.kpi-sec-alert::before{content:"";width:8px;height:8px;border-radius:50%;background:#F59E0B;flex-shrink:0;animation:kpiAlertPulse 1.2s ease-in-out infinite}' +
-        '.kpi-sec.has-alert .kpi-sec-alert{display:flex}' +
-        'html[data-theme="dark"] .kpi-sec-alert{background:#2A2310;color:#FBBF24}' +
         // Chips de categoría (Vencidas, Pulmón…): fila compacta, abren el popup.
-        '.kpi-chips-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}' +
-        '.kpi-chip{flex:1 1 130px;min-width:120px;display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--gris-borde);border-left:4px solid;border-radius:10px;background:var(--surface);cursor:pointer;text-align:left;box-shadow:var(--shadow-sm);transition:transform .16s var(--ease-out),box-shadow .16s,background .16s}' +
+        '.kpi-chips-row{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;margin-top:10px}' +
+        '@media(max-width:1100px){.kpi-chips-row{grid-template-columns:repeat(4,minmax(0,1fr))}}' +
+        '@media(max-width:560px){.kpi-chips-row{grid-template-columns:repeat(2,minmax(0,1fr))}}' +
+        '.kpi-chip{min-width:0;display:flex;align-items:center;gap:6px;padding:8px 9px;border:1px solid var(--gris-borde);border-left:4px solid;border-radius:10px;background:var(--surface);cursor:pointer;text-align:left;box-shadow:var(--shadow-sm);transition:transform .16s var(--ease-out),box-shadow .16s,background .16s}' +
         '.kpi-chip:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);background:var(--surface-2)}' +
-        '.kpi-chip-ico{flex-shrink:0;font-size:15px;line-height:1}' +
-        '.kpi-chip-title{flex:1;min-width:0;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;line-height:1.15;white-space:normal}' +
-        '.kpi-chip-count{flex-shrink:0;color:#fff;border-radius:99px;min-width:24px;text-align:center;padding:3px 8px;font-size:13px;font-weight:800}' +
+        '.kpi-chip-ico{flex-shrink:0;font-size:14px;line-height:1}' +
+        '.kpi-chip-title{flex:1;min-width:0;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.01em;line-height:1.15;white-space:normal}' +
+        '.kpi-chip-count{flex-shrink:0;color:#fff;border-radius:99px;min-width:22px;text-align:center;padding:2px 7px;font-size:12.5px;font-weight:800}' +
         '.kpi-chip.kpi-chip-alert{animation:kpiAlertPulse 1.4s ease-in-out infinite}' +
         // Resumen de arriba clickeable.
         '.kpi-res-item.clic{cursor:pointer;transition:background .15s,transform .15s}' +
@@ -638,10 +606,7 @@ async function cargarKPITaller() {
         '.kpi-ocup-clic{cursor:pointer}' +
         // Tarjeta rápida de cambio.
         '.kpi-cambio-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px}' +
-        '.kpi-cambio-card{background:var(--surface);border-radius:14px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}' +
-        // Responsive: 4 → 2 → 1 columnas.
-        '@media(max-width:1100px){.kpi-secciones{grid-template-columns:repeat(2,minmax(0,1fr)) !important}}' +
-        '@media(max-width:600px){.kpi-secciones{grid-template-columns:1fr !important}}';
+        '.kpi-cambio-card{background:var(--surface);border-radius:14px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}';
       document.head.appendChild(_st);
     }
     // (Se retiró la rotación por pasos: ahora cada sección es colapsable y
@@ -672,7 +637,6 @@ async function cargarKPITaller() {
     const _cambiados = new Set();
     Object.keys(_sigMap).forEach(id => { if (_prevSig[id] !== undefined && _prevSig[id] !== _sigMap[id]) _cambiados.add(+id); });
     window._kpiPrevSig = _sigMap;
-    const _ordCambia = (filas, getId) => filas.slice().sort((a, b) => (_cambiados.has(getId(b)) ? 1 : 0) - (_cambiados.has(getId(a)) ? 1 : 0));
 
     // Descripción legible del cambio de cada orden + cuál etapa cambió (para
     // destellar ese apartado al abrir el detalle de la orden).
