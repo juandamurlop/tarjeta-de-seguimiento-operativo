@@ -55,6 +55,80 @@ function _kpiAnimarNumeros() {
   });
 }
 
+// ── Secciones colapsables + alertas de cambio ────────────
+// Estado de colapso por sección (en memoria). Por defecto: críticas abiertas
+// (Vencidas y Sin movimiento +4h), el resto minimizadas.
+function _kpiSecColapsada(key) {
+  const st = window._kpiSecState || (window._kpiSecState = {});
+  if (st[key] === undefined) st[key] = !['vencidas', 'sinMov'].includes(key);
+  return st[key];
+}
+function _kpiToggleSec(key) {
+  const st = window._kpiSecState || (window._kpiSecState = {});
+  st[key] = !st[key];
+  const el = document.getElementById('kpi-sec-' + key);
+  if (!el) return;
+  el.classList.toggle('collapsed', st[key]);
+  if (!st[key]) { // se abrió → apagar alerta y re-destellar las órdenes cambiadas
+    el.classList.remove('has-alert');
+    if (window._kpiAlertTimers && window._kpiAlertTimers[key]) clearTimeout(window._kpiAlertTimers[key]);
+    el.querySelectorAll('.kpi-ord-flash').forEach(ch => { ch.classList.remove('kpi-ord-flash'); void ch.offsetWidth; ch.classList.add('kpi-ord-flash'); });
+  }
+}
+// Describe en texto el cambio de una orden comparando su firma anterior/actual.
+function _kpiDescribirCambio(prevStr, curStr, ets) {
+  if (prevStr === undefined || prevStr === curStr) return 'Actualizada';
+  const p = String(prevStr).split('|'), c = String(curStr).split('|');
+  if (c[0] !== p[0]) return c[0] ? ('Pasó a pulmón ' + c[0]) : 'Salió de pulmón';
+  if (c[1] !== p[1]) {
+    if (c[1]) { const e = (ets || []).find(x => String(x.id) === c[1]); const n = e ? (e.etapa || e.servicio || 'etapa') : 'etapa'; const t = e && e.tecnico ? (' · ' + e.tecnico) : ''; return 'Inició ' + n + t; }
+    return 'Terminó la etapa en curso';
+  }
+  if (c[2] !== p[2]) return c[2] === 'P' ? 'Etapa pausada' : 'Etapa reanudada';
+  if ((+c[3] || 0) > (+p[3] || 0)) return 'Finalizó una etapa';
+  return 'Actualizada';
+}
+// Tarjeta rápida: muestra QUÉ cambió en la orden + botón para abrirla.
+function _kpiVerCambio(id) {
+  const c = (window._kpiCambios || {})[id] || {};
+  document.getElementById('_kpiCambioOv')?.remove();
+  const ov = document.createElement('div');
+  ov.id = '_kpiCambioOv'; ov.className = 'kpi-cambio-ov';
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  ov.innerHTML = `<div class="kpi-cambio-card">
+    <div style="background:#1E3A5F;color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:13px;font-weight:800">🔔 Cambio en la orden</div>
+      <button onclick="document.getElementById('_kpiCambioOv').remove()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div style="padding:16px">
+      <div style="font-family:'DM Mono',monospace;font-weight:800;font-size:18px;color:var(--texto)">${escapeHtml(c.placa || '')}</div>
+      <div style="margin-top:6px;font-size:14px;color:var(--gris-texto)">${escapeHtml(c.desc || 'Actualizada')}</div>
+      <button onclick="document.getElementById('_kpiCambioOv').remove();_kpiAbrirOrden(${id})" class="btn btn-primary btn-sm" style="margin-top:14px;width:100%">Abrir orden →</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+// Tras cada refresco: a las secciones COLAPSADAS con un cambio les pone una
+// alerta pulsante por 10 s; a las ABIERTAS les re-dispara el destello.
+function _kpiAplicarAlertasSecciones() {
+  const cambios = window._kpiSecCambios || {};
+  window._kpiAlertTimers = window._kpiAlertTimers || {};
+  Object.keys(cambios).forEach(key => {
+    if (!(cambios[key] || []).length) return;
+    const el = document.getElementById('kpi-sec-' + key);
+    if (!el) return;
+    if (el.classList.contains('collapsed')) {
+      el.classList.add('has-alert');
+      if (window._kpiAlertTimers[key]) clearTimeout(window._kpiAlertTimers[key]);
+      window._kpiAlertTimers[key] = setTimeout(() => {
+        document.getElementById('kpi-sec-' + key)?.classList.remove('has-alert');
+      }, 10000);
+    } else {
+      el.querySelectorAll('.kpi-ord-flash').forEach(ch => { ch.classList.remove('kpi-ord-flash'); void ch.offsetWidth; ch.classList.add('kpi-ord-flash'); });
+    }
+  });
+}
+
 // ── Modal de drilldown ───────────────────────────────────
 // Mini-estadística del "pulso del día"
 function _pulsoStat(label, val, color) {
@@ -166,7 +240,7 @@ async function cargarKPITaller() {
       api('/solicitudes_repuesto?estado=not.in.(entregado,rechazado)&order=creado_en.asc').catch(() => []),
       api('/mecanicos?activo=eq.true&order=nombre.asc').catch(() => []),
       api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${_hace14d}&select=id,placa,ingreso_en,entregada_en,fecha_entrega_1,creado_en`).catch(() => []),
-      api('/cotizaciones?estado=eq.pendiente&select=id').catch(() => []),
+      api('/cotizaciones?estado=eq.pendiente&select=*').catch(() => []),
       api(`/cotizaciones?created_at=gte.${_inicioMes}&select=id,orden_id`).catch(() => []),
       // MISMAS consultas que el sidebar (_refrescarCapacidad) para que la
       // "Ocupación del taller" coincida exactamente con la capacidad del sidebar.
@@ -418,22 +492,35 @@ async function cargarKPITaller() {
     const cotsConvPct = cotsMes.length ? Math.round(cotsMes.filter(c => c.orden_id != null).length / cotsMes.length * 100) : 0;
     const ocupColor   = pctOcup >= 90 ? 'var(--rojo)' : pctOcup >= 70 ? 'var(--amarillo)' : 'var(--verde)';
     const indicadores2Html = `
-        <div class="kpi-res-item">
+        <div class="kpi-res-item clic" onclick="kpiDrilldown('entregarHoy')">
           <div class="kpi-res-num" style="color:var(--azul)">${porEntregarHoy}</div>
           <div class="kpi-res-lbl">Entregar hoy</div>
         </div>
-        <div class="kpi-res-item">
+        <div class="kpi-res-item clic" onclick="kpiDrilldown('entregarManana')">
           <div class="kpi-res-num">${porEntregarManana}</div>
           <div class="kpi-res-lbl">Entregar mañana</div>
         </div>
-        <div class="kpi-res-item">
+        <div class="kpi-res-item clic" onclick="kpiDrilldown('cotizPend')">
           <div class="kpi-res-num" style="color:var(--amarillo)">${cotsPend}</div>
           <div class="kpi-res-lbl">Cotiz. pendientes${cotsMes.length ? ' · ' + cotsConvPct + '% conv.' : ''}</div>
         </div>`;
 
+    // ── Stores de drilldown para las TARJETAS de arriba (clic → ver detalle) ──
+    window._kpiStore.activas = { titulo: 'Órdenes activas', filas: ordenesActivas.map(o => ({ placa: o.placa, ot: formatOT(o.id), ordenId: o.id, titulo: [o.marca, o.linea].filter(Boolean).join(' ') || 'Sin datos', sub: 'Ingreso hace ' + _kpiDur(_kpiMs(o.ingreso_en || o.creado_en)), badge: '', color: 'azul' })) };
+    window._kpiStore.etapasProc = { titulo: 'Etapas en proceso', filas: etapasActivas.map(e => { const o = ordenesActivas.find(x => x.id === e.orden_id) || {}; return { placa: o.placa || '—', ot: formatOT(e.orden_id), ordenId: e.orden_id, titulo: (e.etapa || e.servicio || '—') + ' · ' + ((typeof nombreTec === 'function' ? nombreTec(e) : e.tecnico) || ''), sub: 'En curso hace ' + _kpiDur(_kpiMs(e.inicio)), badge: e.pausado ? 'Pausada' : '', color: e.pausado ? 'amarillo' : 'verde' }; }) };
+    const _tecOcupados = tecActivos.filter(m => etapasActivas.some(e => e.mecanico_id === m.id));
+    window._kpiStore.tecnicos = { titulo: 'Técnicos activos', filas: _tecOcupados.map(m => { const e = etapasActivas.find(x => x.mecanico_id === m.id) || {}; const o = ordenesActivas.find(x => x.id === e.orden_id) || {}; return { placa: (m.nombre || '·').charAt(0).toUpperCase(), ot: '', ordenId: e.orden_id || 0, titulo: m.nombre, sub: (e.etapa || e.servicio || 'Trabajando') + (o.placa ? (' · ' + o.placa) : ''), badge: m.rol || '', color: 'verde' }; }) };
+    window._kpiStore.repuestosPend = { titulo: 'Repuestos pendientes', filas: solicitudesRep.map(s => { const o = ordenesActivas.find(x => x.id === s.orden_id) || {}; return { placa: o.placa || ('OT-' + s.orden_id), ot: formatOT(s.orden_id), ordenId: s.orden_id, titulo: s.repuesto || 'Repuesto', sub: (LABEL_REP[s.estado] || s.estado) + ' · hace ' + _kpiDur(_kpiMs(s.creado_en)), badge: '', color: 'amarillo' }; }) };
+    const _entHoy = ordenesActivas.filter(o => _localDay(o.fecha_entrega_1) === _hoyKey);
+    const _entMan = ordenesActivas.filter(o => _localDay(o.fecha_entrega_1) === _mananaKey);
+    const _dlEnt = (arr, txt) => arr.map(o => ({ placa: o.placa, ot: formatOT(o.id), ordenId: o.id, titulo: [o.marca, o.linea].filter(Boolean).join(' ') || '', sub: 'Entrega: ' + txt, badge: txt, color: 'azul' }));
+    window._kpiStore.entregarHoy = { titulo: 'Para entregar hoy', filas: _dlEnt(_entHoy, 'hoy') };
+    window._kpiStore.entregarManana = { titulo: 'Para entregar mañana', filas: _dlEnt(_entMan, 'mañana') };
+    window._kpiStore.cotizPend = { titulo: 'Cotizaciones pendientes', filas: (cotsPendientes || []).map(c => ({ placa: c.placa || '', ot: c.id ? ('COT-' + c.id) : '', ordenId: 0, titulo: c.cliente || c.propietario || 'Cotización', sub: c.total != null ? ('Total: $' + new Intl.NumberFormat('es-CO').format(c.total)) : '', badge: 'pendiente', color: 'amarillo' })) };
+
     // Panel "Ocupación del taller" (pulso del día) — a ancho completo, arriba.
     const pulsoHtml = `
-      <div class="card" style="padding:12px 18px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;flex:2 1 360px;min-width:0">
+      <div class="card kpi-ocup-clic" title="Ver ocupación del taller" onclick="if(typeof abrirPanelCapacidad==='function')abrirPanelCapacidad()" style="padding:12px 18px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;flex:2 1 360px;min-width:0;cursor:pointer">
         <div style="flex:1;min-width:180px">
           <div style="font-size:9.5px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Ocupación del taller</div>
           <div style="display:flex;align-items:center;gap:9px">
@@ -489,42 +576,46 @@ async function cargarKPITaller() {
         '30%{transform:translateX(0) scale(1);background:rgba(37,99,235,.14);box-shadow:0 0 0 2px #3B82F6}' +
         '55%{transform:translateX(0) scale(1);background:rgba(37,99,235,.08);box-shadow:0 0 0 1px rgba(59,130,246,.5)}' +
         '100%{transform:translateX(0) scale(1);background:transparent;box-shadow:none}}' +
-        '.kpi-ord-flash{animation:kpiRowShake 3s cubic-bezier(.36,.07,.19,.97) forwards;position:relative;z-index:2;border-radius:5px;border-left:3px solid #F59E0B}' +
-        '.kpi-ord-chip:hover{background:#EFF6FF}';
+        '.kpi-ord-flash{animation:kpiRowShake 3s cubic-bezier(.36,.07,.19,.97) forwards;position:relative;z-index:2;border-radius:6px;border-left:3px solid #F59E0B}' +
+        // Chips de orden más grandes y legibles (claro/oscuro).
+        '.kpi-ord-chip{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;line-height:1.25}' +
+        '.kpi-ord-chip:hover{background:var(--azul-light)}' +
+        '.kpi-ord-chip .kc-pl{font-family:"DM Mono",monospace;font-weight:800;font-size:15px;color:var(--texto);flex-shrink:0}' +
+        '.kpi-ord-chip .kc-nf{font-size:13px;font-weight:600;color:var(--gris-texto);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+        '.kpi-ord-chip .kc-vl{font-size:12.5px;font-weight:800;color:var(--verde);font-family:"DM Mono",monospace;flex-shrink:0}' +
+        // Secciones colapsables.
+        '.kpi-sec-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;cursor:pointer;user-select:none}' +
+        '.kpi-sec-title{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}' +
+        '.kpi-sec-count{font-size:12.5px;font-weight:800;color:#fff;border-radius:99px;min-width:22px;text-align:center;padding:2px 7px}' +
+        '.kpi-sec-chev{transition:transform .25s var(--ease-out)}' +
+        '.kpi-sec.collapsed .kpi-sec-chev{transform:rotate(-90deg)}' +
+        '.kpi-sec.collapsed .kpi-sec-body{display:none}' +
+        '.kpi-sec-body{padding:4px 6px 7px}' +
+        '.kpi-sec-vertodas{margin-top:3px;font-size:12px;font-weight:700;color:var(--azul);cursor:pointer;padding:5px 6px;border-radius:6px}' +
+        '.kpi-sec-vertodas:hover{background:var(--azul-light)}' +
+        // Alerta de cambio en sección colapsada (pulsa por 10 s).
+        '@keyframes kpiAlertPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.55)}50%{box-shadow:0 0 0 5px rgba(245,158,11,0)}}' +
+        '.kpi-sec.has-alert{animation:kpiAlertPulse 1.4s ease-in-out infinite}' +
+        '.kpi-sec-alert{display:none;align-items:center;gap:7px;margin:0 8px 8px;padding:7px 10px;border-radius:8px;background:#FEF3C7;color:#92400E;font-size:12.5px;font-weight:800;cursor:pointer}' +
+        '.kpi-sec-alert::before{content:"";width:8px;height:8px;border-radius:50%;background:#F59E0B;flex-shrink:0;animation:kpiAlertPulse 1.2s ease-in-out infinite}' +
+        '.kpi-sec.has-alert .kpi-sec-alert{display:flex}' +
+        'html[data-theme="dark"] .kpi-sec-alert{background:#2A2310;color:#FBBF24}' +
+        // Resumen de arriba clickeable.
+        '.kpi-res-item.clic{cursor:pointer;transition:background .15s,transform .15s}' +
+        '.kpi-res-item.clic:hover{background:var(--azul-light)}' +
+        '.kpi-ocup-clic{cursor:pointer}' +
+        // Tarjeta rápida de cambio.
+        '.kpi-cambio-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px}' +
+        '.kpi-cambio-card{background:var(--surface);border-radius:14px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}' +
+        // Responsive: 4 → 2 → 1 columnas.
+        '@media(max-width:1100px){.kpi-secciones{grid-template-columns:repeat(2,minmax(0,1fr)) !important}}' +
+        '@media(max-width:600px){.kpi-secciones{grid-template-columns:1fr !important}}';
       document.head.appendChild(_st);
     }
-    // Si quedó corriendo el bucle viejo (oscilación continua), detenerlo.
+    // (Se retiró la rotación por pasos: ahora cada sección es colapsable y
+    // muestra máximo 4 órdenes con "Ver todas", así que no hay desbordamiento.)
     if (window._kpiScrollLoop) { cancelAnimationFrame(window._kpiScrollLoop); window._kpiScrollLoop = null; }
-    // Rotación SUAVE por pasos: cada 5 s, las secciones que NO caben suben un
-    // renglón (las que caben se quedan quietas). Al llegar al final, vuelven
-    // arriba. Mucho menos invasivo que el desplazamiento continuo anterior.
-    if (!window._kpiRotInterval) {
-      window._kpiRotInterval = setInterval(() => {
-        const pag = document.getElementById('pag-taller-kpi');
-        if (!pag || !pag.classList.contains('activa')) return;
-        document.querySelectorAll('#taller-kpi-contenido .kpi-sec-body').forEach(body => {
-          const track = body.firstElementChild;
-          if (!track || track.children.length < 2) return;
-          if (body.matches(':hover')) return;                  // mouse encima: pausa
-          const max = track.scrollHeight - body.clientHeight;
-          if (max <= 2) {                                       // cabe entera: quieta
-            if (body._rotPos) { body._rotPos = 0; track.style.transition = 'none'; track.style.transform = 'translateY(0)'; }
-            return;
-          }
-          const paso = track.children[0].offsetHeight || 20;
-          const next = (body._rotPos || 0) + paso;
-          if (next > max + 1) {                                 // llegó al final → arriba
-            body._rotPos = 0;
-            track.style.transition = 'none';
-            track.style.transform = 'translateY(0)';
-          } else {
-            body._rotPos = next;
-            track.style.transition = 'transform .55s var(--ease-out)';
-            track.style.transform = `translateY(-${next}px)`;
-          }
-        });
-      }, 5000);
-    }
+    if (window._kpiRotInterval) { clearInterval(window._kpiRotInterval); window._kpiRotInterval = null; }
 
     const _pulmonInt = ordenesActivas.filter(o => o.pulmon && o.pulmon_tipo === 'interno');
     const _pulmonExt = ordenesActivas.filter(o => o.pulmon && o.pulmon_tipo === 'externo');
@@ -551,6 +642,26 @@ async function cargarKPITaller() {
     window._kpiPrevSig = _sigMap;
     const _ordCambia = (filas, getId) => filas.slice().sort((a, b) => (_cambiados.has(getId(b)) ? 1 : 0) - (_cambiados.has(getId(a)) ? 1 : 0));
 
+    // Descripción legible del cambio de cada orden (para la tarjeta rápida).
+    window._kpiCambios = window._kpiCambios || {};
+    _cambiados.forEach(id => {
+      const o = ordenesActivas.find(x => x.id === id) || {};
+      window._kpiCambios[id] = { placa: o.placa || ('OT-' + id), desc: _kpiDescribirCambio(_prevSig[id], _sigMap[id], todasEtapas.filter(e => e.orden_id === id)) };
+    });
+    // Stores de drilldown para las secciones que no tenían (pulmón / en proceso).
+    const _dlPulmon = arr => arr.map(o => ({ placa: o.placa, ot: formatOT(o.id), ordenId: o.id, titulo: [o.marca, o.linea].filter(Boolean).join(' ') || '', sub: 'En pulmón hace ' + _kpiDur(_kpiMs(o.pulmon_desde)), badge: _kpiDur(_kpiMs(o.pulmon_desde)), color: 'amarillo' }));
+    window._kpiStore.pulmonInt = { titulo: 'En pulmón interno', filas: _dlPulmon(_pulmonInt) };
+    window._kpiStore.pulmonExt = { titulo: 'En pulmón externo', filas: _dlPulmon(_pulmonExt) };
+    window._kpiStore.enProceso = { titulo: 'En proceso', filas: _enProceso.map(o => ({ placa: o.placa, ot: formatOT(o.id), ordenId: o.id, titulo: o.info, sub: '', badge: '', color: 'verde' })) };
+    // Qué secciones tienen una orden cambiada (para las alertas post-render).
+    const _secOrdenes = {
+      vencidas: k5Filas.map(f => f.ordenId), pulmonInt: _pulmonInt.map(o => o.id), pulmonExt: _pulmonExt.map(o => o.id),
+      enProceso: _enProceso.map(o => o.id), sinTecnico: k1Filas.map(f => f.ordenId), sinIniciar: k2Filas.map(f => f.ordenId),
+      sinMov: k8Filas.map(f => f.ordenId), repuestos: k4Filas.map(f => f.ordenId)
+    };
+    window._kpiSecCambios = {};
+    Object.keys(_secOrdenes).forEach(k => { window._kpiSecCambios[k] = _secOrdenes[k].filter(id => _cambiados.has(id)); });
+
     // Valor (subtotal sin IVA) por orden, para mostrarlo al frente de cada chip.
     const _valOrd = {};
     const _valItemsKpi = (o, campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (e) { return 0; } };
@@ -560,27 +671,45 @@ async function cargarKPITaller() {
     });
     const _fmtValKpi = n => '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n || 0);
 
-    const _chipO = (id, placa, info) => `<div class="kpi-ord-chip${_cambiados.has(id) ? ' kpi-ord-flash' : ''}" onclick="_kpiAbrirOrden(${id})" style="display:flex;align-items:center;gap:6px;padding:2px 5px;border-radius:5px;cursor:pointer;line-height:1.2">
-        <span style="font-family:'DM Mono',monospace;font-weight:800;font-size:12.5px;color:var(--texto);flex-shrink:0">${escapeHtml(placa || '—')}</span>
-        <span style="font-size:11px;font-weight:600;color:#334155;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(info || '')}</span>
-        ${_valOrd[id] ? `<span style="font-size:10.5px;font-weight:800;color:#047857;font-family:'DM Mono',monospace;flex-shrink:0">${_fmtValKpi(_valOrd[id])}</span>` : ''}
+    // Chip de orden: si la orden cambió, destella y al tocar muestra QUÉ cambió.
+    const _chipO = (id, placa, info) => {
+      const cambio = _cambiados.has(id);
+      const click = cambio ? `_kpiVerCambio(${id})` : `_kpiAbrirOrden(${id})`;
+      return `<div class="kpi-ord-chip${cambio ? ' kpi-ord-flash' : ''}" onclick="${click}">
+        <span class="kc-pl">${escapeHtml(placa || '—')}</span>
+        <span class="kc-nf">${escapeHtml(info || '')}</span>
+        ${_valOrd[id] ? `<span class="kc-vl">${_fmtValKpi(_valOrd[id])}</span>` : ''}
       </div>`;
-    const _secO = (ico, titulo, color, filas, mapFn, getId) => `<div class="kpi-sec" style="border:1px solid ${color}33;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-height:0">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 8px;background:${color}14;border-left:4px solid ${color}">
-          <span style="font-size:11.5px;font-weight:800;color:${color};text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ico} ${titulo}</span>
-          <span style="font-size:11.5px;font-weight:800;color:#fff;background:${color};border-radius:99px;min-width:20px;text-align:center;padding:1px 6px;flex-shrink:0">${filas.length}</span>
+    };
+    // Sección colapsable: encabezado (toca para abrir/cerrar), alerta de cambio,
+    // y cuerpo con máximo 4 órdenes + "Ver todas (N)".
+    const _secO = (key, ico, titulo, color, filas, mapFn, getId, storeKey) => {
+      const colap = _kpiSecColapsada(key);
+      const ord = _ordCambia(filas, getId);
+      const cuerpo = filas.length
+        ? ord.slice(0, 4).map(mapFn).join('') + (filas.length > 4 ? `<div class="kpi-sec-vertodas" onclick="kpiDrilldown('${storeKey}')">Ver todas (${filas.length}) →</div>` : '')
+        : '<div style="font-size:12px;color:var(--gris-mid);padding:5px 6px">—</div>';
+      return `<div class="kpi-sec${colap ? ' collapsed' : ''}" id="kpi-sec-${key}" style="border:1px solid ${color}33;border-radius:10px;overflow:hidden;background:${color}0a">
+        <div class="kpi-sec-head" style="background:${color}14;border-left:4px solid ${color}" onclick="_kpiToggleSec('${key}')">
+          <span class="kpi-sec-title" style="color:${color}">${ico} ${titulo}</span>
+          <div style="display:flex;align-items:center;gap:9px;flex-shrink:0">
+            <span class="kpi-sec-count" style="background:${color}">${filas.length}</span>
+            <svg class="kpi-sec-chev" width="14" height="14" fill="none" stroke="${color}" stroke-width="3" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
         </div>
-        <div class="kpi-sec-body" style="padding:3px 5px;overflow:hidden;flex:1;min-height:0;max-height:150px;background:${color}0a"><div class="kpi-sec-track" style="will-change:transform">${filas.length ? _ordCambia(filas, getId).map(mapFn).join('') : '<div style="font-size:11px;color:var(--gris-mid);padding:3px 5px">—</div>'}</div></div>
+        <div class="kpi-sec-alert" onclick="_kpiToggleSec('${key}')">Nuevo cambio — toca para ver</div>
+        <div class="kpi-sec-body">${cuerpo}</div>
       </div>`;
-    const seccionesHtml = `<div class="kpi-secciones" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px;align-items:stretch">
-        ${_secO('🚨','Vencidas','#DC2626', k5Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId)}
-        ${_secO('🫁','Pulmón interno','#D97706', _pulmonInt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id)}
-        ${_secO('🫁','Pulmón externo','#2563EB', _pulmonExt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id)}
-        ${_secO('🔧','En proceso','#059669', _enProceso, o => _chipO(o.id, o.placa, o.info), o => o.id)}
-        ${_secO('📋','Sin técnico','#B45309', k1Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId)}
-        ${_secO('⏳','Sin iniciar','#92400E', k2Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId)}
-        ${_secO('🕐','Sin movimiento +4h','#9333EA', k8Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId)}
-        ${_secO('🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId)}
+    };
+    const seccionesHtml = `<div class="kpi-secciones" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px;align-items:start">
+        ${_secO('vencidas','🚨','Vencidas','#DC2626', k5Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k5')}
+        ${_secO('pulmonInt','🫁','Pulmón interno','#D97706', _pulmonInt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id, 'pulmonInt')}
+        ${_secO('pulmonExt','🫁','Pulmón externo','#2563EB', _pulmonExt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id, 'pulmonExt')}
+        ${_secO('enProceso','🔧','En proceso','#059669', _enProceso, o => _chipO(o.id, o.placa, o.info), o => o.id, 'enProceso')}
+        ${_secO('sinTecnico','📋','Sin técnico','#B45309', k1Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k1')}
+        ${_secO('sinIniciar','⏳','Sin iniciar','#92400E', k2Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k2')}
+        ${_secO('sinMov','🕐','Sin movimiento +4h','#9333EA', k8Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k8')}
+        ${_secO('repuestos','🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k4')}
       </div>`;
 
     renderSinParpadeo(cont, `
@@ -603,19 +732,19 @@ async function cargarKPITaller() {
         </div>
 
         <div class="kpi-resumen">
-          <div class="kpi-res-item">
+          <div class="kpi-res-item clic" onclick="kpiDrilldown('activas')">
             <div class="kpi-res-num">${ordenesActivas.length}</div>
             <div class="kpi-res-lbl">Órdenes activas</div>
           </div>
-          <div class="kpi-res-item">
+          <div class="kpi-res-item clic" onclick="kpiDrilldown('etapasProc')">
             <div class="kpi-res-num" style="color:var(--verde)">${etapasActivas.length}</div>
             <div class="kpi-res-lbl">Etapas en proceso</div>
           </div>
-          <div class="kpi-res-item">
+          <div class="kpi-res-item clic" onclick="kpiDrilldown('tecnicos')">
             <div class="kpi-res-num" style="color:var(--azul)">${tecActivos.length - k7Filas.length}</div>
             <div class="kpi-res-lbl">Técnicos activos</div>
           </div>
-          <div class="kpi-res-item">
+          <div class="kpi-res-item clic" onclick="kpiDrilldown('repuestosPend')">
             <div class="kpi-res-num" style="color:var(--amarillo)">${solicitudesRep.length}</div>
             <div class="kpi-res-lbl">Repuestos pendientes</div>
           </div>
@@ -733,13 +862,9 @@ async function cargarKPITaller() {
     // Animar números (cuenta + flash en los que cambiaron) tras cada refresco.
     _kpiAnimarNumeros();
 
-    // Tras cada refresco, las secciones arrancan desde ARRIBA (así los cambios,
-    // que van de primeras, quedan visibles) y la rotación por pasos sigue desde 0.
-    document.querySelectorAll('#taller-kpi-contenido .kpi-sec-body').forEach(b => {
-      b._rotPos = 0;
-      const tr = b.firstElementChild;
-      if (tr) { tr.style.transition = 'none'; tr.style.transform = 'translateY(0)'; }
-    });
+    // Alertas de cambio: a las secciones colapsadas con un cambio les pone la
+    // alerta pulsante (10 s); a las abiertas les re-dispara el destello.
+    _kpiAplicarAlertasSecciones();
 
   } catch (err) {
     if (cont) cont.innerHTML = `<div class="empty-state" style="padding:40px">
