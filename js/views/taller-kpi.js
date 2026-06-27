@@ -860,36 +860,30 @@ async function cargarKPITaller() {
         '.kpi-ua-sub{font-size:10px;color:var(--gris-mid);margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}' +
         '.kpi-ua-vacio{padding:16px;text-align:center;font-size:12px;color:var(--gris-mid)}' +
         '@media(max-width:768px){.kpi-secciones-wrap{flex-direction:column}.kpi-ult-act{width:100%}}' +
-        // ── Layout 3 columnas (chips | donut | feed) ─────────────
-        '.kpi-lower-grid{display:grid;grid-template-columns:1fr 210px 270px;gap:12px;align-items:start}' +
-        '@media(max-width:960px){.kpi-lower-grid{grid-template-columns:1fr 1fr}.kpi-feed-col{grid-column:1/-1}}' +
-        '@media(max-width:640px){.kpi-lower-grid{grid-template-columns:1fr}}' +
+        // ── Layout inferior: chips ancho completo, luego donut+feed 2 columnas ──
+        '.kpi-bottom-row{display:grid;grid-template-columns:1fr 1.1fr;gap:12px;align-items:start;margin-top:12px}' +
+        '@media(max-width:768px){.kpi-bottom-row{grid-template-columns:1fr}}' +
         // Columna del donut
-        '.kpi-donut-col{background:var(--surface);border:1px solid var(--gris-borde);border-radius:14px;padding:14px}' +
-        '.kpi-dcol-titulo{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--gris-mid);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--gris-borde);display:flex;align-items:center;gap:6px}' +
-        '.kpi-dcol-wrap{display:flex;flex-direction:column;align-items:center;gap:10px}' +
-        '.kpi-dcol-legend{width:100%;display:flex;flex-direction:column;gap:5px}' +
-        '.kpi-dcol-leg-item{display:flex;align-items:center;gap:6px;font-size:10px}' +
-        '.kpi-dcol-leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}' +
+        '.kpi-donut-col{background:var(--surface);border:1px solid var(--gris-borde);border-radius:14px;padding:16px}' +
+        '.kpi-dcol-titulo{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--gris-mid);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--gris-borde);display:flex;align-items:center;gap:6px}' +
+        '.kpi-dcol-inner{display:flex;align-items:center;gap:20px}' +
+        '.kpi-dcol-legend{flex:1;display:flex;flex-direction:column;gap:6px}' +
+        '.kpi-dcol-leg-item{display:flex;align-items:center;gap:7px;font-size:10.5px}' +
+        '.kpi-dcol-leg-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}' +
         '.kpi-dcol-leg-label{flex:1;color:var(--gris-texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
         '.kpi-dcol-leg-val{font-weight:700;color:var(--texto)}' +
-        '.kpi-dcol-leg-pct{color:var(--gris-mid);width:26px;text-align:right}' +
-        // Feed en col 3
+        '.kpi-dcol-leg-pct{color:var(--gris-mid);width:30px;text-align:right}' +
+        // Feed columna derecha
         '.kpi-feed-col .kpi-feed{margin-top:0}' +
-        '.kpi-feed-col .kpi-feed-list{max-height:270px}' +
+        '.kpi-feed-col .kpi-feed-list{max-height:290px}' +
         // Mini ring de ocupación en el pulso
         '.kpi-ocup-ring{position:relative;width:54px;height:54px;flex-shrink:0}' +
         '.kpi-ocup-ring svg{display:block}' +
         '.kpi-ocup-ring-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}' +
         '.kpi-ocup-ring-pct{font-size:11px;font-weight:800;color:var(--texto);line-height:1}' +
         '.kpi-ocup-ring-lbl{font-size:8px;color:var(--gris-mid);margin-top:1px}' +
-        // Fila de stats inferior
-        '.kpi-stats-bottom{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}' +
-        '@media(max-width:700px){.kpi-stats-bottom{grid-template-columns:repeat(2,1fr)}}' +
-        '.kpi-sbot{background:var(--surface);border:1px solid var(--gris-borde);border-radius:10px;padding:10px 12px}' +
-        '.kpi-sbot-num{font-size:17px;font-weight:900;color:var(--texto);line-height:1.1}' +
-        '.kpi-sbot-lbl{font-size:9px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-top:3px}' +
-        '.kpi-sbot-sub{font-size:10px;margin-top:2px}';
+        // Footer note discreta
+        '.kpi-footer-note{text-align:center;font-size:10px;color:var(--gris-mid);padding:4px 0}';
       document.head.appendChild(_st);
     }
     // (Se retiró la rotación por pasos: ahora cada sección es colapsable y
@@ -987,26 +981,26 @@ async function cargarKPITaller() {
     };
     // ── Donut: distribución de órdenes activas por etapa del proceso ──
     const _donutColors = ['#2563EB','#059669','#D97706','#7C3AED','#0891B2','#DC2626','#B45309','#9333EA','#EA580C','#0D9488'];
-    const _donutR = 36, _donutC = 50, _donutCirc = +(2 * Math.PI * _donutR).toFixed(2);
+    const _donutR = 44, _donutC = 60, _donutCirc = +(2 * Math.PI * _donutR).toFixed(2);
     const _embudoTotal = embudo.reduce((s, d) => s + (d.valor || 0), 0) || 1;
     let _donutOff = 0;
     const _donutSlices = embudo.slice(0, 8).map((d, i) => {
       const dash = +(_donutCirc * (d.valor || 0) / _embudoTotal).toFixed(1);
       const gap  = +(_donutCirc - dash).toFixed(1);
       const col  = _donutColors[i % _donutColors.length];
-      const svg  = `<circle cx="${_donutC}" cy="${_donutC}" r="${_donutR}" fill="none" stroke="${col}" stroke-width="16" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${(-_donutOff).toFixed(1)}" transform="rotate(-90 ${_donutC} ${_donutC})"/>`;
+      const svg  = `<circle cx="${_donutC}" cy="${_donutC}" r="${_donutR}" fill="none" stroke="${col}" stroke-width="20" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${(-_donutOff).toFixed(1)}" transform="rotate(-90 ${_donutC} ${_donutC})"/>`;
       _donutOff += dash;
       return { label: d.label, valor: d.valor, color: col, svg, pct: Math.round((d.valor || 0) / _embudoTotal * 100) };
     });
     const donutHtml = `
       <div class="kpi-donut-col">
-        <div class="kpi-dcol-titulo"><span style="width:7px;height:7px;border-radius:50%;background:var(--azul);display:inline-block"></span>Etapas del proceso</div>
-        <div class="kpi-dcol-wrap">
-          <svg viewBox="0 0 100 100" width="100" height="100">
-            <circle cx="${_donutC}" cy="${_donutC}" r="${_donutR}" fill="none" stroke="var(--gris-bg)" stroke-width="16"/>
+        <div class="kpi-dcol-titulo"><span style="width:7px;height:7px;border-radius:50%;background:var(--azul);display:inline-block"></span>Distribución por etapa del proceso</div>
+        <div class="kpi-dcol-inner">
+          <svg viewBox="0 0 120 120" width="130" height="130" style="flex-shrink:0">
+            <circle cx="${_donutC}" cy="${_donutC}" r="${_donutR}" fill="none" stroke="var(--gris-bg)" stroke-width="20"/>
             ${_donutSlices.map(s => s.svg).join('')}
-            <text x="${_donutC}" y="47" text-anchor="middle" fill="var(--texto)" font-size="13" font-weight="900" font-family="inherit">${enTaller}</text>
-            <text x="${_donutC}" y="59" text-anchor="middle" fill="var(--gris-mid)" font-size="7" font-family="inherit">activas</text>
+            <text x="${_donutC}" y="56" text-anchor="middle" fill="var(--texto)" font-size="16" font-weight="900" font-family="inherit">${enTaller}</text>
+            <text x="${_donutC}" y="70" text-anchor="middle" fill="var(--gris-mid)" font-size="8" font-family="inherit">activas</text>
           </svg>
           <div class="kpi-dcol-legend">
             ${_donutSlices.length ? _donutSlices.map(s => `
@@ -1051,28 +1045,21 @@ async function cargarKPITaller() {
       </div>`;
 
     const seccionesHtml = `
-      <div class="kpi-lower-grid">
+      <div class="kpi-chips-row">
+        ${_secO('vencidas','🚨','Vencidas','#DC2626', k5Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k5')}
+        ${_secO('pulmonInt','🫁','Pulmón interno','#D97706', _pulmonInt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id, 'pulmonInt')}
+        ${_secO('pulmonExt','🫁','Pulmón externo','#2563EB', _pulmonExt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id, 'pulmonExt')}
+        ${_secO('enProceso','🔧','En proceso','#059669', _enProceso, o => _chipO(o.id, o.placa, o.info), o => o.id, 'enProceso')}
+        ${_secO('sinTecnico','📋','Sin técnico','#B45309', k1Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k1')}
+        ${_secO('sinIniciar','⏳','Sin iniciar','#92400E', k2Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k2')}
+        ${_secO('sinMov','🕐','Sin movimiento +4h','#9333EA', k8Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k8')}
+        ${_secO('repuestos','🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k4')}
+      </div>
+      <div class="kpi-hover-panel" id="kpi-hover-panel"></div>
+      <div class="kpi-cambio-ticker" id="kpi-cambio-ticker"></div>
 
-        <!-- Col 1: chips de estado -->
-        <div class="kpi-chips-area">
-          <div class="kpi-chips-row">
-            ${_secO('vencidas','🚨','Vencidas','#DC2626', k5Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k5')}
-            ${_secO('pulmonInt','🫁','Pulmón interno','#D97706', _pulmonInt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id, 'pulmonInt')}
-            ${_secO('pulmonExt','🫁','Pulmón externo','#2563EB', _pulmonExt, o => _chipO(o.id, o.placa, _kpiDur(_kpiMs(o.pulmon_desde))), o => o.id, 'pulmonExt')}
-            ${_secO('enProceso','🔧','En proceso','#059669', _enProceso, o => _chipO(o.id, o.placa, o.info), o => o.id, 'enProceso')}
-            ${_secO('sinTecnico','📋','Sin técnico','#B45309', k1Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k1')}
-            ${_secO('sinIniciar','⏳','Sin iniciar','#92400E', k2Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k2')}
-            ${_secO('sinMov','🕐','Sin movimiento +4h','#9333EA', k8Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k8')}
-            ${_secO('repuestos','🔩','Repuestos atascados','#0891B2', k4Filas, f => _chipO(f.ordenId, f.placa, f.titulo), f => f.ordenId, 'k4')}
-          </div>
-          <div class="kpi-hover-panel" id="kpi-hover-panel"></div>
-          <div class="kpi-cambio-ticker" id="kpi-cambio-ticker"></div>
-        </div>
-
-        <!-- Col 2: donut de distribución por etapa -->
+      <div class="kpi-bottom-row">
         ${donutHtml}
-
-        <!-- Col 3: feed de actividad en tiempo real -->
         <div class="kpi-feed-col">
           <div class="kpi-feed" id="kpi-feed">
             <div class="kpi-feed-head">
@@ -1082,9 +1069,8 @@ async function cargarKPITaller() {
             <div class="kpi-feed-list"><div class="kpi-feed-vacio">Cargando actividad…</div></div>
           </div>
         </div>
-
       </div>
-      ${statsBottomHtml}
+      <div class="kpi-footer-note">KPI: 30s · Actividad: 8s · última actualización ${hora}</div>
 `;
 
     renderSinParpadeo(cont, `
