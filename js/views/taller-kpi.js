@@ -698,14 +698,31 @@ async function cargarKPITaller() {
     window._kpiStore.entregarManana = { titulo: 'Para entregar mañana', filas: _dlEnt(_entMan, 'mañana') };
     window._kpiStore.cotizPend = { titulo: 'Cotizaciones pendientes', filas: (cotsPendientes || []).map(c => ({ placa: c.placa || '', ot: c.id ? ('COT-' + c.id) : '', ordenId: 0, titulo: c.cliente || c.propietario || 'Cotización', sub: c.total != null ? ('Total: $' + new Intl.NumberFormat('es-CO').format(c.total)) : '', badge: 'pendiente', color: 'amarillo' })) };
 
+    // Mini ring gauge para la ocupación
+    const _ringR = 20, _ringCirc = +(2 * Math.PI * _ringR).toFixed(2);
+    const _ringDash = +(_ringCirc * pctOcup / 100).toFixed(1);
+    const _ringGap  = +(_ringCirc - _ringDash).toFixed(1);
+    const _ringCol  = pctOcup >= 90 ? '#DC2626' : pctOcup >= 70 ? '#D97706' : '#059669';
+
     // Panel "Ocupación del taller" (pulso del día) — a ancho completo, arriba.
     const pulsoHtml = `
-      <div class="card kpi-ocup-clic" title="Ver ocupación del taller" onclick="if(typeof abrirPanelCapacidad==='function')abrirPanelCapacidad()" style="padding:12px 18px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;flex:2 1 360px;min-width:0;cursor:pointer">
-        <div style="flex:1;min-width:180px">
+      <div class="card kpi-ocup-clic" title="Ver ocupación del taller" onclick="if(typeof abrirPanelCapacidad==='function')abrirPanelCapacidad()" style="padding:12px 18px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;flex:2 1 360px;min-width:0;cursor:pointer">
+        <div class="kpi-ocup-ring">
+          <svg width="54" height="54" viewBox="0 0 54 54">
+            <circle cx="27" cy="27" r="${_ringR}" fill="none" stroke="var(--gris-bg)" stroke-width="6"/>
+            <circle cx="27" cy="27" r="${_ringR}" fill="none" stroke="${_ringCol}" stroke-width="6"
+              stroke-dasharray="${_ringDash} ${_ringGap}" stroke-linecap="round"
+              transform="rotate(-90 27 27)" style="transition:stroke-dasharray .4s var(--ease-out)"/>
+          </svg>
+          <div class="kpi-ocup-ring-txt">
+            <span class="kpi-ocup-ring-pct">${pctOcup}%</span>
+            <span class="kpi-ocup-ring-lbl">${cuposOcupados}/${CAP}</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:130px">
           <div style="font-size:9.5px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Ocupación del taller</div>
           <div style="display:flex;align-items:center;gap:9px">
-            <div style="flex:1;height:10px;background:var(--gris-bg);border-radius:99px;overflow:hidden"><div style="height:100%;width:${pctOcup}%;background:${pctOcup >= 90 ? '#DC2626' : pctOcup >= 70 ? '#D97706' : '#059669'};border-radius:99px;transition:width .4s var(--ease-out)"></div></div>
-            <span style="font-size:14px;font-weight:800;white-space:nowrap">${cuposOcupados}/${CAP}</span>
+            <div style="flex:1;height:6px;background:var(--gris-bg);border-radius:99px;overflow:hidden"><div style="height:100%;width:${pctOcup}%;background:${_ringCol};border-radius:99px;transition:width .4s var(--ease-out)"></div></div>
           </div>
         </div>
         ${_pulsoStat('En pulmón', enPulmon, '#D97706')}
@@ -842,7 +859,37 @@ async function cargarKPITaller() {
         '.kpi-ua-desc{font-size:11.5px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}' +
         '.kpi-ua-sub{font-size:10px;color:var(--gris-mid);margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}' +
         '.kpi-ua-vacio{padding:16px;text-align:center;font-size:12px;color:var(--gris-mid)}' +
-        '@media(max-width:768px){.kpi-secciones-wrap{flex-direction:column}.kpi-ult-act{width:100%}}';
+        '@media(max-width:768px){.kpi-secciones-wrap{flex-direction:column}.kpi-ult-act{width:100%}}' +
+        // ── Layout 3 columnas (chips | donut | feed) ─────────────
+        '.kpi-lower-grid{display:grid;grid-template-columns:1fr 210px 270px;gap:12px;align-items:start}' +
+        '@media(max-width:960px){.kpi-lower-grid{grid-template-columns:1fr 1fr}.kpi-feed-col{grid-column:1/-1}}' +
+        '@media(max-width:640px){.kpi-lower-grid{grid-template-columns:1fr}}' +
+        // Columna del donut
+        '.kpi-donut-col{background:var(--surface);border:1px solid var(--gris-borde);border-radius:14px;padding:14px}' +
+        '.kpi-dcol-titulo{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--gris-mid);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--gris-borde);display:flex;align-items:center;gap:6px}' +
+        '.kpi-dcol-wrap{display:flex;flex-direction:column;align-items:center;gap:10px}' +
+        '.kpi-dcol-legend{width:100%;display:flex;flex-direction:column;gap:5px}' +
+        '.kpi-dcol-leg-item{display:flex;align-items:center;gap:6px;font-size:10px}' +
+        '.kpi-dcol-leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}' +
+        '.kpi-dcol-leg-label{flex:1;color:var(--gris-texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+        '.kpi-dcol-leg-val{font-weight:700;color:var(--texto)}' +
+        '.kpi-dcol-leg-pct{color:var(--gris-mid);width:26px;text-align:right}' +
+        // Feed en col 3
+        '.kpi-feed-col .kpi-feed{margin-top:0}' +
+        '.kpi-feed-col .kpi-feed-list{max-height:270px}' +
+        // Mini ring de ocupación en el pulso
+        '.kpi-ocup-ring{position:relative;width:54px;height:54px;flex-shrink:0}' +
+        '.kpi-ocup-ring svg{display:block}' +
+        '.kpi-ocup-ring-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}' +
+        '.kpi-ocup-ring-pct{font-size:11px;font-weight:800;color:var(--texto);line-height:1}' +
+        '.kpi-ocup-ring-lbl{font-size:8px;color:var(--gris-mid);margin-top:1px}' +
+        // Fila de stats inferior
+        '.kpi-stats-bottom{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}' +
+        '@media(max-width:700px){.kpi-stats-bottom{grid-template-columns:repeat(2,1fr)}}' +
+        '.kpi-sbot{background:var(--surface);border:1px solid var(--gris-borde);border-radius:10px;padding:10px 12px}' +
+        '.kpi-sbot-num{font-size:17px;font-weight:900;color:var(--texto);line-height:1.1}' +
+        '.kpi-sbot-lbl{font-size:9px;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.5px;margin-top:3px}' +
+        '.kpi-sbot-sub{font-size:10px;margin-top:2px}';
       document.head.appendChild(_st);
     }
     // (Se retiró la rotación por pasos: ahora cada sección es colapsable y
@@ -938,8 +985,75 @@ async function cargarKPITaller() {
         <span class="kpi-chip-title" style="color:${color}">${titulo}</span>
       </button>`;
     };
+    // ── Donut: distribución de órdenes activas por etapa del proceso ──
+    const _donutColors = ['#2563EB','#059669','#D97706','#7C3AED','#0891B2','#DC2626','#B45309','#9333EA','#EA580C','#0D9488'];
+    const _donutR = 36, _donutC = 50, _donutCirc = +(2 * Math.PI * _donutR).toFixed(2);
+    const _embudoTotal = embudo.reduce((s, d) => s + (d.valor || 0), 0) || 1;
+    let _donutOff = 0;
+    const _donutSlices = embudo.slice(0, 8).map((d, i) => {
+      const dash = +(_donutCirc * (d.valor || 0) / _embudoTotal).toFixed(1);
+      const gap  = +(_donutCirc - dash).toFixed(1);
+      const col  = _donutColors[i % _donutColors.length];
+      const svg  = `<circle cx="${_donutC}" cy="${_donutC}" r="${_donutR}" fill="none" stroke="${col}" stroke-width="16" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${(-_donutOff).toFixed(1)}" transform="rotate(-90 ${_donutC} ${_donutC})"/>`;
+      _donutOff += dash;
+      return { label: d.label, valor: d.valor, color: col, svg, pct: Math.round((d.valor || 0) / _embudoTotal * 100) };
+    });
+    const donutHtml = `
+      <div class="kpi-donut-col">
+        <div class="kpi-dcol-titulo"><span style="width:7px;height:7px;border-radius:50%;background:var(--azul);display:inline-block"></span>Etapas del proceso</div>
+        <div class="kpi-dcol-wrap">
+          <svg viewBox="0 0 100 100" width="100" height="100">
+            <circle cx="${_donutC}" cy="${_donutC}" r="${_donutR}" fill="none" stroke="var(--gris-bg)" stroke-width="16"/>
+            ${_donutSlices.map(s => s.svg).join('')}
+            <text x="${_donutC}" y="47" text-anchor="middle" fill="var(--texto)" font-size="13" font-weight="900" font-family="inherit">${enTaller}</text>
+            <text x="${_donutC}" y="59" text-anchor="middle" fill="var(--gris-mid)" font-size="7" font-family="inherit">activas</text>
+          </svg>
+          <div class="kpi-dcol-legend">
+            ${_donutSlices.length ? _donutSlices.map(s => `
+              <div class="kpi-dcol-leg-item">
+                <span class="kpi-dcol-leg-dot" style="background:${s.color}"></span>
+                <span class="kpi-dcol-leg-label">${escapeHtml(s.label)}</span>
+                <span class="kpi-dcol-leg-val">${s.valor}</span>
+                <span class="kpi-dcol-leg-pct">${s.pct}%</span>
+              </div>`).join('') : '<div style="font-size:11px;color:var(--gris-mid);text-align:center;padding:8px 0">Sin datos de etapas</div>'}
+          </div>
+        </div>
+      </div>`;
+
+    // ── Fila de estadísticas inferiores ──
+    const statsBottomHtml = `
+      <div class="kpi-stats-bottom">
+        <div class="kpi-sbot">
+          <div class="kpi-sbot-num" style="color:var(--azul)">${_fmtCOP(facturadoMes)}</div>
+          <div class="kpi-sbot-lbl">Facturado este mes</div>
+          <div class="kpi-sbot-sub" style="color:var(--gris-mid)">${entregadasMesVal.length} órdenes entregadas</div>
+        </div>
+        <div class="kpi-sbot">
+          <div class="kpi-sbot-num">${ordenesActivas.length}</div>
+          <div class="kpi-sbot-lbl">Órdenes activas</div>
+          <div class="kpi-sbot-sub" style="color:var(--gris-mid)">${ingresosHoy} ingreso${ingresosHoy!==1?'s':''} · ${entregasHoy} entrega${entregasHoy!==1?'s':''} hoy</div>
+        </div>
+        <div class="kpi-sbot">
+          <div class="kpi-sbot-num" style="color:${pctCumpl==null?'var(--gris-mid)':pctCumpl>=80?'var(--verde)':pctCumpl>=60?'var(--amarillo)':'var(--rojo)'}">${pctCumpl!=null?pctCumpl+'%':'—'}</div>
+          <div class="kpi-sbot-lbl">Entregas a tiempo</div>
+          <div class="kpi-sbot-sub" style="color:var(--gris-mid)">${_conMeta.length} con fecha pactada</div>
+        </div>
+        <div class="kpi-sbot">
+          <div class="kpi-sbot-num" style="color:${enRiesgo.length?'var(--amarillo)':'var(--verde)'}">${enRiesgo.length}</div>
+          <div class="kpi-sbot-lbl">En riesgo de vencer</div>
+          <div class="kpi-sbot-sub" style="color:${k5Filas.length?'var(--rojo)':'var(--gris-mid)'}">${k5Filas.length} ya vencida${k5Filas.length!==1?'s':''}</div>
+        </div>
+        <div class="kpi-sbot">
+          <div class="kpi-sbot-num" style="font-size:13px;color:var(--gris-mid);font-family:'DM Mono',monospace">${hora}</div>
+          <div class="kpi-sbot-lbl">Última actualización</div>
+          <div class="kpi-sbot-sub" style="color:var(--gris-mid)">KPI: 30s · Actividad: 8s</div>
+        </div>
+      </div>`;
+
     const seccionesHtml = `
-      <div class="kpi-secciones-wrap">
+      <div class="kpi-lower-grid">
+
+        <!-- Col 1: chips de estado -->
         <div class="kpi-chips-area">
           <div class="kpi-chips-row">
             ${_secO('vencidas','🚨','Vencidas','#DC2626', k5Filas, f => _chipO(f.ordenId, f.placa, f.badge), f => f.ordenId, 'k5')}
@@ -954,14 +1068,23 @@ async function cargarKPITaller() {
           <div class="kpi-hover-panel" id="kpi-hover-panel"></div>
           <div class="kpi-cambio-ticker" id="kpi-cambio-ticker"></div>
         </div>
-        <div class="kpi-ult-act" id="kpi-ult-act">
-          <div class="kpi-ua-head">
-            <div class="kpi-ua-titulo"><span class="kpi-ua-live"></span>Últimas actividades</div>
-            <span class="kpi-ua-hora"></span>
+
+        <!-- Col 2: donut de distribución por etapa -->
+        ${donutHtml}
+
+        <!-- Col 3: feed de actividad en tiempo real -->
+        <div class="kpi-feed-col">
+          <div class="kpi-feed" id="kpi-feed">
+            <div class="kpi-feed-head">
+              <div class="kpi-feed-title"><span class="kpi-feed-live"></span>Actividad en tiempo real</div>
+              <span class="kpi-feed-hora"></span>
+            </div>
+            <div class="kpi-feed-list"><div class="kpi-feed-vacio">Cargando actividad…</div></div>
           </div>
-          <div class="kpi-ua-list"><div class="kpi-ua-vacio">Cargando…</div></div>
         </div>
+
       </div>
+      ${statsBottomHtml}
 `;
 
     renderSinParpadeo(cont, `
@@ -976,14 +1099,6 @@ async function cargarKPITaller() {
             <svg class="kpi-refresh-ico" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
             Actualizar
           </button>
-        </div>
-
-        <div class="kpi-feed" id="kpi-feed">
-          <div class="kpi-feed-head">
-            <div class="kpi-feed-title"><span class="kpi-feed-live"></span>Centro de actividad</div>
-            <span class="kpi-feed-hora"></span>
-          </div>
-          <div class="kpi-feed-list"><div class="kpi-feed-vacio">Cargando actividad…</div></div>
         </div>
 
         <div class="kpi-fila-top">
