@@ -1159,17 +1159,14 @@ async function abrirEditarOrden(ordenId) {
   const esPNatural = !tipoActual || tipoActual === 'particular';
   const esEmpresa  = tipoActual === 'empresa';
 
-  const asegOpts = aseguradoras.map(a =>
-    `<option value="${escapeHtml(a.nombre)}" ${orden.aseguradora===a.nombre?'selected':''}>${escapeHtml(a.nombre)}</option>`
-  ).join('');
-  const flotOpts = flotillas.map(f =>
-    `<option value="${escapeHtml(f.nombre)}" ${orden.aseguradora===f.nombre?'selected':''}>${escapeHtml(f.nombre)}</option>`
-  ).join('');
+  // Cada opción lleva los datos de contacto de la organización (nit/tel/correo)
+  // para poder autocompletarlos al seleccionarla (empresa y flotilla).
+  const _optOrg = o => `<option value="${escapeHtml(o.nombre)}" data-nit="${escapeHtml(o.nit||'')}" data-tel="${escapeHtml(o.telefono||'')}" data-correo="${escapeHtml(o.correo||'')}" ${orden.aseguradora===o.nombre?'selected':''}>${escapeHtml(o.nombre)}</option>`;
+  const asegOpts = aseguradoras.map(_optOrg).join('');
+  const flotOpts = flotillas.map(_optOrg).join('');
   // Las empresas se guardan en la misma tabla /flotillas (ver ingreso de orden),
   // así que el selector de empresa reutiliza esa lista.
-  const empOpts = flotillas.map(f =>
-    `<option value="${escapeHtml(f.nombre)}" ${orden.aseguradora===f.nombre?'selected':''}>${escapeHtml(f.nombre)}</option>`
-  ).join('');
+  const empOpts = flotillas.map(_optOrg).join('');
 
   const modal = document.getElementById('modal-editar-orden');
   const body  = document.getElementById('modal-editar-body');
@@ -1228,7 +1225,7 @@ async function abrirEditarOrden(ordenId) {
         <div class="field" id="ed-wrap-flot" style="display:${tipoActual==='flotilla'?'block':'none'}">
           <label>Flotilla</label>
           <div style="display:flex;gap:6px">
-            <select id="ed-flotilla" style="flex:1">
+            <select id="ed-flotilla" style="flex:1" onchange="_edLlenarDatosOrg(this)">
               <option value="">— Seleccionar —</option>
               ${flotOpts}
             </select>
@@ -1238,7 +1235,7 @@ async function abrirEditarOrden(ordenId) {
         <div class="field" id="ed-wrap-emp" style="display:${tipoActual==='empresa'?'block':'none'}">
           <label>Empresa</label>
           <div style="display:flex;gap:6px">
-            <select id="ed-empresa" style="flex:1">
+            <select id="ed-empresa" style="flex:1" onchange="_edLlenarDatosOrg(this)">
               <option value="">— Seleccionar —</option>
               ${empOpts}
             </select>
@@ -1315,6 +1312,23 @@ function toggleTipoClienteEdit(tipo) {
   if (wAseg) wAseg.style.display = tipo === 'aseguradora' ? 'block' : 'none';
   if (wFlot) wFlot.style.display = tipo === 'flotilla'    ? 'block' : 'none';
   if (wEmp)  wEmp.style.display  = tipo === 'empresa'     ? 'block' : 'none';
+}
+
+// Al elegir una empresa/flotilla YA creada, trae sus datos de contacto (NIT,
+// teléfono, correo) a los campos personales. Para empresa, además pone la razón
+// social si está vacía. NO se usa en aseguradora: ahí el NIT/contacto son del
+// asegurado, no de la aseguradora.
+function _edLlenarDatosOrg(sel) {
+  const opt = sel && sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+  const setV = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+  setV('ed-cedula',   opt.dataset.nit || '');
+  setV('ed-telefono', opt.dataset.tel || '');
+  setV('ed-correo',   opt.dataset.correo || '');
+  if (document.getElementById('ed-tipo-cliente')?.value === 'empresa') {
+    const prop = document.getElementById('ed-propietario');
+    if (prop && !prop.value.trim()) prop.value = opt.value;
+  }
 }
 
 async function agregarNuevaAseg() {
