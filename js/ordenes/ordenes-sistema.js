@@ -1542,8 +1542,10 @@ async function recargarListasNuevaOrden() {
   ['n-aseguradora-sel','n-flotilla-sel','n-empresa-sel'].forEach((id, i) => {
     const sel = document.getElementById(id);
     const lista = i === 0 ? aseg : flot;
+    // Cada opción lleva los datos de contacto (nit/tel/correo) para autocompletar
+    // al elegir una empresa/flotilla ya creada.
     if (sel) sel.innerHTML = '<option value="">— Seleccionar —</option>' +
-      lista.map(x => `<option value="${escapeHtml(x.nombre)}">${escapeHtml(x.nombre)}</option>`).join('');
+      lista.map(x => `<option value="${escapeHtml(x.nombre)}" data-nit="${escapeHtml(x.nit||'')}" data-tel="${escapeHtml(x.telefono||'')}" data-correo="${escapeHtml(x.correo||'')}">${escapeHtml(x.nombre)}</option>`).join('');
   });
   // Asesor de servicio: operarios marcados como asesor + el jefe de taller
   // (mismo criterio que las encuestas, para que coincidan).

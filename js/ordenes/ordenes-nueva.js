@@ -507,10 +507,27 @@ function toggleNuevaAseg(val) {
 function toggleNuevaFlot(val) {
   const el = document.getElementById('n-wrap-flot-extra');
   if (el) el.style.display = val ? 'none' : 'block';
+  if (val) _nuevaLlenarDatosOrg('n-flotilla-sel', 'flotilla');
 }
 function toggleNuevaEmpresa(val) {
   const el = document.getElementById('n-wrap-empresa-extra');
   if (el) el.style.display = val ? 'none' : 'block';
+  if (val) _nuevaLlenarDatosOrg('n-empresa-sel', 'empresa');
+}
+// Al elegir una empresa/flotilla YA creada, trae su NIT (al campo cédula/NIT
+// que la orden exige), teléfono, correo y razón social. Sin esto, como el
+// bloque de empresa/flotilla no tiene campo de NIT visible, al guardar pedía el
+// NIT aunque la organización ya existiera.
+function _nuevaLlenarDatosOrg(selId, tipo) {
+  const sel = document.getElementById(selId);
+  const opt = sel && sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+  const setV = (id, val) => { const e = document.getElementById(id); if (e && val) e.value = val; };
+  setV('n-cedula-cliente', opt.dataset.nit || '');
+  setV('n-correo-cliente', opt.dataset.correo || '');
+  if (opt.dataset.tel) { setV('n-empresa-tel', opt.dataset.tel); setV('n-telefono', opt.dataset.tel); }
+  const prop = document.getElementById('n-propietario');
+  if (prop && !prop.value.trim()) prop.value = opt.value;
 }
 async function agregarNuevaEmpresaNueva() {
   const n = document.getElementById('n-emp-nombre')?.value.trim() || prompt('Razón social:')?.trim();
