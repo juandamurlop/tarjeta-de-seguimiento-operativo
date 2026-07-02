@@ -341,6 +341,7 @@ const Encuestas = (() => {
             ${hist}
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0">
+            <button class="btn-sm" style="background:#7C3AED;color:white;border:none;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" onclick="Encuestas.pedirResena(${o.id})">⭐ Pedir reseña</button>
             ${wa ? `<a href="${wa}" target="_blank" rel="noopener" class="btn-sm" style="background:#25D366;color:white;border:none;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">💬 WhatsApp</a>` : ''}
             ${!gestionada ? `<button class="btn-sm" style="background:var(--azul);color:white;border:none;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" onclick="Encuestas.registrarContacto(${o.id})">Registrar contacto</button>` : ''}
             ${!gestionada ? `<button class="btn-sm" style="background:#F4F6F9;color:var(--gris-mid);border:1.5px solid var(--gris-borde);padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" onclick="Encuestas.marcarGestionada(${o.id})">Marcar gestionada</button>` : ''}
@@ -381,6 +382,29 @@ const Encuestas = (() => {
       console.error('[Encuestas.marcarGestionada]', e);
       toast('No se pudo guardar (¿falta correr el SQL de seguimiento_resena?)', 'err');
     }
+  }
+
+  // Abre WhatsApp (el normal, sin n8n) con el mensaje + link de reseña de Google
+  // ya escritos, y marca la reseña como enviada en el seguimiento.
+  async function pedirResena(ordenId) {
+    const link = (typeof RESENA_GOOGLE_URL !== 'undefined' && RESENA_GOOGLE_URL) ? RESENA_GOOGLE_URL : '';
+    if (!link) { toast('Falta el link de reseña de Google en config.js (RESENA_GOOGLE_URL)', 'err'); return; }
+    let o;
+    try { o = await api(`/ordenes?id=eq.${ordenId}&select=telefono,propietario,seguimiento_resena`).then(r => r?.[0]); } catch (e) { o = null; }
+    if (!o) { toast('No se encontró la orden', 'err'); return; }
+    const n = (o.propietario || '').trim().split(/\s+/)[0] || '';
+    const nombre = n ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase() : 'estimado cliente';
+    const msg = `¡Hola ${nombre}! 🚗✨ Gracias por confiar en Freimanautos. Si quedaste contento con el servicio, ¿nos regalas una reseña en Google? Solo toca aquí 👉 ${link}\n\n¡Nos ayuda muchísimo! 🙏`;
+    const base = _segWa(o.telefono); // https://wa.me/57...  (o null si no hay teléfono)
+    const url = (base ? base : 'https://wa.me/') + '?text=' + encodeURIComponent(msg);
+    window.open(url, '_blank');
+    const seg = _parseSeg(o.seguimiento_resena);
+    if (!seg.resena_enviada_en) {
+      seg.resena_enviada_en = new Date().toISOString();
+      await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { seguimiento_resena: seg }).catch(() => {});
+    }
+    toast('Abriendo WhatsApp con la reseña ✓');
+    cargarSeguimiento();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -869,6 +893,6 @@ const Encuestas = (() => {
   }
 
   // API pública del módulo (lo que usan onclick inline, navJefe y mecanico.js)
-  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml };
+  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, pedirResena, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml };
 })();
 window.Encuestas = Encuestas;

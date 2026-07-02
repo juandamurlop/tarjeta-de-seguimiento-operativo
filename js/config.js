@@ -21,5 +21,5 @@ const CONFIG = {
   // Enlace de reseña de Google de Freimanautos (Perfil de Empresa → "Pedir
   // reseñas", queda tipo https://g.page/r/XXXXXXXX/review). Mientras esté VACÍO,
   // NO se envía nada al entregar. Pega aquí el enlace cuando lo tengas.
-  RESENA_GOOGLE_URL: '',
+  RESENA_GOOGLE_URL: 'https://g.page/r/CVJ2CEaGL_XyEBM/review',
 };
