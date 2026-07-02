@@ -547,6 +547,20 @@ function _setTipoVehiculo(tipo) {
   });
 }
 
+// Al elegir una flotilla/empresa YA creada en el ingreso de vehículos, trae su
+// NIT (a Cédula/NIT), teléfono y razón social (si el propietario está vacío).
+// No aplica a aseguradora: ahí el propietario/cédula son del titular, no de la
+// aseguradora.
+function _vehLlenarDatosOrg(sel) {
+  const opt = sel && sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+  const setV = (id, val) => { const e = document.getElementById(id); if (e && val) e.value = val; };
+  setV('vf-cedula',   opt.dataset.nit || '');
+  setV('vf-telefono', opt.dataset.tel || '');
+  const prop = document.getElementById('vf-propietario');
+  if (prop && !prop.value.trim()) prop.value = opt.dataset.nombre || opt.textContent.trim();
+}
+
 function _abrirModalVehiculo(flotillaId, vehiculo) {
   document.getElementById('modal-vehiculo-flot')?.remove();
   const v = vehiculo || {};
@@ -555,10 +569,12 @@ function _abrirModalVehiculo(flotillaId, vehiculo) {
   _ingTipoVeh = initTipo;
 
   const flotSel = v.flotilla_id || flotillaId;
+  // Las opciones llevan los datos de contacto (nit/tel/nombre) para autocompletar
+  // al elegir una flotilla/empresa ya creada.
   const flotOpts = [`<option value="">— Selecciona flotilla —</option>`,
-    ...(_flotillas || []).map(f => `<option value="${f.id}" ${f.id == flotSel ? 'selected' : ''}>${escapeHtml(f.nombre||'')}</option>`)].join('');
+    ...(_flotillas || []).map(f => `<option value="${f.id}" data-nit="${escapeHtml(f.nit||'')}" data-tel="${escapeHtml(f.telefono||'')}" data-nombre="${escapeHtml(f.nombre||'')}" ${f.id == flotSel ? 'selected' : ''}>${escapeHtml(f.nombre||'')}</option>`)].join('');
   const empOpts = [`<option value="">— Selecciona empresa —</option>`,
-    ...(_empresasVeh || []).map(e => `<option value="${e.id}" ${e.id == v.empresa_id ? 'selected' : ''}>${escapeHtml(e.nombre||'')}</option>`)].join('');
+    ...(_empresasVeh || []).map(e => `<option value="${e.id}" data-nit="${escapeHtml(e.nit||'')}" data-tel="${escapeHtml(e.telefono||'')}" data-nombre="${escapeHtml(e.nombre||'')}" ${e.id == v.empresa_id ? 'selected' : ''}>${escapeHtml(e.nombre||'')}</option>`)].join('');
   const asegOpts = [`<option value="">— Selecciona aseguradora —</option>`,
     ...(_aseguradorasVeh || []).map(a => `<option value="${escapeHtml(a.nombre)}" ${a.nombre === v.aseguradora ? 'selected' : ''}>${escapeHtml(a.nombre||'')}</option>`)].join('');
 
@@ -656,11 +672,11 @@ function _abrirModalVehiculo(flotillaId, vehiculo) {
           <!-- CAMPOS SEGÚN TIPO -->
           <div class="field full" id="vf-blk-flotilla" style="display:${initTipo==='flotilla'?'block':'none'}">
             <label>Flotilla <button type="button" onclick="abrirModalNuevaFlotilla()" style="background:none;border:none;color:var(--azul);font-size:11px;font-weight:700;cursor:pointer;padding:0">+ Nueva flotilla</button></label>
-            <select id="vf-flotilla">${flotOpts}</select>
+            <select id="vf-flotilla" onchange="_vehLlenarDatosOrg(this)">${flotOpts}</select>
           </div>
           <div class="field full" id="vf-blk-empresa" style="display:${initTipo==='empresa'?'block':'none'}">
             <label>Empresa <button type="button" onclick="abrirModalNuevaEmpresaVeh()" style="background:none;border:none;color:var(--azul);font-size:11px;font-weight:700;cursor:pointer;padding:0">+ Nueva empresa</button></label>
-            <select id="vf-empresa">${empOpts}</select>
+            <select id="vf-empresa" onchange="_vehLlenarDatosOrg(this)">${empOpts}</select>
           </div>
           <div class="field full" id="vf-blk-aseguradora" style="display:${initTipo==='aseguradora'?'block':'none'}">
             <label>Aseguradora</label>

@@ -408,7 +408,7 @@ async function recibirVehiculo(ordenId) {
     if (tab && typeof selTipoCliente === 'function') selTipoCliente(tab, tipo);
     if (orden.aseguradora) {
       const selId = tipo === 'aseguradora' ? 'n-aseguradora-sel' : tipo === 'flotilla' ? 'n-flotilla-sel' : tipo === 'empresa' ? 'n-empresa-sel' : null;
-      if (selId) setTimeout(() => { const sel = document.getElementById(selId); if (sel) sel.value = orden.aseguradora; }, 250);
+      if (selId) setTimeout(() => { const sel = document.getElementById(selId); if (sel) { sel.value = orden.aseguradora; sel.dispatchEvent(new Event('change')); } }, 250);
     }
 
     const resultDiv = document.getElementById('placa-resultado');
