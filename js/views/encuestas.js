@@ -312,8 +312,12 @@ const Encuestas = (() => {
       ${mc(promTxt, 'Prom. 1er contacto', '#2563EB')}
     </div>`;
 
+    // Botón para ver TODAS las reseñas en Google (abre la ficha del negocio).
+    const _verUrl = (typeof RESENA_GOOGLE_URL !== 'undefined' && RESENA_GOOGLE_URL) ? RESENA_GOOGLE_URL.replace(/\/review\/?$/, '') : '';
+    const verGoogleBtn = _verUrl ? `<div style="margin-bottom:14px"><a href="${_verUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:7px;background:#4285F4;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">⭐ Ver nuestras reseñas en Google →</a></div>` : '';
+
     if (!ordenes.length) {
-      panel.innerHTML = metricas + `<div class="empty-state" style="padding:30px;text-align:center;color:var(--gris-mid)">No hay órdenes cerradas todavía.</div>`;
+      panel.innerHTML = verGoogleBtn + metricas + `<div class="empty-state" style="padding:30px;text-align:center;color:var(--gris-mid)">No hay órdenes cerradas todavía.</div>`;
       return;
     }
 
@@ -350,7 +354,7 @@ const Encuestas = (() => {
       </div>`;
     }).join('');
 
-    panel.innerHTML = metricas + cards;
+    panel.innerHTML = verGoogleBtn + metricas + cards;
   }
 
   async function registrarContacto(ordenId) {
