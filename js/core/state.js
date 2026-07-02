@@ -98,3 +98,21 @@ const INV_LABELS = {
 };
 
 const CAPACIDAD_TALLER = 36;
+
+// Origen del ingreso ("¿Cómo nos conoció?") — para segmentar de dónde viene
+// cada vehículo y medir campañas (p. ej. un evento). Editable: agrega/quita.
+const ORIGEN_OPCIONES = [
+  'Recomendado',
+  'Redes sociales',
+  'Google',
+  'Evento',
+  'Aseguradora / convenio',
+  'Cliente frecuente',
+  'Pasaba por el taller',
+  'Otro'
+];
+// Opciones como <option> (con uno seleccionado). Vacío = "— ¿Cómo nos conoció? —".
+function origenOptionsHtml(sel) {
+  return '<option value="">— ¿Cómo nos conoció? —</option>' +
+    ORIGEN_OPCIONES.map(o => `<option value="${o}" ${sel === o ? 'selected' : ''}>${o}</option>`).join('');
+}

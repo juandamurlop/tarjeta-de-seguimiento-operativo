@@ -77,6 +77,8 @@ module.exports = [
         INV_LABELS: 'readonly',
         CAPACIDAD_TALLER: 'readonly',
         PERMISOS_CATALOGO: 'readonly',
+        ORIGEN_OPCIONES: 'readonly',
+        origenOptionsHtml: 'readonly',
         tienePermiso: 'readonly',
         esJefe: 'readonly',
 

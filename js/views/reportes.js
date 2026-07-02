@@ -272,6 +272,53 @@ async function montarReportes() {
 
     </div><!-- /rep-form-card -->
   `;
+
+  // Reporte autocontenido: "¿Cómo nos conocieron?" (origen del ingreso).
+  cont.insertAdjacentHTML('beforeend', _repOrigenCardHtml(inicioMes, hoy));
+}
+
+// ─── Reporte de ORIGEN del ingreso ("¿Cómo nos conocieron?") ──────────
+function _repOrigenCardHtml(desde, hasta) {
+  return `
+    <div class="rep-form-card" style="max-width:700px;margin-top:16px">
+      <div class="rep-bloque-titulo">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+        ¿Cómo nos conocieron? (origen del ingreso)
+      </div>
+      <div style="font-size:12px;color:var(--gris-mid);margin:4px 0 12px;line-height:1.5">
+        Cuenta los vehículos que entraron por cada canal en el período. Para tu <strong>evento</strong>, pon las fechas del evento y mira cuántos entraron por "Evento".
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;max-width:460px;align-items:end">
+        <div class="field" style="margin:0"><label style="font-size:11px">Desde</label><input type="date" id="rep-org-ini" value="${desde}"></div>
+        <div class="field" style="margin:0"><label style="font-size:11px">Hasta</label><input type="date" id="rep-org-fin" value="${hasta}"></div>
+        <button class="btn btn-primary" onclick="_repVerOrigen()" style="height:38px">Ver</button>
+      </div>
+      <div id="rep-org-result" style="margin-top:14px"></div>
+    </div>`;
+}
+
+async function _repVerOrigen() {
+  const ini = document.getElementById('rep-org-ini')?.value;
+  const fin = document.getElementById('rep-org-fin')?.value;
+  const box = document.getElementById('rep-org-result');
+  if (!box) return;
+  if (!ini || !fin) { toast('Define el rango de fechas', 'err'); return; }
+  box.innerHTML = '<div class="loading-state">Cargando...</div>';
+  const finPlus = fin + 'T23:59:59';
+  const ords = await api(`/ordenes?creado_en=gte.${ini}&creado_en=lte.${finPlus}&select=id,origen,creado_en`).catch(() => []) || [];
+  const total = ords.length;
+  const conteo = {};
+  ords.forEach(o => { const k = o.origen || 'Sin especificar'; conteo[k] = (conteo[k] || 0) + 1; });
+  const filas = Object.entries(conteo).sort((a, b) => b[1] - a[1]);
+  const max = filas.length ? filas[0][1] : 1;
+  box.innerHTML = `
+    <div style="font-size:14px;font-weight:800;margin-bottom:12px;color:var(--texto)">${total} vehículo${total === 1 ? '' : 's'} en el período</div>
+    ${filas.length ? filas.map(([k, n]) => `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <div style="width:150px;flex-shrink:0;font-size:12.5px;color:var(--gris-texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(k)}">${escapeHtml(k)}</div>
+        <div style="flex:1;height:18px;background:var(--gris-bg);border-radius:99px;overflow:hidden;min-width:60px"><div style="height:100%;width:${Math.round(n / max * 100)}%;background:${k === 'Evento' ? '#7C3AED' : 'var(--azul)'};border-radius:99px;min-width:3px"></div></div>
+        <div style="width:88px;text-align:right;font-size:12.5px;font-weight:700;color:var(--texto)">${n} · ${total ? Math.round(n / total * 100) : 0}%</div>
+      </div>`).join('') : '<div class="empty-state" style="padding:20px">Sin órdenes en el período</div>'}`;
 }
 
 // ─── Estado del selector unificado ──────────────────────────

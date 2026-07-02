@@ -2,7 +2,7 @@
 // ÓRDENES — NUEVA ORDEN, WIZARD, SERVICIOS
 // ═══════════════════════════════════════════════════════════
 function resetNuevaOrden() {
-  const fields = ['n-placa', 'n-marca', 'n-linea', 'n-modelo', 'n-color', 'n-propietario', 'n-telefono', 'n-km', 'n-fecha1', 'n-fecha2', 'n-inv-obs', 'n-cedula-cliente', 'n-vin', 'n-correo-cliente', 'n-direccion', 'n-descripcion-general'];
+  const fields = ['n-placa', 'n-marca', 'n-linea', 'n-modelo', 'n-color', 'n-propietario', 'n-telefono', 'n-km', 'n-fecha1', 'n-fecha2', 'n-inv-obs', 'n-cedula-cliente', 'n-vin', 'n-correo-cliente', 'n-direccion', 'n-descripcion-general', 'n-origen'];
   fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   _toggleOcrBtn(false); // ocultar OCR al limpiar el formulario
   _mostrarFormVehiculo(false); // solo el buscador visible al abrir
@@ -330,6 +330,9 @@ async function buscarPorPlaca() {
       if (prop && !prop.value && fuente.propietario) prop.value = fuente.propietario;
       if (tel  && !tel.value  && fuente.telefono)    tel.value  = fuente.telefono;
       if (ced  && !ced.value  && fuente.cedula_nit)  ced.value  = fuente.cedula_nit;
+      // Heredar el origen ("¿cómo nos conoció?") si el vehículo ya lo trae.
+      const orig = document.getElementById('n-origen');
+      if (orig && !orig.value && fuente.origen) orig.value = fuente.origen;
 
       // Si el vehículo pertenece a una flotilla, pre-seleccionar
       if (vehiculo?.flotilla_id) {
@@ -1341,6 +1344,7 @@ async function crearOrden() {
     fecha_entrega_1: document.getElementById('n-fecha1')?.value || null,
     fecha_entrega_2: document.getElementById('n-fecha2')?.value || null,
     descripcion_general: document.getElementById('n-descripcion-general')?.value.trim() || null,
+    origen: document.getElementById('n-origen')?.value || null,
     tipo_carroceria: document.getElementById('n-tipo-carroceria')?.value || null,
     danos_vehiculo: (() => {
       const d = {};

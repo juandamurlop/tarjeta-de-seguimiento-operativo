@@ -668,6 +668,10 @@ function _abrirModalVehiculo(flotillaId, vehiculo) {
             <label>Teléfono <span style="font-weight:400;font-size:11px;color:var(--gris-mid)">(opcional)</span></label>
             <input id="vf-telefono" value="${escapeHtml(v.telefono||'')}" placeholder="3001234567" type="tel">
           </div>
+          <div class="field">
+            <label>¿Cómo nos conoció? <span style="font-weight:400;font-size:11px;color:var(--gris-mid)">(campañas/evento)</span></label>
+            <select id="vf-origen">${typeof origenOptionsHtml==='function' ? origenOptionsHtml(v.origen) : ''}</select>
+          </div>
 
           <!-- CAMPOS SEGÚN TIPO -->
           <div class="field full" id="vf-blk-flotilla" style="display:${initTipo==='flotilla'?'block':'none'}">
@@ -880,6 +884,7 @@ async function guardarVehiculo() {
       propietario,
       cedula_nit:  document.getElementById('vf-cedula')?.value.trim() || null,
       telefono:    document.getElementById('vf-telefono')?.value.trim() || null,
+      origen:      document.getElementById('vf-origen')?.value || null,
       tipo_cliente: tipo,
       flotilla_id: tipo === 'flotilla'    && flotillaVal ? parseInt(flotillaVal) : null,
       empresa_id:  tipo === 'empresa'     && empresaVal  ? parseInt(empresaVal)  : null,

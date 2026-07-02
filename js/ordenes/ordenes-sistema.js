@@ -1245,6 +1245,7 @@ async function abrirEditarOrden(ordenId) {
 
         <div class="field"><label>Fecha estimada de entrega</label><input id="ed-fecha1" type="datetime-local" value="${orden.fecha_entrega_1 ? orden.fecha_entrega_1.slice(0,16) : ''}"></div>
         <div class="field"><label>Fecha entrega alternativa</label><input id="ed-fecha2" type="datetime-local" value="${orden.fecha_entrega_2 ? orden.fecha_entrega_2.slice(0,16) : ''}"></div>
+        <div class="field"><label>¿Cómo nos conoció?</label><select id="ed-origen">${typeof origenOptionsHtml==='function' ? origenOptionsHtml(orden.origen) : ''}</select></div>
       </div>
     </div>
   `;
@@ -1428,6 +1429,7 @@ async function guardarEdicionOrden() {
       nivel_dano:      document.getElementById('ed-dano')?.value            || null,
       fecha_entrega_1: document.getElementById('ed-fecha1')?.value          || null,
       fecha_entrega_2: document.getElementById('ed-fecha2')?.value          || null,
+      origen:          document.getElementById('ed-origen')?.value          || null,
     };
 
     // Si se cambia la fecha de entrega Y la cita de recogida ya está vencida,
@@ -1547,6 +1549,9 @@ async function recargarListasNuevaOrden() {
     if (sel) sel.innerHTML = '<option value="">— Seleccionar —</option>' +
       lista.map(x => `<option value="${escapeHtml(x.nombre)}" data-nit="${escapeHtml(x.nit||'')}" data-tel="${escapeHtml(x.telefono||'')}" data-correo="${escapeHtml(x.correo||'')}">${escapeHtml(x.nombre)}</option>`).join('');
   });
+  // Menú "¿Cómo nos conoció?" (origen del ingreso).
+  const selOrigen = document.getElementById('n-origen');
+  if (selOrigen && typeof origenOptionsHtml === 'function') selOrigen.innerHTML = origenOptionsHtml(selOrigen.value);
   // Asesor de servicio: operarios marcados como asesor + el jefe de taller
   // (mismo criterio que las encuestas, para que coincidan).
   const selAsesor = document.getElementById('n-asesor');
