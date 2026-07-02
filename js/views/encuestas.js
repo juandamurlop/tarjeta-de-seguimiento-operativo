@@ -503,6 +503,12 @@ const Encuestas = (() => {
             </div>
           `).join('')}` : `<div style="font-size:13px;color:var(--gris-mid)">Esta orden no tiene operarios asignados en sus etapas.</div>`}
 
+          <!-- ¿CÓMO SE ENTERÓ? (origen del cliente) -->
+          <div class="enc-field" style="margin-top:18px">
+            <label class="enc-field-lbl" for="enc-origen">¿Cómo se enteró de nosotros?</label>
+            <select id="enc-origen" style="width:100%;padding:9px 11px;border:1.5px solid var(--gris-borde);border-radius:8px">${typeof origenOptionsHtml === 'function' ? origenOptionsHtml('') : ''}</select>
+          </div>
+
           <!-- PREGUNTAS ADICIONALES (texto libre) -->
           <div class="enc-field" style="margin-top:18px">
             <label class="enc-field-lbl" for="enc-comentarios">Preguntas adicionales</label>
@@ -581,6 +587,7 @@ const Encuestas = (() => {
       calif_limpieza: cont ? num('enc-limpieza') : null,
       recomendaria: cont ? siNo('enc-recomendaria') : null,
       comentarios: document.getElementById('enc-comentarios')?.value.trim() || null,
+      origen: document.getElementById('enc-origen')?.value || null,
       registrado_por: sesion?.id || null
     };
 
@@ -612,6 +619,14 @@ const Encuestas = (() => {
         // limpiar items previos de esta encuesta (re-guardado) e insertar
         await api(`/encuesta_items_mecanico?encuesta_id=eq.${encuestaId}`, 'DELETE').catch(e => console.error('[Encuestas.guardar.limpiarItems]', e));
         await api('/encuesta_items_mecanico', 'POST', items, { Prefer: 'return=minimal' });
+      }
+
+      // Si la orden aún no tenía origen ("¿cómo nos conoció?"), rellenarlo con la
+      // respuesta de la encuesta, para que el reporte por origen quede completo.
+      const _origenEnc = document.getElementById('enc-origen')?.value || '';
+      if (_origenEnc) {
+        const _oo = await api(`/ordenes?id=eq.${ordenId}&select=origen`).then(r => r?.[0]).catch(() => null);
+        if (_oo && !_oo.origen) await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', { origen: _origenEnc }).catch(() => {});
       }
 
       toast('Encuesta guardada ✓');
