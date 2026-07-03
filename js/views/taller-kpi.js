@@ -628,35 +628,49 @@ async function cargarKPITaller() {
       .map(o => ({ ...o, dias: Math.ceil((new Date(o.fecha_entrega_1) - hoy) / 86400000) }))
       .filter(o => o.dias <= 2).sort((a, b) => a.dias - b.dias);
 
-    // ── Valor actualmente EN EL TALLER: suma del precio de venta de los
-    // procesos de las órdenes activas (o el total manual de la orden si existe).
     const _fmtCOP = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
-    const totalValorTaller = ordenesActivas.reduce((s, o) => {
-      const etsVal = todasEtapas.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
-      return s + (o.precio_venta_cliente && o.precio_venta_cliente > 0 ? o.precio_venta_cliente : etsVal);
-    }, 0);
-    // FACTURADO del mes: lo reportado por el contador (ventas_mensuales) si está,
-    // si no el valor de las órdenes entregadas este mes.
-    const _valItemsVT = (o, campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (e) { return 0; } };
+
+    // ── Fórmula única de valor por orden (usada en TODO el KPI) ──────────────
+    // Prioridad: precio_venta_cliente (aseguradora) › etapas + insumos + repuestos.
+    const _valItemsVT = (o, campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (_) { return 0; } };
+    const _valOrden = o => {
+      const mo = todasEtapas.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
+      return (o.precio_venta_cliente && o.precio_venta_cliente > 0)
+        ? o.precio_venta_cliente
+        : (mo + _valItemsVT(o, 'insumos') + _valItemsVT(o, 'repuestos_simple'));
+    };
+
+    // Desglose por categoría — la misma fórmula en los tres grupos.
+    const _ordsEnProceso = ordenesActivas.filter(o => !o.pulmon);
+    const _ordsPulmonInt = ordenesActivas.filter(o => o.pulmon && o.pulmon_tipo === 'interno');
+    const _ordsPulmonExt = ordenesActivas.filter(o => o.pulmon && o.pulmon_tipo === 'externo');
+    const valorEnProceso  = _ordsEnProceso.reduce((s, o) => s + _valOrden(o), 0);
+    const valorPulmonInt  = _ordsPulmonInt.reduce((s, o) => s + _valOrden(o), 0);
+    const valorPulmonExt  = _ordsPulmonExt.reduce((s, o) => s + _valOrden(o), 0);
+    const totalValorTaller = valorEnProceso + valorPulmonInt + valorPulmonExt;
+
+    // FACTURADO del mes: contador (ventas_mensuales) tiene prioridad; si no, órdenes entregadas.
     const _metaMesVT = (ventasMensuales || []).find(m => Number(m.ano) === hoy.getFullYear() && Number(m.mes_num) === hoy.getMonth() + 1);
     const _ventaMesVT = Number(_metaMesVT?.ventas) || 0;
-    const _facturadoOrdenes = (entregadasMesVal || []).reduce((s, o) => {
-      const mo = todasEtapas.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
-      return s + ((o.precio_venta_cliente && o.precio_venta_cliente > 0) ? o.precio_venta_cliente : (mo + _valItemsVT(o, 'insumos') + _valItemsVT(o, 'repuestos_simple')));
-    }, 0);
+    const _facturadoOrdenes = (entregadasMesVal || []).reduce((s, o) => s + _valOrden(o), 0);
     const facturadoMes = _ventaMesVT > 0 ? _ventaMesVT : _facturadoOrdenes;
     const valorTallerHtml = `
       <div class="kpi-valor-taller" onclick="abrirPanelValorTaller()" style="cursor:pointer" title="Ver valor por orden y la meta del mes">
-        <div style="min-width:0">
+        <div style="min-width:0;flex:1">
           <div class="kpi-vt-lbl">💰 Valor en el taller</div>
-          <div class="kpi-vt-sub">${ordenesActivas.length} órdenes activas · <span style="text-decoration:underline">ver detalle y meta →</span></div>
+          <div class="kpi-vt-sub">${ordenesActivas.length} órdenes activas · <span style="text-decoration:underline">ver detalle →</span></div>
+          <div style="display:flex;flex-direction:column;gap:2px;margin-top:7px">
+            <div style="font-size:10.5px;color:rgba(255,255,255,.75)">🔧 En proceso&nbsp;<strong style="color:#fff">${_fmtCOP(valorEnProceso)}</strong>&nbsp;<span style="opacity:.6">(${_ordsEnProceso.length})</span></div>
+            ${_ordsPulmonInt.length ? `<div style="font-size:10.5px;color:rgba(255,255,255,.75)">🫁 Pulmón int.&nbsp;<strong style="color:#fff">${_fmtCOP(valorPulmonInt)}</strong>&nbsp;<span style="opacity:.6">(${_ordsPulmonInt.length})</span></div>` : ''}
+            ${_ordsPulmonExt.length ? `<div style="font-size:10.5px;color:rgba(255,255,255,.75)">🌐 Pulmón ext.&nbsp;<strong style="color:#fff">${_fmtCOP(valorPulmonExt)}</strong>&nbsp;<span style="opacity:.6">(${_ordsPulmonExt.length})</span></div>` : ''}
+          </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;flex-shrink:0">
-          <div style="display:flex;align-items:baseline;gap:8px">
-            <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.7">En el taller</span>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+            <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.7">Total taller</span>
             <span class="kpi-vt-num" style="font-size:20px">${_fmtCOP(totalValorTaller)}</span>
           </div>
-          <div style="display:flex;align-items:baseline;gap:8px;border-top:1px solid rgba(255,255,255,.22);padding-top:5px">
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;border-top:1px solid rgba(255,255,255,.22);padding-top:5px">
             <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.7">Facturado mes</span>
             <span class="kpi-vt-num" style="font-size:20px;color:#A7F3D0">${_fmtCOP(facturadoMes)}</span>
           </div>
@@ -945,13 +959,9 @@ async function cargarKPITaller() {
     window._kpiSecCambios = {};
     Object.keys(_secOrdenes).forEach(k => { window._kpiSecCambios[k] = _secOrdenes[k].filter(id => _cambiados.has(id)); });
 
-    // Valor (subtotal sin IVA) por orden, para mostrarlo al frente de cada chip.
+    // Valor por orden para los chips — reutiliza la misma fórmula unificada.
     const _valOrd = {};
-    const _valItemsKpi = (o, campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (e) { return 0; } };
-    ordenesActivas.forEach(o => {
-      const mo = todasEtapas.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
-      _valOrd[o.id] = (o.precio_venta_cliente && o.precio_venta_cliente > 0) ? o.precio_venta_cliente : (mo + _valItemsKpi(o, 'insumos') + _valItemsKpi(o, 'repuestos_simple'));
-    });
+    ordenesActivas.forEach(o => { _valOrd[o.id] = _valOrden(o); });
     const _fmtValKpi = n => '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n || 0);
 
     // Chip de orden: si la orden cambió, destella y al tocar muestra QUÉ cambió.
@@ -1264,65 +1274,92 @@ async function abrirPanelValorTaller() {
     const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
     const anio = ahora.getFullYear(), mesNum = ahora.getMonth() + 1;
     const [ords, ventasAll, ordsEnt] = await Promise.all([
-      api(`/ordenes?or=(estado.eq.Activa,estado.is.null)&pulmon=not.eq.true&select=id,placa,propietario,precio_venta_cliente,insumos,repuestos_simple&limit=300`).catch(() => []) || [],
-      api(`/ventas_mensuales?order=ano.desc,mes_num.desc&limit=36`).catch(() => []) || [],   // las metas viven aquí (meta_base)
-      // Órdenes FACTURADAS este mes = entregadas este mes (con su valor).
+      api(`/ordenes?or=(estado.eq.Activa,estado.is.null)&select=id,placa,pulmon,pulmon_tipo,precio_venta_cliente,insumos,repuestos_simple&limit=300`).catch(() => []) || [],
+      api(`/ventas_mensuales?order=ano.desc,mes_num.desc&limit=36`).catch(() => []) || [],
       api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${inicioMes}&select=id,precio_venta_cliente,insumos,repuestos_simple&limit=500`).catch(() => []) || []
     ]);
-    // La meta del mes = meta_base de la fila del mes actual en ventas_mensuales.
     const metaMes = ventasAll.find(m => Number(m.ano) === anio && Number(m.mes_num) === mesNum);
     const ids = ords.map(o => o.id).join(',');
     const ets = ids ? (await api(`/etapas?orden_id=in.(${ids})&select=orden_id,valor_venta`).catch(() => []) || []) : [];
-    const valItems = (o, campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (e) { return 0; } };
-    const filas = ords.map(o => {
+    const valItems = (o, campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (_) { return 0; } };
+    const valOrden = o => {
       const mo = ets.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
-      const v = (o.precio_venta_cliente && o.precio_venta_cliente > 0) ? o.precio_venta_cliente : (mo + valItems(o, 'insumos') + valItems(o, 'repuestos_simple'));
-      return { placa: o.placa, v };
-    }).filter(f => f.v > 0).sort((a, b) => b.v - a.v);
-    const totalTaller = filas.reduce((s, f) => s + f.v, 0);
-    const maxV = Math.max(1, ...filas.map(f => f.v));
+      return (o.precio_venta_cliente && o.precio_venta_cliente > 0) ? o.precio_venta_cliente : (mo + valItems(o, 'insumos') + valItems(o, 'repuestos_simple'));
+    };
+    // Clasificar órdenes en tres grupos
+    const ordsProc = ords.filter(o => !o.pulmon);
+    const ordsPInt = ords.filter(o => o.pulmon && o.pulmon_tipo === 'interno');
+    const ordsPExt = ords.filter(o => o.pulmon && o.pulmon_tipo === 'externo');
+    const mkFila = (o) => ({ placa: o.placa, v: valOrden(o) });
+    const toFila = arr => arr.map(mkFila).filter(f => f.v > 0).sort((a, b) => b.v - a.v);
+    const filasProc = toFila(ordsProc);
+    const filasPInt = toFila(ordsPInt);
+    const filasPExt = toFila(ordsPExt);
+    const vProc = filasProc.reduce((s, f) => s + f.v, 0);
+    const vPInt = filasPInt.reduce((s, f) => s + f.v, 0);
+    const vPExt = filasPExt.reduce((s, f) => s + f.v, 0);
+    const totalTaller = vProc + vPInt + vPExt;
+    const maxV = Math.max(1, ...[...filasProc, ...filasPInt, ...filasPExt].map(f => f.v));
     const meta = Number(metaMes?.meta_base) || 0;
-    // FACTURADO del mes = valor de las órdenes entregadas este mes.
+    // Facturado del mes
     const idsEnt = ordsEnt.map(o => o.id).join(',');
     const etsEnt = idsEnt ? (await api(`/etapas?orden_id=in.(${idsEnt})&select=orden_id,valor_venta`).catch(() => []) || []) : [];
-    const facturadoMes = ordsEnt.reduce((s, o) => {
+    const facturadoOrd = ordsEnt.reduce((s, o) => {
       const mo = etsEnt.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
-      const v = (o.precio_venta_cliente && o.precio_venta_cliente > 0) ? o.precio_venta_cliente : (mo + valItems(o, 'insumos') + valItems(o, 'repuestos_simple'));
-      return s + v;
+      return s + ((o.precio_venta_cliente && o.precio_venta_cliente > 0) ? o.precio_venta_cliente : (mo + valItems(o, 'insumos') + valItems(o, 'repuestos_simple')));
     }, 0);
-    // Logrado/facturado del mes: la venta reportada del contador (ventas_mensuales)
-    // si ya está cargada; si no, lo que el taller entregó este mes.
     const ventaMes = Number(metaMes?.ventas) || 0;
-    const ingresosMes = ventaMes > 0 ? ventaMes : facturadoMes;
+    const ingresosMes = ventaMes > 0 ? ventaMes : facturadoOrd;
     const falta = Math.max(0, meta - ingresosMes);
     const pctReal = meta > 0 ? Math.round(ingresosMes / meta * 100) : 0;
     const pctBar = Math.min(pctReal, 100);
     const colorBar = pctReal >= 100 ? '#059669' : pctReal >= 70 ? '#D97706' : '#DC2626';
 
-    const ordRows = filas.length ? filas.map(f => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+    const mkRows = (filas, color) => filas.length ? filas.map(f => `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
         <span style="font-family:'DM Mono',monospace;font-weight:800;font-size:12.5px;width:62px;flex-shrink:0">${escapeHtml(f.placa || '—')}</span>
-        <div style="flex:1;height:13px;background:var(--gris-bg);border-radius:99px;overflow:hidden"><div style="height:100%;width:${Math.round(f.v / maxV * 100)}%;background:#2A5298;border-radius:99px"></div></div>
+        <div style="flex:1;height:11px;background:var(--gris-bg);border-radius:99px;overflow:hidden"><div style="height:100%;width:${Math.round(f.v / maxV * 100)}%;background:${color};border-radius:99px"></div></div>
         <span style="font-size:12px;font-weight:700;font-family:'DM Mono',monospace;flex-shrink:0;width:98px;text-align:right">${_fmt(f.v)}</span>
-      </div>`).join('') : '<div style="color:var(--gris-mid);font-size:13px">Sin órdenes con valor.</div>';
+      </div>`).join('') : '<div style="font-size:12px;color:var(--gris-mid);padding:3px 0">—</div>';
 
     const body = document.getElementById('pvt-body');
     if (body) body.innerHTML = `
-      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-        <div style="flex:1;min-width:150px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;padding:12px 14px">
-          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#047857">💵 Facturado este mes</div>
-          <div style="font-size:21px;font-weight:800;color:#065F46;font-family:'DM Mono',monospace;margin-top:3px">${_fmt(ingresosMes)}</div>
-          <div style="font-size:10.5px;color:#059669;margin-top:1px">${ventaMes > 0 ? 'Reportado por el contador' : `${ordsEnt.length} orden${ordsEnt.length === 1 ? '' : 'es'} entregada${ordsEnt.length === 1 ? '' : 's'}`}</div>
+      <!-- ── Resumen por categoría ── -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px">
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:10px 12px">
+          <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#1D4ED8">🔧 En proceso</div>
+          <div style="font-size:19px;font-weight:800;color:#1E3A5F;font-family:'DM Mono',monospace;margin-top:2px">${_fmt(vProc)}</div>
+          <div style="font-size:10.5px;color:#2563EB;margin-top:1px">${filasProc.length} orden${filasProc.length !== 1 ? 'es' : ''}</div>
         </div>
-        <div style="flex:1;min-width:150px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:12px 14px">
-          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#1D4ED8">🔧 En el taller ahora</div>
-          <div style="font-size:21px;font-weight:800;color:#1E3A5F;font-family:'DM Mono',monospace;margin-top:3px">${_fmt(totalTaller)}</div>
-          <div style="font-size:10.5px;color:#2563EB;margin-top:1px">${filas.length} orden${filas.length === 1 ? '' : 'es'} activa${filas.length === 1 ? '' : 's'}</div>
+        ${ordsPInt.length || filasPInt.length ? `
+        <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:12px;padding:10px 12px">
+          <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#6D28D9">🫁 Pulmón interno</div>
+          <div style="font-size:19px;font-weight:800;color:#4C1D95;font-family:'DM Mono',monospace;margin-top:2px">${_fmt(vPInt)}</div>
+          <div style="font-size:10.5px;color:#7C3AED;margin-top:1px">${filasPInt.length} orden${filasPInt.length !== 1 ? 'es' : ''}</div>
+        </div>` : ''}
+        ${ordsPExt.length || filasPExt.length ? `
+        <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:12px;padding:10px 12px">
+          <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#C2410C">🌐 Pulmón externo</div>
+          <div style="font-size:19px;font-weight:800;color:#7C2D12;font-family:'DM Mono',monospace;margin-top:2px">${_fmt(vPExt)}</div>
+          <div style="font-size:10.5px;color:#EA580C;margin-top:1px">${filasPExt.length} orden${filasPExt.length !== 1 ? 'es' : ''}</div>
+        </div>` : ''}
+        <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;padding:10px 12px">
+          <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#047857">💵 Facturado mes</div>
+          <div style="font-size:19px;font-weight:800;color:#065F46;font-family:'DM Mono',monospace;margin-top:2px">${_fmt(ingresosMes)}</div>
+          <div style="font-size:10.5px;color:#059669;margin-top:1px">${ventaMes > 0 ? 'Reportado por el contador' : `${ordsEnt.length} entregada${ordsEnt.length !== 1 ? 's' : ''}`}</div>
         </div>
       </div>
-      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#1D4ED8;margin-bottom:8px">Valor por orden activa (${filas.length})</div>
-      ${ordRows}
-      <div style="display:flex;justify-content:space-between;border-top:2px solid var(--azul-mid);margin-top:8px;padding-top:8px;font-weight:800;color:var(--azul);font-size:14px"><span>Total en el taller</span><span style="font-family:'DM Mono',monospace">${_fmt(totalTaller)}</span></div>
-      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#047857;margin:20px 0 8px">📈 Meta del mes</div>
+
+      <!-- ── Detalle de órdenes ── -->
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#1D4ED8;margin-bottom:6px">🔧 En proceso (${filasProc.length})</div>
+      ${mkRows(filasProc, '#2A5298')}
+      ${filasPInt.length ? `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#6D28D9;margin:12px 0 6px">🫁 Pulmón interno (${filasPInt.length})</div>${mkRows(filasPInt, '#7C3AED')}` : ''}
+      ${filasPExt.length ? `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#C2410C;margin:12px 0 6px">🌐 Pulmón externo (${filasPExt.length})</div>${mkRows(filasPExt, '#EA580C')}` : ''}
+
+      <div style="display:flex;justify-content:space-between;border-top:2px solid var(--azul-mid);margin-top:10px;padding-top:8px;font-weight:800;color:var(--azul);font-size:14px"><span>Total en el taller</span><span style="font-family:'DM Mono',monospace">${_fmt(totalTaller)}</span></div>
+
+      <!-- ── Meta del mes ── -->
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#047857;margin:18px 0 8px">📈 Meta del mes</div>
       ${meta > 0 ? `
         <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span style="color:var(--gris-mid)">Logrado este mes</span><strong>${_fmt(ingresosMes)}</strong></div>
         <div style="height:22px;background:var(--gris-bg);border-radius:99px;overflow:hidden;margin-bottom:7px"><div style="height:100%;width:${pctBar}%;min-width:34px;background:${colorBar};border-radius:99px;display:flex;align-items:center;justify-content:flex-end;padding-right:9px;color:#fff;font-size:11px;font-weight:800;transition:width .5s ease">${pctReal}%</div></div>
