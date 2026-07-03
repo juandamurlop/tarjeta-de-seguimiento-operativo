@@ -414,7 +414,7 @@ async function cargarKPITaller() {
   try {
     const _hace14d = new Date(ahora - 14 * 86400000).toISOString();
     const _inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString();
-    const [ordenesActivas, todasEtapas, solicitudesRep, mecanicosData, entregadasRecientes, cotsPendientes, cotsMes, capActivas, capPulmonInt, entregadasMesVal, ventasMensuales] = await Promise.all([
+    const [ordenesActivas, todasEtapas, solicitudesRep, mecanicosData, entregadasRecientes, cotsPendientes, cotsMes, capActivas, capPulmonInt, entregadasMesVal, metasTallerArr] = await Promise.all([
       api('/ordenes?estado=eq.Activa&order=creado_en.asc').catch(() => []),
       api('/etapas?select=id,orden_id,etapa,servicio,mecanico_id,tecnico,creado_en,inicio,fin,pausado,tiempo_pausado_min,valor_venta&order=creado_en.asc').catch(() => []),
       api('/solicitudes_repuesto?estado=not.in.(entregado,rechazado)&order=creado_en.asc').catch(() => []),
@@ -426,9 +426,9 @@ async function cargarKPITaller() {
       // "Ocupación del taller" coincida exactamente con la capacidad del sidebar.
       api('/ordenes?estado=eq.Activa&pulmon=eq.false&select=id').catch(() => []),
       api('/ordenes?pulmon=eq.true&pulmon_tipo=eq.interno&select=id').catch(() => []),
-      // FACTURADO del mes: órdenes entregadas este mes (con su valor) + metas.
+      // Órdenes entregadas este mes + meta del mes (tabla metas_taller, la misma que usa el módulo Metas).
       api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${_inicioMes}&select=id,precio_venta_cliente,insumos,repuestos_simple&limit=500`).catch(() => []),
-      api('/ventas_mensuales?order=ano.desc,mes_num.desc&limit=36').catch(() => [])
+      api(`/metas_taller?ano=eq.${hoy.getFullYear()}&mes_num=eq.${hoy.getMonth()+1}&limit=1`).catch(() => [])
     ]);
 
     const etapasActivas = todasEtapas.filter(e => e.inicio && !e.fin);
@@ -649,11 +649,12 @@ async function cargarKPITaller() {
     const valorPulmonExt  = _ordsPulmonExt.reduce((s, o) => s + _valOrden(o), 0);
     const totalValorTaller = valorEnProceso + valorPulmonInt + valorPulmonExt;
 
-    // FACTURADO del mes: contador (ventas_mensuales) tiene prioridad; si no, órdenes entregadas.
-    const _metaMesVT = (ventasMensuales || []).find(m => Number(m.ano) === hoy.getFullYear() && Number(m.mes_num) === hoy.getMonth() + 1);
-    const _ventaMesVT = Number(_metaMesVT?.ventas) || 0;
-    const _facturadoOrdenes = (entregadasMesVal || []).reduce((s, o) => s + _valOrden(o), 0);
-    const facturadoMes = _ventaMesVT > 0 ? _ventaMesVT : _facturadoOrdenes;
+    // FACTURADO del mes: suma de órdenes entregadas en el mes en curso.
+    const facturadoMes = (entregadasMesVal || []).reduce((s, o) => s + _valOrden(o), 0);
+    // META del mes: de la tabla metas_taller (la misma que edita el módulo Metas).
+    const _metaMes = (metasTallerArr || [])[0];
+    const metaIngresosMes = Number(_metaMes?.meta_ingresos) || 0;
+    const _pctFact = metaIngresosMes > 0 ? Math.min(Math.round(facturadoMes / metaIngresosMes * 100), 100) : null;
     const valorTallerHtml = `
       <div class="kpi-valor-taller" onclick="abrirPanelValorTaller()" style="cursor:pointer" title="Ver valor por orden y la meta del mes">
         <div style="min-width:0;flex:1">
@@ -673,6 +674,12 @@ async function cargarKPITaller() {
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;border-top:1px solid rgba(255,255,255,.22);padding-top:5px">
             <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.7">Facturado mes</span>
             <span class="kpi-vt-num" style="font-size:20px;color:#A7F3D0">${_fmtCOP(facturadoMes)}</span>
+            ${_pctFact !== null ? `<div style="display:flex;align-items:center;gap:5px;margin-top:2px">
+              <div style="width:70px;height:3px;background:rgba(255,255,255,.2);border-radius:99px;overflow:hidden">
+                <div style="height:100%;width:${_pctFact}%;background:#A7F3D0;border-radius:99px"></div>
+              </div>
+              <span style="font-size:9px;color:rgba(255,255,255,.65)">${_pctFact}% de meta</span>
+            </div>` : '<span style="font-size:9px;color:rgba(255,255,255,.4)">sin meta cargada</span>'}
           </div>
         </div>
       </div>`;
@@ -1273,12 +1280,12 @@ async function abrirPanelValorTaller() {
     const ahora = new Date();
     const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
     const anio = ahora.getFullYear(), mesNum = ahora.getMonth() + 1;
-    const [ords, ventasAll, ordsEnt] = await Promise.all([
+    const [ords, metasArr, ordsEnt] = await Promise.all([
       api(`/ordenes?or=(estado.eq.Activa,estado.is.null)&select=id,placa,pulmon,pulmon_tipo,precio_venta_cliente,insumos,repuestos_simple&limit=300`).catch(() => []) || [],
-      api(`/ventas_mensuales?order=ano.desc,mes_num.desc&limit=36`).catch(() => []) || [],
+      api(`/metas_taller?ano=eq.${anio}&mes_num=eq.${mesNum}&limit=1`).catch(() => []) || [],
       api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${inicioMes}&select=id,precio_venta_cliente,insumos,repuestos_simple&limit=500`).catch(() => []) || []
     ]);
-    const metaMes = ventasAll.find(m => Number(m.ano) === anio && Number(m.mes_num) === mesNum);
+    const metaMes = metasArr[0];
     const ids = ords.map(o => o.id).join(',');
     const ets = ids ? (await api(`/etapas?orden_id=in.(${ids})&select=orden_id,valor_venta`).catch(() => []) || []) : [];
     const valItems = (o, campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (_) { return 0; } };
@@ -1300,16 +1307,14 @@ async function abrirPanelValorTaller() {
     const vPExt = filasPExt.reduce((s, f) => s + f.v, 0);
     const totalTaller = vProc + vPInt + vPExt;
     const maxV = Math.max(1, ...[...filasProc, ...filasPInt, ...filasPExt].map(f => f.v));
-    const meta = Number(metaMes?.meta_base) || 0;
-    // Facturado del mes
+    const meta = Number(metaMes?.meta_ingresos) || 0;
+    // Facturado del mes: órdenes entregadas en el mes en curso.
     const idsEnt = ordsEnt.map(o => o.id).join(',');
     const etsEnt = idsEnt ? (await api(`/etapas?orden_id=in.(${idsEnt})&select=orden_id,valor_venta`).catch(() => []) || []) : [];
-    const facturadoOrd = ordsEnt.reduce((s, o) => {
+    const ingresosMes = ordsEnt.reduce((s, o) => {
       const mo = etsEnt.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
       return s + ((o.precio_venta_cliente && o.precio_venta_cliente > 0) ? o.precio_venta_cliente : (mo + valItems(o, 'insumos') + valItems(o, 'repuestos_simple')));
     }, 0);
-    const ventaMes = Number(metaMes?.ventas) || 0;
-    const ingresosMes = ventaMes > 0 ? ventaMes : facturadoOrd;
     const falta = Math.max(0, meta - ingresosMes);
     const pctReal = meta > 0 ? Math.round(ingresosMes / meta * 100) : 0;
     const pctBar = Math.min(pctReal, 100);
@@ -1346,7 +1351,7 @@ async function abrirPanelValorTaller() {
         <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;padding:10px 12px">
           <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#047857">💵 Facturado mes</div>
           <div style="font-size:19px;font-weight:800;color:#065F46;font-family:'DM Mono',monospace;margin-top:2px">${_fmt(ingresosMes)}</div>
-          <div style="font-size:10.5px;color:#059669;margin-top:1px">${ventaMes > 0 ? 'Reportado por el contador' : `${ordsEnt.length} entregada${ordsEnt.length !== 1 ? 's' : ''}`}</div>
+          <div style="font-size:10.5px;color:#059669;margin-top:1px">${ordsEnt.length} orden${ordsEnt.length !== 1 ? 'es' : ''} entregada${ordsEnt.length !== 1 ? 's' : ''} este mes</div>
         </div>
       </div>
 
