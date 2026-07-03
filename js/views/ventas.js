@@ -77,12 +77,19 @@ function _ventasDerivar(d) {
   const metaBaseAnual  = sum(filas, 'metaBase');
   const metaIdealAnual = sum(filas, 'metaIdeal');
 
-  // Último mes con ventas registradas (mes "en curso")
-  let ultimoMes = 0;
-  filas.forEach((f,i) => { if (f.ventas > 0) ultimoMes = i+1; });
-  if (!ultimoMes) ultimoMes = Math.min(new Date().getMonth()+1, 12);
+  // ultimoMesDatos = último mes con ventas reales (para KPI tiles y pacing).
+  let ultimoMesDatos = 0;
+  filas.forEach((f,i) => { if (f.ventas > 0) ultimoMesDatos = i+1; });
+  if (!ultimoMesDatos) ultimoMesDatos = Math.min(new Date().getMonth()+1, 12);
+  const ultimoMes = ultimoMesDatos;
 
-  // Acumulados hasta el último mes
+  // mesEnCurso = mes del calendario actual (para el rótulo y fila resaltada).
+  // Cuando el año mostrado es el año en curso, avanza hasta el mes real aunque
+  // no haya ventas cargadas aún, para que "Mes en curso" no quede en el pasado.
+  const _anoHoy = new Date().getFullYear(), _mesHoy = new Date().getMonth() + 1;
+  const mesEnCurso = anoActual === _anoHoy ? Math.min(_mesHoy, 12) : ultimoMesDatos;
+
+  // Acumulados hasta el último mes con datos (para los KPI tiles y pacing)
   const hasta = filas.slice(0, ultimoMes);
   const ventasYTD   = sum(hasta, 'ventas');
   const metaYTD     = sum(hasta, 'metaBase');
@@ -101,7 +108,7 @@ function _ventasDerivar(d) {
 
   return {
     anos, anoActual, anoAnt, byAnoMes, filas,
-    metaBaseAnual, metaIdealAnual, ultimoMes,
+    metaBaseAnual, metaIdealAnual, ultimoMes, mesEnCurso,
     ventasYTD, metaYTD, facturasYTD, ventasAntYTD,
     expectedAcum, achievedAcum
   };
@@ -147,7 +154,7 @@ function _renderVentasGeneral(cont, D) {
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px">
       <div>
         <div style="font-size:18px;font-weight:800;color:var(--texto)">Metas y ventas · ${D.anoActual}</div>
-        <div style="font-size:12px;color:var(--gris-mid)">Mes en curso: ${fMes.mes || '—'} · acumulado a ${D.filas[mesIdx]?.mes || '—'}</div>
+        <div style="font-size:12px;color:var(--gris-mid)">Mes en curso: ${D.filas[D.mesEnCurso-1]?.mes || '—'} · acumulado reportado a ${fMes.mes || '—'}</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" onclick="abrirCargaVentas()">Cargar datos (contador)</button>
@@ -204,9 +211,10 @@ function _renderVentasGeneral(cont, D) {
         <tbody>
           ${D.filas.map((f,i) => {
             const p = _pctV(f.ventas, f.metaBase);
-            const enCurso = (i+1) === D.ultimoMes;
+            const enCurso = (i+1) === D.mesEnCurso;
+            const sinDatos = enCurso && !f.ventas;
             return `<tr class="row-hover" style="border-top:1px solid var(--gris-borde);${enCurso?'background:var(--azul-light)':''}">
-              <td style="padding:7px 12px;font-weight:${enCurso?'700':'400'}">${f.mes}${enCurso?' ·':''}</td>
+              <td style="padding:7px 12px;font-weight:${enCurso?'700':'400'}">${f.mes}${sinDatos?' <span style="font-size:10px;color:var(--gris-mid);font-weight:400">(sin datos aún)</span>':enCurso?' ·':''}</td>
               <td style="padding:7px 12px;text-align:right;color:var(--gris-mid)">${f.metaBase?_fmtV(f.metaBase):'—'}</td>
               <td style="padding:7px 12px;text-align:right;font-weight:600">${f.ventas?_fmtV(f.ventas):'—'}</td>
               <td style="padding:7px 12px;text-align:right;font-weight:700;color:${f.ventas?_colPct(p):'var(--gris-mid)'}">${f.ventas?p+'%':'—'}</td>
@@ -282,7 +290,7 @@ function _renderVentasDetalle(cont, D) {
             const p = _pctV(f.ventas, f.metaBase);
             const varMeta = f.ventas - f.metaBase;
             const tk = f.facturas > 0 ? f.ventas/f.facturas : 0;
-            const enCurso = (i+1) === D.ultimoMes;
+            const enCurso = (i+1) === D.mesEnCurso;
             return `<tr class="row-hover" style="border-top:1px solid var(--gris-borde);${enCurso?'background:var(--azul-light)':''}">
               <td style="padding:7px 10px;font-weight:${enCurso?'700':'500'}">${f.mes}</td>
               <td style="padding:7px 10px;text-align:right;color:var(--gris-mid)">${f.metaBase?_fmtVc(f.metaBase):'—'}</td>

@@ -426,9 +426,9 @@ async function cargarKPITaller() {
       // "Ocupación del taller" coincida exactamente con la capacidad del sidebar.
       api('/ordenes?estado=eq.Activa&pulmon=eq.false&select=id').catch(() => []),
       api('/ordenes?pulmon=eq.true&pulmon_tipo=eq.interno&select=id').catch(() => []),
-      // Órdenes entregadas este mes + meta del mes (tabla metas_taller, la misma que usa el módulo Metas).
+      // Órdenes entregadas este mes + meta del mes (tabla ventas_mensuales, misma que usa el módulo Metas).
       api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${_inicioMes}&select=id,precio_venta_cliente,insumos,repuestos_simple&limit=500`).catch(() => []),
-      api(`/metas_taller?ano=eq.${hoy.getFullYear()}&mes_num=eq.${hoy.getMonth()+1}&limit=1`).catch(() => [])
+      api(`/ventas_mensuales?ano=eq.${hoy.getFullYear()}&mes_num=eq.${hoy.getMonth()+1}&select=meta_base,ventas&limit=1`).catch(() => [])
     ]);
 
     const etapasActivas = todasEtapas.filter(e => e.inicio && !e.fin);
@@ -651,9 +651,9 @@ async function cargarKPITaller() {
 
     // FACTURADO del mes: suma de órdenes entregadas en el mes en curso.
     const facturadoMes = (entregadasMesVal || []).reduce((s, o) => s + _valOrden(o), 0);
-    // META del mes: de la tabla metas_taller (la misma que edita el módulo Metas).
+    // META del mes: meta_base del mes calendario actual en ventas_mensuales.
     const _metaMes = (metasTallerArr || [])[0];
-    const metaIngresosMes = Number(_metaMes?.meta_ingresos) || 0;
+    const metaIngresosMes = Number(_metaMes?.meta_base) || 0;
     const _pctFact = metaIngresosMes > 0 ? Math.min(Math.round(facturadoMes / metaIngresosMes * 100), 100) : null;
     const valorTallerHtml = `
       <div class="kpi-valor-taller" onclick="abrirPanelValorTaller()" style="cursor:pointer" title="Ver valor por orden y la meta del mes">
@@ -1282,7 +1282,7 @@ async function abrirPanelValorTaller() {
     const anio = ahora.getFullYear(), mesNum = ahora.getMonth() + 1;
     const [ords, metasArr, ordsEnt] = await Promise.all([
       api(`/ordenes?or=(estado.eq.Activa,estado.is.null)&select=id,placa,pulmon,pulmon_tipo,precio_venta_cliente,insumos,repuestos_simple&limit=300`).catch(() => []) || [],
-      api(`/metas_taller?ano=eq.${anio}&mes_num=eq.${mesNum}&limit=1`).catch(() => []) || [],
+      api(`/ventas_mensuales?ano=eq.${anio}&mes_num=eq.${mesNum}&select=meta_base,ventas&limit=1`).catch(() => []) || [],
       api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${inicioMes}&select=id,precio_venta_cliente,insumos,repuestos_simple&limit=500`).catch(() => []) || []
     ]);
     const metaMes = metasArr[0];
@@ -1307,7 +1307,7 @@ async function abrirPanelValorTaller() {
     const vPExt = filasPExt.reduce((s, f) => s + f.v, 0);
     const totalTaller = vProc + vPInt + vPExt;
     const maxV = Math.max(1, ...[...filasProc, ...filasPInt, ...filasPExt].map(f => f.v));
-    const meta = Number(metaMes?.meta_ingresos) || 0;
+    const meta = Number(metaMes?.meta_base) || 0;
     // Facturado del mes: órdenes entregadas en el mes en curso.
     const idsEnt = ordsEnt.map(o => o.id).join(',');
     const etsEnt = idsEnt ? (await api(`/etapas?orden_id=in.(${idsEnt})&select=orden_id,valor_venta`).catch(() => []) || []) : [];
