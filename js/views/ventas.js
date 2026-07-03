@@ -24,11 +24,37 @@ const _colPct = p => p >= 100 ? 'var(--verde)' : p >= 70 ? 'var(--amarillo)' : '
 // ── Carga de datos ───────────────────────────────────────────
 async function _cargarDatosVentas() {
   try {
-    const [vm, vs, cr] = await Promise.all([
+    const ahora = new Date();
+    const anoHoy = ahora.getFullYear(), mesHoy = ahora.getMonth() + 1;
+    const inicioMes = new Date(anoHoy, ahora.getMonth(), 1).toISOString();
+
+    const [vm, vs, cr, ordsEnt] = await Promise.all([
       api('/ventas_mensuales?order=ano.asc,mes_num.asc').catch(() => []),
       api('/ventas_servicio?order=ano.asc,mes_num.asc').catch(() => []),
-      api('/credito?order=id.asc').catch(() => [])
+      api('/credito?order=id.asc').catch(() => []),
+      // Órdenes entregadas en el mes actual (para calcular ventas cuando el contador no ha reportado).
+      api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${inicioMes}&select=id,precio_venta_cliente,insumos,repuestos_simple&limit=500`).catch(() => [])
     ]);
+
+    // Si el mes en curso no tiene ventas reportadas, calcularlas desde órdenes entregadas.
+    const filaActual = (vm || []).find(r => +r.ano === anoHoy && +r.mes_num === mesHoy);
+    if (!Number(filaActual?.ventas) && ordsEnt.length) {
+      const ids = ordsEnt.map(o => o.id).join(',');
+      const ets = ids ? (await api(`/etapas?orden_id=in.(${ids})&select=orden_id,valor_venta`).catch(() => []) || []) : [];
+      const _vi = (o, c) => { try { const raw = o[c]; const a = Array.isArray(raw) ? raw : (raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + ((+i.cantidad||0)*(+i.valor||0)), 0); } catch(_) { return 0; } };
+      const ventasCalc = ordsEnt.reduce((s, o) => {
+        const mo = ets.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta||0), 0);
+        return s + ((o.precio_venta_cliente > 0) ? o.precio_venta_cliente : (mo + _vi(o,'insumos') + _vi(o,'repuestos_simple')));
+      }, 0);
+      if (filaActual) {
+        filaActual.ventas = ventasCalc;
+        filaActual.facturas = filaActual.facturas || ordsEnt.length;
+        filaActual._autoCalc = true;
+      } else {
+        (vm || []).push({ ano: anoHoy, mes_num: mesHoy, mes: _MESES_VENTAS[mesHoy-1], ventas: ventasCalc, facturas: ordsEnt.length, meta_base: 0, meta_ideal: 0, _autoCalc: true });
+      }
+    }
+
     _ventasData = { vm: vm || [], vs: vs || [], cr: (cr && cr[0]) || null, ok: true };
   } catch (e) {
     _ventasData = { vm: [], vs: [], cr: null, ok: false };
@@ -69,7 +95,8 @@ function _ventasDerivar(d) {
       metaIdeal:+cur.meta_ideal || 0,
       ventasAnt:   +ant.ventas   || 0,
       facturasAnt: +ant.facturas || 0,
-      mejorAno: mejor.ano, mejorVentas: mejor.ventas
+      mejorAno: mejor.ano, mejorVentas: mejor.ventas,
+      autoCalc: !!cur._autoCalc
     });
   }
 
@@ -212,9 +239,9 @@ function _renderVentasGeneral(cont, D) {
           ${D.filas.map((f,i) => {
             const p = _pctV(f.ventas, f.metaBase);
             const enCurso = (i+1) === D.mesEnCurso;
-            const sinDatos = enCurso && !f.ventas;
+            const nota = enCurso ? (f.autoCalc ? ' <span style="font-size:10px;color:var(--gris-mid);font-weight:400" title="Calculado desde órdenes entregadas · el contador aún no ha reportado">· sistema</span>' : ' ·') : '';
             return `<tr class="row-hover" style="border-top:1px solid var(--gris-borde);${enCurso?'background:var(--azul-light)':''}">
-              <td style="padding:7px 12px;font-weight:${enCurso?'700':'400'}">${f.mes}${sinDatos?' <span style="font-size:10px;color:var(--gris-mid);font-weight:400">(sin datos aún)</span>':enCurso?' ·':''}</td>
+              <td style="padding:7px 12px;font-weight:${enCurso?'700':'400'}">${f.mes}${nota}</td>
               <td style="padding:7px 12px;text-align:right;color:var(--gris-mid)">${f.metaBase?_fmtV(f.metaBase):'—'}</td>
               <td style="padding:7px 12px;text-align:right;font-weight:600">${f.ventas?_fmtV(f.ventas):'—'}</td>
               <td style="padding:7px 12px;text-align:right;font-weight:700;color:${f.ventas?_colPct(p):'var(--gris-mid)'}">${f.ventas?p+'%':'—'}</td>
@@ -292,7 +319,7 @@ function _renderVentasDetalle(cont, D) {
             const tk = f.facturas > 0 ? f.ventas/f.facturas : 0;
             const enCurso = (i+1) === D.mesEnCurso;
             return `<tr class="row-hover" style="border-top:1px solid var(--gris-borde);${enCurso?'background:var(--azul-light)':''}">
-              <td style="padding:7px 10px;font-weight:${enCurso?'700':'500'}">${f.mes}</td>
+              <td style="padding:7px 10px;font-weight:${enCurso?'700':'500'}">${f.mes}${enCurso && f.autoCalc ? ' <span style="font-size:9px;color:var(--gris-mid)" title="Calculado desde órdenes · sin reporte contador">· sistema</span>' : ''}</td>
               <td style="padding:7px 10px;text-align:right;color:var(--gris-mid)">${f.metaBase?_fmtVc(f.metaBase):'—'}</td>
               <td style="padding:7px 10px;text-align:right;color:var(--gris-mid)">${f.metaIdeal?_fmtVc(f.metaIdeal):'—'}</td>
               <td style="padding:7px 10px;text-align:right;font-weight:700">${f.ventas?_fmtVc(f.ventas):'—'}</td>
