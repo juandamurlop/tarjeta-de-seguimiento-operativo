@@ -983,7 +983,7 @@ function _barraAccionesEstado(orden) {
   return `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
     ${_b(ini,   false,   '#0F6E56', '#E1F5EE', '📲', 'Enviar mensaje inicial', 'Mensaje inicial enviado', `avisarIngresoCliente(${orden.id})`, '')}
     ${_b(listo, !ini,    '#0F6E56', '#E1F5EE', '🔔', 'Avisar que está listo',  'Cliente avisado',          `avisarClienteWhatsapp(${orden.id})`, 'Primero envía el mensaje inicial al cliente')}
-    ${_b(cerrada, !listo,'#185FA5', '#E6F1FB', '🔒', 'Cerrar orden',           'Orden cerrada',            `intentarCerrarOrden(${orden.id})`, 'Primero avisa al cliente que está listo')}
+    ${_b(cerrada, !listo,'#185FA5', '#E6F1FB', '✅', 'Cerrar orden',           'Orden cerrada',            `intentarCerrarOrden(${orden.id})`, 'Primero avisa al cliente que está listo')}
   </div>`;
 }
 
@@ -1005,19 +1005,138 @@ function _bloquePreliqCierre(orden) {
   // cliente que está listo). La preliquidación ya no es requisito.
   const avisado = !!orden.entrega_avisada_en;
   h += avisado
-    ? `<button class="btn btn-success" style="width:100%" onclick="intentarCerrarOrden(${orden.id})">🔒 Cerrar orden (con PIN)</button>`
-    : `<button class="btn" style="width:100%;opacity:.45;cursor:not-allowed" disabled title="Primero avisa al cliente que está listo (paso 2)">🔒 Cerrar orden (con PIN)</button>`;
-  h += `<div style="text-align:center;margin-top:4px"><button class="btn btn-ghost btn-sm" style="font-size:10px;color:var(--gris-mid)" onclick="configurarPinCierre()">⚙ Configurar PIN de cierre</button></div>`;
+    ? `<button class="btn btn-success" style="width:100%;font-size:14px;font-weight:700;padding:12px;border-radius:10px;letter-spacing:.02em" onclick="intentarCerrarOrden(${orden.id})">✅ Cerrar orden</button>`
+    : `<button class="btn" style="width:100%;opacity:.4;cursor:not-allowed;font-size:14px;padding:12px;border-radius:10px" disabled title="Primero avisa al cliente que está listo (paso 2)">✅ Cerrar orden</button>`;
   return h;
 }
 
-// Abre el modal de PIN para cerrar. Se puede cerrar una vez avisado el cliente
-// (la preliquidación ya NO es obligatoria; queda como paso opcional/recomendado).
+// Muestra el resumen de la orden antes de cerrar — sin PIN.
 async function intentarCerrarOrden(ordenId) {
   let o = (ordenActual && ordenActual.id === ordenId) ? ordenActual : null;
   if (!o) o = await api(`/ordenes?id=eq.${ordenId}`).then(r => r && r[0]).catch(() => null);
   if (!o) { toast('Orden no encontrada', 'err'); return; }
-  pedirPin(() => cambiarEstado('Entregada'), 'Cerrar orden', 'Ingresa el PIN del jefe / gerente para cerrar.');
+
+  // Cargar etapas y repuestos en paralelo
+  const [etapas, repuestos] = await Promise.all([
+    api(`/etapas?orden_id=eq.${ordenId}&order=creado_en.asc`).catch(() => []),
+    api(`/solicitudes_repuesto?orden_id=eq.${ordenId}`).catch(() => [])
+  ]);
+
+  const fmt = n => (n || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+  const fmtFecha = s => s ? new Date(s).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+
+  // Calcular días en taller
+  const inicio = o.ingreso_en || o.creado_en;
+  const fin = o.entregada_en || new Date().toISOString();
+  const dias = inicio ? Math.max(0, Math.round((new Date(fin) - new Date(inicio)) / 86400000)) : 0;
+
+  // Valores financieros
+  const srvNom = { latoneria: 'Latonería', pintura: 'Pintura', mecanica: 'Mecánica', adicionales: 'Adicionales' };
+  const manoObra = (etapas || []).reduce((s, e) => s + (e.valor_venta || e.valor || 0), 0);
+  const valInsumos = Array.isArray(o.insumos) ? o.insumos.reduce((s, i) => s + ((i.valor || i.precio || 0) * (i.cantidad || 1)), 0) : 0;
+  const valRepSimple = Array.isArray(o.repuestos_simple) ? o.repuestos_simple.reduce((s, r) => s + ((r.valor || r.precio || 0) * (r.cantidad || 1)), 0) : 0;
+  const precioCliente = o.precio_venta_cliente || 0;
+  const subtotal = precioCliente || (manoObra + valInsumos + valRepSimple);
+
+  // Etapas HTML
+  const etapasHtml = (etapas && etapas.length)
+    ? etapas.map(e => {
+        const srv = srvNom[e.servicio] || e.servicio || '';
+        const val = e.valor_venta || e.valor || 0;
+        const hecho = e.fin ? '✅' : '🔄';
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+          <span style="font-size:14px">${hecho}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;color:#e2e8f0;font-weight:600">${escapeHtml(e.etapa || srv)}</div>
+            ${e.mecanico_nombre || e.tercero ? `<div style="font-size:11px;color:#64748b">${escapeHtml(e.mecanico_nombre || e.tercero_desc || e.tercero || '')}</div>` : ''}
+          </div>
+          ${val ? `<span style="font-size:12px;font-weight:700;color:#7dd3fc;white-space:nowrap">${fmt(val)}</span>` : ''}
+        </div>`;
+      }).join('')
+    : `<div style="font-size:13px;color:#475569;padding:8px 0">Sin etapas registradas</div>`;
+
+  // Repuestos pendientes
+  const repPend = (repuestos || []).filter(r => !['entregado','completado'].includes(r.estado));
+  const repPendHtml = repPend.length
+    ? `<div style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);border-radius:8px;padding:10px 12px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:4px">⚠ ${repPend.length} repuesto(s) pendiente(s)</div>
+        ${repPend.map(r => `<div style="font-size:12px;color:#fca5a5">${escapeHtml(r.repuesto || '')} — ${escapeHtml(r.estado || '')}</div>`).join('')}
+      </div>` : '';
+
+  document.getElementById('cierre-resumen-modal')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'cierre-resumen-modal';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10002;background:rgba(2,6,23,.78);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeOvIn .3s ease both';
+
+  if (!document.getElementById('cierre-resumen-style')) {
+    const st = document.createElement('style');
+    st.id = 'cierre-resumen-style';
+    st.textContent = `
+      @keyframes fadeOvIn{from{opacity:0}to{opacity:1}}
+      @keyframes slideResumen{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}
+      #cierre-resumen-card{animation:slideResumen .45s cubic-bezier(.22,1,.36,1) both}
+    `;
+    document.head.appendChild(st);
+  }
+
+  const veh = [o.marca, o.linea, o.modelo].filter(Boolean).join(' ');
+  ov.innerHTML = `
+    <div id="cierre-resumen-card" style="background:#0f1e36;border:1px solid rgba(56,189,248,.2);border-radius:22px;width:min(520px,100%);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,.8)">
+
+      <!-- Cabecera -->
+      <div style="padding:22px 26px 16px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:flex-start;gap:14px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#38bdf8;margin-bottom:6px">Resumen de orden</div>
+          <div style="font-size:32px;font-weight:900;letter-spacing:.06em;font-family:monospace;background:linear-gradient(135deg,#f1f5f9,#7dd3fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent">${escapeHtml(o.placa || '')}</div>
+          <div style="font-size:13px;color:#94a3b8;margin-top:2px">${escapeHtml(veh || '')}${o.propietario ? ' · ' + escapeHtml(o.propietario) : ''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:11px;color:#475569">Días en taller</div>
+          <div style="font-size:28px;font-weight:800;color:#f1f5f9">${dias}</div>
+          <div style="font-size:10px;color:#475569">${fmtFecha(inicio)} → hoy</div>
+        </div>
+        <button onclick="document.getElementById('cierre-resumen-modal').remove()" style="background:none;border:none;color:#334155;font-size:22px;cursor:pointer;line-height:1;margin-left:4px;flex-shrink:0">✕</button>
+      </div>
+
+      <!-- Cuerpo scrollable -->
+      <div style="padding:18px 26px;overflow-y:auto;flex:1">
+        ${repPendHtml}
+
+        <!-- Etapas -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:6px">Lo que se hizo</div>
+        <div style="margin-bottom:18px">${etapasHtml}</div>
+
+        <!-- Totales -->
+        <div style="background:rgba(255,255,255,.04);border-radius:12px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:10px">Valores</div>
+          ${manoObra ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:#94a3b8;margin-bottom:6px"><span>Mano de obra</span><span>${fmt(manoObra)}</span></div>` : ''}
+          ${valInsumos ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:#94a3b8;margin-bottom:6px"><span>Insumos</span><span>${fmt(valInsumos)}</span></div>` : ''}
+          ${valRepSimple ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:#94a3b8;margin-bottom:6px"><span>Repuestos</span><span>${fmt(valRepSimple)}</span></div>` : ''}
+          <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;color:#f1f5f9;border-top:1px solid rgba(255,255,255,.1);padding-top:10px;margin-top:6px">
+            <span>Total</span>
+            <span style="color:#7dd3fc">${fmt(subtotal)}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pie: botón confirmar -->
+      <div style="padding:16px 26px;border-top:1px solid rgba(255,255,255,.07)">
+        <button onclick="_confirmarCierreOrden()" style="width:100%;padding:14px;background:linear-gradient(135deg,#059669,#047857);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:.02em;box-shadow:0 4px 20px rgba(5,150,105,.35)">
+          ✅ Confirmar cierre de orden
+        </button>
+        <div style="text-align:center;margin-top:10px">
+          <button onclick="document.getElementById('cierre-resumen-modal').remove()" style="background:none;border:none;color:#475569;font-size:12px;cursor:pointer">Cancelar — volver</button>
+        </div>
+      </div>
+    </div>`;
+
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+async function _confirmarCierreOrden() {
+  document.getElementById('cierre-resumen-modal')?.remove();
+  await cambiarEstado('Entregada');
 }
 
 // Archivar orden (eliminación reversible) — requiere PIN.
