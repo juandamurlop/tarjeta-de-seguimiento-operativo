@@ -1148,6 +1148,9 @@ async function _cargarSelectTecnicos(preselect) {
 async function abrirEditarOrden(ordenId) {
   const orden = ordenActual;
   if (!orden) return;
+  if (orden.estado === 'Entregada' || orden.estado === 'Archivada') {
+    toast('Esta orden ya está cerrada y no se puede editar.', 'err'); return;
+  }
 
   // Cargar listas dinámicas
   const [aseguradoras, flotillas] = await Promise.all([

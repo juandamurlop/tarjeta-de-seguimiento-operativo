@@ -321,7 +321,7 @@ async function abrirOrden(id) {
                 <strong>Faltan datos por completar</strong>
                 <div class="det-datos-faltantes-list">${faltantes.join(' · ')}</div>
               </div>
-              ${esJefe() && orden.estado !== 'Entregada' ? `<button class="btn btn-sm" style="margin-left:auto;flex-shrink:0;background:#FEF3C7;color:#B45309;border:1px solid #FDE68A" onclick="abrirEditarOrden(${orden.id})">Completar datos</button>` : ''}
+              ${esJefe() && orden.estado !== 'Entregada' && orden.estado !== 'Archivada' ? `<button class="btn btn-sm" style="margin-left:auto;flex-shrink:0;background:#FEF3C7;color:#B45309;border:1px solid #FDE68A" onclick="abrirEditarOrden(${orden.id})">Completar datos</button>` : ''}
             </div>`;
           })()}
           <div class="det-sec-box" style="border:1px solid #9FE1CB;border-radius:10px;overflow:hidden;margin-bottom:12px">
@@ -337,7 +337,7 @@ async function abrirOrden(id) {
                   <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   Historial
                 </button>
-                ${esJefe() && orden.estado !== 'Entregada' ? `<button class="btn btn-ghost btn-sm" onclick="abrirEditarOrden(${orden.id})">
+                ${esJefe() && orden.estado !== 'Entregada' && orden.estado !== 'Archivada' ? `<button class="btn btn-ghost btn-sm" onclick="abrirEditarOrden(${orden.id})">
                   <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   Editar datos
                 </button>` : ''}
