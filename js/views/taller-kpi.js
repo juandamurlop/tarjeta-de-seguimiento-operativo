@@ -522,21 +522,17 @@ async function _kpiFeed() {
     // ── Feed completo "Centro de actividad" ──
     if (!el) return;
 
-    // Actualizar navegador de fecha en el header del feed
+    // Navegador de fecha integrado en el header del feed
     const horaEl = el.querySelector('.kpi-feed-hora');
-    if (horaEl) horaEl.textContent = _kpiFeedEsHoy() ? hora : '';
-    let navEl = el.querySelector('.kpi-feed-nav');
-    if (!navEl) {
-      navEl = document.createElement('div');
-      navEl.className = 'kpi-feed-nav';
-      navEl.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:8px';
-      el.insertBefore(navEl, el.querySelector('.kpi-feed-list'));
+    if (horaEl) {
+      horaEl.innerHTML = `
+        <span style="display:flex;align-items:center;gap:4px">
+          <button onclick="_kpiFeedCambiarFecha(-1)" style="background:none;border:none;color:var(--gris-mid);cursor:pointer;font-size:15px;line-height:1;padding:0 3px" title="Día anterior">‹</button>
+          <span style="font-size:10px;font-weight:700;color:${_kpiFeedEsHoy() ? 'var(--azul)' : 'var(--gris-mid)'};min-width:36px;text-align:center">${_kpiFeedFechaLabel()}</span>
+          <button onclick="_kpiFeedCambiarFecha(+1)" ${_kpiFeedEsHoy() ? 'disabled' : ''} style="background:none;border:none;color:var(--gris-mid);cursor:pointer;font-size:15px;line-height:1;padding:0 3px;${_kpiFeedEsHoy() ? 'opacity:.3;cursor:default' : ''}" title="Día siguiente">›</button>
+        </span>
+      `;
     }
-    navEl.innerHTML = `
-      <button onclick="_kpiFeedCambiarFecha(-1)" style="background:none;border:1px solid rgba(255,255,255,.1);color:#64748b;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:13px">‹</button>
-      <span style="flex:1;text-align:center;font-size:12px;font-weight:600;color:${_kpiFeedEsHoy() ? '#38bdf8' : '#94a3b8'}">${_kpiFeedFechaLabel()}</span>
-      <button onclick="_kpiFeedCambiarFecha(+1)" ${_kpiFeedEsHoy() ? 'disabled style="opacity:.3;cursor:default"' : 'style="cursor:pointer"'} style="background:none;border:1px solid rgba(255,255,255,.1);color:#64748b;border-radius:6px;padding:2px 8px;font-size:13px">›</button>
-    `;
 
     const lista = el.querySelector('.kpi-feed-list');
     if (!lista) return;
