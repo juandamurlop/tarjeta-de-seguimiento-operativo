@@ -2,6 +2,39 @@
 // INICIALIZACIÓN Y NAVEGACIÓN PRINCIPAL
 // ═══════════════════════════════════════════════════════════
 
+// ── Banner de conexión offline ────────────────────────────
+(function _initOfflineBanner() {
+  const STYLE = `
+    position:fixed;top:0;left:0;right:0;z-index:99999;
+    background:#b45309;color:#fff;
+    font-size:13px;font-weight:600;text-align:center;
+    padding:8px 16px;letter-spacing:.01em;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    transform:translateY(-100%);transition:transform .3s ease;
+  `;
+  let banner = null;
+
+  function mostrar() {
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'offline-banner';
+      banner.style.cssText = STYLE;
+      banner.innerHTML = '⚠ Sin conexión — verifica tu internet. Los cambios no se guardarán hasta reconectar.';
+      document.body.appendChild(banner);
+    }
+    requestAnimationFrame(() => { banner.style.transform = 'translateY(0)'; });
+  }
+
+  function ocultar() {
+    if (!banner) return;
+    banner.style.transform = 'translateY(-100%)';
+  }
+
+  window.addEventListener('offline', mostrar);
+  window.addEventListener('online',  ocultar);
+  if (!navigator.onLine) mostrar();
+})();
+
 // ── Tema claro / oscuro ────────────────────────────────────
 // El tema se guarda en localStorage y se aplica a <html data-theme>. El init
 // sin parpadeo está en el <head> de index.html; aquí solo el interruptor.

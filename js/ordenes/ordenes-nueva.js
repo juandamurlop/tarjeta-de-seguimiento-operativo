@@ -1,6 +1,93 @@
 // ═══════════════════════════════════════════════════════════
 // ÓRDENES — NUEVA ORDEN, WIZARD, SERVICIOS
 // ═══════════════════════════════════════════════════════════
+
+// ── Spinner en botones ────────────────────────────────────
+// Deshabilita el botón y cambia su texto mientras corre la operación.
+// Devuelve una función para restaurarlo. Uso:
+//   const restaurar = _btnEspera(btn, 'Guardando...');
+//   try { await operacion(); } finally { restaurar(); }
+function _btnEspera(btn, texto) {
+  if (!btn) return () => {};
+  const textoOriginal = btn.innerHTML;
+  const deshabilitadoOriginal = btn.disabled;
+  btn.disabled = true;
+  btn.style.opacity = '0.7';
+  btn.style.cursor = 'wait';
+  btn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+      style="animation:spinBtn .7s linear infinite;flex-shrink:0">
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+    </svg>${texto}</span>`;
+  if (!document.getElementById('_spinBtnStyle')) {
+    const s = document.createElement('style');
+    s.id = '_spinBtnStyle';
+    s.textContent = '@keyframes spinBtn{to{transform:rotate(360deg)}}';
+    document.head.appendChild(s);
+  }
+  return () => {
+    btn.disabled = deshabilitadoOriginal;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+    btn.innerHTML = textoOriginal;
+  };
+}
+
+// ── Borrador automático de nueva orden ────────────────────
+const _BORRADOR_KEY = 'borrador_nueva_orden';
+const _BORRADOR_CAMPOS = ['n-placa','n-marca','n-linea','n-modelo','n-color',
+  'n-propietario','n-telefono','n-km','n-fecha1','n-fecha2',
+  'n-descripcion-general','n-origen','n-cedula-cliente','n-correo-cliente',
+  'n-direccion','n-vin','n-tipo-cliente'];
+
+function _borradoGuardar() {
+  try {
+    const datos = {};
+    _BORRADOR_CAMPOS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) datos[id] = el.value;
+    });
+    if (Object.values(datos).some(v => v && v.trim())) {
+      sessionStorage.setItem(_BORRADOR_KEY, JSON.stringify({ datos, ts: Date.now() }));
+    }
+  } catch(e) {}
+}
+
+function _borradoRestaurar() {
+  try {
+    const raw = sessionStorage.getItem(_BORRADOR_KEY);
+    if (!raw) return;
+    const { datos, ts } = JSON.parse(raw);
+    // Ignorar borradores de más de 4 horas
+    if (Date.now() - ts > 4 * 60 * 60 * 1000) { sessionStorage.removeItem(_BORRADOR_KEY); return; }
+    const hayDatos = Object.values(datos).some(v => v && v.trim());
+    if (!hayDatos) return;
+    const placa = datos['n-placa'] || '';
+    if (!confirm(`Hay un borrador guardado${placa ? ` para la placa ${placa}` : ''}. ¿Quieres recuperarlo?`)) {
+      sessionStorage.removeItem(_BORRADOR_KEY); return;
+    }
+    _BORRADOR_CAMPOS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && datos[id] !== undefined) el.value = datos[id];
+    });
+    // Disparar eventos para que el formulario reaccione
+    const placaEl = document.getElementById('n-placa');
+    if (placaEl && placaEl.value) placaEl.dispatchEvent(new Event('input'));
+  } catch(e) {}
+}
+
+function _borradoLimpiar() {
+  try { sessionStorage.removeItem(_BORRADOR_KEY); } catch(e) {}
+}
+
+// Escuchar cambios en el formulario para guardar borrador
+document.addEventListener('DOMContentLoaded', () => {
+  _BORRADOR_CAMPOS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', _borradoGuardar);
+  });
+});
+
 function resetNuevaOrden() {
   const fields = ['n-placa', 'n-marca', 'n-linea', 'n-modelo', 'n-color', 'n-propietario', 'n-telefono', 'n-km', 'n-fecha1', 'n-fecha2', 'n-inv-obs', 'n-cedula-cliente', 'n-vin', 'n-correo-cliente', 'n-direccion', 'n-descripcion-general', 'n-origen'];
   fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -24,6 +111,7 @@ function resetNuevaOrden() {
     const chk = el.querySelector('input[type=checkbox]');
     if (chk) chk.checked = false;
   });
+  _borradoLimpiar();
   _revocarBlobUrls();
   fotosIngresoPendientes = [];
   renderPreviewIngreso();
@@ -1154,8 +1242,12 @@ async function intentarCerrarOrden(ordenId) {
 }
 
 async function _confirmarCierreOrden() {
-  document.getElementById('cierre-resumen-modal')?.remove();
-  await cambiarEstado('Entregada');
+  const btn = document.querySelector('#cierre-resumen-modal button[onclick="_confirmarCierreOrden()"]');
+  const restaurar = _btnEspera(btn, 'Cerrando orden...');
+  try {
+    document.getElementById('cierre-resumen-modal')?.remove();
+    await cambiarEstado('Entregada');
+  } finally { restaurar(); }
 }
 
 // Archivar orden (eliminación reversible) — requiere PIN.
@@ -1390,6 +1482,12 @@ function _actualizarHintNumeroOT() {
 }
 
 async function crearOrden() {
+  const btnGuardar = document.getElementById('wizard-btn-save');
+  const restaurarBtn = _btnEspera(btnGuardar, 'Creando orden...');
+  try { await _crearOrdenInterna(); } finally { restaurarBtn(); }
+}
+
+async function _crearOrdenInterna() {
   const placa = document.getElementById('n-placa')?.value.trim().toUpperCase();
   if (!placa) { toast('La placa es obligatoria', 'err'); document.getElementById('n-placa')?.focus(); return; }
 

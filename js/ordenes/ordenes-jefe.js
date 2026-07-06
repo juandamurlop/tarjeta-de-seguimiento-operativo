@@ -723,6 +723,7 @@ function navJefe(pag) {
       titulo = 'Nueva Orden';
       resetNuevaOrden();
       setTimeout(() => { if (typeof recargarListasNuevaOrden === 'function') recargarListasNuevaOrden(); }, 50);
+      setTimeout(() => { if (typeof _borradoRestaurar === 'function') _borradoRestaurar(); }, 100);
       break;
     case 'dashboard':
       pagId = 'pag-dashboard';
