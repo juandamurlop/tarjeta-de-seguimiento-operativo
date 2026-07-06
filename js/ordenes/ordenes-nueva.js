@@ -1096,24 +1096,30 @@ function _barraAccionesEstado(orden) {
 
 function _bloquePreliqCierre(orden) {
   const enviada = !!orden.preliquidacion_enviada_en;
-  let h = `<div style="background:#F8FAFC;border:1px solid var(--gris-borde);border-radius:8px;padding:10px;margin:8px 0">
-    <div style="font-size:11px;font-weight:700;color:var(--gris-mid);margin-bottom:6px">Preliquidación al cliente</div>
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gris-mid);margin-bottom:3px">📄 Generar orden de trabajo</div>
-    <div style="display:flex;gap:6px;margin-bottom:6px">
-      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},false)">📋 Sin precios</button>
-      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="generarPreliquidacion(${orden.id},true)">💰 Con precios</button>
+  const avisado = !!orden.entrega_avisada_en;
+  let h = `<div style="background:#F8FAFC;border:1px solid var(--gris-borde);border-radius:10px;padding:12px;margin:8px 0">
+    <div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:2px">📄 Resumen para el cliente</div>
+    <div style="font-size:11px;color:var(--gris-mid);margin-bottom:10px">Genera un documento con lo realizado en esta orden</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+      <button class="btn btn-ghost btn-sm" style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px;height:auto;border-radius:8px" onclick="generarPreliquidacion(${orden.id},false)">
+        <span style="font-size:18px">📋</span>
+        <span style="font-size:11px;font-weight:700;color:#334155">Sin valores</span>
+        <span style="font-size:10px;color:var(--gris-mid);text-align:center;line-height:1.3">Solo los trabajos<br>realizados</span>
+      </button>
+      <button class="btn btn-ghost btn-sm" style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px;height:auto;border-radius:8px" onclick="generarPreliquidacion(${orden.id},true)">
+        <span style="font-size:18px">💰</span>
+        <span style="font-size:11px;font-weight:700;color:#334155">Con precios</span>
+        <span style="font-size:10px;color:var(--gris-mid);text-align:center;line-height:1.3">Incluye costos<br>y totales</span>
+      </button>
     </div>
-    <button class="btn btn-sm" style="width:100%;background:#25D366;border-color:#25D366;color:#fff" onclick="enviarPreliquidacionCliente(${orden.id})">📲 ${enviada ? 'Reenviar' : 'Enviar'} preliquidación (WhatsApp)</button>`;
+    <button class="btn btn-sm" style="width:100%;background:#25D366;border-color:#25D366;color:#fff;border-radius:8px" onclick="enviarPreliquidacionCliente(${orden.id})">📲 ${enviada ? 'Reenviar' : 'Enviar'} resumen por WhatsApp</button>`;
   h += enviada
-    ? `<div style="font-size:11px;color:var(--verde);font-weight:600;margin-top:6px">✓ Preliquidación enviada el ${formatTS(orden.preliquidacion_enviada_en)}</div>`
+    ? `<div style="font-size:11px;color:var(--verde);font-weight:600;margin-top:6px">✓ Enviado el ${formatTS(orden.preliquidacion_enviada_en)}</div>`
     : '';
   h += `</div>`;
-  // Botón cerrar — requiere PIN. Se DESBLOQUEA al completar el paso 2 (avisar al
-  // cliente que está listo). La preliquidación ya no es requisito.
-  const avisado = !!orden.entrega_avisada_en;
   h += avisado
-    ? `<button class="btn btn-success" style="width:100%;font-size:14px;font-weight:700;padding:12px;border-radius:10px;letter-spacing:.02em" onclick="intentarCerrarOrden(${orden.id})">✅ Cerrar orden</button>`
-    : `<button class="btn" style="width:100%;opacity:.4;cursor:not-allowed;font-size:14px;padding:12px;border-radius:10px" disabled title="Primero avisa al cliente que está listo (paso 2)">✅ Cerrar orden</button>`;
+    ? `<button class="btn btn-success" style="width:100%;font-size:14px;font-weight:700;padding:12px;border-radius:10px" onclick="intentarCerrarOrden(${orden.id})">✅ Cerrar orden</button>`
+    : `<button class="btn" style="width:100%;opacity:.4;cursor:not-allowed;font-size:14px;padding:12px;border-radius:10px" disabled title="Primero avisa al cliente que está listo (botón de arriba)">✅ Cerrar orden</button>`;
   return h;
 }
 

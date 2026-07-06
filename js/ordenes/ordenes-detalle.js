@@ -587,7 +587,6 @@ async function abrirOrden(id) {
               <span style="flex-shrink:0;font-size:10px;font-weight:800;text-transform:none;letter-spacing:0;color:${orden.pulmon?'#92400E':'#1D4ED8'};background:${orden.pulmon?'#FEF3C7':'#EFF6FF'};border-radius:99px;padding:2px 8px">${orden.pulmon?'En pulmón':(orden.estado||'Activa')}</span>
             </div>
             <div id="estado-orden-body" class="sidebar-card-body" style="${_estadoOrdenAbierto?'':'display:none'}">
-              ${typeof _barraAccionesEstado === 'function' ? _barraAccionesEstado(orden) : ''}
               ${orden.estado === 'Programada'
                 ? `<div style="display:flex;flex-direction:column;gap:10px">
                      <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:#F1F5F9;border-radius:20px">
