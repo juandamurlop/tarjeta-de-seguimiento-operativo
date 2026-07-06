@@ -285,86 +285,137 @@ function kpiHoverPreviewOut(inmediato) {
   }, 150);
 }
 
-// ── Notificaciones flotantes de novedades ─────────────────
+// ── Notificación central de novedades ────────────────────
 let _kpiUltimoEventoId = null;
+let _kpiNovedadTimer = null;
 
 function _kpiMostrarToast(ev) {
-  let contenedor = document.getElementById('kpi-toast-container');
-  if (!contenedor) {
-    contenedor = document.createElement('div');
-    contenedor.id = 'kpi-toast-container';
-    contenedor.style.cssText = `
-      position:fixed;bottom:24px;right:24px;z-index:9999;
-      display:flex;flex-direction:column-reverse;gap:10px;
-      pointer-events:none;
-    `;
-    document.body.appendChild(contenedor);
+  // Si ya hay una visible, encolarla
+  if (document.getElementById('kpi-novedad-overlay')) {
+    setTimeout(() => _kpiMostrarToast(ev), 8500);
+    return;
   }
 
-  const c = ev.color || '#64748B';
-  const toast = document.createElement('div');
-  toast.style.cssText = `
-    background:#1e293b;border:1px solid ${c};border-left:4px solid ${c};
-    border-radius:10px;padding:14px 16px;min-width:280px;max-width:360px;
-    box-shadow:0 8px 32px rgba(0,0,0,0.5);pointer-events:all;cursor:pointer;
-    display:flex;align-items:flex-start;gap:12px;
-    animation:kpiToastIn .35s cubic-bezier(.22,1,.36,1) both;
-    transition:opacity .3s,transform .3s;
-  `;
+  if (!document.getElementById('kpi-novedad-style')) {
+    const s = document.createElement('style');
+    s.id = 'kpi-novedad-style';
+    s.textContent = `
+      #kpi-novedad-overlay {
+        position:fixed;inset:0;z-index:9999;
+        background:rgba(2,6,23,.72);
+        display:flex;align-items:center;justify-content:center;
+        animation:kpiOvIn .35s ease both;
+      }
+      @keyframes kpiOvIn { from{opacity:0} to{opacity:1} }
+      #kpi-novedad-card {
+        background:#0f1e36;
+        border:1px solid rgba(56,189,248,.22);
+        border-radius:24px;
+        padding:30px 36px 26px;
+        width:min(460px,90vw);
+        box-shadow:0 0 0 1px rgba(56,189,248,.08), 0 32px 80px rgba(0,0,0,.8);
+        animation:kpiCardIn .5s cubic-bezier(.22,1,.36,1) both;
+        position:relative;overflow:hidden;
+      }
+      #kpi-novedad-card::before {
+        content:'';position:absolute;inset:0;pointer-events:none;
+        background:radial-gradient(ellipse at 50% 0%,rgba(56,189,248,.16) 0%,transparent 65%);
+        animation:kpiDestello .7s ease both;
+      }
+      @keyframes kpiDestello{from{opacity:0}50%{opacity:1}to{opacity:.35}}
+      @keyframes kpiCardIn{from{opacity:0;transform:scale(.82) translateY(28px)}to{opacity:1;transform:scale(1) translateY(0)}}
+      .kpi-nov-pulso {
+        width:9px;height:9px;border-radius:50%;background:#38bdf8;flex-shrink:0;
+        box-shadow:0 0 0 0 rgba(56,189,248,.6);
+        animation:kpiPulso 1.4s ease-out infinite;
+      }
+      @keyframes kpiPulso{0%{box-shadow:0 0 0 0 rgba(56,189,248,.7)}70%{box-shadow:0 0 0 10px rgba(56,189,248,0)}100%{box-shadow:0 0 0 0 rgba(56,189,248,0)}}
+      .kpi-nov-placa {
+        font-size:52px;font-weight:900;letter-spacing:.08em;font-family:monospace;
+        background:linear-gradient(135deg,#f1f5f9,#7dd3fc);
+        -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+        animation:kpiPlacaIn .55s cubic-bezier(.22,1,.36,1) .15s both;
+      }
+      @keyframes kpiPlacaIn{from{opacity:0;transform:scale(1.12)}60%{transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+      .kpi-nov-cambio {
+        display:flex;align-items:center;gap:10px;
+        background:rgba(255,255,255,.04);border-radius:14px;
+        padding:14px 18px;margin-bottom:16px;
+        animation:kpiSlideUp .5s cubic-bezier(.22,1,.36,1) .18s both;
+      }
+      .kpi-nov-estado { flex:1;text-align:center;padding:8px 10px;border-radius:10px; }
+      .kpi-nov-estado.antes { background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2); }
+      .kpi-nov-estado.despues { background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.2); }
+      @keyframes kpiSlideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+      .kpi-nov-bar { height:3px;background:linear-gradient(90deg,#38bdf8,#7dd3fc);border-radius:999px;animation:kpiProg 7s linear forwards; }
+      @keyframes kpiProg{from{width:100%}to{width:0%}}
+    `;
+    document.head.appendChild(s);
+  }
+
+  const desc = escapeHtml(ev.descripcion || '');
+  // Intentar detectar "antes → después" en la descripción (formato: "X → Y")
+  const flechaMatch = (ev.descripcion || '').match(/^(.+?)\s*[→\->]+\s*(.+)$/);
+  const cambioHtml = flechaMatch
+    ? `<div class="kpi-nov-cambio">
+        <div class="kpi-nov-estado antes"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#f87171;margin-bottom:3px">Antes</div><div style="font-size:13px;font-weight:700;color:#f87171">${escapeHtml(flechaMatch[1].trim())}</div></div>
+        <div style="font-size:20px;color:#334155;flex-shrink:0">→</div>
+        <div class="kpi-nov-estado despues"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#34d399;margin-bottom:3px">Ahora</div><div style="font-size:13px;font-weight:700;color:#34d399">${escapeHtml(flechaMatch[2].trim())}</div></div>
+      </div>`
+    : `<div style="font-size:14px;color:#94a3b8;line-height:1.55;margin-bottom:16px;text-align:center;animation:kpiSlideUp .5s cubic-bezier(.22,1,.36,1) .18s both">${desc}</div>`;
 
   const placaHtml = ev.placa
-    ? `<span style="background:${c}22;color:${c};font-weight:700;font-size:12px;padding:2px 7px;border-radius:5px;letter-spacing:.05em">${escapeHtml(ev.placa)}</span>`
+    ? `<div class="kpi-nov-placa">${escapeHtml(ev.placa)}</div>`
     : '';
   const ordenHtml = ev.orden_id
-    ? `<span style="color:#94a3b8;font-size:11px">Orden #${ev.orden_id}</span>`
+    ? `<div style="display:inline-block;margin-top:4px;padding:3px 12px;border-radius:999px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.22);font-size:12px;color:#7dd3fc">Orden #${ev.orden_id}</div>`
     : '';
 
-  toast.innerHTML = `
-    <span style="font-size:22px;line-height:1;flex-shrink:0">${escapeHtml(ev.icono || '📋')}</span>
-    <div style="flex:1;min-width:0">
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
-        ${placaHtml}${ordenHtml}
+  const overlay = document.createElement('div');
+  overlay.id = 'kpi-novedad-overlay';
+  overlay.innerHTML = `
+    <div id="kpi-novedad-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+        <div class="kpi-nov-pulso"></div>
+        <span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#38bdf8">Novedad en taller</span>
+        <button id="kpi-nov-x" style="margin-left:auto;background:none;border:none;color:#334155;font-size:20px;cursor:pointer;line-height:1;padding:0">✕</button>
       </div>
-      <div style="color:#e2e8f0;font-size:13px;line-height:1.4;margin-bottom:4px">${escapeHtml(ev.descripcion || '')}</div>
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-        <span style="background:${c}20;color:${c};font-size:10px;padding:1px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.06em">${escapeHtml(ev.tipo || '')}</span>
-        ${ev.autor && ev.autor !== '—' ? `<span style="color:#64748b;font-size:11px">· ${escapeHtml(ev.autor)}</span>` : ''}
+      <div style="text-align:center;margin-bottom:20px">
+        ${placaHtml}
+        ${ordenHtml}
+      </div>
+      ${cambioHtml}
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;font-size:12px;color:#64748b;animation:kpiSlideUp .5s cubic-bezier(.22,1,.36,1) .28s both">
+        <span style="font-size:16px">${escapeHtml(ev.icono || '📋')}</span>
+        ${ev.autor && ev.autor !== '—' ? `<span>${escapeHtml(ev.autor)}</span>` : ''}
+        <span>· ahora</span>
+      </div>
+      <div style="margin-top:18px;height:3px;background:rgba(255,255,255,.07);border-radius:999px;overflow:hidden">
+        <div class="kpi-nov-bar" id="kpi-nov-bar"></div>
       </div>
     </div>
-    <button onclick="this.closest('[id]').remove?.()" style="
-      background:none;border:none;color:#64748b;font-size:16px;cursor:pointer;
-      padding:0;line-height:1;flex-shrink:0;pointer-events:all
-    ">✕</button>
   `;
 
+  const cerrar = () => {
+    clearTimeout(_kpiNovedadTimer);
+    overlay.style.transition = 'opacity .35s';
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 360);
+  };
+
+  overlay.querySelector('#kpi-nov-x').addEventListener('click', cerrar);
+  overlay.addEventListener('click', e => { if (e.target === overlay) cerrar(); });
   if (ev.orden_id) {
-    toast.addEventListener('click', e => {
-      if (e.target.tagName === 'BUTTON') return;
-      _kpiAbrirOrden(ev.orden_id);
+    overlay.querySelector('#kpi-novedad-card').style.cursor = 'pointer';
+    overlay.querySelector('#kpi-novedad-card').addEventListener('click', e => {
+      if (e.target.id === 'kpi-nov-x') return;
+      cerrar();
+      setTimeout(() => _kpiAbrirOrden(ev.orden_id), 200);
     });
   }
 
-  contenedor.appendChild(toast);
-
-  // Auto-cierre en 7 segundos
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateX(20px)';
-    setTimeout(() => toast.remove(), 320);
-  }, 7000);
-}
-
-// Inyectar animación CSS una sola vez
-if (!document.getElementById('kpi-toast-style')) {
-  const s = document.createElement('style');
-  s.id = 'kpi-toast-style';
-  s.textContent = `
-    @keyframes kpiToastIn {
-      from { opacity:0; transform:translateX(40px) scale(.95); }
-      to   { opacity:1; transform:translateX(0)    scale(1);   }
-    }
-  `;
-  document.head.appendChild(s);
+  document.body.appendChild(overlay);
+  _kpiNovedadTimer = setTimeout(cerrar, 7000);
 }
 
 // ── Centro de Actividad ──────────────────────────────────
@@ -377,37 +428,78 @@ function _haceCuanto(isoStr) {
   return Math.floor(s / 86400) + 'd';
 }
 
+// fecha seleccionada en el historial (YYYY-MM-DD), null = hoy
+let _kpiFeedFecha = null;
+
+function _kpiFeedFechaHoy() {
+  return new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+}
+
+function _kpiFeedEsHoy() {
+  return !_kpiFeedFecha || _kpiFeedFecha === _kpiFeedFechaHoy();
+}
+
+function _kpiFeedCambiarFecha(delta) {
+  const base = _kpiFeedFecha || _kpiFeedFechaHoy();
+  const d = new Date(base + 'T12:00:00');
+  d.setDate(d.getDate() + delta);
+  const nueva = d.toLocaleDateString('en-CA');
+  _kpiFeedFecha = nueva === _kpiFeedFechaHoy() ? null : nueva;
+  _kpiFeed();
+}
+
+function _kpiFeedFechaLabel() {
+  if (_kpiFeedEsHoy()) return 'Hoy';
+  const d = new Date((_kpiFeedFecha) + 'T12:00:00');
+  return d.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
 async function _kpiFeed() {
   const el = document.getElementById('kpi-feed');
   const ua = document.getElementById('kpi-ult-act');
   if (!el && !ua) return;
   try {
-    const evs = await api('/eventos_taller?order=creado_en.desc&limit=50').catch(() => null);
-    if (evs === null) return;
-    const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    // Construir filtro de fecha
+    const fechaBase = _kpiFeedFecha || _kpiFeedFechaHoy();
+    const dInicio = fechaBase + 'T00:00:00';
+    const dFin    = fechaBase + 'T23:59:59';
+    const filtroFecha = `creado_en=gte.${dInicio}&creado_en=lte.${dFin}`;
 
-    // Detectar eventos nuevos y mostrar toasts
-    if (_kpiUltimoEventoId !== null && evs.length > 0) {
+    // Para detectar novedades siempre consultamos hoy sin límite de fecha
+    const evsHoy = _kpiFeedEsHoy()
+      ? null  // se reutiliza la misma consulta abajo
+      : await api(`/eventos_taller?order=creado_en.desc&limit=10&creado_en=gte.${_kpiFeedFechaHoy()}T00:00:00`).catch(() => null);
+
+    const evs = await api(`/eventos_taller?order=creado_en.desc&limit=100&${filtroFecha}`).catch(() => null);
+    if (evs === null) return;
+
+    const evsFiltrados = evs; // ya vienen del día seleccionado
+
+    // Detectar novedades solo cuando estamos viendo hoy
+    const evsFuenteHoy = _kpiFeedEsHoy() ? evs : (evsHoy || []);
+    if (_kpiUltimoEventoId !== null && evsFuenteHoy.length > 0) {
       const nuevos = [];
-      for (const ev of evs) {
+      for (const ev of evsFuenteHoy) {
         if (ev.id === _kpiUltimoEventoId) break;
         nuevos.push(ev);
       }
-      // Mostrar en orden cronológico (el más viejo primero)
       nuevos.reverse().forEach(ev => _kpiMostrarToast(ev));
     }
-    if (evs.length > 0) _kpiUltimoEventoId = evs[0].id;
+    if (evsFuenteHoy.length > 0) _kpiUltimoEventoId = evsFuenteHoy[0].id;
 
-    // ── Panel lateral "Últimas 5 actividades" ──
+    const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    // ── Panel lateral "Últimas 5 actividades" (siempre muestra hoy) ──
     if (ua) {
       const horaUa = ua.querySelector('.kpi-ua-hora');
       if (horaUa) horaUa.textContent = hora;
       const listaUa = ua.querySelector('.kpi-ua-list');
       if (listaUa) {
-        if (!evs.length) {
-          listaUa.innerHTML = '<div class="kpi-ua-vacio">Sin actividad reciente</div>';
+        const evsPanelHoy = _kpiFeedEsHoy() ? evsFiltrados : (evsHoy || []);
+        if (!evsPanelHoy.length) {
+          listaUa.innerHTML = '<div class="kpi-ua-vacio">Sin actividad hoy</div>';
         } else {
-          listaUa.innerHTML = evs.slice(0, 5).map(e => {
+          listaUa.innerHTML = evsPanelHoy.slice(0, 5).map(e => {
             const c = escapeHtml(e.color || '#64748B');
             const attrs = e.orden_id
               ? `class="kpi-ua-item clic" onclick="_kpiAbrirOrden(${e.orden_id})"`
@@ -429,24 +521,42 @@ async function _kpiFeed() {
 
     // ── Feed completo "Centro de actividad" ──
     if (!el) return;
+
+    // Actualizar navegador de fecha en el header del feed
     const horaEl = el.querySelector('.kpi-feed-hora');
-    if (horaEl) horaEl.textContent = hora;
+    if (horaEl) horaEl.textContent = _kpiFeedEsHoy() ? hora : '';
+    let navEl = el.querySelector('.kpi-feed-nav');
+    if (!navEl) {
+      navEl = document.createElement('div');
+      navEl.className = 'kpi-feed-nav';
+      navEl.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:8px';
+      el.insertBefore(navEl, el.querySelector('.kpi-feed-list'));
+    }
+    navEl.innerHTML = `
+      <button onclick="_kpiFeedCambiarFecha(-1)" style="background:none;border:1px solid rgba(255,255,255,.1);color:#64748b;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:13px">‹</button>
+      <span style="flex:1;text-align:center;font-size:12px;font-weight:600;color:${_kpiFeedEsHoy() ? '#38bdf8' : '#94a3b8'}">${_kpiFeedFechaLabel()}</span>
+      <button onclick="_kpiFeedCambiarFecha(+1)" ${_kpiFeedEsHoy() ? 'disabled style="opacity:.3;cursor:default"' : 'style="cursor:pointer"'} style="background:none;border:1px solid rgba(255,255,255,.1);color:#64748b;border-radius:6px;padding:2px 8px;font-size:13px">›</button>
+    `;
+
     const lista = el.querySelector('.kpi-feed-list');
     if (!lista) return;
-    if (!evs.length) {
-      lista.innerHTML = '<div class="kpi-feed-vacio">Sin actividad reciente — las acciones del taller aparecerán aquí en tiempo real</div>';
+    if (!evsFiltrados.length) {
+      lista.innerHTML = `<div class="kpi-feed-vacio">Sin actividad ${_kpiFeedEsHoy() ? 'hoy' : 'este día'} — las acciones del taller aparecen aquí en tiempo real</div>`;
       return;
     }
-    lista.innerHTML = evs.map(e => {
+    lista.innerHTML = evsFiltrados.map(e => {
       const c = escapeHtml(e.color || '#64748B');
       const clic = e.orden_id ? `class="kpi-ev clic" onclick="_kpiAbrirOrden(${e.orden_id})"` : 'class="kpi-ev"';
+      const horaEv = e.creado_en
+        ? new Date(e.creado_en).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
+        : '';
       return `<div ${clic}>
         <span class="kpi-ev-ico">${escapeHtml(e.icono || '📋')}</span>
         <span class="kpi-ev-body">
           <div class="kpi-ev-desc">${escapeHtml(e.descripcion || '')}</div>
           <div class="kpi-ev-meta">
             <span class="kpi-ev-tag" style="background:${c}20;color:${c}">${escapeHtml(e.tipo || '')}</span>
-            <span>${_haceCuanto(e.creado_en)}</span>
+            <span>${horaEv}</span>
             ${e.autor && e.autor !== '—' ? `<span>· ${escapeHtml(e.autor)}</span>` : ''}
           </div>
         </span>
