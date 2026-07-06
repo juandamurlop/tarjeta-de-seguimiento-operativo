@@ -197,8 +197,6 @@ async function abrirOrden(id) {
       </div>`;
     }).join('') : '<span style="font-size:12px;color:var(--gris-mid)">Sin etapas.</span>';
 
-    const estadoClase = orden.pulmon ? 'pulmon' : (orden.estado||'activa').toLowerCase();
-    const estadoTexto = orden.pulmon ? 'En Pulmón' : (orden.estado||'Activa');
 
     const primera = etapas.find(e=>e.inicio);
     const activa = etapas.find(e=>e.inicio&&!e.fin);
@@ -278,7 +276,7 @@ async function abrirOrden(id) {
                 <div class="detalle-vehiculo" style="margin-top:3px">${[orden.marca,orden.linea,orden.modelo,orden.color].filter(Boolean).map(escapeHtml).join(' · ') || '—'}</div>
               </div>
               <div style="display:flex;flex-wrap:wrap;align-items:center;gap:5px;justify-content:flex-end">
-                <span class="badge badge-${estadoClase}">${estadoTexto}</span>
+                ${badgeOrden(orden)}
                 ${orden.tipo_cliente ? `<span class="badge badge-${orden.tipo_cliente}">${orden.tipo_cliente}</span>` : ''}
               </div>
             </div>

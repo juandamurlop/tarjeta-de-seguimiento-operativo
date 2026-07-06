@@ -79,6 +79,17 @@ function repuestoEstadoInfo(estado) {
   return REPUESTO_ESTADOS[estado] || { label: estado || '—', paso: 0, color: '#6B7280', bg: '#F3F4F6', icon: '•', pendiente: false };
 }
 
+// ═══════════════════════════════════════════════════════════
+// BADGE DE ESTADO DE ORDEN — fuente única para todos los módulos.
+// Uso: badgeOrden(orden) → string HTML con el <span class="badge ...">
+// ═══════════════════════════════════════════════════════════
+function badgeOrden(orden) {
+  if (!orden) return '';
+  const cls  = orden.pulmon ? 'pulmon' : (orden.estado || 'activa').toLowerCase();
+  const txt  = orden.pulmon ? 'En Pulmón' : escapeHtml(orden.estado || 'Activa');
+  return `<span class="badge badge-${cls}">${txt}</span>`;
+}
+
 function safeUrl(url) {
   if (!url || typeof url !== 'string') return '#';
   const lower = url.trim().toLowerCase();

@@ -1456,11 +1456,21 @@ async function _setProximoNumeroOT(n) {
     await api('/config_app', 'POST', { clave: 'proximo_numero_ot', valor: String(n) }, { Prefer: 'resolution=merge-duplicates' });
   } catch (e) { console.warn('No se pudo guardar el contador de OT:', e?.message); }
 }
-// Devuelve el número a usar AHORA y avanza el contador para la próxima orden.
+// Mutex: evita que dos llamadas simultáneas lean el mismo contador y generen
+// el mismo número OT (TOCTOU). Solo una puede avanzar el contador a la vez.
+let _otMutex = null;
 async function _siguienteNumeroOT() {
-  const actual = await _leerProximoNumeroOT();
-  await _setProximoNumeroOT(actual + 1);
-  return actual;
+  while (_otMutex) await _otMutex;
+  let _resolve;
+  _otMutex = new Promise(r => { _resolve = r; });
+  try {
+    const actual = await _leerProximoNumeroOT();
+    await _setProximoNumeroOT(actual + 1);
+    return actual;
+  } finally {
+    _otMutex = null;
+    _resolve();
+  }
 }
 // Cambiar el número que se asignará a la PRÓXIMA orden.
 async function configurarNumeracionOT() {
