@@ -839,8 +839,14 @@ function navJefe(pag) {
   const pagsSinGuardar = ['nueva', 'detalle'];
   if (!pagsSinGuardar.includes(pag)) sessionStorage.setItem('ultima_pag_jefe', pag);
 
-  // Si es la página de órdenes, cargar las órdenes
-  if (pag === 'ordenes') cargarOrdenes();
+  // Si es la página de órdenes, cargar las órdenes.
+  // Si viene de navegación normal (no del dashboard), resetear a Activa para que
+  // nunca queden mostrando órdenes cerradas de una navegación anterior.
+  if (pag === 'ordenes') {
+    if (!_filtroOrdenesForzado) filtroEstado = 'Activa';
+    _filtroOrdenesForzado = false;
+    cargarOrdenes();
+  }
 
   closeSidebar();
 }

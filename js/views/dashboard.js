@@ -1253,6 +1253,7 @@ function dashFiltrarOrdenes(tipo) {
     filtroEstado = 'Activa';
   }
 
+  _filtroOrdenesForzado = true; // evitar que navJefe resetee el filtro elegido aquí
   navJefe('ordenes'); // llama cargarOrdenes() (o retorna si pulmon)
 
   // Pulmón: navJefe no carga el listado porque filtroEstado=null → cargar manualmente

@@ -44,6 +44,7 @@ const PERMISOS_CATALOGO = [
 let mecanicos = [];
 let ordenActual = null;
 let filtroEstado = 'Activa';
+let _filtroOrdenesForzado = false; // true cuando el dashboard navega con un filtro específico
 let modalOrdenId = null;
 let srvSeleccionados = [];
 let modalPaso = 1;
