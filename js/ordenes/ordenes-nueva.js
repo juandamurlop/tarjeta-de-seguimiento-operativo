@@ -24,6 +24,7 @@ function resetNuevaOrden() {
     const chk = el.querySelector('input[type=checkbox]');
     if (chk) chk.checked = false;
   });
+  _revocarBlobUrls();
   fotosIngresoPendientes = [];
   renderPreviewIngreso();
   const resultado = document.getElementById('placa-resultado');
@@ -104,20 +105,38 @@ function agregarFotosIngreso(input) {
   renderPreviewIngreso();
 }
 
+let _blobUrls = [];
+
+function _revocarBlobUrls() {
+  _blobUrls.forEach(u => URL.revokeObjectURL(u));
+  _blobUrls = [];
+}
+
 function renderPreviewIngreso() {
   const g = document.getElementById('fotos-ingreso-preview');
   if (!g) return;
-  g.innerHTML = fotosIngresoPendientes.map((f, i) => `
+  _revocarBlobUrls();
+  const urls = fotosIngresoPendientes.map(f => URL.createObjectURL(f));
+  _blobUrls = [...urls];
+  g.innerHTML = urls.map((url, i) => `
     <div class="foto-thumb">
-      <img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover">
+      <img src="${url}" style="width:100%;height:100%;object-fit:cover">
       <button class="foto-delete" style="opacity:1" onclick="quitarFotoIngreso(${i})">✕</button>
     </div>`).join('');
 }
 
-function quitarFotoIngreso(i) { 
-  fotosIngresoPendientes.splice(i, 1); 
-  renderPreviewIngreso(); 
+function quitarFotoIngreso(i) {
+  fotosIngresoPendientes.splice(i, 1);
+  renderPreviewIngreso();
 }
+
+// Avisar si el usuario intenta recargar/salir con fotos pendientes
+window.addEventListener('beforeunload', e => {
+  if (fotosIngresoPendientes.length > 0) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
 
 // ── Buscador unificado: placa o nombre de cliente/organización ──
 let _placaDebounce = null;
@@ -240,7 +259,7 @@ async function seleccionarClienteSug(key) {
     return;
   }
   try {
-    const ords = await api(`/ordenes?placa=in.(${placas.join(',')})&select=placa,marca,linea,modelo,color&order=creado_en.desc`).catch(()=>[]) || [];
+    const ords = await api(`/ordenes?placa=in.(${placas.map(p => encodeURIComponent(p)).join(',')})&select=placa,marca,linea,modelo,color&order=creado_en.desc`).catch(()=>[]) || [];
     const m = {}; ords.forEach(o => { if (!m[o.placa]) m[o.placa] = o; });
     const lista = Object.values(m);
     _placaRegistry = {}; lista.forEach(s => { _placaRegistry[s.placa] = s; });
@@ -1528,6 +1547,7 @@ async function crearOrden() {
     }
 
     resetNuevaOrden();
+    _revocarBlobUrls();
     fotosIngresoPendientes = [];
     modalOrdenId = ordenId;
     toast(completando ? '✓ Vehículo recibido — orden activada' : 'Orden creada ✓');

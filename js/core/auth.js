@@ -130,20 +130,33 @@ let _tokenRefreshInterval = null;
 // gerente en una pestaña y repuestos en otra sin que se pisen). En localStorage
 // guardamos un respaldo de la ÚLTIMA sesión para NO sacar al usuario al cerrar y
 // reabrir la app (PWA): una pestaña nueva sin sesión propia adopta ese respaldo.
+const _SESION_TTL_MS = 8 * 60 * 60 * 1000; // 8 horas
+
 function _guardarSesion(datos) {
-  const s = JSON.stringify(datos);
-  try { sessionStorage.setItem('sesion_freiman', s); } catch(e) {}
-  try { localStorage.setItem('sesion_freiman', s); } catch(e) {}
+  const payload = JSON.stringify({ datos, guardadoEn: Date.now() });
+  try { sessionStorage.setItem('sesion_freiman', payload); } catch(e) {}
+  try { localStorage.setItem('sesion_freiman', payload); } catch(e) {}
 }
 function _leerSesionGuardada() {
-  let s = null;
-  try { s = sessionStorage.getItem('sesion_freiman'); } catch(e) {}
-  if (!s) {
-    try { s = localStorage.getItem('sesion_freiman'); } catch(e) {}
-    // Sembrar el respaldo como sesión propia de ESTA pestaña (queda independiente).
-    if (s) { try { sessionStorage.setItem('sesion_freiman', s); } catch(e) {} }
+  let raw = null;
+  try { raw = sessionStorage.getItem('sesion_freiman'); } catch(e) {}
+  if (!raw) {
+    try { raw = localStorage.getItem('sesion_freiman'); } catch(e) {}
+    if (raw) { try { sessionStorage.setItem('sesion_freiman', raw); } catch(e) {} }
   }
-  return s;
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    // Soporte para formato antiguo (sin wrapper guardadoEn)
+    if (!parsed.guardadoEn) return raw;
+    if (Date.now() - parsed.guardadoEn > _SESION_TTL_MS) {
+      // Sesión expirada por tiempo — limpiar ambos storages
+      try { localStorage.removeItem('sesion_freiman'); } catch(e) {}
+      try { sessionStorage.removeItem('sesion_freiman'); } catch(e) {}
+      return null;
+    }
+    return JSON.stringify(parsed.datos);
+  } catch(e) { return raw; }
 }
 
 function iniciarSesion(datos) {
