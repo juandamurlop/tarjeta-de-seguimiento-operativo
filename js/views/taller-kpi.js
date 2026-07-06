@@ -285,6 +285,88 @@ function kpiHoverPreviewOut(inmediato) {
   }, 150);
 }
 
+// ── Notificaciones flotantes de novedades ─────────────────
+let _kpiUltimoEventoId = null;
+
+function _kpiMostrarToast(ev) {
+  let contenedor = document.getElementById('kpi-toast-container');
+  if (!contenedor) {
+    contenedor = document.createElement('div');
+    contenedor.id = 'kpi-toast-container';
+    contenedor.style.cssText = `
+      position:fixed;bottom:24px;right:24px;z-index:9999;
+      display:flex;flex-direction:column-reverse;gap:10px;
+      pointer-events:none;
+    `;
+    document.body.appendChild(contenedor);
+  }
+
+  const c = ev.color || '#64748B';
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    background:#1e293b;border:1px solid ${c};border-left:4px solid ${c};
+    border-radius:10px;padding:14px 16px;min-width:280px;max-width:360px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.5);pointer-events:all;cursor:pointer;
+    display:flex;align-items:flex-start;gap:12px;
+    animation:kpiToastIn .35s cubic-bezier(.22,1,.36,1) both;
+    transition:opacity .3s,transform .3s;
+  `;
+
+  const placaHtml = ev.placa
+    ? `<span style="background:${c}22;color:${c};font-weight:700;font-size:12px;padding:2px 7px;border-radius:5px;letter-spacing:.05em">${escapeHtml(ev.placa)}</span>`
+    : '';
+  const ordenHtml = ev.orden_id
+    ? `<span style="color:#94a3b8;font-size:11px">Orden #${ev.orden_id}</span>`
+    : '';
+
+  toast.innerHTML = `
+    <span style="font-size:22px;line-height:1;flex-shrink:0">${escapeHtml(ev.icono || '📋')}</span>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+        ${placaHtml}${ordenHtml}
+      </div>
+      <div style="color:#e2e8f0;font-size:13px;line-height:1.4;margin-bottom:4px">${escapeHtml(ev.descripcion || '')}</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="background:${c}20;color:${c};font-size:10px;padding:1px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.06em">${escapeHtml(ev.tipo || '')}</span>
+        ${ev.autor && ev.autor !== '—' ? `<span style="color:#64748b;font-size:11px">· ${escapeHtml(ev.autor)}</span>` : ''}
+      </div>
+    </div>
+    <button onclick="this.closest('[id]').remove?.()" style="
+      background:none;border:none;color:#64748b;font-size:16px;cursor:pointer;
+      padding:0;line-height:1;flex-shrink:0;pointer-events:all
+    ">✕</button>
+  `;
+
+  if (ev.orden_id) {
+    toast.addEventListener('click', e => {
+      if (e.target.tagName === 'BUTTON') return;
+      _kpiAbrirOrden(ev.orden_id);
+    });
+  }
+
+  contenedor.appendChild(toast);
+
+  // Auto-cierre en 7 segundos
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(20px)';
+    setTimeout(() => toast.remove(), 320);
+  }, 7000);
+}
+
+// Inyectar animación CSS una sola vez
+if (!document.getElementById('kpi-toast-style')) {
+  const s = document.createElement('style');
+  s.id = 'kpi-toast-style';
+  s.textContent = `
+    @keyframes kpiToastIn {
+      from { opacity:0; transform:translateX(40px) scale(.95); }
+      to   { opacity:1; transform:translateX(0)    scale(1);   }
+    }
+  `;
+  document.head.appendChild(s);
+}
+
 // ── Centro de Actividad ──────────────────────────────────
 function _haceCuanto(isoStr) {
   if (!isoStr) return '';
@@ -303,6 +385,18 @@ async function _kpiFeed() {
     const evs = await api('/eventos_taller?order=creado_en.desc&limit=50').catch(() => null);
     if (evs === null) return;
     const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    // Detectar eventos nuevos y mostrar toasts
+    if (_kpiUltimoEventoId !== null && evs.length > 0) {
+      const nuevos = [];
+      for (const ev of evs) {
+        if (ev.id === _kpiUltimoEventoId) break;
+        nuevos.push(ev);
+      }
+      // Mostrar en orden cronológico (el más viejo primero)
+      nuevos.reverse().forEach(ev => _kpiMostrarToast(ev));
+    }
+    if (evs.length > 0) _kpiUltimoEventoId = evs[0].id;
 
     // ── Panel lateral "Últimas 5 actividades" ──
     if (ua) {
