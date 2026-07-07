@@ -631,7 +631,10 @@ async function cargarKPITaller() {
       api(`/ventas_mensuales?ano=eq.${hoy.getFullYear()}&mes_num=eq.${hoy.getMonth()+1}&select=meta_base,ventas&limit=1`).catch(() => [])
     ]);
 
-    const etapasActivas = todasEtapas.filter(e => e.inicio && !e.fin);
+    // Solo etapas que pertenecen a órdenes activas (excluye Entregadas/Archivadas)
+    const _actIdsSet = new Set(ordenesActivas.map(o => o.id));
+    const etapasSoloActivas = todasEtapas.filter(e => _actIdsSet.has(e.orden_id));
+    const etapasActivas = etapasSoloActivas.filter(e => e.inicio && !e.fin);
     const tecRoles = ['jefe_taller', 'gerente', 'prueba', 'repuestos', 'pantalla_taller', 'asesor_comercial'];
 
     // ── KPI 1: Órdenes sin técnico asignado ───────────────
@@ -650,7 +653,7 @@ async function cargarKPITaller() {
     const k1Max = k1Filas.reduce((m, f) => _kpiMs(ordenesActivas.find(o => o.placa === f.placa)?.creado_en) > m ? _kpiMs(ordenesActivas.find(o => o.placa === f.placa)?.creado_en) : m, 0);
 
     // ── KPI 2: Etapas asignadas sin iniciar ───────────────
-    const k2Filas = todasEtapas.filter(e => e.mecanico_id && !e.inicio && !e.fin).map(e => {
+    const k2Filas = etapasSoloActivas.filter(e => e.mecanico_id && !e.inicio && !e.fin).map(e => {
       const o = ordenesActivas.find(or => or.id === e.orden_id) || {};
       const ms = _kpiMs(e.creado_en);
       return {
@@ -663,7 +666,7 @@ async function cargarKPITaller() {
     });
     window._kpiStore.k2 = { titulo: 'Etapas asignadas sin iniciar', filas: k2Filas };
     const k2Color = _kpiSemaforo(k2Filas.length, 5, 2);
-    const k2Max = k2Filas.length ? Math.max(...todasEtapas.filter(e => e.mecanico_id && !e.inicio && !e.fin).map(e => _kpiMs(e.creado_en))) : 0;
+    const k2Max = k2Filas.length ? Math.max(...etapasSoloActivas.filter(e => e.mecanico_id && !e.inicio && !e.fin).map(e => _kpiMs(e.creado_en))) : 0;
 
     // ── KPI 3: Entretiempos entre etapas ──────────────────
     const k3Filas = [];
@@ -725,12 +728,12 @@ async function cargarKPITaller() {
     const k5Color = k5Filas.length > 0 ? 'rojo' : 'verde';
 
     // ── KPI 6: Prom. asignación → arranque ────────────────
-    const tiemposArr = todasEtapas
+    const tiemposArr = etapasSoloActivas
       .filter(e => e.mecanico_id && e.inicio && e.creado_en)
       .map(e => new Date(e.inicio).getTime() - new Date(e.creado_en).getTime())
       .filter(t => t > 0 && t < 7 * 24 * 3600000);
     const k6Prom = tiemposArr.length ? Math.round(tiemposArr.reduce((a, b) => a + b, 0) / tiemposArr.length) : 0;
-    const k6Filas = todasEtapas.filter(e => e.mecanico_id && e.inicio && e.creado_en && (new Date(e.inicio) - new Date(e.creado_en)) > 0)
+    const k6Filas = etapasSoloActivas.filter(e => e.mecanico_id && e.inicio && e.creado_en && (new Date(e.inicio) - new Date(e.creado_en)) > 0)
       .slice(-20).map(e => {
         const o = ordenesActivas.find(or => or.id === e.orden_id) || {};
         const ms = new Date(e.inicio) - new Date(e.creado_en);

@@ -433,7 +433,7 @@ async function abrirOrden(id) {
             ${/* [Oculto] Panel "Repuestos de la orden" (flujo con proveedores) — retirado de la UI por pedido; el código se conserva. */ ''}
         </div>
         <div class="detalle-sidebar">
-          ${(!(orden.numero_ot && String(orden.numero_ot).trim()) && orden.estado !== 'Programada') ? `
+          ${(!(orden.numero_ot && String(orden.numero_ot).trim()) && orden.estado !== 'Programada' && orden.estado !== 'Entregada' && orden.estado !== 'Archivada') ? `
           <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:9px;padding:8px 10px;margin-bottom:10px">
             <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#92400E;margin-bottom:6px">
               <svg width="13" height="13" fill="none" stroke="#92400E" stroke-width="2.4" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -723,8 +723,11 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
 
   const sinTecnico = !e.mecanico_id && !e.tercero;
 
+  const _ordenCerrada = ordenActual?.estado === 'Entregada' || ordenActual?.estado === 'Archivada';
   let acc = '';
-  if (!e.inicio) {
+  if (_ordenCerrada) {
+    // Orden cerrada: sin acciones en etapas
+  } else if (!e.inicio) {
     if (sinTecnico) {
       // No se puede iniciar hasta asignar un técnico. Aviso visible + botón
       // deshabilitado que apunta al selector "Técnico asignado" de abajo.
@@ -816,7 +819,7 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
           return `<div style="background:var(--azul-light);border:1px solid var(--gris-borde);border-radius:7px;padding:9px 12px;margin-bottom:10px;font-size:12.5px;color:var(--texto);line-height:1.5">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
               <span style="font-size:10px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:.06em">Descripción</span>
-              ${_esJ ? `<button class="btn btn-ghost btn-xs" style="flex-shrink:0;font-size:10.5px;padding:2px 8px" onclick="_editarDescEtapa('${k}')">✏ Editar</button>` : ''}
+              ${_esJ && !_ordenCerrada ? `<button class="btn btn-ghost btn-xs" style="flex-shrink:0;font-size:10.5px;padding:2px 8px" onclick="_editarDescEtapa('${k}')">✏ Editar</button>` : ''}
             </div>
             <div id="desc-etapa-text-${k}" style="margin-top:3px;white-space:pre-wrap">${e.descripcion ? escapeHtml(e.descripcion) : '<span style="color:var(--gris-mid)">Sin descripción</span>'}</div>
             ${_esJ ? `<div id="desc-etapa-editor-${k}" style="display:none;margin-top:8px">
