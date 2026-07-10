@@ -61,12 +61,13 @@ function montarApp() {
   document.getElementById('app').classList.add('show');
 
   const rolLabels = {
-    gerente:   'Gerente General',
-    jefe:      'Jefe de Taller',
-    mecanico:  'Mecánico',
-    taller:    'Pantalla Taller',
-    repuestos: 'Repuestos',
-    cliente:   'Cliente'
+    gerente:      'Gerente General',
+    jefe:         'Jefe de Taller',
+    mecanico:     'Mecánico',
+    taller:       'Pantalla Taller',
+    repuestos:    'Repuestos',
+    cliente:      'Cliente',
+    encuestador:  'Encuestador'
   };
 
   // A prueba de fallos: si falta algún elemento del shell, NO debe tumbar el
@@ -97,6 +98,11 @@ function montarApp() {
       else montarMecanico();
       break;
     }
+    case 'encuestador':
+      // Solo ve Encuestas — permisos forzados independiente de lo que traiga el RPC
+      sesion.permisos = { ver_encuestas: true, gestionar_encuestas: true };
+      montarRolPersonalizado();
+      break;
     case 'taller':    esJefe() ? montarTallerKPI() : montarTaller(); break;
     case 'repuestos': montarRepuestos(); break;
     default:          montarCliente();   break;

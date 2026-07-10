@@ -4,7 +4,7 @@
 
 // Perfiles que requieren Supabase Auth una vez que estén migrados.
 // 'taller' queda EXCLUIDO — es la pantalla de TV del taller, siempre abierta.
-const PERFILES_CON_AUTH = new Set(['jefe', 'mecanico', 'repuestos', 'cliente']);
+const PERFILES_CON_AUTH = new Set(['jefe', 'mecanico', 'repuestos', 'cliente', 'encuestador']);
 
 // true = modo cliente (sin contraseña), false = modo staff (cédula + contraseña)
 let _loginModoCliente = false;
