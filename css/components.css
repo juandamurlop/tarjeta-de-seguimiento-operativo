@@ -241,10 +241,11 @@
 }
 .modal-body { padding: 24px; }
 .modal-footer {
-  padding: 16px 24px;
+  padding: 12px 24px;
   border-top: 1px solid var(--gris-borde);
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: flex-end;
   position: sticky;
   bottom: 0;
