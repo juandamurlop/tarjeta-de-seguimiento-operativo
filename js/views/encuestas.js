@@ -1387,6 +1387,6 @@ const Encuestas = (() => {
   }
 
   // API pública del módulo (lo que usan onclick inline, navJefe y mecanico.js)
-  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, pedirResena, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml, accion, accionConMotivo, eliminarEncuesta, _accionRapida, _guardarDatosCliente, dragStart, dragEnd, dropZone, tapZone, _limpiarSeleccion, dragEnd, dropZone, ptrDown, ptrMove, ptrUp, cardTap, tapZone, abrirEncuestaSeleccionada, verNotificaciones, _drag };
+  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, pedirResena, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml, accion, accionConMotivo, eliminarEncuesta, _accionRapida, _guardarDatosCliente, dragStart, dragEnd, dropZone, tapZone, _limpiarSeleccion, abrirEncuestaSeleccionada, verNotificaciones, _drag };
 })();
 window.Encuestas = Encuestas;
