@@ -120,6 +120,33 @@ const Encuestas = (() => {
       .enc-timer{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;display:inline-block}
       .enc-folder-header{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--gris-mid);margin:18px 0 8px;padding-bottom:6px;border-bottom:1.5px solid var(--gris-borde);display:flex;align-items:center;gap:8px}
       .enc-card{background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+      .enc-zones{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px}
+      .enc-zone{border:2px dashed var(--gris-borde);border-radius:12px;padding:14px 10px;text-align:center;transition:all .18s ease;background:var(--surface);cursor:pointer;user-select:none}
+      .enc-zone-icon{font-size:20px;margin-bottom:3px}
+      .enc-zone-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+      .enc-zone-hint{font-size:10px;color:var(--gris-mid);margin-top:2px}
+      .enc-zone.zone-green{border-color:#A7F3D0}.enc-zone.zone-green .enc-zone-label{color:#059669}
+      .enc-zone.zone-amber{border-color:#FDE68A}.enc-zone.zone-amber .enc-zone-label{color:#D97706}
+      .enc-zone.zone-slate{border-color:#CBD5E1}.enc-zone.zone-slate .enc-zone-label{color:#64748B}
+      .enc-zone.drag-over{transform:scale(1.04)}
+      .enc-zone.zone-green.drag-over{background:#ECFDF5;box-shadow:0 0 0 3px #059669}
+      .enc-zone.zone-amber.drag-over{background:#FFFBEB;box-shadow:0 0 0 3px #D97706}
+      .enc-zone.zone-slate.drag-over{background:#F1F5F9;box-shadow:0 0 0 3px #64748B}
+      .enc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px}
+      .enc-gcard{background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:11px;padding:12px;cursor:grab;transition:box-shadow .15s,transform .15s,border-color .15s,opacity .15s;user-select:none;touch-action:none}
+      .enc-gcard:hover{box-shadow:0 4px 14px rgba(30,58,95,.12);transform:translateY(-1px);border-color:#B8C8DC}
+      .enc-gcard.dragging{opacity:.3;transform:scale(.97)}
+      .enc-gcard.selected{border-color:var(--azul);box-shadow:0 0 0 2px var(--azul)}
+      .enc-gcard-plate{font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:var(--azul);letter-spacing:1px;margin-bottom:3px}
+      .enc-gcard-owner{font-size:11px;color:var(--gris-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px}
+      .enc-gcard-foot{display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap}
+      .enc-gcard-time{font-size:10px;font-weight:700;color:var(--gris-mid);font-family:'DM Mono',monospace}
+      .enc-gcard-time.urgent{color:#DC2626}
+      .enc-ghost{position:fixed;pointer-events:none;z-index:9999;opacity:.93;transform:rotate(2deg) scale(1.05);box-shadow:0 8px 30px rgba(30,58,95,.25);border-radius:11px;background:var(--surface);border:2px solid var(--azul);padding:12px;min-width:155px}
+      .enc-mobile-hint{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:8px 12px;font-size:12px;color:#1D4ED8;margin-bottom:12px;display:none}
+      @media(pointer:coarse){.enc-mobile-hint{display:block}}
+      .enc-grid-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gris-mid);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+      .enc-grid-lbl::after{content:'';flex:1;height:1px;background:var(--gris-borde)}
       .enc-kpi{background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:12px;padding:14px 16px;text-align:center}
       .enc-kpi-num{font-size:24px;font-weight:800;color:var(--texto);font-family:'DM Mono',monospace}
       .enc-kpi-lbl{font-size:11px;color:var(--gris-mid);margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
@@ -277,7 +304,10 @@ const Encuestas = (() => {
       </div>`;
   }
 
-  // ── PENDIENTES ───────────────────────────────────────────────────────────────
+  // ── PENDIENTES — grid con drag & drop ────────────────────────────────────────
+  // Estado de drag para desktop y mobile
+  const _drag = { encId: null, selectedId: null, ghost: null };
+
   async function cargarPendientes() {
     const panel = document.getElementById('enc-panel');
     if (!panel) return;
@@ -289,17 +319,14 @@ const Encuestas = (() => {
       _safe(api(`/encuestas?proximo_aviso=lte.${ahora}&estado_seguimiento=neq.archivado&select=id,orden_id,fase,estado_seguimiento,motivo,proximo_aviso,ultimo_contacto`), 'pend.resuf')
     ]);
 
-    // Unir y deduplicar por orden_id
     const vistas = new Set();
     const todas = [...(encPend || []), ...(encResuf || [])].filter(e => {
       if (vistas.has(e.orden_id)) return false;
       vistas.add(e.orden_id); return true;
     });
 
-    // Actualizar badge del tab
     const badge = document.getElementById('enc-badge-pend');
     if (badge) { badge.textContent = todas.length; badge.style.display = todas.length ? 'flex' : 'none'; }
-    // Notif bell
     _actualizarBell(todas.length);
 
     if (!todas.length) {
@@ -311,28 +338,147 @@ const Encuestas = (() => {
       return;
     }
 
-    // Cargar órdenes relacionadas
     const ids = todas.map(e => e.orden_id).join(',');
     const ordenes = await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'pend.ords') || [];
     const ordMap = Object.fromEntries(ordenes.map(o => [o.id, o]));
 
     const puede = tienePermiso('gestionar_encuestas');
-    panel.innerHTML = todas.map(enc => {
-      const o = ordMap[enc.orden_id] || { id: enc.orden_id, placa: '—', marca: '', linea: '', propietario: '' };
-      const resuf = enc.estado_seguimiento && enc.estado_seguimiento !== 'pendiente';
-      if (resuf) {
-        const fl = _faseLbl(enc.fase || 0);
-        // Es una resurface — mostrar etiqueta de qué fase viene
-      }
-      const accs = puede ? `
-        <div class="enc-accion-row">
-          <button onclick="Encuestas.accion(${enc.id},'contactado')" style="flex:1;background:#059669;color:white;border:none;padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">✅ Contactado</button>
-          <button onclick="Encuestas.abrir(${o.id})" style="background:#EFF6FF;color:#1D4ED8;border:1.5px solid #BFDBFE;padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📋 Encuesta</button>
-          <button onclick="Encuestas.accionConMotivo(${enc.id},'no_contactado')" style="background:#FEF3C7;color:#B45309;border:1.5px solid #FDE68A;padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📵 No contestó</button>
-          <button onclick="Encuestas.accion(${enc.id},'archivado')" style="background:#F4F6F9;color:var(--gris-mid);border:1.5px solid var(--gris-borde);padding:9px 10px;border-radius:8px;font-size:13px;cursor:pointer" title="Archivar">🗄</button>
-        </div>` : '';
-      return _cardEncuesta(enc, o, accs);
+
+    const zonesHtml = puede ? `
+      <div class="enc-zones" id="enc-zones">
+        <div class="enc-zone zone-green" id="zone-contactado"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="Encuestas.dropZone(event,'contactado')"
+          onclick="Encuestas.tapZone('contactado')">
+          <div class="enc-zone-icon">✅</div>
+          <div class="enc-zone-label">Contactado</div>
+          <div class="enc-zone-hint">resurge en 48h</div>
+        </div>
+        <div class="enc-zone zone-amber" id="zone-no_contactado"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="Encuestas.dropZone(event,'no_contactado')">
+          <div class="enc-zone-icon">📵</div>
+          <div class="enc-zone-label">No contestó</div>
+          <div class="enc-zone-hint">resurge en 2h</div>
+        </div>
+        <div class="enc-zone zone-slate" id="zone-archivado"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="Encuestas.dropZone(event,'archivado')"
+          onclick="Encuestas.tapZone('archivado')">
+          <div class="enc-zone-icon">🗄</div>
+          <div class="enc-zone-label">Archivar</div>
+          <div class="enc-zone-hint">finalizar seguimiento</div>
+        </div>
+      </div>` : '';
+
+    const mobileHint = puede ? `<div class="enc-mobile-hint">💡 Toca una tarjeta para seleccionarla (borde azul), luego toca la zona destino arriba. En PC puedes arrastrar directamente.</div>` : '';
+
+    const cardsHtml = todas.map(enc => {
+      const o = ordMap[enc.orden_id] || { id: enc.orden_id, placa: '—', propietario: '' };
+      const fl = _faseLbl(enc.fase || 0);
+      const ms = enc.entregada_en ? Date.now() - new Date(enc.entregada_en).getTime() : null;
+      const dias = ms != null ? Math.floor(ms / 86400000) : null;
+      const diasTxt = dias != null ? (dias === 0 ? 'hoy' : `${dias}d`) : '';
+      const isUrgent = dias != null && dias >= 3;
+      return `<div class="enc-gcard" data-enc-id="${enc.id}" data-orden-id="${o.id}"
+        draggable="${puede ? 'true' : 'false'}"
+        ondragstart="Encuestas.dragStart(event,${enc.id})"
+        ondragend="Encuestas.dragEnd(event)"
+        onpointerdown="Encuestas.ptrDown(event,${enc.id})"
+        onpointermove="Encuestas.ptrMove(event)"
+        onpointerup="Encuestas.ptrUp(event)"
+        onclick="Encuestas.cardTap(${enc.id})"
+        style="cursor:${puede ? 'grab' : 'default'}">
+        <div class="enc-gcard-plate">${escapeHtml(o.placa || '—')}</div>
+        <div class="enc-gcard-owner">${escapeHtml((o.propietario || '').split(' ').slice(0,2).join(' ') || '—')}</div>
+        <div class="enc-gcard-foot">
+          <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:${fl.bg};color:${fl.color};white-space:nowrap">${fl.txt}</span>
+          ${diasTxt ? `<span class="enc-gcard-time${isUrgent ? ' urgent' : ''}">${diasTxt}</span>` : ''}
+        </div>
+      </div>`;
     }).join('');
+
+    const abrirEncuestaBtn = puede ? `<div style="margin-bottom:12px;text-align:right"><button onclick="if(Encuestas._drag&&Encuestas._drag.selectedId){Encuestas.abrirEncuestaSeleccionada()}else{toast('Selecciona una tarjeta primero','err')}" style="background:#EFF6FF;color:#1D4ED8;border:1.5px solid #BFDBFE;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📋 Abrir encuesta seleccionada</button></div>` : '';
+
+    panel.innerHTML = zonesHtml + mobileHint + abrirEncuestaBtn +
+      `<div class="enc-grid-lbl">${todas.length} pendiente${todas.length !== 1 ? 's'  : ''}</div>
+       <div class="enc-grid" id="enc-grid">${cardsHtml}</div>`;
+
+    _drag.selectedId = null;
+    _drag.encId = null;
+  }
+
+  // ── Drag desktop ─────────────────────────────────────────────────────────────
+  function dragStart(ev, encId) {
+    _drag.encId = encId;
+    ev.dataTransfer.effectAllowed = 'move';
+    ev.currentTarget.classList.add('dragging');
+  }
+
+  function dragEnd(ev) {
+    ev.currentTarget.classList.remove('dragging');
+    document.querySelectorAll('.enc-zone').forEach(z => z.classList.remove('drag-over'));
+    _drag.encId = null;
+  }
+
+  function dropZone(ev, estado) {
+    ev.preventDefault();
+    ev.currentTarget.classList.remove('drag-over');
+    const id = _drag.encId;
+    if (!id) return;
+    if (estado === 'no_contactado') { accionConMotivo(id, 'no_contactado'); }
+    else { accion(id, estado); }
+  }
+
+  // ── Touch / pointer (mobile) ──────────────────────────────────────────────────
+  let _ptrStartX = 0, _ptrStartY = 0, _ptrMoved = false;
+
+  function ptrDown(ev, encId) {
+    if (ev.pointerType === 'mouse') return; // desktop usa drag nativo
+    _ptrStartX = ev.clientX; _ptrStartY = ev.clientY; _ptrMoved = false;
+  }
+
+  function ptrMove(ev) {
+    if (ev.pointerType === 'mouse') return;
+    const dx = Math.abs(ev.clientX - _ptrStartX);
+    const dy = Math.abs(ev.clientY - _ptrStartY);
+    if (dx > 8 || dy > 8) _ptrMoved = true;
+  }
+
+  function ptrUp(ev) {
+    if (ev.pointerType === 'mouse') return;
+    // Si se movió mucho no es un tap → ignorar (scroll normal)
+    if (_ptrMoved) return;
+  }
+
+  function cardTap(encId) {
+    if (_drag.selectedId === encId) {
+      // Deseleccionar
+      _drag.selectedId = null;
+      document.querySelectorAll('.enc-gcard').forEach(c => c.classList.remove('selected'));
+    } else {
+      _drag.selectedId = encId;
+      document.querySelectorAll('.enc-gcard').forEach(c => {
+        c.classList.toggle('selected', Number(c.dataset.encId) === encId);
+      });
+    }
+  }
+
+  function tapZone(estado) {
+    const id = _drag.selectedId;
+    if (!id) return; // sin selección, ignorar tap en zona
+    if (estado === 'no_contactado') { accionConMotivo(id, 'no_contactado'); }
+    else { accion(id, estado); }
+  }
+
+  function abrirEncuestaSeleccionada() {
+    if (!_drag.selectedId) return;
+    // Buscar la orden_id del enc seleccionado
+    const card = document.querySelector(`.enc-gcard[data-enc-id="${_drag.selectedId}"]`);
+    if (card) abrir(Number(card.dataset.ordenId));
   }
 
   // ── CONTACTADOS ──────────────────────────────────────────────────────────────
@@ -1103,6 +1249,6 @@ const Encuestas = (() => {
   }
 
   // API pública del módulo (lo que usan onclick inline, navJefe y mecanico.js)
-  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, pedirResena, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml };
+  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, pedirResena, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml, accion, accionConMotivo, dragStart, dragEnd, dropZone, ptrDown, ptrMove, ptrUp, cardTap, tapZone, abrirEncuestaSeleccionada, verNotificaciones, _drag };
 })();
 window.Encuestas = Encuestas;
