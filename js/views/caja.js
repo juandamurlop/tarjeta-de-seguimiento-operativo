@@ -260,13 +260,16 @@ const Caja = (function () {
   function renderTabla(k, lista, conDel) {
     const el = $(k); if (!el) return;
     if (!lista.length) { el.innerHTML = '<div class="empty">Sin movimientos registrados</div>'; return; }
-    el.innerHTML = `<div class="tw"><table><thead><tr><th>Hora</th><th>Tipo</th><th>Categoría</th><th>Descripción</th><th>Responsable</th><th style="text-align:right">Monto</th><th>Estado</th>${conDel ? '<th></th>' : ''}</tr></thead>
+    const metodoIcon = { efectivo:'💵', transferencia:'🏦', tarjeta:'💳', consignacion:'📋' };
+    el.innerHTML = `<div class="tw"><table><thead><tr><th>Hora</th><th>Tipo</th><th>Categoría</th><th>Descripción</th><th>Método</th><th>Cajero</th><th>Recibe</th><th style="text-align:right">Monto</th><th>Estado</th>${conDel ? '<th></th>' : ''}</tr></thead>
     <tbody>${lista.map(m => `<tr>
       <td style="color:var(--cj-txt2);font-size:12px">${esc(m.hora)}</td>
       <td><span class="tag ${m.tipo}">${esc(m.tipo)}</span></td>
       <td style="color:var(--cj-txt2)">${esc(m.categoria)}</td>
       <td>${esc(m.descripcion)}${m.numero_ot ? `<br><small style="color:var(--cj-azul);font-weight:600">OT ${esc(m.numero_ot)}</small>` : ''}${m.observacion ? `<br><small style="color:var(--cj-txt2)">${esc(m.observacion)}</small>` : ''}${m.estado === 'cerrado' && m.valor_factura != null ? `<br><small style="color:var(--cj-txt2)">Factura: ${fmt(m.valor_factura)}${Number(m.diferencia) > 0 ? ` · sobrante ${fmt(m.diferencia)}` : ''}</small>` : ''}</td>
-      <td style="color:var(--cj-txt2)">${esc(m.responsable)}</td>
+      <td style="font-size:13px">${metodoIcon[m.metodo_pago] || '💵'} ${esc(m.metodo_pago || 'efectivo')}</td>
+      <td style="color:var(--cj-txt2);font-size:12px">${esc(m.responsable)}</td>
+      <td style="color:var(--cj-txt2);font-size:12px">${esc(m.recibe || '—')}</td>
       <td style="text-align:right" class="${m.tipo === 'ingreso' ? 'pos' : 'neg'}">${m.tipo === 'ingreso' ? '+' : '-'}${fmt(m.monto)}</td>
       <td>${estadoCelda(m)}</td>
       ${conDel ? `<td><button class="cj-btn danger sm" onclick="Caja.eliminar('${m.id}')">×</button></td>` : ''}
@@ -308,7 +311,9 @@ const Caja = (function () {
     const categoria = $('m-cat').value;
     const descripcion = $('m-desc').value.trim();
     const monto = parseFloat($('m-monto').value);
-    const responsable = $('m-resp').value.trim();
+    const responsable = $('m-resp')?.value.trim() || usuarioActual();
+    const recibe = $('m-recibe')?.value.trim() || null;
+    const metodo_pago = $('m-metodo')?.value || 'efectivo';
     const observacion = $('m-obs').value.trim();
     const orden_id = $('orden-id')?.value || null;
     const numero_ot = $('orden-ot')?.value || null;
@@ -316,8 +321,8 @@ const Caja = (function () {
     if (isNaN(monto) || monto <= 0) { toast('Ingresa un monto válido', 'bad'); return; }
     setBtnLoading('btn-registrar', true, 'Guardando...');
     try {
-      const body = { fecha: hoyISO(), hora: horaLocal(), tipo, categoria, descripcion, monto, responsable, observacion,
-        usuario: usuarioActual(), estado: tipo === 'egreso' ? 'pendiente' : null };
+      const body = { fecha: hoyISO(), hora: horaLocal(), tipo, categoria, descripcion, monto, responsable,
+        recibe, metodo_pago, observacion, usuario: usuarioActual(), estado: tipo === 'egreso' ? 'pendiente' : null };
       if (orden_id) { body.orden_id = orden_id; body.numero_ot = numero_ot; }
       await api('/caja_movimientos', 'POST', body);
       toast(tipo === 'ingreso'
@@ -339,8 +344,10 @@ const Caja = (function () {
   }
 
   function limpiarFormMov() {
-    ['m-desc', 'm-monto', 'm-resp', 'm-obs'].forEach(k => { if ($(k)) $(k).value = ''; });
+    ['m-desc', 'm-monto', 'm-recibe', 'm-obs'].forEach(k => { if ($(k)) $(k).value = ''; });
     if ($('m-tipo')) $('m-tipo').value = 'egreso';
+    if ($('m-metodo')) $('m-metodo').value = 'efectivo';
+    if ($('m-resp')) $('m-resp').value = (typeof sesion !== 'undefined' && sesion?.nombre) || '';
     updCats();
     _limpiarOrden();
   }
@@ -769,10 +776,22 @@ const Caja = (function () {
           <input type="hidden" id="cj-orden-id">
           <input type="hidden" id="cj-orden-ot">
         </div>
-        <div class="fg3">
+        <div class="fg2">
           <div><label>Descripción *</label><input type="text" id="cj-m-desc" placeholder="¿En qué se usó / quién pagó?"/></div>
           <div><label>Monto ($) *</label><input type="number" id="cj-m-monto" placeholder="0" min="0"/></div>
-          <div><label>Responsable</label><input type="text" id="cj-m-resp" placeholder="Quien entrega/recibe"/></div>
+        </div>
+        <div class="fg3" style="margin-bottom:12px">
+          <div>
+            <label>Método de pago</label>
+            <select id="cj-m-metodo">
+              <option value="efectivo">💵 Efectivo</option>
+              <option value="transferencia">🏦 Transferencia</option>
+              <option value="tarjeta">💳 Tarjeta</option>
+              <option value="consignacion">📋 Consignación</option>
+            </select>
+          </div>
+          <div><label>Cajero / Entrega</label><input type="text" id="cj-m-resp" readonly style="background:var(--cj-gris);cursor:default"/></div>
+          <div><label>Recibe <span style="color:var(--cj-txt2);font-weight:400">(cliente, proveedor…)</span></label><input type="text" id="cj-m-recibe" placeholder="Nombre de quien recibe"/></div>
         </div>
         <div style="margin-bottom:12px;"><label>Observación (opcional)</label><textarea id="cj-m-obs" placeholder="Nota adicional..."></textarea></div>
         <div style="display:flex;justify-content:flex-end;gap:8px;">
@@ -881,6 +900,7 @@ const Caja = (function () {
     cont.innerHTML = template();
     if ($('hero-fecha')) $('hero-fecha').textContent = fechaLeg(hoyISO());
     if ($('ant-fecha')) $('ant-fecha').value = hoyISO();
+    if ($('m-resp')) $('m-resp').value = (typeof sesion !== 'undefined' && sesion?.nombre) || '';
     updCats();
     poblarFiltrosCats();
     await Promise.all([cargarDashboard(), cargarHoy(), cargarAnticipos()]);
