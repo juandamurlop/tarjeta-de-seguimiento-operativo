@@ -221,6 +221,7 @@ const Encuestas = (() => {
       </div>
       <div id="enc-panel"><div class="loading-state">Cargando...</div></div>
     `;
+    _ensureLasso();
     _dispatchTab();
   }
 
@@ -402,21 +403,32 @@ const Encuestas = (() => {
 
     panel.innerHTML = zonesHtml +
       `<div class="enc-grid-lbl">${todas.length} pendiente${todas.length !== 1 ? 's' : ''}</div>
-       <div class="enc-grid" id="enc-grid">${cardsHtml}</div>`;
+       <div class="enc-grid" id="enc-grid" style="min-height:200px">${cardsHtml}</div>`;
 
     _selectedIds = [];
     _drag.encId = null;
     _drag.activeIds = [];
-
-    // Lasso: mousedown en espacio vacío del grid
-    const grid = document.getElementById('enc-grid');
-    if (grid) grid.addEventListener('mousedown', _lassoStart);
   }
 
   // ── Lasso (selección estilo Windows) ─────────────────────────────────────────
+  // El listener vive en document para cubrir todo el panel sin importar el tamaño
+  // del grid. Se activa solo cuando la pestaña Pendientes está visible.
+  let _lassoRegistered = false;
+  function _ensureLasso() {
+    if (_lassoRegistered) return;
+    _lassoRegistered = true;
+    document.addEventListener('mousedown', _lassoStart);
+  }
+
   function _lassoStart(ev) {
     if (ev.button !== 0) return;
-    if (ev.target.closest('.enc-gcard')) return; // en tarjeta → no lasso
+    // Solo activo en pestaña pendientes
+    if (!document.getElementById('enc-grid')) return;
+    // Ignorar clics sobre elementos interactivos o tarjetas
+    if (ev.target.closest('.enc-gcard,.enc-zone,button,a,input,select,textarea,.modal-overlay,.enc-tab-btn')) return;
+    // Ignorar si no está dentro del panel de encuestas
+    if (!ev.target.closest('#enc-panel,#encuestas-contenido')) return;
+
     ev.preventDefault();
 
     if (!ev.shiftKey) {
@@ -427,9 +439,10 @@ const Encuestas = (() => {
     _lasso.x0 = ev.clientX;
     _lasso.y0 = ev.clientY;
     _lasso.active = true;
+    _lasso.moved = false;
 
     const el = document.createElement('div');
-    el.style.cssText = 'position:fixed;border:1.5px solid var(--azul);background:rgba(29,78,216,.07);border-radius:3px;pointer-events:none;z-index:9998;left:' + ev.clientX + 'px;top:' + ev.clientY + 'px;width:0;height:0';
+    el.style.cssText = 'position:fixed;border:1.5px solid #2563EB;background:rgba(37,99,235,.08);border-radius:3px;pointer-events:none;z-index:9998;left:' + ev.clientX + 'px;top:' + ev.clientY + 'px;width:0;height:0';
     document.body.appendChild(el);
     _lasso.el = el;
 
@@ -443,11 +456,13 @@ const Encuestas = (() => {
     const y = Math.min(ev.clientY, _lasso.y0);
     const w = Math.abs(ev.clientX - _lasso.x0);
     const h = Math.abs(ev.clientY - _lasso.y0);
-    _lasso.el.style.left = x + 'px';
-    _lasso.el.style.top  = y + 'px';
+    if (w > 4 || h > 4) _lasso.moved = true;
+    _lasso.el.style.left   = x + 'px';
+    _lasso.el.style.top    = y + 'px';
     _lasso.el.style.width  = w + 'px';
     _lasso.el.style.height = h + 'px';
 
+    // Resaltar tarjetas dentro del rectángulo (viewport coords)
     document.querySelectorAll('.enc-gcard').forEach(card => {
       const cr = card.getBoundingClientRect();
       const hit = cr.left < x + w && cr.right > x && cr.top < y + h && cr.bottom > y;
@@ -463,12 +478,21 @@ const Encuestas = (() => {
     document.removeEventListener('mousemove', _lassoMove);
     document.removeEventListener('mouseup', _lassoEnd);
 
+    if (!_lasso.moved) {
+      // Clic sin arrastrar: limpiar selección
+      _limpiarSeleccion();
+      return;
+    }
+
     _selectedIds = [];
     document.querySelectorAll('.enc-gcard.selected').forEach(c => {
       _selectedIds.push(Number(c.dataset.encId));
     });
 
+    // Bloquear el onclick de tarjetas que se disparará justo después del mouseup
     if (_selectedIds.length > 0) {
+      _lasso.blockClick = true;
+      setTimeout(() => { _lasso.blockClick = false; }, 300);
       _mostrarSeleccionBadge(_selectedIds.length);
     }
   }
@@ -859,6 +883,7 @@ const Encuestas = (() => {
   // FORMULARIO DE CAPTURA (modal accesible)
   // ═══════════════════════════════════════════════════════════════════════════
   async function abrir(ordenId, encId) {
+    if (_lasso.blockClick) return; // lasso acaba de terminar, ignorar clic
     cerrarModal();
 
     const [ordRes, clienteRes] = await Promise.all([
