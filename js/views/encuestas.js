@@ -801,8 +801,11 @@ const Encuestas = (() => {
 
     const _inputDato = (id, lbl, val, type) => `
       <div style="display:flex;flex-direction:column;gap:3px">
-        <label for="${id}" style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--gris-mid);font-weight:700">${lbl}</label>
-        <input id="${id}" type="${type||'text'}" value="${escapeHtml(val||'')}" style="font-size:13px;font-weight:600;color:var(--texto);background:white;border:1.5px solid var(--gris-borde);border-radius:7px;padding:5px 9px;width:100%;box-sizing:border-box" />
+        <label for="${id}" style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--gris-mid);font-weight:700">${lbl} ✎</label>
+        <input id="${id}" type="${type||'text'}" value="${escapeHtml(val||'')}" placeholder="—"
+          style="font-size:13px;font-weight:600;color:var(--texto);background:transparent;border:none;border-bottom:1.5px dashed var(--gris-borde);border-radius:0;padding:2px 0;width:100%;box-sizing:border-box;outline:none"
+          onfocus="this.style.borderBottomColor='var(--azul)'"
+          onblur="this.style.borderBottomColor='var(--gris-borde)'" />
       </div>`;
     const _dato = (lbl, val) => val ? `
       <div style="display:flex;flex-direction:column;gap:1px">
