@@ -822,8 +822,9 @@ async function generarPdfCotizacion(cotId, accion = 'descargar') {
     return true;
   } catch(e) {
     toast('Error al generar PDF: ' + e.message, 'err');
-    if (btn) { btn.disabled = false; btn.textContent = txtOrig; }
     return null;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = txtOrig; }
   }
 }
 
