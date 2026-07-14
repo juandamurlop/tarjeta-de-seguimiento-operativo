@@ -750,9 +750,15 @@ function renderEtapa(e, fotos, novedades, hayActiva, aprobaciones = []) {
   const sinTecnico = !e.mecanico_id && !e.tercero;
 
   const _ordenCerrada = ordenActual?.estado === 'Entregada' || ordenActual?.estado === 'Archivada';
+  // Solo jefe/gerente o mecánico sin rol personalizado pueden gestionar etapas
+  const _puedeEtapas = esJefe() || (
+    (typeof sesion !== 'undefined') &&
+    sesion?.perfil === 'mecanico' &&
+    !(sesion?.permisos && Object.values(sesion.permisos).some(Boolean))
+  );
   let acc = '';
-  if (_ordenCerrada) {
-    // Orden cerrada: sin acciones en etapas
+  if (_ordenCerrada || !_puedeEtapas) {
+    // Orden cerrada o sin permiso: sin acciones en etapas
   } else if (!e.inicio) {
     if (sinTecnico) {
       // No se puede iniciar hasta asignar un técnico. Aviso visible + botón
