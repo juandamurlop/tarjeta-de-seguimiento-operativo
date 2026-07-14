@@ -558,7 +558,7 @@ function _cotPdfConfig() {
   let c = {};
   try { c = JSON.parse(localStorage.getItem('cot_pdf_config') || '{}') || {}; } catch (e) {}
   return {
-    logo:       c.logo       || '',
+    logo:       c.logo       || 'assets/icons/Logo nuevo Freimanautos.png',
     nombre:     c.nombre     || 'FREIMANAUTOS',
     slogan:     c.slogan     || 'Servicio profesional Hyundai y multimarca · Desde 1987',
     nit:        c.nit        || '800012186',
@@ -714,7 +714,7 @@ async function generarPdfCotizacion(cotId, accion = 'descargar') {
         if (im && im.naturalWidth) {
           const sc = Math.min(54 / im.naturalHeight, 150 / im.naturalWidth);
           const lw = im.naturalWidth * sc, lh = im.naturalHeight * sc;
-          const fmtImg = CFG.logo.indexOf('image/png') >= 0 ? 'PNG' : CFG.logo.indexOf('image/webp') >= 0 ? 'WEBP' : 'JPEG';
+          const fmtImg = (CFG.logo.indexOf('image/png') >= 0 || CFG.logo.endsWith('.png')) ? 'PNG' : CFG.logo.indexOf('image/webp') >= 0 ? 'WEBP' : 'JPEG';
           doc.addImage(CFG.logo, fmtImg, M, 26, lw, lh);   // sin recuadro ni borde punteado
           headX = M + lw + 14;
         }
