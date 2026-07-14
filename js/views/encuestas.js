@@ -422,12 +422,11 @@ const Encuestas = (() => {
 
   function _lassoStart(ev) {
     if (ev.button !== 0) return;
-    // Solo activo en pestaña pendientes
+    // Solo activo cuando la pestaña Pendientes está visible
     if (!document.getElementById('enc-grid')) return;
-    // Ignorar clics sobre elementos interactivos o tarjetas
-    if (ev.target.closest('.enc-gcard,.enc-zone,button,a,input,select,textarea,.modal-overlay,.enc-tab-btn')) return;
-    // Ignorar si no está dentro del panel de encuestas
-    if (!ev.target.closest('#enc-panel,#encuestas-contenido')) return;
+    // Ignorar sidebar, topbar y cualquier elemento interactivo
+    if (ev.target.closest('.sidebar,.topbar,.modal-overlay,.modal')) return;
+    if (ev.target.closest('.enc-gcard,.enc-zone,button,a,input,select,textarea,.enc-tab-btn')) return;
 
     ev.preventDefault();
 
