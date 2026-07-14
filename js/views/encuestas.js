@@ -120,8 +120,8 @@ const Encuestas = (() => {
       .enc-timer{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;display:inline-block}
       .enc-folder-header{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--gris-mid);margin:18px 0 8px;padding-bottom:6px;border-bottom:1.5px solid var(--gris-borde);display:flex;align-items:center;gap:8px}
       .enc-card{background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-      .enc-zones{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px}
-      .enc-zone{border:2px dashed var(--gris-borde);border-radius:12px;padding:14px 10px;text-align:center;transition:all .18s ease;background:var(--surface);cursor:pointer;user-select:none}
+      .enc-zones{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+      .enc-zone{flex:1;min-width:100px;max-width:240px;border:2px dashed var(--gris-borde);border-radius:12px;padding:14px 10px;text-align:center;transition:all .18s ease;background:var(--surface);cursor:pointer;user-select:none}
       .enc-zone-icon{font-size:20px;margin-bottom:3px}
       .enc-zone-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
       .enc-zone-hint{font-size:10px;color:var(--gris-mid);margin-top:2px}
@@ -226,6 +226,7 @@ const Encuestas = (() => {
   }
 
   function _dispatchTab() {
+    _limpiarSeleccion();
     if      (_state.tab === 'resultados')  cargarResultados();
     else if (_state.tab === 'seguimiento') cargarSeguimiento();
     else if (_state.tab === 'realizadas')  cargarRealizadas();
@@ -422,8 +423,8 @@ const Encuestas = (() => {
 
   function _lassoStart(ev) {
     if (ev.button !== 0) return;
-    // Solo activo cuando la pestaña Pendientes está visible
-    if (!document.getElementById('enc-grid')) return;
+    // Solo activo cuando hay un grid de encuestas visible
+    if (!document.querySelector('.enc-grid')) return;
     // Ignorar sidebar, topbar y cualquier elemento interactivo
     if (ev.target.closest('.sidebar,.topbar,.modal-overlay,.modal')) return;
     if (ev.target.closest('.enc-gcard,.enc-zone,button,a,input,select,textarea,.enc-tab-btn')) return;
@@ -583,12 +584,16 @@ const Encuestas = (() => {
   }
 
   // ── Helper: tarjeta compacta de grid (igual que Pendientes) ─────────────────
-  function _miniCard(enc, o, chipColor, chipBg, chipTxt, badgeHtml, accionesMenu) {
+  function _miniCard(enc, o, chipColor, chipBg, chipTxt, badgeHtml, accionesMenu, draggable) {
     const ms = o.entregada_en ? Date.now() - new Date(o.entregada_en).getTime() : null;
     const dias = ms != null ? Math.floor(ms / 86400000) : null;
     const diasTxt = dias != null ? (dias === 0 ? 'hoy' : `${dias}d`) : '';
     const isUrgent = dias != null && dias >= 3;
+    const dragAttrs = draggable
+      ? `draggable="true" ondragstart="Encuestas.dragStart(event,${enc.id})" ondragend="Encuestas.dragEnd(event)"`
+      : '';
     return `<div class="enc-gcard" data-enc-id="${enc.id}" data-orden-id="${o.id}"
+      ${dragAttrs}
       onclick="Encuestas.abrir(${o.id},${enc.id})" title="Clic para abrir encuesta" style="cursor:pointer;position:relative">
       ${accionesMenu ? `<div style="position:absolute;top:8px;right:8px" onclick="event.stopPropagation()">${accionesMenu}</div>` : ''}
       <div class="enc-gcard-plate">${escapeHtml(o.placa || '—')}</div>
@@ -603,9 +608,9 @@ const Encuestas = (() => {
     </div>`;
   }
 
-  function _renderGrid(panel, encs, ordMap, lbl, cardFn) {
+  function _renderGrid(panel, encs, ordMap, lbl, cardFn, zonesHtml) {
     if (!encs.length) {
-      panel.innerHTML = `<div style="padding:60px 20px;text-align:center;color:var(--gris-mid)">
+      panel.innerHTML = `${zonesHtml || ''}<div style="padding:60px 20px;text-align:center;color:var(--gris-mid)">
         <div style="font-size:32px;margin-bottom:10px">📭</div>
         <div style="font-size:14px;font-weight:600">${lbl}</div>
       </div>`;
@@ -615,8 +620,9 @@ const Encuestas = (() => {
       const o = ordMap[enc.orden_id] || { id: enc.orden_id, placa: '—', propietario: '', entregada_en: null };
       return cardFn(enc, o);
     }).join('');
-    panel.innerHTML = `<div class="enc-grid-lbl">${encs.length} registro${encs.length !== 1 ? 's' : ''}</div>
+    panel.innerHTML = `${zonesHtml || ''}<div class="enc-grid-lbl">${encs.length} registro${encs.length !== 1 ? 's' : ''}</div>
       <div class="enc-grid" style="min-height:200px">${cards}</div>`;
+    _selectedIds = [];
   }
 
   // ── CONTACTADOS ──────────────────────────────────────────────────────────────
@@ -630,6 +636,18 @@ const Encuestas = (() => {
     const ordenes = ids ? await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'realizadas.ords') || [] : [];
     const ordMap = Object.fromEntries(ordenes.map(o => [o.id, o]));
     const puede = tienePermiso('gestionar_encuestas');
+    const zonesHtml = puede ? `
+      <div class="enc-zones">
+        <div class="enc-zone zone-slate"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="Encuestas.dropZone(event,'archivado')"
+          onclick="Encuestas.tapZone('archivado')">
+          <div class="enc-zone-icon">🗄</div>
+          <div class="enc-zone-label">Archivar</div>
+          <div class="enc-zone-hint">finalizar seguimiento</div>
+        </div>
+      </div>` : '';
     _renderGrid(panel, encs, ordMap, 'No hay contactados esperando seguimiento', (enc, o) => {
       const fl = _faseLbl(enc.fase || 0);
       const timerMs = enc.proximo_aviso ? new Date(enc.proximo_aviso).getTime() - Date.now() : null;
@@ -640,8 +658,8 @@ const Encuestas = (() => {
         style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--gris-mid)" title="Archivar">🗄</button>` : '';
       return _miniCard(enc, o, fl.color, fl.bg, fl.txt,
         timerTxt ? `<span style="font-size:10px;font-weight:700;color:#059669">${timerTxt}</span>` : '',
-        menu);
-    });
+        menu, puede);
+    }, zonesHtml);
   }
 
   // ── NO CONTESTÓ ──────────────────────────────────────────────────────────────
@@ -655,6 +673,27 @@ const Encuestas = (() => {
     const ordenes = ids ? await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'nocon.ords') || [] : [];
     const ordMap = Object.fromEntries(ordenes.map(o => [o.id, o]));
     const puede = tienePermiso('gestionar_encuestas');
+    const zonesHtml = puede ? `
+      <div class="enc-zones">
+        <div class="enc-zone zone-green"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="Encuestas.dropZone(event,'contactado')"
+          onclick="Encuestas.tapZone('contactado')">
+          <div class="enc-zone-icon">✅</div>
+          <div class="enc-zone-label">Contestó</div>
+          <div class="enc-zone-hint">resurge en 48h</div>
+        </div>
+        <div class="enc-zone zone-slate"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="Encuestas.dropZone(event,'archivado')"
+          onclick="Encuestas.tapZone('archivado')">
+          <div class="enc-zone-icon">🗄</div>
+          <div class="enc-zone-label">Archivar</div>
+          <div class="enc-zone-hint">finalizar seguimiento</div>
+        </div>
+      </div>` : '';
     _renderGrid(panel, encs, ordMap, 'No hay registros en "No contestó"', (enc, o) => {
       const timerMs = enc.proximo_aviso ? new Date(enc.proximo_aviso).getTime() - Date.now() : null;
       const timerTxt = timerMs != null && timerMs > 0
@@ -665,8 +704,8 @@ const Encuestas = (() => {
         <button onclick="Encuestas.accion(${enc.id},'archivado')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--gris-mid)" title="Archivar">🗄</button>` : '';
       return _miniCard(enc, o, '#D97706', '#FFFBEB', '📵 No contestó',
         timerTxt ? `<span style="font-size:10px;font-weight:700;color:#D97706">${timerTxt}</span>` : '',
-        menu);
-    });
+        menu, puede);
+    }, zonesHtml);
   }
 
   // ── ARCHIVADOS ───────────────────────────────────────────────────────────────
