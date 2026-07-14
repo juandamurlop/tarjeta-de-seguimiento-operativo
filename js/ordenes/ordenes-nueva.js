@@ -1528,14 +1528,7 @@ async function _crearOrdenInterna() {
   // en el de la sección de aseguradora, según el tipo seleccionado.
   const _cedRaw = (document.getElementById('n-cedula-cliente')?.value || document.getElementById('n-cedula-aseg')?.value || '');
   const cedulaCliente = ((typeof normDoc === 'function') ? normDoc(_cedRaw) : _cedRaw.trim()) || '';
-  // Cédula / NIT OBLIGATORIA: es la que arma el link de seguimiento del cliente.
-  if (!cedulaCliente) {
-    toast('La cédula / NIT del cliente es obligatoria (se usa para el link de seguimiento)', 'err');
-    const _cedEl = document.getElementById('n-cedula-aseg')?.offsetParent ? document.getElementById('n-cedula-aseg') : document.getElementById('n-cedula-cliente');
-    _cedEl?.focus();
-    _cedEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return;
-  }
+  // Cédula / NIT opcional — si no hay, la orden se crea igual y queda pendiente.
   const vin = document.getElementById('n-vin')?.value.trim().toUpperCase() || null;
   const correoCliente = document.getElementById('n-correo-cliente')?.value.trim() || null;
 
