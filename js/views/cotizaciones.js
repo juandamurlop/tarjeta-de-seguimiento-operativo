@@ -1149,7 +1149,6 @@ async function abrirDetalleCotizacion(cotId) {
   const tienOrden = cot.orden_id != null;
   const footerEl = document.getElementById('mcot-footer');
   footerEl.innerHTML = `
-    <button class="btn btn-ghost" onclick="cerrarModalCotizacion()">Cerrar</button>
     ${estado !== 'rechazada' ? `<button class="btn btn-ghost btn-sm" style="color:var(--azul)" onclick="editarCotizacion(${cot.id})">✏️ Editar</button>` : ''}
     <button class="btn btn-outline" onclick="generarPdfCotizacion(${cot.id})" data-pdf="${cot.id}">📄 Generar PDF</button>
     <button class="btn btn-primary" onclick="enviarPdfCotizacion(${cot.id})">📤 Enviar al cliente</button>
