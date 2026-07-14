@@ -147,6 +147,8 @@ const Encuestas = (() => {
       @media(pointer:coarse){.enc-mobile-hint{display:block}}
       .enc-grid-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gris-mid);margin-bottom:10px;display:flex;align-items:center;gap:8px}
       .enc-grid-lbl::after{content:'';flex:1;height:1px;background:var(--gris-borde)}
+      .enc-grid{user-select:none}
+      .enc-gcard.selected{border-color:var(--azul);box-shadow:0 0 0 2px var(--azul);background:#EFF6FF}
       .enc-kpi{background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:12px;padding:14px 16px;text-align:center}
       .enc-kpi-num{font-size:24px;font-weight:800;color:var(--texto);font-family:'DM Mono',monospace}
       .enc-kpi-lbl{font-size:11px;color:var(--gris-mid);margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
@@ -304,9 +306,10 @@ const Encuestas = (() => {
       </div>`;
   }
 
-  // ── PENDIENTES — grid con drag & drop ────────────────────────────────────────
-  // Estado de drag para desktop y mobile
-  const _drag = { encId: null, selectedId: null, ghost: null };
+  // ── PENDIENTES — grid con drag & drop + lasso ────────────────────────────────
+  const _drag  = { encId: null, activeIds: [] };
+  const _lasso = { active: false, x0: 0, y0: 0, el: null };
+  let _selectedIds = [];
 
   async function cargarPendientes() {
     const panel = document.getElementById('enc-panel');
@@ -401,77 +404,158 @@ const Encuestas = (() => {
       `<div class="enc-grid-lbl">${todas.length} pendiente${todas.length !== 1 ? 's' : ''}</div>
        <div class="enc-grid" id="enc-grid">${cardsHtml}</div>`;
 
-    _drag.selectedId = null;
+    _selectedIds = [];
     _drag.encId = null;
+    _drag.activeIds = [];
+
+    // Lasso: mousedown en espacio vacío del grid
+    const grid = document.getElementById('enc-grid');
+    if (grid) grid.addEventListener('mousedown', _lassoStart);
   }
 
-  // ── Drag desktop ─────────────────────────────────────────────────────────────
+  // ── Lasso (selección estilo Windows) ─────────────────────────────────────────
+  function _lassoStart(ev) {
+    if (ev.button !== 0) return;
+    if (ev.target.closest('.enc-gcard')) return; // en tarjeta → no lasso
+    ev.preventDefault();
+
+    if (!ev.shiftKey) {
+      _selectedIds = [];
+      document.querySelectorAll('.enc-gcard.selected').forEach(c => c.classList.remove('selected'));
+    }
+
+    _lasso.x0 = ev.clientX;
+    _lasso.y0 = ev.clientY;
+    _lasso.active = true;
+
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;border:1.5px solid var(--azul);background:rgba(29,78,216,.07);border-radius:3px;pointer-events:none;z-index:9998;left:' + ev.clientX + 'px;top:' + ev.clientY + 'px;width:0;height:0';
+    document.body.appendChild(el);
+    _lasso.el = el;
+
+    document.addEventListener('mousemove', _lassoMove);
+    document.addEventListener('mouseup', _lassoEnd);
+  }
+
+  function _lassoMove(ev) {
+    if (!_lasso.active || !_lasso.el) return;
+    const x = Math.min(ev.clientX, _lasso.x0);
+    const y = Math.min(ev.clientY, _lasso.y0);
+    const w = Math.abs(ev.clientX - _lasso.x0);
+    const h = Math.abs(ev.clientY - _lasso.y0);
+    _lasso.el.style.left = x + 'px';
+    _lasso.el.style.top  = y + 'px';
+    _lasso.el.style.width  = w + 'px';
+    _lasso.el.style.height = h + 'px';
+
+    document.querySelectorAll('.enc-gcard').forEach(card => {
+      const cr = card.getBoundingClientRect();
+      const hit = cr.left < x + w && cr.right > x && cr.top < y + h && cr.bottom > y;
+      card.classList.toggle('selected', hit);
+    });
+  }
+
+  function _lassoEnd() {
+    if (!_lasso.active) return;
+    _lasso.active = false;
+    _lasso.el?.remove();
+    _lasso.el = null;
+    document.removeEventListener('mousemove', _lassoMove);
+    document.removeEventListener('mouseup', _lassoEnd);
+
+    _selectedIds = [];
+    document.querySelectorAll('.enc-gcard.selected').forEach(c => {
+      _selectedIds.push(Number(c.dataset.encId));
+    });
+
+    if (_selectedIds.length > 0) {
+      _mostrarSeleccionBadge(_selectedIds.length);
+    }
+  }
+
+  function _mostrarSeleccionBadge(n) {
+    let b = document.getElementById('enc-sel-badge');
+    if (!b) {
+      b = document.createElement('div');
+      b.id = 'enc-sel-badge';
+      b.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1E3A5F;color:white;padding:10px 20px;border-radius:99px;font-size:13px;font-weight:700;z-index:999;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.25)';
+      document.body.appendChild(b);
+    }
+    b.innerHTML = `${n} tarjeta${n>1?'s':''} seleccionada${n>1?'s':''} &nbsp;·&nbsp; <span style="opacity:.7;font-weight:400;cursor:pointer" onclick="Encuestas._limpiarSeleccion()">Cancelar</span>`;
+  }
+
+  function _limpiarSeleccion() {
+    _selectedIds = [];
+    document.querySelectorAll('.enc-gcard.selected').forEach(c => c.classList.remove('selected'));
+    document.getElementById('enc-sel-badge')?.remove();
+  }
+
+  // ── Drag ─────────────────────────────────────────────────────────────────────
   function dragStart(ev, encId) {
+    // Si la tarjeta arrastrada está en la selección, mover todas; si no, solo ella
+    const isInSelection = _selectedIds.includes(encId);
+    _drag.activeIds = (isInSelection && _selectedIds.length > 0) ? [..._selectedIds] : [encId];
     _drag.encId = encId;
     ev.dataTransfer.effectAllowed = 'move';
-    ev.currentTarget.classList.add('dragging');
+
+    // Fantasma personalizado con contador
+    const ghost = document.createElement('div');
+    ghost.textContent = _drag.activeIds.length > 1 ? `${_drag.activeIds.length} tarjetas` : (ev.currentTarget.querySelector('.enc-gcard-plate')?.textContent || '');
+    ghost.style.cssText = 'position:fixed;top:-200px;left:-200px;background:var(--azul,#1D4ED8);color:white;padding:8px 18px;border-radius:99px;font-size:13px;font-weight:700;white-space:nowrap';
+    document.body.appendChild(ghost);
+    ev.dataTransfer.setDragImage(ghost, ghost.offsetWidth / 2, 20);
+    setTimeout(() => ghost.remove(), 0);
+
+    // Marcar visualmente las tarjetas activas
+    _drag.activeIds.forEach(id => {
+      document.querySelector(`.enc-gcard[data-enc-id="${id}"]`)?.classList.add('dragging');
+    });
   }
 
-  function dragEnd(ev) {
-    ev.currentTarget.classList.remove('dragging');
+  function dragEnd() {
+    document.querySelectorAll('.enc-gcard.dragging').forEach(c => c.classList.remove('dragging'));
     document.querySelectorAll('.enc-zone').forEach(z => z.classList.remove('drag-over'));
     _drag.encId = null;
   }
 
-  function dropZone(ev, estado) {
+  async function dropZone(ev, estado) {
     ev.preventDefault();
     ev.currentTarget.classList.remove('drag-over');
-    const id = _drag.encId;
-    if (!id) return;
-    if (estado === 'no_contactado') { accionConMotivo(id, 'no_contactado'); }
-    else { accion(id, estado); }
-  }
+    const ids = _drag.activeIds.length ? _drag.activeIds : (_drag.encId ? [_drag.encId] : []);
+    if (!ids.length) return;
 
-  // ── Touch / pointer (mobile) ──────────────────────────────────────────────────
-  let _ptrStartX = 0, _ptrStartY = 0, _ptrMoved = false;
-
-  function ptrDown(ev, encId) {
-    if (ev.pointerType === 'mouse') return; // desktop usa drag nativo
-    _ptrStartX = ev.clientX; _ptrStartY = ev.clientY; _ptrMoved = false;
-  }
-
-  function ptrMove(ev) {
-    if (ev.pointerType === 'mouse') return;
-    const dx = Math.abs(ev.clientX - _ptrStartX);
-    const dy = Math.abs(ev.clientY - _ptrStartY);
-    if (dx > 8 || dy > 8) _ptrMoved = true;
-  }
-
-  function ptrUp(ev) {
-    if (ev.pointerType === 'mouse') return;
-    // Si se movió mucho no es un tap → ignorar (scroll normal)
-    if (_ptrMoved) return;
-  }
-
-  function cardTap(encId) {
-    if (_drag.selectedId === encId) {
-      // Deseleccionar
-      _drag.selectedId = null;
-      document.querySelectorAll('.enc-gcard').forEach(c => c.classList.remove('selected'));
+    if (estado === 'no_contactado') {
+      const motivo = prompt(ids.length > 1 ? `¿Motivo para las ${ids.length} tarjetas? (opcional)` : '¿Motivo de no contacto? (opcional)') ?? '';
+      const proximo = new Date(Date.now() + 2 * 3600000).toISOString();
+      await Promise.all(ids.map(id => api(`/encuestas?id=eq.${id}`, 'PATCH', { estado_seguimiento: 'no_contactado', ultimo_contacto: new Date().toISOString(), motivo: motivo || null, proximo_aviso: proximo }).catch(() => {})));
+      toast(ids.length > 1 ? `${ids.length} marcadas como "No contestó"` : 'Marcado "No contestó" — vuelve en 2h');
     } else {
-      _drag.selectedId = encId;
-      document.querySelectorAll('.enc-gcard').forEach(c => {
-        c.classList.toggle('selected', Number(c.dataset.encId) === encId);
-      });
+      const patch = { estado_seguimiento: estado, ultimo_contacto: new Date().toISOString() };
+      if (estado === 'archivado') patch.proximo_aviso = null;
+      if (estado === 'contactado') {
+        // fase 0 → 1, proximo_aviso +48h (simplificado para batch)
+        patch.fase = 1;
+        patch.proximo_aviso = new Date(Date.now() + 48 * 3600000).toISOString();
+      }
+      await Promise.all(ids.map(id => api(`/encuestas?id=eq.${id}`, 'PATCH', patch).catch(() => {})));
+      const lbl = { contactado: 'Contactado ✓', archivado: 'Archivado ✓' };
+      toast(ids.length > 1 ? `${ids.length} tarjetas → ${lbl[estado] || estado}` : (lbl[estado] || 'Guardado ✓'));
     }
+
+    _limpiarSeleccion();
+    _drag.activeIds = [];
+    _dispatchTab();
   }
 
   function tapZone(estado) {
-    const id = _drag.selectedId;
-    if (!id) return; // sin selección, ignorar tap en zona
-    if (estado === 'no_contactado') { accionConMotivo(id, 'no_contactado'); }
-    else { accion(id, estado); }
+    if (!_selectedIds.length) return;
+    // Reutilizar dropZone simulando el drop
+    _drag.activeIds = [..._selectedIds];
+    dropZone({ preventDefault: () => {}, currentTarget: { classList: { remove: () => {} } } }, estado);
   }
 
   function abrirEncuestaSeleccionada() {
-    if (!_drag.selectedId) return;
-    // Buscar la orden_id del enc seleccionado
-    const card = document.querySelector(`.enc-gcard[data-enc-id="${_drag.selectedId}"]`);
+    const card = document.querySelector(`.enc-gcard[data-enc-id="${_selectedIds[0]}"]`);
     if (card) abrir(Number(card.dataset.ordenId));
   }
 
@@ -1303,6 +1387,6 @@ const Encuestas = (() => {
   }
 
   // API pública del módulo (lo que usan onclick inline, navJefe y mecanico.js)
-  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, pedirResena, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml, accion, accionConMotivo, eliminarEncuesta, _accionRapida, _guardarDatosCliente, dragStart, dragEnd, dropZone, ptrDown, ptrMove, ptrUp, cardTap, tapZone, abrirEncuestaSeleccionada, verNotificaciones, _drag };
+  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, pedirResena, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml, accion, accionConMotivo, eliminarEncuesta, _accionRapida, _guardarDatosCliente, dragStart, dragEnd, dropZone, tapZone, _limpiarSeleccion, dragEnd, dropZone, ptrDown, ptrMove, ptrUp, cardTap, tapZone, abrirEncuestaSeleccionada, verNotificaciones, _drag };
 })();
 window.Encuestas = Encuestas;
