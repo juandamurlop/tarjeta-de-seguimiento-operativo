@@ -582,6 +582,43 @@ const Encuestas = (() => {
     if (card) abrir(Number(card.dataset.ordenId));
   }
 
+  // ── Helper: tarjeta compacta de grid (igual que Pendientes) ─────────────────
+  function _miniCard(enc, o, chipColor, chipBg, chipTxt, badgeHtml, accionesMenu) {
+    const ms = o.entregada_en ? Date.now() - new Date(o.entregada_en).getTime() : null;
+    const dias = ms != null ? Math.floor(ms / 86400000) : null;
+    const diasTxt = dias != null ? (dias === 0 ? 'hoy' : `${dias}d`) : '';
+    const isUrgent = dias != null && dias >= 3;
+    return `<div class="enc-gcard" data-enc-id="${enc.id}" data-orden-id="${o.id}"
+      onclick="Encuestas.abrir(${o.id},${enc.id})" title="Clic para abrir encuesta" style="cursor:pointer;position:relative">
+      ${accionesMenu ? `<div style="position:absolute;top:8px;right:8px" onclick="event.stopPropagation()">${accionesMenu}</div>` : ''}
+      <div class="enc-gcard-plate">${escapeHtml(o.placa || '—')}</div>
+      <div class="enc-gcard-owner">${escapeHtml((o.propietario || '').split(' ').slice(0,2).join(' ') || '—')}</div>
+      <div class="enc-gcard-foot">
+        <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:${chipBg};color:${chipColor};white-space:nowrap">${chipTxt}</span>
+        <span style="display:flex;align-items:center;gap:4px">
+          ${badgeHtml || ''}
+          ${diasTxt ? `<span class="enc-gcard-time${isUrgent ? ' urgent' : ''}">${diasTxt}</span>` : ''}
+        </span>
+      </div>
+    </div>`;
+  }
+
+  function _renderGrid(panel, encs, ordMap, lbl, cardFn) {
+    if (!encs.length) {
+      panel.innerHTML = `<div style="padding:60px 20px;text-align:center;color:var(--gris-mid)">
+        <div style="font-size:32px;margin-bottom:10px">📭</div>
+        <div style="font-size:14px;font-weight:600">${lbl}</div>
+      </div>`;
+      return;
+    }
+    const cards = encs.map(enc => {
+      const o = ordMap[enc.orden_id] || { id: enc.orden_id, placa: '—', propietario: '', entregada_en: null };
+      return cardFn(enc, o);
+    }).join('');
+    panel.innerHTML = `<div class="enc-grid-lbl">${encs.length} registro${encs.length !== 1 ? 's' : ''}</div>
+      <div class="enc-grid" style="min-height:200px">${cards}</div>`;
+  }
+
   // ── CONTACTADOS ──────────────────────────────────────────────────────────────
   async function cargarRealizadas() {
     const panel = document.getElementById('enc-panel');
@@ -589,16 +626,22 @@ const Encuestas = (() => {
     panel.innerHTML = '<div class="loading-state">Cargando...</div>';
     const ahora = new Date().toISOString();
     const encs = await _safe(api(`/encuestas?estado_seguimiento=eq.contactado&proximo_aviso=gt.${ahora}&select=id,orden_id,fase,proximo_aviso,ultimo_contacto`), 'realizadas') || [];
-    if (!encs.length) { panel.innerHTML = `<div style="padding:40px;text-align:center;color:var(--gris-mid)">No hay contactados esperando seguimiento.</div>`; return; }
     const ids = encs.map(e => e.orden_id).join(',');
-    const ordenes = await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'realizadas.ords') || [];
+    const ordenes = ids ? await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'realizadas.ords') || [] : [];
     const ordMap = Object.fromEntries(ordenes.map(o => [o.id, o]));
     const puede = tienePermiso('gestionar_encuestas');
-    panel.innerHTML = encs.map(enc => {
-      const o = ordMap[enc.orden_id] || { id: enc.orden_id, placa: '—', marca: '', linea: '', propietario: '' };
-      const accs = puede ? `<div class="enc-accion-row"><button onclick="Encuestas.accion(${enc.id},'archivado')" style="background:#F4F6F9;color:var(--gris-mid);border:1.5px solid var(--gris-borde);padding:8px 12px;border-radius:8px;font-size:13px;cursor:pointer">🗄 Archivar</button></div>` : '';
-      return _cardEncuesta(enc, o, accs);
-    }).join('');
+    _renderGrid(panel, encs, ordMap, 'No hay contactados esperando seguimiento', (enc, o) => {
+      const fl = _faseLbl(enc.fase || 0);
+      const timerMs = enc.proximo_aviso ? new Date(enc.proximo_aviso).getTime() - Date.now() : null;
+      const timerTxt = timerMs != null && timerMs > 0
+        ? (() => { const h = Math.floor(timerMs/3600000); const d = Math.floor(h/24); return d > 0 ? `⏱${d}d` : `⏱${h}h`; })()
+        : timerMs != null ? '⏱pronto' : '';
+      const menu = puede ? `<button onclick="Encuestas.accion(${enc.id},'archivado')"
+        style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--gris-mid)" title="Archivar">🗄</button>` : '';
+      return _miniCard(enc, o, fl.color, fl.bg, fl.txt,
+        timerTxt ? `<span style="font-size:10px;font-weight:700;color:#059669">${timerTxt}</span>` : '',
+        menu);
+    });
   }
 
   // ── NO CONTESTÓ ──────────────────────────────────────────────────────────────
@@ -608,19 +651,22 @@ const Encuestas = (() => {
     panel.innerHTML = '<div class="loading-state">Cargando...</div>';
     const ahora = new Date().toISOString();
     const encs = await _safe(api(`/encuestas?estado_seguimiento=eq.no_contactado&proximo_aviso=gt.${ahora}&select=id,orden_id,fase,proximo_aviso,motivo,ultimo_contacto`), 'nocon') || [];
-    if (!encs.length) { panel.innerHTML = `<div style="padding:40px;text-align:center;color:var(--gris-mid)">No hay pendientes en "No contestó".</div>`; return; }
     const ids = encs.map(e => e.orden_id).join(',');
-    const ordenes = await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'nocon.ords') || [];
+    const ordenes = ids ? await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'nocon.ords') || [] : [];
     const ordMap = Object.fromEntries(ordenes.map(o => [o.id, o]));
     const puede = tienePermiso('gestionar_encuestas');
-    panel.innerHTML = encs.map(enc => {
-      const o = ordMap[enc.orden_id] || { id: enc.orden_id, placa: '—', marca: '', linea: '', propietario: '' };
-      const accs = puede ? `<div class="enc-accion-row">
-        <button onclick="Encuestas.accion(${enc.id},'contactado')" style="flex:1;background:#059669;color:white;border:none;padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">✅ Contestó</button>
-        <button onclick="Encuestas.accion(${enc.id},'archivado')" style="background:#F4F6F9;color:var(--gris-mid);border:1.5px solid var(--gris-borde);padding:9px 10px;border-radius:8px;font-size:13px;cursor:pointer">🗄 Archivar</button>
-      </div>` : '';
-      return _cardEncuesta(enc, o, accs);
-    }).join('');
+    _renderGrid(panel, encs, ordMap, 'No hay registros en "No contestó"', (enc, o) => {
+      const timerMs = enc.proximo_aviso ? new Date(enc.proximo_aviso).getTime() - Date.now() : null;
+      const timerTxt = timerMs != null && timerMs > 0
+        ? (() => { const h = Math.floor(timerMs/3600000); return h > 0 ? `⏱${h}h` : '⏱pronto'; })()
+        : timerMs != null ? '⏱pronto' : '';
+      const menu = puede ? `
+        <button onclick="Encuestas.accion(${enc.id},'contactado')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;border-radius:4px;color:#059669" title="Contestó">✅</button>
+        <button onclick="Encuestas.accion(${enc.id},'archivado')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--gris-mid)" title="Archivar">🗄</button>` : '';
+      return _miniCard(enc, o, '#D97706', '#FFFBEB', '📵 No contestó',
+        timerTxt ? `<span style="font-size:10px;font-weight:700;color:#D97706">${timerTxt}</span>` : '',
+        menu);
+    });
   }
 
   // ── ARCHIVADOS ───────────────────────────────────────────────────────────────
@@ -628,19 +674,17 @@ const Encuestas = (() => {
     const panel = document.getElementById('enc-panel');
     if (!panel) return;
     panel.innerHTML = '<div class="loading-state">Cargando...</div>';
-    const encs = await _safe(api('/encuestas?estado_seguimiento=eq.archivado&select=id,orden_id,fase,ultimo_contacto&order=ultimo_contacto.desc&limit=50'), 'arch') || [];
-    if (!encs.length) { panel.innerHTML = `<div style="padding:40px;text-align:center;color:var(--gris-mid)">No hay archivados todavía.</div>`; return; }
+    const encs = await _safe(api('/encuestas?estado_seguimiento=eq.archivado&select=id,orden_id,fase,ultimo_contacto&order=ultimo_contacto.desc&limit=100'), 'arch') || [];
     const ids = encs.map(e => e.orden_id).join(',');
-    const ordenes = await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'arch.ords') || [];
+    const ordenes = ids ? await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'arch.ords') || [] : [];
     const ordMap = Object.fromEntries(ordenes.map(o => [o.id, o]));
     const puede = tienePermiso('gestionar_encuestas');
-    panel.innerHTML = encs.map(enc => {
-      const o = ordMap[enc.orden_id] || { id: enc.orden_id, placa: '—', marca: '', linea: '', propietario: '' };
-      const accs = puede ? `<div class="enc-accion-row">
-        <button onclick="Encuestas.eliminarEncuesta(${enc.id})" style="background:#FEE2E2;color:#DC2626;border:1.5px solid #FECACA;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">🗑 Eliminar</button>
-      </div>` : '';
-      return _cardEncuesta(enc, o, accs);
-    }).join('');
+    _renderGrid(panel, encs, ordMap, 'No hay archivados todavía', (enc, o) => {
+      const fl = _faseLbl(enc.fase || 0);
+      const menu = puede ? `<button onclick="Encuestas.eliminarEncuesta(${enc.id})"
+        style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;border-radius:4px;color:#DC2626" title="Eliminar">🗑</button>` : '';
+      return _miniCard(enc, o, '#64748B', '#F1F5F9', fl.txt, '', menu);
+    });
   }
 
   // ── ELIMINAR ─────────────────────────────────────────────────────────────────
