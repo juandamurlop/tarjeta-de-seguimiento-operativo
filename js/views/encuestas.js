@@ -799,10 +799,15 @@ const Encuestas = (() => {
     const opAsesores = asesores.map(m => `<option value="${m.id}">${escapeHtml(m.nombre)}</option>`).join('') +
       `<option value="jefe">${escapeHtml(jefeNombre)} (jefe)</option>`;
 
-    const _dato = (lbl, val, href) => val ? `
+    const _inputDato = (id, lbl, val, type) => `
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <label for="${id}" style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--gris-mid);font-weight:700">${lbl}</label>
+        <input id="${id}" type="${type||'text'}" value="${escapeHtml(val||'')}" style="font-size:13px;font-weight:600;color:var(--texto);background:white;border:1.5px solid var(--gris-borde);border-radius:7px;padding:5px 9px;width:100%;box-sizing:border-box" />
+      </div>`;
+    const _dato = (lbl, val) => val ? `
       <div style="display:flex;flex-direction:column;gap:1px">
         <span style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--gris-mid);font-weight:700">${lbl}</span>
-        ${href ? `<a href="${href}" target="_blank" style="font-size:13px;font-weight:600;color:var(--azul);text-decoration:none">${escapeHtml(val)}</a>` : `<span style="font-size:13px;font-weight:600;color:var(--texto)">${escapeHtml(val)}</span>`}
+        <span style="font-size:13px;font-weight:600;color:var(--texto)">${escapeHtml(val)}</span>
       </div>` : '';
 
     const m = document.createElement('div');
@@ -823,17 +828,22 @@ const Encuestas = (() => {
         </div>
         <div class="modal-body" style="padding:16px 18px">
 
-          <!-- DATOS DEL CLIENTE / VEHÍCULO -->
-          <div style="background:#F8FAFC;border:1.5px solid var(--gris-borde);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            ${_dato('Propietario', orden.propietario || cliente?.nombre || '')}
-            ${_dato('Teléfono', tel, wa || null)}
-            ${_dato('Correo', email, email ? `mailto:${email}` : null)}
-            ${_dato('Vehículo', [orden.marca, orden.linea].filter(Boolean).join(' '))}
-            ${_dato('Placa', orden.placa)}
-            ${tel ? `<div style="grid-column:1/-1;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
-              ${wa ? `<a href="${wa}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#25D366;color:white;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">💬 WhatsApp</a>` : ''}
-              <a href="tel:${tel}" style="display:inline-flex;align-items:center;gap:6px;background:#EFF6FF;color:#1D4ED8;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;border:1.5px solid #BFDBFE">📞 Llamar</a>
-            </div>` : ''}
+          <!-- DATOS DEL CLIENTE / VEHÍCULO (editables) -->
+          <div style="background:#F8FAFC;border:1.5px solid var(--gris-borde);border-radius:10px;padding:14px 16px;margin-bottom:16px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              ${_inputDato('enc-cli-nombre', 'Propietario', orden.propietario || cliente?.nombre || '')}
+              ${_inputDato('enc-cli-tel', 'Teléfono', tel, 'tel')}
+              ${_inputDato('enc-cli-email', 'Correo', email, 'email')}
+              ${_dato('Vehículo', [orden.marca, orden.linea].filter(Boolean).join(' '))}
+              ${_dato('Placa', orden.placa)}
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <button onclick="Encuestas._guardarDatosCliente(${ordenId},${orden.cliente_id||'null'})" style="background:#1D4ED8;color:white;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">💾 Guardar datos</button>
+              <span id="enc-cli-msg" style="font-size:12px;color:#059669;display:none">Guardado ✓</span>
+              <span style="flex:1"></span>
+              <a id="enc-wa-link" href="${wa ? wa + '?text=' : '#'}" target="_blank" rel="noopener" style="display:${wa?'inline-flex':'none'};align-items:center;gap:6px;background:#25D366;color:white;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">💬 WhatsApp</a>
+              <a id="enc-tel-link" href="${tel ? 'tel:'+tel : '#'}" style="display:${tel?'inline-flex':'none'};align-items:center;gap:6px;background:#EFF6FF;color:#1D4ED8;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;border:1.5px solid #BFDBFE">📞 Llamar</a>
+            </div>
           </div>
 
           <!-- Acción rápida sin llenar encuesta -->
@@ -928,6 +938,36 @@ const Encuestas = (() => {
     document.addEventListener('keydown', _state.modalKeyHandler);
     if (orden.asesor_id) { const s = document.getElementById('enc-asesor'); if (s) s.value = orden.asesor_id; }
     setTimeout(() => document.getElementById('enc-asesor')?.focus(), 50);
+  }
+
+  async function _guardarDatosCliente(ordenId, clienteId) {
+    const nombre = document.getElementById('enc-cli-nombre')?.value.trim() || '';
+    const tel    = document.getElementById('enc-cli-tel')?.value.trim() || '';
+    const email  = document.getElementById('enc-cli-email')?.value.trim() || '';
+    try {
+      // Actualizar orden (propietario + teléfono)
+      const patchOrden = {};
+      if (nombre) patchOrden.propietario = nombre;
+      if (tel)    patchOrden.telefono    = tel;
+      if (Object.keys(patchOrden).length) await api(`/ordenes?id=eq.${ordenId}`, 'PATCH', patchOrden);
+      // Actualizar cliente si existe
+      if (clienteId) {
+        const patchCli = {};
+        if (nombre) patchCli.nombre = nombre;
+        if (tel)    patchCli.telefono = tel;
+        if (email)  patchCli.email   = email;
+        if (Object.keys(patchCli).length) await api(`/clientes?id=eq.${clienteId}`, 'PATCH', patchCli);
+      }
+      // Actualizar los links de WhatsApp/llamar en el modal sin cerrarlo
+      const telLimpio = tel.replace(/\D/g,'');
+      const waNum = telLimpio.length === 10 ? '57' + telLimpio : telLimpio;
+      const waLink = document.getElementById('enc-wa-link');
+      const telLink = document.getElementById('enc-tel-link');
+      if (waLink && tel) { waLink.href = `https://wa.me/${waNum}?text=`; waLink.style.display = 'inline-flex'; }
+      if (telLink && tel) { telLink.href = `tel:${tel}`; telLink.style.display = 'inline-flex'; }
+      const msg = document.getElementById('enc-cli-msg');
+      if (msg) { msg.style.display = 'inline'; setTimeout(() => { msg.style.display = 'none'; }, 2500); }
+    } catch(e) { toast('Error al guardar: ' + e.message, 'err'); }
   }
 
   async function _accionRapida(encId, estado) {
@@ -1263,6 +1303,6 @@ const Encuestas = (() => {
   }
 
   // API pública del módulo (lo que usan onclick inline, navJefe y mecanico.js)
-  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, pedirResena, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml, accion, accionConMotivo, eliminarEncuesta, _accionRapida, dragStart, dragEnd, dropZone, ptrDown, ptrMove, ptrUp, cardTap, tapZone, abrirEncuestaSeleccionada, verNotificaciones, _drag };
+  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, pedirResena, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml, accion, accionConMotivo, eliminarEncuesta, _accionRapida, _guardarDatosCliente, dragStart, dragEnd, dropZone, ptrDown, ptrMove, ptrUp, cardTap, tapZone, abrirEncuestaSeleccionada, verNotificaciones, _drag };
 })();
 window.Encuestas = Encuestas;
