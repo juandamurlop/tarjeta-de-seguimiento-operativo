@@ -198,14 +198,15 @@ async function guardarAprobacion() {
 // CAPACIDAD (helper)
 // ============================================================
 function _refrescarCapacidad() {
-  const ok = [true, true, true];
-  Promise.all([
-    api('/ordenes?estado=eq.Activa&pulmon=eq.false&select=id').catch(() => { ok[0] = false; return []; }),
-    api('/ordenes?pulmon=eq.true&pulmon_tipo=eq.interno&select=id').catch(() => { ok[1] = false; return []; }),
-    api('/ordenes?pulmon=eq.true&pulmon_tipo=eq.externo&select=id').catch(() => { ok[2] = false; return []; })
-  ]).then(([activas, pulmonInterno, pulmonExterno]) => {
-    if (ok[0] && ok[1] && ok[2]) actualizarCapacidad(activas.length, pulmonInterno.length, pulmonExterno.length);
-  });
+  api('/ordenes?or=(estado.eq.Activa,pulmon.eq.true)&select=id,estado,pulmon,pulmon_tipo')
+    .then(rows => {
+      rows = rows || [];
+      const activas      = rows.filter(r => r.estado === 'Activa' && !r.pulmon).length;
+      const pulmonInt    = rows.filter(r => r.pulmon && r.pulmon_tipo === 'interno').length;
+      const pulmonExt    = rows.filter(r => r.pulmon && r.pulmon_tipo === 'externo').length;
+      actualizarCapacidad(activas, pulmonInt, pulmonExt);
+    })
+    .catch(() => {});
 }
 
 function _setPulmonUI(activo, tipo) {
