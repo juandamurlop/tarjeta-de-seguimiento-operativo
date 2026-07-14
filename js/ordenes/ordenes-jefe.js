@@ -518,8 +518,39 @@ function montarJefe() {
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
           <span class="nav-label">Cotizaciones</span>
         </button>
-        <!-- [Oculto] Menú "Repuestos" (flujo con proveedores) — retirado por pedido; el módulo y su código se conservan para una futura versión. -->
       </div>
+
+      ${sesion?.perfil === 'gerente' ? `
+      ${_grupoHeader('registro','Registro')}
+        <button class="nav-item" id="nav-nueva-prog" onclick="navJefe('nueva-prog')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="16" r="1"/></svg>
+          <span class="nav-label">Ingreso de vehículos</span>
+        </button>
+        <button class="nav-item" id="nav-historial-v" onclick="navJefe('historial-v')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+          <span class="nav-label">Vehículos ingresados</span>
+        </button>
+      </div>
+
+      ${_grupoHeader('informes','Informes')}
+        <button class="nav-item" id="nav-caja" onclick="navJefe('caja')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          <span class="nav-label">Caja</span>
+        </button>
+        <button class="nav-item" id="nav-metas" onclick="navJefe('metas')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          <span class="nav-label">Metas</span>
+        </button>
+        <button class="nav-item" id="nav-reportes" onclick="navJefe('reportes')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span class="nav-label">Reportes</span>
+        </button>
+        <button class="nav-item" id="nav-encuestas" onclick="navJefe('encuestas')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <span class="nav-label">Encuestas</span>
+        </button>
+      </div>
+      ` : ''}
 
     `;
   }
