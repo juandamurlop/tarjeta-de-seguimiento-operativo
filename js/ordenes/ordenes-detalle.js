@@ -121,14 +121,15 @@ async function abrirOrden(id) {
   detalleCont.innerHTML = '<div class="loading-state">Cargando...</div>';
 
   try {
-    const [orden, etapas, fotosEt, fotosIng, novedades, aprobaciones, solicitudesRep] = await Promise.all([
+    const [orden, etapas, fotosEt, fotosIng, novedades, aprobaciones, solicitudesRep, pagosOrden] = await Promise.all([
       api(`/ordenes?id=eq.${id}`).then(d => d[0]),
       api(`/etapas?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || [],
       api(`/fotos_etapas?orden_id=eq.${id}&order=creado_en.desc`).catch(() => []) || [],
       api(`/fotos_ingreso?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || [],
       api(`/novedades?orden_id=eq.${id}&order=creado_en.desc`).catch(() => []) || [],
       api(`/aprobaciones_etapa?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || [],
-      api(`/solicitudes_repuesto?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || []
+      api(`/solicitudes_repuesto?orden_id=eq.${id}&order=creado_en.asc`).catch(() => []) || [],
+      api(`/caja_movimientos?orden_id=eq.${id}&order=created_at.asc&select=id,fecha,hora,monto,descripcion,responsable`).catch(() => []) || []
     ]);
     ordenActual = orden;
 
@@ -517,6 +518,30 @@ async function abrirOrden(id) {
               ${orden.precio_venta_cliente ? `<div style="font-size:12px;color:var(--verde);font-weight:600;margin-top:8px">Total a cliente: ${new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(orden.precio_venta_cliente)}</div>` : ''}
             </div>
           </div>` : ''}
+          ${(() => {
+            const fmt2 = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
+            const pagos = Array.isArray(pagosOrden) ? pagosOrden : [];
+            const totalPagado = pagos.reduce((s,p) => s + Number(p.monto||0), 0);
+            const pill2 = totalPagado > 0
+              ? `<span style="flex-shrink:0;font-size:10px;font-weight:700;color:#047857;background:#D1FAE5;border-radius:99px;padding:2px 8px">${fmt2(totalPagado)}</span>`
+              : `<span style="flex-shrink:0;font-size:10px;font-weight:700;color:#B45309;background:#FEF3C7;border-radius:99px;padding:2px 8px">Sin pagos</span>`;
+            return `<div class="sidebar-card">
+              <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'" class="sidebar-card-header" style="background:#F0FDF4;color:#047857;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                <span style="flex:1;font-size:13px">Pagos en caja</span>
+                ${pill2}
+              </div>
+              <div class="sidebar-card-body" style="display:none">
+                ${pagos.length ? pagos.map(p => `<div class="pago-row">
+                  <div><div style="font-size:13px">${escapeHtml(p.descripcion||'Pago')}</div><div style="font-size:11px;color:var(--gris-mid)">${p.fecha||''} ${p.hora||''} · ${escapeHtml(p.responsable||'')}</div></div>
+                  <div style="font-weight:700;color:var(--verde);white-space:nowrap">${fmt2(p.monto)}</div>
+                </div>`).join('')
+                  + (totalPagado > 0 ? `<div style="display:flex;justify-content:space-between;padding-top:8px;font-weight:700;font-size:13px;border-top:1px solid var(--gris-borde);margin-top:4px"><span>Total recibido</span><span style="color:var(--verde)">${fmt2(totalPagado)}</span></div>` : '')
+                : '<div style="font-size:13px;color:var(--gris-mid);padding:4px 0">Sin pagos registrados en caja.</div>'}
+                ${esJefe() ? `<button class="btn btn-sm btn-ghost" style="width:100%;margin-top:10px;border:1px dashed var(--gris-borde)" onclick="navJefe('caja')">Ir a Caja para registrar pago</button>` : ''}
+              </div>
+            </div>`;
+          })()}
           ${todasFotos.length ? `
           <div class="sidebar-card">
             <div class="sidebar-card-header">Fotos recientes</div>

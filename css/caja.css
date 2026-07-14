@@ -79,6 +79,12 @@ html[data-theme="dark"] #pag-caja .cj-btn.primary{color:#0E1622;}
 #pag-caja .cj-btn.danger:hover{background:var(--cj-rojo-bg);}
 #pag-caja .cj-btn.sm{padding:4px 10px;font-size:12px;}
 #pag-caja .cj-btn:disabled{opacity:.4;cursor:default;}
+#pag-caja .cj-ac-item{padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--cj-borde);transition:background .12s;}
+#pag-caja .cj-ac-item:hover{background:var(--cj-gris);}
+#pag-caja .cj-ac-item:last-child{border-bottom:none;}
+#pag-caja .cj-orden-sel-box{display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding:8px 10px;background:var(--cj-azul-bg);border-radius:var(--cj-r);font-size:13px;font-weight:600;}
+#pag-caja .pago-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--gris-borde);font-size:13px;gap:8px;}
+#pag-caja .pago-row:last-child{border-bottom:none;}
 
 /* KPI */
 #pag-caja .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.25rem;}

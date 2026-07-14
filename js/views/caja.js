@@ -13,6 +13,7 @@ const Caja = (function () {
   let movHoy = [], apertura = null, histData = [], anticiposData = [];
   let anticipoIdPendiente = null;
   let egresoIdPendiente = null;
+  let _ordenSel = null, _ordenTimer = null;
 
   // ── UTILS ──────────────────────────────────────────────────
   const $ = k => document.getElementById('cj-' + k);
@@ -48,10 +49,52 @@ const Caja = (function () {
     if (!btn._orig) btn._orig = btn.textContent;
   }
 
+  // ── BÚSQUEDA DE ORDEN (para vincular pago) ─────────────────
+  function _showOrdenSearch() {
+    const show = $('m-tipo')?.value === 'ingreso' && $('m-cat')?.value === 'Pago cliente';
+    const wrap = $('orden-search-wrap');
+    if (wrap) wrap.style.display = show ? '' : 'none';
+    if (!show) _limpiarOrden();
+  }
+  async function _buscarOrden(q) {
+    const lista = $('orden-lista'); if (!lista) return;
+    if (!q || q.trim().length < 2) { lista.style.display = 'none'; return; }
+    clearTimeout(_ordenTimer);
+    _ordenTimer = setTimeout(async () => {
+      lista.innerHTML = '<div style="padding:8px 12px;font-size:13px;color:var(--cj-txt2)">Buscando...</div>';
+      lista.style.display = 'block';
+      const qe = encodeURIComponent(q.trim());
+      const rows = arr(await api(`/ordenes?or=(placa.ilike.*${qe}*,propietario.ilike.*${qe}*,numero_ot.ilike.*${qe}*)&select=id,numero_ot,placa,propietario,marca,linea,estado&limit=8`).catch(() => []));
+      if (!rows.length) { lista.innerHTML = '<div style="padding:8px 12px;font-size:13px;color:var(--cj-txt2)">Sin resultados</div>'; return; }
+      lista.innerHTML = rows.map(o => `<div class="cj-ac-item" onclick="Caja._selOrden('${esc(o.id)}','${esc(o.numero_ot||'')}','${esc(o.placa||'')}','${esc(o.propietario||'')}','${esc(o.marca||'')} ${esc(o.linea||'')}')">
+        <strong>${esc(o.numero_ot ? 'OT ' + o.numero_ot : o.placa)}</strong>
+        <span style="color:var(--cj-txt2)"> · ${esc(o.placa)} · ${esc(o.propietario||'—')}</span>
+        <span style="float:right;font-size:11px;color:var(--cj-txt2)">${esc(o.estado)}</span>
+      </div>`).join('');
+    }, 250);
+  }
+  function _selOrden(id, ot, placa, propietario, vehiculo) {
+    _ordenSel = { id, ot, placa, propietario };
+    if ($('orden-id')) $('orden-id').value = id;
+    if ($('orden-ot')) $('orden-ot').value = ot;
+    if ($('orden-q')) $('orden-q').value = '';
+    const lista = $('orden-lista'); if (lista) lista.style.display = 'none';
+    if ($('orden-sel-txt')) $('orden-sel-txt').textContent = `${ot ? 'OT ' + ot + ' · ' : ''}${placa} · ${propietario || vehiculo.trim()}`;
+    if ($('orden-sel')) $('orden-sel').style.display = 'flex';
+    if ($('m-desc') && !$('m-desc').value) $('m-desc').value = `Pago orden${ot ? ' ' + ot : ''} — ${placa}`;
+  }
+  function _limpiarOrden() {
+    _ordenSel = null;
+    ['orden-id','orden-ot','orden-q'].forEach(k => { if ($(k)) $(k).value = ''; });
+    const lista = $('orden-lista'); if (lista) lista.style.display = 'none';
+    if ($('orden-sel')) $('orden-sel').style.display = 'none';
+  }
+
   // ── CATEGORÍAS ─────────────────────────────────────────────
   function updCats() {
     const t = $('m-tipo')?.value || 'egreso';
     if ($('m-cat')) $('m-cat').innerHTML = CATS[t].map(c => `<option>${esc(c)}</option>`).join('');
+    _showOrdenSearch();
   }
   function poblarFiltrosCats() {
     const todas = [...CATS.egreso, ...CATS.ingreso];
@@ -222,7 +265,7 @@ const Caja = (function () {
       <td style="color:var(--cj-txt2);font-size:12px">${esc(m.hora)}</td>
       <td><span class="tag ${m.tipo}">${esc(m.tipo)}</span></td>
       <td style="color:var(--cj-txt2)">${esc(m.categoria)}</td>
-      <td>${esc(m.descripcion)}${m.observacion ? `<br><small style="color:var(--cj-txt2)">${esc(m.observacion)}</small>` : ''}${m.estado === 'cerrado' && m.valor_factura != null ? `<br><small style="color:var(--cj-txt2)">Factura: ${fmt(m.valor_factura)}${Number(m.diferencia) > 0 ? ` · sobrante ${fmt(m.diferencia)}` : ''}</small>` : ''}</td>
+      <td>${esc(m.descripcion)}${m.numero_ot ? `<br><small style="color:var(--cj-azul);font-weight:600">OT ${esc(m.numero_ot)}</small>` : ''}${m.observacion ? `<br><small style="color:var(--cj-txt2)">${esc(m.observacion)}</small>` : ''}${m.estado === 'cerrado' && m.valor_factura != null ? `<br><small style="color:var(--cj-txt2)">Factura: ${fmt(m.valor_factura)}${Number(m.diferencia) > 0 ? ` · sobrante ${fmt(m.diferencia)}` : ''}</small>` : ''}</td>
       <td style="color:var(--cj-txt2)">${esc(m.responsable)}</td>
       <td style="text-align:right" class="${m.tipo === 'ingreso' ? 'pos' : 'neg'}">${m.tipo === 'ingreso' ? '+' : '-'}${fmt(m.monto)}</td>
       <td>${estadoCelda(m)}</td>
@@ -267,14 +310,16 @@ const Caja = (function () {
     const monto = parseFloat($('m-monto').value);
     const responsable = $('m-resp').value.trim();
     const observacion = $('m-obs').value.trim();
+    const orden_id = $('orden-id')?.value || null;
+    const numero_ot = $('orden-ot')?.value || null;
     if (!descripcion) { toast('Agrega una descripción', 'bad'); return; }
     if (isNaN(monto) || monto <= 0) { toast('Ingresa un monto válido', 'bad'); return; }
     setBtnLoading('btn-registrar', true, 'Guardando...');
     try {
-      await api('/caja_movimientos', 'POST', {
-        fecha: hoyISO(), hora: horaLocal(), tipo, categoria, descripcion, monto, responsable, observacion,
-        usuario: usuarioActual(), estado: tipo === 'egreso' ? 'pendiente' : null
-      });
+      const body = { fecha: hoyISO(), hora: horaLocal(), tipo, categoria, descripcion, monto, responsable, observacion,
+        usuario: usuarioActual(), estado: tipo === 'egreso' ? 'pendiente' : null };
+      if (orden_id) { body.orden_id = orden_id; body.numero_ot = numero_ot; }
+      await api('/caja_movimientos', 'POST', body);
       toast(tipo === 'ingreso'
         ? `✓ Ingreso registrado — ${fmt(monto)}`
         : `✓ Egreso registrado — ${fmt(monto)}. Queda pendiente de justificar con factura.`);
@@ -297,6 +342,7 @@ const Caja = (function () {
     ['m-desc', 'm-monto', 'm-resp', 'm-obs'].forEach(k => { if ($(k)) $(k).value = ''; });
     if ($('m-tipo')) $('m-tipo').value = 'egreso';
     updCats();
+    _limpiarOrden();
   }
 
   async function eliminar(id) {
@@ -705,7 +751,23 @@ const Caja = (function () {
               <option value="ingreso">💰 Ingreso — entrada de dinero</option>
             </select>
           </div>
-          <div><label>Categoría</label><select id="cj-m-cat"></select></div>
+          <div><label>Categoría</label><select id="cj-m-cat" onchange="Caja._showOrdenSearch()"></select></div>
+        </div>
+        <div id="cj-orden-search-wrap" style="display:none;margin-bottom:12px">
+          <label>Vincular orden de trabajo <span style="color:var(--cj-txt2);font-weight:400">(opcional)</span></label>
+          <div style="position:relative">
+            <input type="text" id="cj-orden-q" placeholder="Placa, propietario o N° OT..." autocomplete="off"
+              oninput="Caja._buscarOrden(this.value)"
+              onfocus="Caja._buscarOrden(this.value)"
+              onblur="setTimeout(()=>{ const d=document.getElementById('cj-orden-lista'); if(d) d.style.display='none'; },200)">
+            <div id="cj-orden-lista" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--cj-card);border:1px solid var(--cj-borde);border-radius:var(--cj-r);z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.12)"></div>
+          </div>
+          <div id="cj-orden-sel" class="cj-orden-sel-box" style="display:none">
+            <span id="cj-orden-sel-txt"></span>
+            <button onclick="Caja._limpiarOrden()" style="background:none;border:none;cursor:pointer;color:var(--cj-txt2);font-size:18px;line-height:1;padding:0 2px">×</button>
+          </div>
+          <input type="hidden" id="cj-orden-id">
+          <input type="hidden" id="cj-orden-ot">
         </div>
         <div class="fg3">
           <div><label>Descripción *</label><input type="text" id="cj-m-desc" placeholder="¿En qué se usó / quién pagó?"/></div>
@@ -831,7 +893,8 @@ const Caja = (function () {
     registrarAnticipo, limpiarFormAnticipo, previewFactura,
     abrirModalFactura, cerrarModalFactura, confirmarCierreAnticipo,
     abrirCierreEgreso, previewEgreso, cerrarModalEgreso, confirmarCierreEgreso,
-    abrirModal, cerrarModal
+    abrirModal, cerrarModal,
+    _showOrdenSearch, _buscarOrden, _selOrden, _limpiarOrden
   };
 })();
 
