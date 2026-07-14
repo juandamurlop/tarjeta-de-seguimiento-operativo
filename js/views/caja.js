@@ -189,10 +189,24 @@ const Caja = (function () {
     const apCard = $('apertura-card');
     if (apertura) {
       if (apCard) apCard.style.display = 'none';
-      if (heroEstado) { heroEstado.textContent = '✓ Caja abierta'; heroEstado.style.background = 'rgba(76,175,80,0.3)'; }
+      const cerrada = apertura.saldo_cierre != null;
+      if (heroEstado) {
+        heroEstado.textContent = cerrada ? 'Caja cerrada' : 'Caja abierta';
+        heroEstado.style.background = cerrada ? 'rgba(239,68,68,0.25)' : 'rgba(76,175,80,0.3)';
+      }
+      const btnCierre = $('btn-cerrar-caja');
+      if (btnCierre) btnCierre.style.display = cerrada ? 'none' : '';
+      const formReg = $('card-registro');
+      if (formReg) formReg.style.display = cerrada ? 'none' : '';
+      const cierreInfo = $('cierre-info');
+      if (cierreInfo) {
+        cierreInfo.style.display = cerrada ? '' : 'none';
+        if (cerrada) cierreInfo.innerHTML = `<div class="cj-alert info">Caja cerrada a las ${esc(apertura.hora_cierre||'—')} por ${esc(apertura.cerrada_por||'—')}. Conteo físico: ${fmt(apertura.saldo_cierre)} · Diferencia: <strong style="color:${(apertura.diferencia||0)>=0?'var(--cj-verde)':'var(--cj-rojo)'}">${fmt(Math.abs(apertura.diferencia||0))} ${(apertura.diferencia||0)>=0?'sobrante':'faltante'}</strong></div>`;
+      }
     } else {
       if (apCard) apCard.style.display = 'block';
       if (heroEstado) { heroEstado.textContent = 'Sin abrir'; heroEstado.style.background = 'rgba(255,255,255,0.15)'; }
+      const btnCierre = $('btn-cerrar-caja'); if (btnCierre) btnCierre.style.display = 'none';
       await preLlenarSaldoAnterior();
     }
 
@@ -206,6 +220,12 @@ const Caja = (function () {
     const t = calcTotales(movHoy, apertura);
     if ($('hero-saldo')) $('hero-saldo').textContent = fmt(t.saldo);
     if ($('hero-meta')) $('hero-meta').textContent = `+${fmt(t.ing)} ingresos  −${fmt(t.eg)} egresos`;
+    const alerta = $('alerta-saldo-bajo');
+    if (alerta) {
+      const bajo = apertura && t.saldo < 100000 && (apertura.saldo_cierre == null);
+      alerta.style.display = bajo ? '' : 'none';
+      if (bajo) alerta.innerHTML = `<div class="cj-alert warning">Saldo en caja por debajo de ${fmt(100000)}. Considera hacer una recarga.</div>`;
+    }
   }
 
   async function preLlenarSaldoAnterior() {
@@ -260,7 +280,7 @@ const Caja = (function () {
   function renderTabla(k, lista, conDel) {
     const el = $(k); if (!el) return;
     if (!lista.length) { el.innerHTML = '<div class="empty">Sin movimientos registrados</div>'; return; }
-    const metodoIcon = { efectivo:'💵', transferencia:'🏦', tarjeta:'💳', consignacion:'📋' };
+    const metodoIcon = { efectivo:'Efectivo', transferencia:'Transf.', tarjeta:'Tarjeta', consignacion:'Consig.' };
     el.innerHTML = `<div class="tw"><table><thead><tr><th>Hora</th><th>Tipo</th><th>Categoría</th><th>Descripción</th><th>Método</th><th>Cajero</th><th>Recibe</th><th style="text-align:right">Monto</th><th>Estado</th>${conDel ? '<th></th>' : ''}</tr></thead>
     <tbody>${lista.map(m => `<tr>
       <td style="color:var(--cj-txt2);font-size:12px">${esc(m.hora)}</td>
@@ -272,7 +292,7 @@ const Caja = (function () {
       <td style="color:var(--cj-txt2);font-size:12px">${esc(m.recibe || '—')}</td>
       <td style="text-align:right" class="${m.tipo === 'ingreso' ? 'pos' : 'neg'}">${m.tipo === 'ingreso' ? '+' : '-'}${fmt(m.monto)}</td>
       <td>${estadoCelda(m)}</td>
-      ${conDel ? `<td><button class="cj-btn danger sm" onclick="Caja.eliminar('${m.id}')">×</button></td>` : ''}
+      ${conDel ? `<td style="white-space:nowrap"><button class="cj-btn danger sm" onclick="Caja.eliminar('${m.id}')">×</button>${m.tipo==='ingreso'?` <button class="cj-btn sm" onclick="Caja.generarReciboPDF('${m.id}')" title="Generar recibo">Recibo</button>`:''}</td>` : ''}
     </tr>`).join('')}</tbody></table></div>`;
   }
   function updBadgeEgresos() {
@@ -682,6 +702,112 @@ const Caja = (function () {
     }
   }
 
+  // ── CIERRE DE CAJA ─────────────────────────────────────────
+  function abrirCierreCaja() {
+    if (!apertura) { toast('No hay caja abierta hoy', 'bad'); return; }
+    const t = calcTotales(movHoy, apertura);
+    $('cc-saldo-sistema').textContent = fmt(t.saldo);
+    $('cc-fisico').value = '';
+    $('cc-diff').style.display = 'none';
+    $('modal-cierre').classList.add('open');
+    $('cc-fisico').focus();
+    $('cc-fisico').oninput = () => {
+      const v = parseFloat($('cc-fisico').value);
+      const el = $('cc-diff'); if (!el) return;
+      if (isNaN(v)) { el.style.display = 'none'; return; }
+      const diff = v - t.saldo; el.style.display = 'block';
+      el.style.background = diff >= 0 ? 'var(--cj-verde-bg)' : 'var(--cj-rojo-bg)';
+      el.style.color = diff >= 0 ? 'var(--cj-verde)' : 'var(--cj-rojo)';
+      el.textContent = diff >= 0 ? `Sobrante: ${fmt(diff)}` : `Faltante: ${fmt(Math.abs(diff))}`;
+    };
+  }
+  function cerrarModalCierre() { $('modal-cierre').classList.remove('open'); }
+  async function confirmarCierreCaja() {
+    if (!apertura) return;
+    const fisico = parseFloat($('cc-fisico').value);
+    if (isNaN(fisico) || fisico < 0) { toast('Ingresa el conteo físico', 'bad'); return; }
+    const t = calcTotales(movHoy, apertura);
+    const diferencia = fisico - t.saldo;
+    setBtnLoading('btn-confirmar-cierre-caja', true, 'Cerrando...');
+    try {
+      await api(`/caja_aperturas?id=eq.${apertura.id}`, 'PATCH', {
+        saldo_cierre: fisico, hora_cierre: horaLocal(),
+        diferencia, cerrada_por: usuarioActual()
+      });
+      toast('Caja cerrada correctamente');
+      cerrarModalCierre();
+      await cargarHoy();
+    } catch (e) { toast('Error: ' + e.message, 'bad'); }
+    finally { setBtnLoading('btn-confirmar-cierre-caja', false, 'Confirmar cierre'); }
+  }
+
+  // ── RECIBO PDF ─────────────────────────────────────────────
+  function generarReciboPDF(id) {
+    const m = movHoy.find(x => x.id === id) || histData.find(x => x.id === id);
+    if (!m) { toast('Movimiento no encontrado', 'bad'); return; }
+    if (!window.jspdf) { toast('No se pudo cargar el generador de PDF', 'bad'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: [80, 120] });
+    const AZUL = [26, 58, 107], GRIS = [100, 100, 100];
+    doc.setFillColor(...AZUL); doc.rect(0, 0, 80, 18, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11); doc.text('Freimanautos SA', 6, 8);
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.text('Recibo de Caja', 6, 14);
+    doc.setTextColor(...AZUL); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text('RECIBO DE PAGO', 40, 26, { align: 'center' });
+    doc.setTextColor(...GRIS); doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+    const rows = [
+      ['Fecha:', `${fechaLeg(m.fecha)} ${m.hora||''}`],
+      ['Cajero:', m.responsable || '—'],
+      ['Recibe:', m.recibe || '—'],
+      ['Concepto:', m.descripcion || '—'],
+      ['Método:', m.metodo_pago || 'efectivo'],
+      m.numero_ot ? ['OT vinculada:', 'OT ' + m.numero_ot] : null,
+    ].filter(Boolean);
+    let y = 34;
+    rows.forEach(([l, v]) => {
+      doc.setFont('helvetica', 'bold'); doc.text(l, 6, y);
+      doc.setFont('helvetica', 'normal'); doc.text(v, 32, y, { maxWidth: 42 });
+      y += 7;
+    });
+    doc.setDrawColor(...AZUL); doc.setLineWidth(0.3); doc.line(6, y, 74, y); y += 6;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...AZUL);
+    doc.text('TOTAL:', 6, y); doc.text(fmt(m.monto), 74, y, { align: 'right' });
+    y += 10;
+    doc.setFontSize(7); doc.setTextColor(...GRIS); doc.setFont('helvetica', 'normal');
+    doc.text('Gracias por su pago — Freimanautos SA', 40, y, { align: 'center' });
+    doc.save(`recibo-${m.fecha}-${(m.recibe||'cliente').replace(/\s+/g,'_')}.pdf`);
+  }
+
+  // ── RECONCILIACIÓN (órdenes entregadas sin pago) ────────────
+  async function cargarPendientesCobro() {
+    const cont = $('view-cobrar'); if (!cont) return;
+    cont.innerHTML = '<div class="spin">Cargando...</div>';
+    // Órdenes entregadas
+    const ordenes = arr(await api('/ordenes?estado=eq.Entregada&select=id,numero_ot,placa,propietario,marca,linea,entregada_en&order=entregada_en.desc&limit=200').catch(() => []));
+    if (!ordenes.length) { cont.innerHTML = '<div class="empty">Sin órdenes entregadas</div>'; return; }
+    // IDs con pago registrado
+    const conPago = new Set();
+    const pagados = arr(await api('/caja_movimientos?orden_id=not.is.null&select=orden_id').catch(() => []));
+    pagados.forEach(p => { if (p.orden_id) conPago.add(p.orden_id); });
+    const sinPago = ordenes.filter(o => !conPago.has(o.id));
+    const conPagoList = ordenes.filter(o => conPago.has(o.id));
+    if (!sinPago.length && !conPagoList.length) { cont.innerHTML = '<div class="empty">Sin órdenes entregadas</div>'; return; }
+    const filaOrden = (o, pagada) => `<tr>
+      <td style="font-family:monospace;font-size:12px">${esc(o.numero_ot||'—')}</td>
+      <td><strong>${esc(o.placa)}</strong><br><small style="color:var(--cj-txt2)">${esc(o.marca||'')} ${esc(o.linea||'')}</small></td>
+      <td style="color:var(--cj-txt2);font-size:12px">${esc(o.propietario||'—')}</td>
+      <td style="font-size:12px;color:var(--cj-txt2)">${o.entregada_en ? fechaLeg(o.entregada_en.slice(0,10)) : '—'}</td>
+      <td><span class="estado-badge ${pagada?'cerrado':'pendiente'}">${pagada?'Con pago':'Sin pago'}</span></td>
+    </tr>`;
+    cont.innerHTML = `
+      ${sinPago.length ? `<div class="cj-alert warning" style="margin-bottom:1rem">${sinPago.length} orden${sinPago.length>1?'es':''} entregada${sinPago.length>1?'s':''} sin pago registrado en caja.</div>` : ''}
+      <div class="tw"><table>
+        <thead><tr><th>N° OT</th><th>Vehículo</th><th>Propietario</th><th>Entregada</th><th>Estado pago</th></tr></thead>
+        <tbody>${sinPago.map(o => filaOrden(o, false)).join('')}${conPagoList.map(o => filaOrden(o, true)).join('')}</tbody>
+      </table></div>`;
+  }
+
   // ── TABS ───────────────────────────────────────────────────
   function showTab(id, btn) {
     const cont = document.getElementById('pag-caja');
@@ -696,6 +822,7 @@ const Caja = (function () {
     if (id === 'hoy') cargarHoy();
     if (id === 'anticipos') cargarAnticipos();
     if (id === 'historial') buscarHistorial();
+    if (id === 'cobrar') cargarPendientesCobro();
   }
 
   // ── MARKUP ─────────────────────────────────────────────────
@@ -707,6 +834,7 @@ const Caja = (function () {
       <button class="cj-tab" id="cj-tab-hoy" onclick="Caja.showTab('hoy',this)">Caja del día</button>
       <button class="cj-tab" onclick="Caja.showTab('historial',this)">Historial</button>
       <button class="cj-tab" id="cj-tab-anticipos" onclick="Caja.showTab('anticipos',this)">Caja Menor</button>
+      <button class="cj-tab" onclick="Caja.showTab('cobrar',this)">Por cobrar</button>
     </div>
 
     <!-- DASHBOARD -->
@@ -729,8 +857,10 @@ const Caja = (function () {
       <div class="cj-hero">
         <div class="cj-hero-top">
           <div><div class="sh-label">Caja del día</div><div class="sh-val" id="cj-hero-saldo">$0</div><div class="sh-meta" id="cj-hero-meta">—</div></div>
-          <div class="sh-right"><div class="sh-label">Hoy</div><div class="cj-hero-fecha" id="cj-hero-fecha">—</div><div class="sh-chip" id="cj-hero-estado">Sin abrir</div></div>
+          <div class="sh-right"><div class="sh-label">Hoy</div><div class="cj-hero-fecha" id="cj-hero-fecha">—</div><div class="sh-chip" id="cj-hero-estado">Sin abrir</div><button class="cj-btn sm" id="cj-btn-cerrar-caja" style="display:none;margin-top:6px" onclick="Caja.abrirCierreCaja()">Cerrar caja del día</button></div>
         </div>
+        <div id="cj-cierre-info" style="display:none;margin-top:10px"></div>
+        <div id="cj-alerta-saldo-bajo" style="display:none;margin-top:10px"></div>
         <div class="cj-hero-metrics">
           <div class="cj-metric"><span>Apertura</span><strong id="cj-m-ini">$0</strong></div>
           <div class="cj-metric positivo"><span>Ingresos hoy</span><strong id="cj-m-ing">$0</strong></div>
@@ -749,7 +879,7 @@ const Caja = (function () {
         <button class="cj-btn primary" onclick="Caja.abrirCaja()" id="cj-btn-abrir">Confirmar y abrir caja</button>
       </div>
 
-      <div class="cj-card">
+      <div class="cj-card" id="cj-card-registro">
         <div class="cj-section-title">Registrar movimiento</div>
         <div class="fg2">
           <div><label>Tipo de movimiento</label>
@@ -784,10 +914,10 @@ const Caja = (function () {
           <div>
             <label>Método de pago</label>
             <select id="cj-m-metodo">
-              <option value="efectivo">💵 Efectivo</option>
-              <option value="transferencia">🏦 Transferencia</option>
-              <option value="tarjeta">💳 Tarjeta</option>
-              <option value="consignacion">📋 Consignación</option>
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="tarjeta">Tarjeta</option>
+              <option value="consignacion">Consignación</option>
             </select>
           </div>
           <div><label>Cajero / Entrega</label><input type="text" id="cj-m-resp" readonly style="background:var(--cj-gris);cursor:default"/></div>
@@ -862,7 +992,32 @@ const Caja = (function () {
       </div>
     </div>
 
+    <!-- POR COBRAR -->
+    <div id="cj-view-cobrar" class="cj-view">
+      <div class="cj-card">
+        <div class="cj-section-title">Órdenes entregadas — seguimiento de cobro</div>
+        <div id="cj-view-cobrar"><div class="empty">Cargando...</div></div>
+      </div>
+    </div>
+
     <!-- MODALES -->
+    <div class="modal-form-overlay" id="cj-modal-cierre">
+      <div class="modal-form">
+        <h3>Cerrar caja del día</h3>
+        <div class="sub">Cuenta el efectivo físico y compara con el saldo del sistema.</div>
+        <div style="display:flex;justify-content:space-between;padding:12px;background:var(--cj-gris);border-radius:var(--cj-r);margin:12px 0">
+          <span style="color:var(--cj-txt2)">Saldo sistema</span>
+          <strong id="cj-cc-saldo-sistema">$0</strong>
+        </div>
+        <div style="margin-bottom:10px"><label>Conteo físico en caja ($)</label><input type="number" id="cj-cc-fisico" placeholder="0" min="0" style="font-size:16px;padding:10px 12px"/></div>
+        <div id="cj-cc-diff" style="font-size:13px;padding:10px;border-radius:var(--cj-r);margin-bottom:1rem;display:none"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="cj-btn" onclick="Caja.cerrarModalCierre()">Cancelar</button>
+          <button class="cj-btn danger" onclick="Caja.confirmarCierreCaja()" id="cj-btn-confirmar-cierre-caja">Confirmar cierre</button>
+        </div>
+      </div>
+    </div>
+
     <div class="modal-overlay" id="cj-img-modal" onclick="Caja.cerrarModal()"><img class="modal-img" id="cj-modal-img-src" src="" alt="Soporte"/></div>
     <div class="modal-form-overlay" id="cj-modal-factura">
       <div class="modal-form">
@@ -914,7 +1069,9 @@ const Caja = (function () {
     abrirModalFactura, cerrarModalFactura, confirmarCierreAnticipo,
     abrirCierreEgreso, previewEgreso, cerrarModalEgreso, confirmarCierreEgreso,
     abrirModal, cerrarModal,
-    _showOrdenSearch, _buscarOrden, _selOrden, _limpiarOrden
+    _showOrdenSearch, _buscarOrden, _selOrden, _limpiarOrden,
+    abrirCierreCaja, cerrarModalCierre, confirmarCierreCaja,
+    generarReciboPDF, cargarPendientesCobro
   };
 })();
 
