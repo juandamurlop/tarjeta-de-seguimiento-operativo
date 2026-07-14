@@ -492,13 +492,13 @@ async function abrirOrden(id) {
               ${pill}
             </div>
             <div id="valor-total-body" class="sidebar-card-body" style="${_valorTotalAbierto?'':'display:none'}">
-              ${esJefe() ? `<div style="text-align:right;margin-bottom:6px"><button class="btn btn-ghost btn-xs" style="color:var(--azul)" onclick="abrirEditorValor(${orden.id})">✏️ Editar</button></div>` : ''}
+              ${tienePermiso('ver_precios') ? `<button class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="abrirEditorValor(${orden.id})">✏️ Editar precios</button>` : ''}
               ${cuerpo}
             </div>
           </div>`;
           })()}
           ${typeof _panelItemsOrden === 'function' ? _panelItemsOrden(orden, 'insumos') + _panelItemsOrden(orden, 'repuestos') : ''}
-          ${orden.tipo_cliente === 'aseguradora' && esJefe() ? `
+          ${orden.tipo_cliente === 'aseguradora' && tienePermiso('ver_precios') ? `
           <div class="sidebar-card">
             <div onclick="_togglePrecioVenta()" class="sidebar-card-header" style="background:#ECFDF5;color:#047857;gap:8px;cursor:pointer;user-select:none">
               <svg id="precio-venta-chev" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_precioVentaAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
@@ -508,7 +508,7 @@ async function abrirOrden(id) {
                 : `<span style="flex-shrink:0;font-size:10px;font-weight:700;text-transform:none;letter-spacing:0;color:#B45309;background:#FEF3C7;border-radius:99px;padding:2px 8px;white-space:nowrap">Pendiente</span>`}
             </div>
             <div id="precio-venta-body" class="sidebar-card-body" style="${_precioVentaAbierto?'':'display:none'}">
-              <div style="font-size:11px;color:var(--gris-mid);margin-bottom:8px">Es el total que verá la <strong>aseguradora</strong> en la orden de trabajo (sin detalle de procesos). Solo lo ven jefe y gerente.</div>
+              <div style="font-size:11px;color:var(--gris-mid);margin-bottom:8px">Es el total que verá la <strong>aseguradora</strong> en la orden de trabajo (sin detalle de procesos).</div>
               <div style="display:flex;gap:6px">
                 <input id="precio-venta-${orden.id}" type="number" min="0" step="1000" placeholder="0" value="${orden.precio_venta_cliente||''}" style="flex:1;min-width:0;padding:7px 9px;border:1.5px solid var(--gris-borde);border-radius:6px;font-size:13px;font-family:'DM Mono',monospace">
                 <button class="btn btn-primary btn-sm" onclick="guardarPrecioVentaCliente(${orden.id})">Guardar</button>
@@ -579,7 +579,7 @@ async function abrirOrden(id) {
               })()}
             </div>
           </div>` : ''}
-          ${esJefe() ? `
+          ${(esJefe() || tienePermiso('ver_ordenes')) ? `
           <div class="sidebar-card">
             <div onclick="_toggleEstadoOrden()" id="estado-orden-header" class="sidebar-card-header" style="gap:8px;cursor:pointer;user-select:none">
               <svg id="estado-orden-chev" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0;transition:transform .18s ease;transform:rotate(${_estadoOrdenAbierto?'90':'0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
