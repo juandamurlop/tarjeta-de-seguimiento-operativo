@@ -843,9 +843,6 @@ const Encuestas = (() => {
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
               <button onclick="Encuestas._guardarDatosCliente(${ordenId},${orden.cliente_id||'null'})" style="background:#1D4ED8;color:white;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">💾 Guardar datos</button>
               <span id="enc-cli-msg" style="font-size:12px;color:#059669;display:none">Guardado ✓</span>
-              <span style="flex:1"></span>
-              <a id="enc-wa-link" href="${wa ? wa + '?text=' : '#'}" target="_blank" rel="noopener" style="display:${wa?'inline-flex':'none'};align-items:center;gap:6px;background:#25D366;color:white;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">💬 WhatsApp</a>
-              <a id="enc-tel-link" href="${tel ? 'tel:'+tel : '#'}" style="display:${tel?'inline-flex':'none'};align-items:center;gap:6px;background:#EFF6FF;color:#1D4ED8;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;border:1.5px solid #BFDBFE">📞 Llamar</a>
             </div>
           </div>
 
