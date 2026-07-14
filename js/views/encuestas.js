@@ -374,12 +374,10 @@ const Encuestas = (() => {
         </div>
       </div>` : '';
 
-    const mobileHint = puede ? `<div class="enc-mobile-hint">💡 Toca una tarjeta para seleccionarla (borde azul), luego toca la zona destino arriba. En PC puedes arrastrar directamente.</div>` : '';
-
     const cardsHtml = todas.map(enc => {
       const o = ordMap[enc.orden_id] || { id: enc.orden_id, placa: '—', propietario: '' };
       const fl = _faseLbl(enc.fase || 0);
-      const ms = enc.entregada_en ? Date.now() - new Date(enc.entregada_en).getTime() : null;
+      const ms = o.entregada_en ? Date.now() - new Date(o.entregada_en).getTime() : null;
       const dias = ms != null ? Math.floor(ms / 86400000) : null;
       const diasTxt = dias != null ? (dias === 0 ? 'hoy' : `${dias}d`) : '';
       const isUrgent = dias != null && dias >= 3;
@@ -387,11 +385,9 @@ const Encuestas = (() => {
         draggable="${puede ? 'true' : 'false'}"
         ondragstart="Encuestas.dragStart(event,${enc.id})"
         ondragend="Encuestas.dragEnd(event)"
-        onpointerdown="Encuestas.ptrDown(event,${enc.id})"
-        onpointermove="Encuestas.ptrMove(event)"
-        onpointerup="Encuestas.ptrUp(event)"
-        onclick="Encuestas.cardTap(${enc.id})"
-        style="cursor:${puede ? 'grab' : 'default'}">
+        onclick="Encuestas.abrir(${o.id},${enc.id})"
+        title="Clic para abrir encuesta"
+        style="cursor:pointer">
         <div class="enc-gcard-plate">${escapeHtml(o.placa || '—')}</div>
         <div class="enc-gcard-owner">${escapeHtml((o.propietario || '').split(' ').slice(0,2).join(' ') || '—')}</div>
         <div class="enc-gcard-foot">
@@ -401,10 +397,8 @@ const Encuestas = (() => {
       </div>`;
     }).join('');
 
-    const abrirEncuestaBtn = puede ? `<div style="margin-bottom:12px;text-align:right"><button onclick="if(Encuestas._drag&&Encuestas._drag.selectedId){Encuestas.abrirEncuestaSeleccionada()}else{toast('Selecciona una tarjeta primero','err')}" style="background:#EFF6FF;color:#1D4ED8;border:1.5px solid #BFDBFE;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📋 Abrir encuesta seleccionada</button></div>` : '';
-
-    panel.innerHTML = zonesHtml + mobileHint + abrirEncuestaBtn +
-      `<div class="enc-grid-lbl">${todas.length} pendiente${todas.length !== 1 ? 's'  : ''}</div>
+    panel.innerHTML = zonesHtml +
+      `<div class="enc-grid-lbl">${todas.length} pendiente${todas.length !== 1 ? 's' : ''}</div>
        <div class="enc-grid" id="enc-grid">${cardsHtml}</div>`;
 
     _drag.selectedId = null;
@@ -780,39 +774,36 @@ const Encuestas = (() => {
   // ═══════════════════════════════════════════════════════════════════════════
   // FORMULARIO DE CAPTURA (modal accesible)
   // ═══════════════════════════════════════════════════════════════════════════
-  async function abrir(ordenId) {
+  async function abrir(ordenId, encId) {
     cerrarModal();
 
-    const [ordRes, etapas] = await Promise.all([
-      _safe(api(`/ordenes?id=eq.${ordenId}&select=id,numero_ot,estado,placa,propietario,marca,linea,cliente_id,asesor_id,entregada_en`), 'abrir.orden'),
-      _safe(api(`/etapas?orden_id=eq.${ordenId}&select=id,servicio,mecanico_id,tecnico`), 'abrir.etapas')
+    const [ordRes, clienteRes] = await Promise.all([
+      _safe(api(`/ordenes?id=eq.${ordenId}&select=id,numero_ot,estado,placa,propietario,marca,linea,cliente_id,asesor_id,entregada_en,telefono`), 'abrir.orden'),
+      encId ? Promise.resolve(null) : Promise.resolve(null)
     ]);
     const orden = ordRes?.[0];
     if (!orden) { toast('No se pudo cargar la orden', 'err'); return; }
 
-    // Mecánicos involucrados: dedupe por (servicio, mecanico_id), solo etapas con responsable.
-    const vistos = new Set();
-    const mecs = [];
-    (etapas || []).forEach(e => {
-      if (!e.mecanico_id) return;
-      const key = `${e.servicio}|${e.mecanico_id}`;
-      if (vistos.has(key)) return;
-      vistos.add(key);
-      const nombre = e.tecnico || _state.mecanicos.find(m => Number(m.id) === Number(e.mecanico_id))?.nombre || `Operario ${e.mecanico_id}`;
-      mecs.push({ etapa_id: e.id, servicio: e.servicio, mecanico_id: e.mecanico_id, nombre });
-    });
+    // Cargar datos del cliente si existe
+    let cliente = null;
+    if (orden.cliente_id) {
+      cliente = await _safe(api(`/clientes?id=eq.${orden.cliente_id}&select=id,nombre,telefono,email,documento`), 'abrir.cliente').then(r => r?.[0]).catch(() => null);
+    }
 
-    // Asesores: operarios con el subrol "asesor" (es_asesor) + el jefe de taller,
-    // que también puede atender. El jefe vive en `configuracion`, no como operario,
-    // por eso va con value="jefe" y se guarda por nombre.
+    const tel = cliente?.telefono || orden.telefono || '';
+    const email = cliente?.email || '';
+    const wa = tel ? 'https://wa.me/' + String(tel).replace(/\D/g,'').replace(/^(\d{10})$/, '57$1') : '';
+
     const asesores = _state.mecanicos.filter(m => m.es_asesor);
     const jefeNombre = _state.jefe?.nombre || 'Jefe de taller';
     const opAsesores = asesores.map(m => `<option value="${m.id}">${escapeHtml(m.nombre)}</option>`).join('') +
       `<option value="jefe">${escapeHtml(jefeNombre)} (jefe)</option>`;
-    const mecResOpts = [
-      { v: 'bien', label: 'Bien' }, { v: 'regular', label: 'Regular' },
-      { v: 'queja', label: 'Queja' }, { v: 'no_aplica', label: 'No aplica' }
-    ];
+
+    const _dato = (lbl, val, href) => val ? `
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--gris-mid);font-weight:700">${lbl}</span>
+        ${href ? `<a href="${href}" target="_blank" style="font-size:13px;font-weight:600;color:var(--azul);text-decoration:none">${escapeHtml(val)}</a>` : `<span style="font-size:13px;font-weight:600;color:var(--texto)">${escapeHtml(val)}</span>`}
+      </div>` : '';
 
     const m = document.createElement('div');
     m.className = 'modal-overlay';
@@ -826,11 +817,32 @@ const Encuestas = (() => {
         <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between">
           <div>
             <div id="enc-modal-title" style="font-size:16px;font-weight:800;color:var(--texto)">Encuesta · ${escapeHtml(orden.placa || '')}</div>
-            <div style="font-size:12px;color:var(--gris-mid)">${escapeHtml(orden.propietario || '')} · ${escapeHtml(otDe(orden))} · Entregada ${formatFecha(orden.entregada_en)}</div>
+            <div style="font-size:12px;color:var(--gris-mid)">${escapeHtml(otDe(orden))} · Entregada ${formatFecha(orden.entregada_en)}</div>
           </div>
           <button onclick="Encuestas.cerrarModal()" aria-label="Cerrar" style="background:none;border:none;font-size:22px;color:var(--gris-mid);cursor:pointer;line-height:1">×</button>
         </div>
         <div class="modal-body" style="padding:16px 18px">
+
+          <!-- DATOS DEL CLIENTE / VEHÍCULO -->
+          <div style="background:#F8FAFC;border:1.5px solid var(--gris-borde);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            ${_dato('Propietario', orden.propietario || cliente?.nombre || '')}
+            ${_dato('Teléfono', tel, wa || null)}
+            ${_dato('Correo', email, email ? `mailto:${email}` : null)}
+            ${_dato('Vehículo', [orden.marca, orden.linea].filter(Boolean).join(' '))}
+            ${_dato('Placa', orden.placa)}
+            ${tel ? `<div style="grid-column:1/-1;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
+              ${wa ? `<a href="${wa}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#25D366;color:white;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">💬 WhatsApp</a>` : ''}
+              <a href="tel:${tel}" style="display:inline-flex;align-items:center;gap:6px;background:#EFF6FF;color:#1D4ED8;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;border:1.5px solid #BFDBFE">📞 Llamar</a>
+            </div>` : ''}
+          </div>
+
+          <!-- Acción rápida sin llenar encuesta -->
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+            <button onclick="Encuestas._accionRapida(${encId || 'null'},'no_contactado')" style="flex:1;background:#FEF3C7;color:#B45309;border:1.5px solid #FDE68A;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📵 No contestó</button>
+            <button onclick="Encuestas._accionRapida(${encId || 'null'},'archivado')" style="flex:1;background:#F4F6F9;color:var(--gris-mid);border:1.5px solid var(--gris-borde);padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">🗄 Archivar sin encuesta</button>
+          </div>
+
+          <div style="height:1px;background:var(--gris-borde);margin-bottom:16px"></div>
 
           <!-- Asesor que atendió -->
           <div class="enc-field">
@@ -841,7 +853,7 @@ const Encuestas = (() => {
           </div>
 
           <!-- BLOQUE INICIAL -->
-          <div class="enc-sec-title">Preguntas iniciales</div>
+          <div class="enc-sec-title">Calificaciones del servicio</div>
           <div class="enc-field">
             <div class="enc-field-lbl">¿Cómo le fue con el servicio?<span class="enc-field-hint">1 malo · 5 excelente</span></div>
             ${seg15('enc-general', 'Calificación del servicio, 1 a 5')}
@@ -883,45 +895,46 @@ const Encuestas = (() => {
               <div class="enc-field-lbl">¿Recomendaría el taller?</div>
               ${segSiNo('enc-recomendaria', '¿Recomendaría el taller?')}
             </div>
+
+            <!-- RESEÑA GOOGLE (solo si conforme) -->
+            ${wa ? `<div style="background:#F0FDF4;border:1.5px solid #A7F3D0;border-radius:10px;padding:12px 14px;margin-top:8px">
+              <div style="font-size:12px;font-weight:700;color:#059669;margin-bottom:8px">⭐ Pedir reseña en Google</div>
+              <div style="font-size:12px;color:var(--gris-mid);margin-bottom:8px">El cliente está conforme. Puedes enviarle el link por WhatsApp ahora.</div>
+              <a href="${wa}?text=${encodeURIComponent('¡Hola ' + (orden.propietario||'').trim().split(' ')[0] + '! 🚗✨ Gracias por confiar en Freimanautos. Si quedaste contento con el servicio, ¿nos regalas una reseña en Google? Solo toca aquí 👉 https://g.page/r/CVJ2CEaGL_XyEBM/review\n\n¡Nos ayuda muchísimo! 🙏')}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#25D366;color:white;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">💬 Enviar link de reseña por WhatsApp</a>
+            </div>` : ''}
           </div>
 
-          <!-- MECÁNICOS -->
-          <div class="enc-sec-title">Calificación de operarios</div>
-          ${mecs.length ? `${mecs.map((mc, i) => `
-            <div class="enc-mec-row" id="mecrow-${i}" data-etapa="${mc.etapa_id}" data-mecid="${mc.mecanico_id}" data-srv="${mc.servicio}">
-              <div>
-                <div style="font-weight:600;color:var(--texto);font-size:14px">${escapeHtml(mc.nombre)}</div>
-                <div style="font-size:11px;color:var(--gris-mid)">${SRV_LBL[mc.servicio] || mc.servicio || ''}</div>
-              </div>
-              ${segHtml('mecres-' + i, mecResOpts, 'Resultado del trabajo de ' + mc.nombre)}
-            </div>
-          `).join('')}` : `<div style="font-size:13px;color:var(--gris-mid)">Esta orden no tiene operarios asignados en sus etapas.</div>`}
-
-          <!-- ¿CÓMO SE ENTERÓ? (origen del cliente) -->
+          <!-- ¿CÓMO SE ENTERÓ? -->
           <div class="enc-field" style="margin-top:18px">
             <label class="enc-field-lbl" for="enc-origen">¿Cómo se enteró de nosotros?</label>
             <select id="enc-origen" style="width:100%;padding:9px 11px;border:1.5px solid var(--gris-borde);border-radius:8px">${typeof origenOptionsHtml === 'function' ? origenOptionsHtml('') : ''}</select>
           </div>
 
-          <!-- PREGUNTAS ADICIONALES (texto libre) -->
+          <!-- COMENTARIOS -->
           <div class="enc-field" style="margin-top:18px">
-            <label class="enc-field-lbl" for="enc-comentarios">Preguntas adicionales</label>
+            <label class="enc-field-lbl" for="enc-comentarios">Observaciones / comentarios</label>
             <textarea id="enc-comentarios" rows="3" style="width:100%;padding:9px 11px;border:1.5px solid var(--gris-borde);border-radius:8px;resize:vertical" placeholder="El cliente opina que ..."></textarea>
           </div>
 
           <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
             <button onclick="Encuestas.cerrarModal()" style="background:#F4F6F9;color:var(--gris-mid);border:1.5px solid var(--gris-borde);padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer">Cancelar</button>
-            <button id="enc-guardar-btn" onclick="Encuestas.guardar(${ordenId}, ${orden.cliente_id || 'null'})" style="background:var(--azul);color:white;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer">Guardar encuesta</button>
+            <button id="enc-guardar-btn" onclick="Encuestas.guardar(${ordenId}, ${orden.cliente_id || 'null'}, ${encId || 'null'})" style="background:var(--azul);color:white;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer">Guardar encuesta</button>
           </div>
         </div>
       </div>`;
     document.body.appendChild(m);
 
-    // Accesibilidad del modal: cierre con Escape, auto-foco y prefill.
     _state.modalKeyHandler = (ev) => { if (ev.key === 'Escape') cerrarModal(); };
     document.addEventListener('keydown', _state.modalKeyHandler);
     if (orden.asesor_id) { const s = document.getElementById('enc-asesor'); if (s) s.value = orden.asesor_id; }
     setTimeout(() => document.getElementById('enc-asesor')?.focus(), 50);
+  }
+
+  async function _accionRapida(encId, estado) {
+    if (!encId) { cerrarModal(); return; }
+    cerrarModal();
+    if (estado === 'no_contactado') await accionConMotivo(encId, 'no_contactado');
+    else await accion(encId, estado);
   }
 
   function cerrarModal() {
@@ -946,7 +959,7 @@ const Encuestas = (() => {
    * @param {number} ordenId   id de la orden encuestada
    * @param {number|null} clienteId  id del cliente (puede ser null)
    */
-  async function guardar(ordenId, clienteId) {
+  async function guardar(ordenId, clienteId, encId) {
     const general = segVal('enc-general');
     const cAsesor = segVal('enc-asesor-calif');
     const cJefe = segVal('enc-jefe-calif');
@@ -993,30 +1006,17 @@ const Encuestas = (() => {
       const res = await api('/encuestas?select=id', 'POST', body, { Prefer: 'resolution=merge-duplicates,return=representation' });
       const encuestaId = res?.[0]?.id;
 
-      // Eventos por mecánico
-      const items = [];
-      document.querySelectorAll('[id^="mecrow-"]').forEach(row => {
-        const i = row.id.replace('mecrow-', '');
-        const resultado = segVal('mecres-' + i);
-        if (!resultado) return;   // sin calificar → se omite
-        items.push({
-          encuesta_id: encuestaId,
-          orden_id: ordenId,
-          etapa_id: Number(row.dataset.etapa) || null,
-          mecanico_id: Number(row.dataset.mecid),
-          servicio: row.dataset.srv || null,
-          resultado,
-          puntos: PUNTOS[resultado]
-        });
-      });
-      if (encuestaId && items.length) {
-        // limpiar items previos de esta encuesta (re-guardado) e insertar
-        await api(`/encuesta_items_mecanico?encuesta_id=eq.${encuestaId}`, 'DELETE').catch(e => console.error('[Encuestas.guardar.limpiarItems]', e));
-        await api('/encuesta_items_mecanico', 'POST', items, { Prefer: 'return=minimal' });
+      // Marcar la encuesta de seguimiento como archivada (completada)
+      const idSeg = encId || encuestaId;
+      if (idSeg) {
+        await api(`/encuestas?id=eq.${idSeg}`, 'PATCH', {
+          estado_seguimiento: 'archivado',
+          ultimo_contacto: new Date().toISOString(),
+          proximo_aviso: null
+        }).catch(() => {});
       }
 
-      // Si la orden aún no tenía origen ("¿cómo nos conoció?"), rellenarlo con la
-      // respuesta de la encuesta, para que el reporte por origen quede completo.
+      // Si la orden aún no tenía origen, rellenarlo con la respuesta de la encuesta.
       const _origenEnc = document.getElementById('enc-origen')?.value || '';
       if (_origenEnc) {
         const _oo = await api(`/ordenes?id=eq.${ordenId}&select=origen`).then(r => r?.[0]).catch(() => null);
@@ -1263,6 +1263,6 @@ const Encuestas = (() => {
   }
 
   // API pública del módulo (lo que usan onclick inline, navJefe y mecanico.js)
-  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, pedirResena, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml, accion, accionConMotivo, eliminarEncuesta, dragStart, dragEnd, dropZone, ptrDown, ptrMove, ptrUp, cardTap, tapZone, abrirEncuestaSeleccionada, verNotificaciones, _drag };
+  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, pedirResena, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml, accion, accionConMotivo, eliminarEncuesta, _accionRapida, dragStart, dragEnd, dropZone, ptrDown, ptrMove, ptrUp, cardTap, tapZone, abrirEncuestaSeleccionada, verNotificaciones, _drag };
 })();
 window.Encuestas = Encuestas;
