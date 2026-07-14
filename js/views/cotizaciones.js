@@ -1148,18 +1148,19 @@ async function abrirDetalleCotizacion(cotId) {
   const estado = cot.estado || 'pendiente';
   const tienOrden = cot.orden_id != null;
   const footerEl = document.getElementById('mcot-footer');
-  footerEl.innerHTML = `
-    ${estado !== 'rechazada' ? `<button class="btn btn-ghost btn-sm" style="color:var(--azul)" onclick="editarCotizacion(${cot.id})">✏️ Editar</button>` : ''}
-    <button class="btn btn-outline" onclick="generarPdfCotizacion(${cot.id})" data-pdf="${cot.id}">📄 Generar PDF</button>
-    <button class="btn btn-primary" onclick="enviarPdfCotizacion(${cot.id})">📤 Enviar al cliente</button>
-    ${estado === 'pendiente' ? `
-      <button class="btn btn-success" onclick="cerrarModalCotizacion();aprobarCotizacion(${cot.id})">✓ Aprobar → Crear Orden</button>
-      <button class="btn btn-danger btn-sm" onclick="cerrarModalCotizacion();rechazarCotizacion(${cot.id})">Rechazar</button>
-    ` : ''}
-    ${estado === 'aprobada' && !tienOrden ? `
-      <button class="btn btn-primary" onclick="cerrarModalCotizacion();convertirEnOrden(${cot.id})">+ Crear orden</button>
-    ` : ''}
-    ${tienOrden ? `<span style="font-size:13px;color:var(--verde);font-weight:600;padding:0 8px">✓ Orden ya creada</span>` : ''}`;
+  const _btn = (cls, onclick, label) =>
+    `<button style="flex:1;min-width:0;padding:9px 12px;font-size:13px;font-weight:600;border-radius:8px;cursor:pointer;border:none;white-space:nowrap;${cls}" onclick="${onclick}">${label}</button>`;
+  footerEl.style.cssText = 'display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--gris-borde);flex-wrap:wrap';
+  footerEl.innerHTML =
+    (estado !== 'rechazada' ? _btn('background:#F4F6F9;color:var(--azul);border:1.5px solid var(--gris-borde)!important', `editarCotizacion(${cot.id})`, '✏️ Editar') : '') +
+    _btn('background:#F4F6F9;color:var(--texto);border:1.5px solid var(--gris-borde)!important', `generarPdfCotizacion(${cot.id})`, '📄 PDF', `data-pdf="${cot.id}"`) +
+    _btn('background:var(--azul);color:white', `enviarPdfCotizacion(${cot.id})`, '📤 Enviar') +
+    (estado === 'pendiente' ? (
+      _btn('background:#059669;color:white', `cerrarModalCotizacion();aprobarCotizacion(${cot.id})`, '✓ Aprobar') +
+      _btn('background:#DC2626;color:white', `cerrarModalCotizacion();rechazarCotizacion(${cot.id})`, 'Rechazar')
+    ) : '') +
+    (estado === 'aprobada' && !tienOrden ? _btn('background:var(--azul);color:white', `cerrarModalCotizacion();convertirEnOrden(${cot.id})`, '+ Crear orden') : '') +
+    (tienOrden ? `<span style="font-size:13px;color:#059669;font-weight:600;padding:9px 8px;white-space:nowrap">✓ Orden creada</span>` : '');
 }
 
 async function aprobarCotizacion(id) {
