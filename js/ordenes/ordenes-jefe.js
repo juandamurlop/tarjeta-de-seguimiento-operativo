@@ -198,15 +198,22 @@ async function guardarAprobacion() {
 // CAPACIDAD (helper)
 // ============================================================
 function _refrescarCapacidad() {
-  api('/ordenes?or=(estado.eq.Activa,pulmon.eq.true)&select=id,estado,pulmon,pulmon_tipo')
-    .then(rows => {
-      rows = rows || [];
-      const activas      = rows.filter(r => r.estado === 'Activa' && !r.pulmon).length;
-      const pulmonInt    = rows.filter(r => r.pulmon && r.pulmon_tipo === 'interno').length;
-      const pulmonExt    = rows.filter(r => r.pulmon && r.pulmon_tipo === 'externo').length;
-      actualizarCapacidad(activas, pulmonInt, pulmonExt);
-    })
-    .catch(() => {});
+  // Mostrar últimos valores guardados inmediatamente
+  try {
+    const cached = JSON.parse(localStorage.getItem('cap_cache') || 'null');
+    if (cached) actualizarCapacidad(cached.a, cached.i, cached.e);
+  } catch {}
+
+  Promise.all([
+    api('/ordenes?estado=eq.Activa&pulmon=eq.false&select=id').catch(() => null),
+    api('/ordenes?pulmon=eq.true&pulmon_tipo=eq.interno&select=id').catch(() => null),
+    api('/ordenes?pulmon=eq.true&pulmon_tipo=eq.externo&select=id').catch(() => null)
+  ]).then(([activas, pulmonInterno, pulmonExterno]) => {
+    if (!activas || !pulmonInterno || !pulmonExterno) return;
+    const a = activas.length, i = pulmonInterno.length, e = pulmonExterno.length;
+    localStorage.setItem('cap_cache', JSON.stringify({ a, i, e }));
+    actualizarCapacidad(a, i, e);
+  });
 }
 
 function _setPulmonUI(activo, tipo) {
