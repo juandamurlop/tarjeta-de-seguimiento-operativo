@@ -532,10 +532,24 @@ const Encuestas = (() => {
     const ids = encs.map(e => e.orden_id).join(',');
     const ordenes = await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'arch.ords') || [];
     const ordMap = Object.fromEntries(ordenes.map(o => [o.id, o]));
+    const puede = tienePermiso('gestionar_encuestas');
     panel.innerHTML = encs.map(enc => {
       const o = ordMap[enc.orden_id] || { id: enc.orden_id, placa: '—', marca: '', linea: '', propietario: '' };
-      return _cardEncuesta(enc, o, '');
+      const accs = puede ? `<div class="enc-accion-row">
+        <button onclick="Encuestas.eliminarEncuesta(${enc.id})" style="background:#FEE2E2;color:#DC2626;border:1.5px solid #FECACA;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">🗑 Eliminar</button>
+      </div>` : '';
+      return _cardEncuesta(enc, o, accs);
     }).join('');
+  }
+
+  // ── ELIMINAR ─────────────────────────────────────────────────────────────────
+  async function eliminarEncuesta(encId) {
+    if (!confirm('¿Eliminar esta encuesta? Esta acción no se puede deshacer.')) return;
+    try {
+      await api(`/encuestas?id=eq.${encId}`, 'DELETE');
+      toast('Encuesta eliminada ✓');
+      cargarArchivados();
+    } catch(e) { toast('Error: ' + e.message, 'err'); }
   }
 
   // ── ACCIONES ─────────────────────────────────────────────────────────────────
@@ -1249,6 +1263,6 @@ const Encuestas = (() => {
   }
 
   // API pública del módulo (lo que usan onclick inline, navJefe y mecanico.js)
-  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, pedirResena, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml, accion, accionConMotivo, dragStart, dragEnd, dropZone, ptrDown, ptrMove, ptrUp, cardTap, tapZone, abrirEncuestaSeleccionada, verNotificaciones, _drag };
+  return { montar, switchTab, cargarPendientes, cargarResultados, cargarSeguimiento, registrarContacto, marcarGestionada, pedirResena, setPeriodo, verMecanico, noContesta, abrir, gate, guardar, cerrarModal, segPick, statsMecanico, colorScore, tendHtml, accion, accionConMotivo, eliminarEncuesta, dragStart, dragEnd, dropZone, ptrDown, ptrMove, ptrUp, cardTap, tapZone, abrirEncuestaSeleccionada, verNotificaciones, _drag };
 })();
 window.Encuestas = Encuestas;
