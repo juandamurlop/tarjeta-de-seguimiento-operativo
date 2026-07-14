@@ -2576,6 +2576,7 @@ async function abrirPanelCapacidad() {
       return `<button onclick="cerrarPanelCapacidad();abrirOrden(${id})" class="cap-btn-ver">→ Ver</button>`;
     }
     function _asignarBtn(id) {
+      if (!esJefe()) return '';
       return `<button onclick="cerrarPanelCapacidad();abrirOrden(${id});setTimeout(()=>abrirModalAgregar(),600)" class="cap-btn-asignar">Asignar</button>`;
     }
     function _capRow(placa, nombre, meta, tiempo, tColor, btns) {
