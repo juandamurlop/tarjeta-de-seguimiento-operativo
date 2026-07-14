@@ -39,6 +39,7 @@ const PERMISOS_CATALOGO = [
   { key:'ver_calificaciones',  label:'Ver calificaciones y satisfacción',  grupo:'Reportes' },
   { key:'ver_flotillas',       label:'Ver flotillas',                      grupo:'Más' },
   { key:'ver_aseguradoras',    label:'Ver aseguradoras',                   grupo:'Más' },
+  { key:'ver_caja',            label:'Ver caja',                           grupo:'Más' },
 ];
 
 let mecanicos = [];
