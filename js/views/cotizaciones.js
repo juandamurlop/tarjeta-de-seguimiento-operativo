@@ -463,6 +463,78 @@ async function cotBuscarCliente() {
   } catch(e) { toast('Error al buscar: ' + e.message, 'err'); }
 }
 
+// ── Autocompletado de cliente (persona natural) ───────────
+let _cotAcTimer = null;
+async function _cotAutocompletarCliente(q) {
+  const lista = document.getElementById('cn-ac-lista');
+  if (!lista) return;
+  const term = (q || '').trim();
+  if (term.length < 2) { lista.style.display = 'none'; return; }
+
+  clearTimeout(_cotAcTimer);
+  _cotAcTimer = setTimeout(async () => {
+    try {
+      const enc = encodeURIComponent(`%${term}%`);
+      const [clientes, ordenes, aseguradoras] = await Promise.all([
+        api(`/clientes?nombre=ilike.${enc}&select=id,nombre,cedula_nit,celular,correo&limit=5`).catch(() => []),
+        api(`/ordenes?propietario=ilike.${enc}&select=id,propietario,cedula_cliente,telefono,correo_cliente&limit=5&order=creado_en.desc`).catch(() => []),
+        api(`/aseguradoras?nombre=ilike.${enc}&select=id,nombre,nit,telefono,correo&limit=3`).catch(() => []),
+      ]);
+
+      // Deduplicar por nombre
+      const vistos = new Set();
+      const items = [];
+
+      (clientes || []).forEach(c => {
+        const key = (c.nombre || '').toLowerCase();
+        if (!vistos.has(key)) { vistos.add(key); items.push({ tipo: 'cliente', icono: '👤', nombre: c.nombre, sub: c.cedula_nit || '', cedula: c.cedula_nit, celular: c.celular, correo: c.correo }); }
+      });
+      (ordenes || []).forEach(o => {
+        const key = (o.propietario || '').toLowerCase();
+        if (!vistos.has(key)) { vistos.add(key); items.push({ tipo: 'orden', icono: '🚗', nombre: o.propietario, sub: o.telefono || '', cedula: o.cedula_cliente, celular: o.telefono, correo: o.correo_cliente }); }
+      });
+      (aseguradoras || []).forEach(a => {
+        const key = (a.nombre || '').toLowerCase();
+        if (!vistos.has(key)) { vistos.add(key); items.push({ tipo: 'aseguradora', icono: '🛡', nombre: a.nombre, sub: a.nit ? 'NIT: ' + a.nit : '', cedula: a.nit, celular: a.telefono, correo: a.correo }); }
+      });
+
+      if (!items.length) {
+        lista.style.display = 'block';
+        lista.innerHTML = `<div style="padding:10px 14px;font-size:13px;color:var(--gris-mid)">Sin resultados — escribe el nombre manualmente</div>`;
+        return;
+      }
+
+      lista.style.display = 'block';
+      lista.innerHTML = items.map((it, i) => `
+        <div data-ac-i="${i}" onmousedown="_cotAcSeleccionar(${i})"
+          style="padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--gris-borde);display:flex;align-items:center;gap:10px;transition:background .1s"
+          onmouseover="this.style.background='var(--gris-bg)'" onmouseout="this.style.background=''">
+          <span style="font-size:16px">${it.icono}</span>
+          <div style="min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(it.nombre || '—')}</div>
+            ${it.sub ? `<div style="font-size:11px;color:var(--gris-mid)">${escapeHtml(it.sub)}</div>` : ''}
+          </div>
+          <span style="margin-left:auto;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--gris-bg);color:var(--gris-mid);white-space:nowrap">${it.tipo}</span>
+        </div>`).join('');
+
+      // Guardar items para selección
+      lista._acItems = items;
+    } catch(e) { lista.style.display = 'none'; }
+  }, 220);
+}
+
+function _cotAcSeleccionar(i) {
+  const lista = document.getElementById('cn-ac-lista');
+  const it = lista?._acItems?.[i];
+  if (!it) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  set('cn-nombre',  it.nombre);
+  set('cn-cedula',  it.cedula);
+  set('cn-celular', it.celular);
+  set('cn-correo',  it.correo);
+  lista.style.display = 'none';
+}
+
 // ─── TABLA DE ÍTEMS ───────────────────────────────────────
 
 function _cotFila(placeholderDesc) {

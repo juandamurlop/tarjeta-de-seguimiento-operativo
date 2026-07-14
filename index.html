@@ -563,13 +563,17 @@
           <!-- ═══ PERSONA NATURAL ═══ -->
           <div id="cn-wrap-persona" class="form-section">
             <div class="grid-2">
-              <div class="field full"><label>Nombre completo *</label><input id="cn-nombre" placeholder="Nombre del cliente"></div>
+              <div class="field full" style="position:relative">
+                <label>Nombre completo *</label>
+                <input id="cn-nombre" placeholder="Nombre del cliente" autocomplete="off"
+                  oninput="_cotAutocompletarCliente(this.value)"
+                  onfocus="_cotAutocompletarCliente(this.value)"
+                  onblur="setTimeout(()=>{ const d=document.getElementById('cn-ac-lista'); if(d) d.style.display='none'; },200)">
+                <div id="cn-ac-lista" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:999;background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:8px;max-height:220px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12);margin-top:2px"></div>
+              </div>
               <div class="field">
                 <label>Cédula</label>
-                <div style="display:flex;gap:6px">
-                  <input id="cn-cedula" placeholder="1234567890" style="flex:1" oninput="this.value=this.value.replace(/\D/g,'')">
-                  <button class="btn btn-ghost btn-sm" onclick="cotBuscarCliente()" style="white-space:nowrap">Buscar</button>
-                </div>
+                <input id="cn-cedula" placeholder="1234567890" oninput="this.value=this.value.replace(/\D/g,'')">
               </div>
               <div class="field"><label>Celular</label><input id="cn-celular" type="tel" placeholder="3134567890"></div>
               <div class="field"><label>Correo</label><input id="cn-correo" type="email" placeholder="correo@ejemplo.com"></div>
