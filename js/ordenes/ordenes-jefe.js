@@ -513,42 +513,6 @@ function montarJefe() {
         <!-- [Oculto] Menú "Repuestos" (flujo con proveedores) — retirado por pedido; el módulo y su código se conservan para una futura versión. -->
       </div>
 
-      ${_grupoHeader('registro','Registro')}
-        <button class="nav-item" id="nav-vehiculos-lista" onclick="navJefe('vehiculos-lista')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-          <span class="nav-label">Vehículos ingresados</span>
-        </button>
-        <button class="nav-item" id="nav-vehiculos" onclick="navJefe('vehiculos')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="14" height="10" rx="2"/><circle cx="12" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg>
-          <span class="nav-label">Ingreso de vehículos</span>
-        </button>
-      </div>
-
-      ${_grupoHeader('informes','Informes')}
-        ${sesion?.perfil === 'gerente' ? `<button class="nav-item" id="nav-caja" onclick="navJefe('caja')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="12" cy="15" r="1.5"/></svg>
-          <span class="nav-label">Caja</span>
-        </button>` : ''}
-        <button class="nav-item" id="nav-metas" onclick="navJefe('metas')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span class="nav-label">Metas</span>
-        </button>
-        <button class="nav-item" id="nav-reportes" onclick="navJefe('reportes')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          <span class="nav-label">Reportes</span>
-        </button>
-        <button class="nav-item" id="nav-encuestas" onclick="navJefe('encuestas')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-          <span class="nav-label">Encuestas</span>
-        </button>
-      </div>
-
-      ${_grupoHeader('organizaciones','Organizaciones')}
-        <button class="nav-item" id="nav-organizaciones" onclick="navJefe('organizaciones')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-3"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
-          <span class="nav-label">Organizaciones</span>
-        </button>
-      </div>
     `;
   }
 
