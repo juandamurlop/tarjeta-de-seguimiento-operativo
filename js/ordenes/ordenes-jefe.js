@@ -316,6 +316,7 @@ async function cambiarEstado(v) {
     if (v === 'Entregada') {
       _logEvento('orden_entregada', '✅', `Orden entregada: ${ordenActual.placa || ''} — ${ordenActual.propietario || ''}`.trimEnd().replace(/— $/, ''), ordenActual.id, ordenActual.placa, '#059669');
       _enviarResenaGoogle(ordenActual);
+      api('/encuestas', 'POST', { orden_id: ordenActual.id, estado: 'pendiente', estado_seguimiento: 'pendiente', fase: 0, registrado_por: sesion?.id || null }, { Prefer: 'resolution=ignore-duplicates' }).catch(() => {});
     } else if (v === 'Archivada') {
       _logEvento('orden_archivada', '🗄', `Orden archivada: ${ordenActual.placa || ''}`, ordenActual.id, ordenActual.placa, '#64748B');
     } // envío automático de la reseña

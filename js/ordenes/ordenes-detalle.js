@@ -361,6 +361,7 @@ async function abrirOrden(id) {
                 <div class="det-dato-fila"><span class="det-dato-lbl">Kilometraje</span><span class="det-dato-val">${orden.kilometraje?orden.kilometraje.toLocaleString('es-CO')+' km':'—'}</span></div>
                 <div class="det-dato-fila"><span class="det-dato-lbl">VIN</span><span class="det-dato-val" style="font-family:'DM Mono',monospace;font-size:11px">${escapeHtml(orden.vin||'')||'—'}</span></div>
                 <div class="det-dato-fila"><span class="det-dato-lbl">Ingreso</span><span class="det-dato-val">${formatFecha(orden.creado_en)}</span></div>
+                ${orden.entregada_en ? `<div class="det-dato-fila"><span class="det-dato-lbl">Entregado</span><span class="det-dato-val" style="color:#059669;font-weight:700">${formatFecha(orden.entregada_en)} · ${(() => { const ms = Date.now() - new Date(orden.entregada_en).getTime(); const d = Math.floor(ms/86400000); const h = Math.floor((ms%86400000)/3600000); return d > 0 ? `${d}d ${h}h` : `${h}h`; })()}</span></div>` : ''}
                 <div class="det-dato-fila"><span class="det-dato-lbl">Entrega 1</span><span class="det-dato-val">${formatFecha(orden.fecha_entrega_1)||'—'}</span></div>
                 ${orden.fecha_entrega_2 ? `<div class="det-dato-fila"><span class="det-dato-lbl">Entrega 2</span><span class="det-dato-val">${formatFecha(orden.fecha_entrega_2)}</span></div>` : ''}
               </div>

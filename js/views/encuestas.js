@@ -111,10 +111,14 @@ const Encuestas = (() => {
     const st = document.createElement('style');
     st.id = 'enc-css';
     st.textContent = `
-      .enc-tabs{display:flex;gap:0;border-bottom:2px solid var(--gris-borde);margin-bottom:18px}
-      .enc-tab-btn{padding:9px 18px;font-size:13px;font-weight:600;color:var(--gris-mid);background:none;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:color .15s,border-color .15s}
+      .enc-tabs{display:flex;gap:0;border-bottom:2px solid var(--gris-borde);margin-bottom:18px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+      .enc-tab-btn{padding:9px 16px;font-size:13px;font-weight:600;color:var(--gris-mid);background:none;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:color .15s,border-color .15s;white-space:nowrap}
       .enc-tab-btn.active{color:var(--azul);border-bottom-color:var(--azul)}
       .enc-tab-btn:hover:not(.active){color:var(--texto)}
+      .enc-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;font-size:10px;font-weight:800;background:var(--rojo,#DC2626);color:white}
+      .enc-accion-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+      .enc-timer{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;display:inline-block}
+      .enc-folder-header{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--gris-mid);margin:18px 0 8px;padding-bottom:6px;border-bottom:1.5px solid var(--gris-borde);display:flex;align-items:center;gap:8px}
       .enc-card{background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
       .enc-kpi{background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:12px;padding:14px 16px;text-align:center}
       .enc-kpi-num{font-size:24px;font-weight:800;color:var(--texto);font-family:'DM Mono',monospace}
@@ -167,14 +171,24 @@ const Encuestas = (() => {
     }
 
     cont.innerHTML = `
-      <div style="margin-bottom:16px">
-        <div style="font-size:20px;font-weight:800;color:var(--texto);letter-spacing:-.3px">Encuestas de satisfacción</div>
-        <div style="font-size:13px;color:var(--gris-mid);margin-top:2px">Llamadas post-entrega · calificación del servicio y de los operarios</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="flex:1">
+          <div style="font-size:20px;font-weight:800;color:var(--texto);letter-spacing:-.3px">Encuestas de satisfacción</div>
+          <div style="font-size:13px;color:var(--gris-mid);margin-top:2px">Seguimiento post-entrega · calificación del servicio</div>
+        </div>
+        <div id="enc-notif-btn" style="display:none">
+          <button onclick="Encuestas.verNotificaciones()" style="position:relative;background:none;border:none;cursor:pointer;padding:4px">
+            <svg width="22" height="22" fill="none" stroke="var(--texto)" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span id="enc-notif-count" style="position:absolute;top:-2px;right:-2px;background:#DC2626;color:white;border-radius:99px;font-size:9px;font-weight:800;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;padding:0 3px"></span>
+          </button>
+        </div>
       </div>
       <div class="enc-tabs" role="tablist">
-        <button class="enc-tab-btn ${_state.tab === 'pendientes' ? 'active' : ''}" role="tab" aria-selected="${_state.tab === 'pendientes'}" onclick="Encuestas.switchTab('pendientes')">Pendientes</button>
-        <button class="enc-tab-btn ${_state.tab === 'seguimiento' ? 'active' : ''}" role="tab" aria-selected="${_state.tab === 'seguimiento'}" onclick="Encuestas.switchTab('seguimiento')">Reseñas / Seguimiento</button>
-        <button class="enc-tab-btn ${_state.tab === 'resultados' ? 'active' : ''}" role="tab" aria-selected="${_state.tab === 'resultados'}" onclick="Encuestas.switchTab('resultados')">Resultados</button>
+        <button class="enc-tab-btn ${_state.tab === 'pendientes' ? 'active' : ''}" role="tab" aria-selected="${_state.tab === 'pendientes'}" onclick="Encuestas.switchTab('pendientes')">📋 Pendientes <span id="enc-badge-pend" class="enc-badge" style="display:none"></span></button>
+        <button class="enc-tab-btn ${_state.tab === 'realizadas' ? 'active' : ''}" role="tab" aria-selected="${_state.tab === 'realizadas'}" onclick="Encuestas.switchTab('realizadas')">✅ Contactados</button>
+        <button class="enc-tab-btn ${_state.tab === 'no_contesto' ? 'active' : ''}" role="tab" aria-selected="${_state.tab === 'no_contesto'}" onclick="Encuestas.switchTab('no_contesto')">📵 No contestó</button>
+        <button class="enc-tab-btn ${_state.tab === 'archivados' ? 'active' : ''}" role="tab" aria-selected="${_state.tab === 'archivados'}" onclick="Encuestas.switchTab('archivados')">🗄 Archivados</button>
+        <button class="enc-tab-btn ${_state.tab === 'resultados' ? 'active' : ''}" role="tab" aria-selected="${_state.tab === 'resultados'}" onclick="Encuestas.switchTab('resultados')">📊 Resultados</button>
       </div>
       <div id="enc-panel"><div class="loading-state">Cargando...</div></div>
     `;
@@ -182,8 +196,11 @@ const Encuestas = (() => {
   }
 
   function _dispatchTab() {
-    if (_state.tab === 'resultados') cargarResultados();
+    if      (_state.tab === 'resultados')  cargarResultados();
     else if (_state.tab === 'seguimiento') cargarSeguimiento();
+    else if (_state.tab === 'realizadas')  cargarRealizadas();
+    else if (_state.tab === 'no_contesto') cargarNoContesto();
+    else if (_state.tab === 'archivados')  cargarArchivados();
     else cargarPendientes();
   }
 
@@ -200,51 +217,240 @@ const Encuestas = (() => {
   // ═══════════════════════════════════════════════════════════════════════════
   // PESTAÑA: PENDIENTES
   // ═══════════════════════════════════════════════════════════════════════════
+  // ── Helpers de tiempo ────────────────────────────────────────────────────────
+  function _tiempoDesde(iso) {
+    if (!iso) return null;
+    const ms = Date.now() - new Date(iso).getTime();
+    const h = Math.floor(ms / 3600000);
+    const d = Math.floor(h / 24);
+    if (d >= 1) return `hace ${d} día${d === 1 ? '' : 's'}`;
+    if (h >= 1) return `hace ${h} h`;
+    const m = Math.floor(ms / 60000);
+    return `hace ${m} min`;
+  }
+
+  function _faseLbl(fase) {
+    if (fase === 0) return { txt: 'Primer contacto', color: '#1D4ED8', bg: '#EFF6FF' };
+    if (fase === 1) return { txt: 'Seguimiento 48h', color: '#059669', bg: '#ECFDF5' };
+    if (fase === 2) return { txt: 'Check 2 semanas', color: '#7C3AED', bg: '#F5F3FF' };
+    return { txt: 'Encuesta 3 semanas', color: '#D97706', bg: '#FFFBEB' };
+  }
+
+  function _proximoAvisoMs(fase) {
+    if (fase === 0) return 48 * 3600000;       // 48h después del primer contacto
+    if (fase === 1) return 14 * 24 * 3600000;  // 2 semanas
+    return 7 * 24 * 3600000;                   // 1 semana más (3 semanas totales)
+  }
+
+  function _timerHtml(proximo_aviso) {
+    if (!proximo_aviso) return '';
+    const ms = new Date(proximo_aviso).getTime() - Date.now();
+    if (ms <= 0) return `<span class="enc-timer" style="background:#FEE2E2;color:#DC2626">¡Vence ahora!</span>`;
+    const h = Math.floor(ms / 3600000);
+    const d = Math.floor(h / 24);
+    const txt = d >= 1 ? `${d}d ${h % 24}h` : `${h}h`;
+    return `<span class="enc-timer" style="background:#F0FDF4;color:#059669">⏱ ${txt}</span>`;
+  }
+
+  function _cardEncuesta(enc, o, accionesHtml) {
+    const fl = _faseLbl(enc.fase || 0);
+    const desde = _tiempoDesde(o.entregada_en);
+    return `
+      <div class="enc-card" data-enc-id="${enc.id}" data-orden-id="${o.id}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="min-width:0">
+            <div style="font-weight:700;font-size:15px;color:var(--texto)">${escapeHtml(o.placa || '—')}
+              <span style="font-weight:500;color:var(--gris-mid);font-size:13px"> · ${escapeHtml(o.marca || '')} ${escapeHtml(o.linea || '')}</span>
+            </div>
+            <div style="font-size:12px;color:var(--gris-mid);margin-top:3px">
+              ${escapeHtml(o.propietario || 'Sin propietario')} · ${escapeHtml(otDe ? otDe(o) : ('OT-' + o.numero_ot))}
+              ${desde ? ` · Entregado ${desde}` : ''}
+            </div>
+            ${enc.motivo ? `<div style="font-size:12px;color:#B45309;background:#FEF3C7;border-radius:6px;padding:4px 8px;margin-top:6px;display:inline-block">⚠ ${escapeHtml(enc.motivo)}</div>` : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+            <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:${fl.bg};color:${fl.color}">${fl.txt}</span>
+            ${_timerHtml(enc.proximo_aviso)}
+          </div>
+        </div>
+        ${accionesHtml}
+      </div>`;
+  }
+
+  // ── PENDIENTES ───────────────────────────────────────────────────────────────
   async function cargarPendientes() {
     const panel = document.getElementById('enc-panel');
     if (!panel) return;
     panel.innerHTML = '<div class="loading-state">Cargando...</div>';
 
-    const [ordenes, encuestas] = await Promise.all([
-      _safe(api('/ordenes?estado=eq.Entregada&select=id,numero_ot,estado,placa,propietario,marca,linea,entregada_en&order=entregada_en.desc'), 'cargarPendientes.ordenes'),
-      _safe(api('/encuestas?select=orden_id,estado'), 'cargarPendientes.encuestas')
+    const ahora = new Date().toISOString();
+    const [encPend, encResuf] = await Promise.all([
+      _safe(api('/encuestas?estado_seguimiento=eq.pendiente&select=id,orden_id,fase,motivo,proximo_aviso,ultimo_contacto'), 'pend.pend'),
+      _safe(api(`/encuestas?proximo_aviso=lte.${ahora}&estado_seguimiento=neq.archivado&select=id,orden_id,fase,estado_seguimiento,motivo,proximo_aviso,ultimo_contacto`), 'pend.resuf')
     ]);
 
-    // Una orden ya está "resuelta" si tiene encuesta completada o rechazada.
-    const resueltas = new Set((encuestas || []).filter(e => e.estado === 'completada' || e.estado === 'rechazada').map(e => e.orden_id));
-    const pendientes = (ordenes || []).filter(o => !resueltas.has(o.id));
+    // Unir y deduplicar por orden_id
+    const vistas = new Set();
+    const todas = [...(encPend || []), ...(encResuf || [])].filter(e => {
+      if (vistas.has(e.orden_id)) return false;
+      vistas.add(e.orden_id); return true;
+    });
 
-    if (!pendientes.length) {
-      panel.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--gris-mid)">No hay órdenes entregadas pendientes de encuestar 🎉</div>`;
+    // Actualizar badge del tab
+    const badge = document.getElementById('enc-badge-pend');
+    if (badge) { badge.textContent = todas.length; badge.style.display = todas.length ? 'flex' : 'none'; }
+    // Notif bell
+    _actualizarBell(todas.length);
+
+    if (!todas.length) {
+      panel.innerHTML = `<div style="padding:60px 20px;text-align:center;color:var(--gris-mid)">
+        <div style="font-size:40px;margin-bottom:12px">🎉</div>
+        <div style="font-size:15px;font-weight:700;color:var(--texto)">Todo al día</div>
+        <div style="font-size:13px;margin-top:4px">No hay encuestas pendientes por ahora</div>
+      </div>`;
       return;
     }
 
+    // Cargar órdenes relacionadas
+    const ids = todas.map(e => e.orden_id).join(',');
+    const ordenes = await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'pend.ords') || [];
+    const ordMap = Object.fromEntries(ordenes.map(o => [o.id, o]));
+
     const puede = tienePermiso('gestionar_encuestas');
-    panel.innerHTML = pendientes.map(o => {
-      const dias = _dias(o.entregada_en);
-      const diasTxt = dias == null ? '' : (dias === 0 ? 'hoy' : `hace ${dias} día${dias === 1 ? '' : 's'}`);
-      return `
-        <div class="enc-card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <div>
-            <div style="font-weight:700;color:var(--texto)">${escapeHtml(o.placa || '—')}
-              <span style="font-weight:500;color:var(--gris-mid);font-size:13px">· ${escapeHtml(o.marca || '')} ${escapeHtml(o.linea || '')}</span>
-            </div>
-            <div style="font-size:12px;color:var(--gris-mid);margin-top:2px">
-              ${escapeHtml(o.propietario || 'Sin propietario')} · ${escapeHtml(otDe(o))} · Entregada ${formatFecha(o.entregada_en)} ${diasTxt ? `<b>(${diasTxt})</b>` : ''}
-            </div>
-          </div>
-          ${puede ? `<div style="display:flex;gap:8px">
-            <button class="btn-sm" style="background:var(--azul);color:white;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" onclick="Encuestas.abrir(${o.id})">Registrar encuesta</button>
-            <button class="btn-sm" style="background:#F4F6F9;color:var(--gris-mid);border:1.5px solid var(--gris-borde);padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" onclick="Encuestas.noContesta(${o.id})">No contestó</button>
-          </div>` : ''}
-        </div>`;
+    panel.innerHTML = todas.map(enc => {
+      const o = ordMap[enc.orden_id] || { id: enc.orden_id, placa: '—', marca: '', linea: '', propietario: '' };
+      const resuf = enc.estado_seguimiento && enc.estado_seguimiento !== 'pendiente';
+      if (resuf) {
+        const fl = _faseLbl(enc.fase || 0);
+        // Es una resurface — mostrar etiqueta de qué fase viene
+      }
+      const accs = puede ? `
+        <div class="enc-accion-row">
+          <button onclick="Encuestas.accion(${enc.id},'contactado')" style="flex:1;background:#059669;color:white;border:none;padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">✅ Contactado</button>
+          <button onclick="Encuestas.abrir(${o.id})" style="background:#EFF6FF;color:#1D4ED8;border:1.5px solid #BFDBFE;padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📋 Encuesta</button>
+          <button onclick="Encuestas.accionConMotivo(${enc.id},'no_contactado')" style="background:#FEF3C7;color:#B45309;border:1.5px solid #FDE68A;padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📵 No contestó</button>
+          <button onclick="Encuestas.accion(${enc.id},'archivado')" style="background:#F4F6F9;color:var(--gris-mid);border:1.5px solid var(--gris-borde);padding:9px 10px;border-radius:8px;font-size:13px;cursor:pointer" title="Archivar">🗄</button>
+        </div>` : '';
+      return _cardEncuesta(enc, o, accs);
     }).join('');
   }
 
-  async function noContesta(ordenId) {
+  // ── CONTACTADOS ──────────────────────────────────────────────────────────────
+  async function cargarRealizadas() {
+    const panel = document.getElementById('enc-panel');
+    if (!panel) return;
+    panel.innerHTML = '<div class="loading-state">Cargando...</div>';
+    const ahora = new Date().toISOString();
+    const encs = await _safe(api(`/encuestas?estado_seguimiento=eq.contactado&proximo_aviso=gt.${ahora}&select=id,orden_id,fase,proximo_aviso,ultimo_contacto`), 'realizadas') || [];
+    if (!encs.length) { panel.innerHTML = `<div style="padding:40px;text-align:center;color:var(--gris-mid)">No hay contactados esperando seguimiento.</div>`; return; }
+    const ids = encs.map(e => e.orden_id).join(',');
+    const ordenes = await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'realizadas.ords') || [];
+    const ordMap = Object.fromEntries(ordenes.map(o => [o.id, o]));
+    const puede = tienePermiso('gestionar_encuestas');
+    panel.innerHTML = encs.map(enc => {
+      const o = ordMap[enc.orden_id] || { id: enc.orden_id, placa: '—', marca: '', linea: '', propietario: '' };
+      const accs = puede ? `<div class="enc-accion-row"><button onclick="Encuestas.accion(${enc.id},'archivado')" style="background:#F4F6F9;color:var(--gris-mid);border:1.5px solid var(--gris-borde);padding:8px 12px;border-radius:8px;font-size:13px;cursor:pointer">🗄 Archivar</button></div>` : '';
+      return _cardEncuesta(enc, o, accs);
+    }).join('');
+  }
+
+  // ── NO CONTESTÓ ──────────────────────────────────────────────────────────────
+  async function cargarNoContesto() {
+    const panel = document.getElementById('enc-panel');
+    if (!panel) return;
+    panel.innerHTML = '<div class="loading-state">Cargando...</div>';
+    const ahora = new Date().toISOString();
+    const encs = await _safe(api(`/encuestas?estado_seguimiento=eq.no_contactado&proximo_aviso=gt.${ahora}&select=id,orden_id,fase,proximo_aviso,motivo,ultimo_contacto`), 'nocon') || [];
+    if (!encs.length) { panel.innerHTML = `<div style="padding:40px;text-align:center;color:var(--gris-mid)">No hay pendientes en "No contestó".</div>`; return; }
+    const ids = encs.map(e => e.orden_id).join(',');
+    const ordenes = await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'nocon.ords') || [];
+    const ordMap = Object.fromEntries(ordenes.map(o => [o.id, o]));
+    const puede = tienePermiso('gestionar_encuestas');
+    panel.innerHTML = encs.map(enc => {
+      const o = ordMap[enc.orden_id] || { id: enc.orden_id, placa: '—', marca: '', linea: '', propietario: '' };
+      const accs = puede ? `<div class="enc-accion-row">
+        <button onclick="Encuestas.accion(${enc.id},'contactado')" style="flex:1;background:#059669;color:white;border:none;padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">✅ Contestó</button>
+        <button onclick="Encuestas.accion(${enc.id},'archivado')" style="background:#F4F6F9;color:var(--gris-mid);border:1.5px solid var(--gris-borde);padding:9px 10px;border-radius:8px;font-size:13px;cursor:pointer">🗄 Archivar</button>
+      </div>` : '';
+      return _cardEncuesta(enc, o, accs);
+    }).join('');
+  }
+
+  // ── ARCHIVADOS ───────────────────────────────────────────────────────────────
+  async function cargarArchivados() {
+    const panel = document.getElementById('enc-panel');
+    if (!panel) return;
+    panel.innerHTML = '<div class="loading-state">Cargando...</div>';
+    const encs = await _safe(api('/encuestas?estado_seguimiento=eq.archivado&select=id,orden_id,fase,ultimo_contacto&order=ultimo_contacto.desc&limit=50'), 'arch') || [];
+    if (!encs.length) { panel.innerHTML = `<div style="padding:40px;text-align:center;color:var(--gris-mid)">No hay archivados todavía.</div>`; return; }
+    const ids = encs.map(e => e.orden_id).join(',');
+    const ordenes = await _safe(api(`/ordenes?id=in.(${ids})&select=id,numero_ot,placa,propietario,marca,linea,entregada_en`), 'arch.ords') || [];
+    const ordMap = Object.fromEntries(ordenes.map(o => [o.id, o]));
+    panel.innerHTML = encs.map(enc => {
+      const o = ordMap[enc.orden_id] || { id: enc.orden_id, placa: '—', marca: '', linea: '', propietario: '' };
+      return _cardEncuesta(enc, o, '');
+    }).join('');
+  }
+
+  // ── ACCIONES ─────────────────────────────────────────────────────────────────
+  async function accion(encId, nuevoEstado) {
     try {
-      await api('/encuestas', 'POST', { orden_id: ordenId, estado: 'no_contesta', fecha_llamada: new Date().toISOString(), registrado_por: sesion?.id || null }, { Prefer: 'resolution=merge-duplicates' });
-      toast('Marcada como "no contestó" — sigue pendiente');
+      const patch = { estado_seguimiento: nuevoEstado, ultimo_contacto: new Date().toISOString() };
+      if (nuevoEstado === 'contactado') {
+        // Leer fase actual para calcular próximo aviso
+        const enc = await api(`/encuestas?id=eq.${encId}&select=fase`).then(r => r?.[0]).catch(() => null);
+        const faseActual = enc?.fase || 0;
+        const nuevaFase = faseActual + 1;
+        patch.fase = nuevaFase;
+        if (nuevaFase <= 3) {
+          patch.proximo_aviso = new Date(Date.now() + _proximoAvisoMs(faseActual)).toISOString();
+        } else {
+          patch.estado_seguimiento = 'archivado';
+          patch.proximo_aviso = null;
+        }
+      } else if (nuevoEstado === 'no_contactado') {
+        patch.proximo_aviso = new Date(Date.now() + 2 * 3600000).toISOString(); // 2h
+      } else if (nuevoEstado === 'archivado') {
+        patch.proximo_aviso = null;
+      }
+      await api(`/encuestas?id=eq.${encId}`, 'PATCH', patch);
+      const msgs = { contactado: 'Marcado como contactado ✓', no_contactado: 'Marcado "No contestó" — vuelve en 2h', archivado: 'Archivado ✓' };
+      toast(msgs[nuevoEstado] || 'Guardado ✓');
+      _dispatchTab();
+    } catch(e) { toast('Error: ' + e.message, 'err'); }
+  }
+
+  async function accionConMotivo(encId, nuevoEstado) {
+    const motivo = prompt('¿Motivo de no contacto? (opcional)') ?? '';
+    try {
+      const patch = { estado_seguimiento: nuevoEstado, ultimo_contacto: new Date().toISOString(), motivo: motivo || null };
+      if (nuevoEstado === 'no_contactado') patch.proximo_aviso = new Date(Date.now() + 2 * 3600000).toISOString();
+      await api(`/encuestas?id=eq.${encId}`, 'PATCH', patch);
+      // Advertencia en orden
+      const enc = await api(`/encuestas?id=eq.${encId}&select=orden_id`).then(r => r?.[0]).catch(() => null);
+      if (enc?.orden_id) await api(`/ordenes?id=eq.${enc.orden_id}`, 'PATCH', { alerta_no_contacto: motivo || 'No contestó' }).catch(() => {});
+      toast('Marcado "No contestó" — vuelve en 2h ⚠');
+      _dispatchTab();
+    } catch(e) { toast('Error: ' + e.message, 'err'); }
+  }
+
+  function _actualizarBell(count) {
+    const btn = document.getElementById('enc-notif-btn');
+    const cnt = document.getElementById('enc-notif-count');
+    if (!btn) return;
+    btn.style.display = count > 0 ? 'block' : 'none';
+    if (cnt) cnt.textContent = count;
+  }
+
+  function verNotificaciones() { switchTab('pendientes'); }
+
+  async function noContesta(ordenId) {
+    // Legacy: buscar encuesta por orden_id
+    const enc = await api(`/encuestas?orden_id=eq.${ordenId}&select=id`).then(r => r?.[0]).catch(() => null);
+    if (enc) { await accionConMotivo(enc.id, 'no_contactado'); return; }
+    try {
+      await api('/encuestas', 'POST', { orden_id: ordenId, estado: 'no_contesta', estado_seguimiento: 'no_contactado', proximo_aviso: new Date(Date.now() + 2 * 3600000).toISOString(), fase: 0, registrado_por: sesion?.id || null }, { Prefer: 'resolution=merge-duplicates' });
+      toast('Marcada como "no contestó" — vuelve en 2h');
       cargarPendientes();
     } catch (e) { console.error('[Encuestas.noContesta]', e); toast('Error: ' + e.message, 'err'); }
   }
