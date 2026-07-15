@@ -641,15 +641,19 @@ function _cotPdfConfig() {
     email:      c.email      || 'freimanautosa@gmail.com',
     encabezado: c.encabezado || '',
     nota:       (c.nota !== undefined) ? c.nota : 'Este documento es una COTIZACIÓN — No es factura de venta · FREIMANAUTOS · NIT:800012186 · Bogotá, Colombia, Dir: Calle 98 A 68 D – 15, Bogotá, Tel: 320 9025804',
-    terminos:   c.terminos   || ''
+    terminos:    c.terminos    || '',
+    firma_nombre:(c.firma_nombre !== undefined) ? c.firma_nombre : 'RAFAEL ANTONIO BEJARANO\nJEFE DE TALLER',
+    firma_img:   c.firma_img   || ''
   };
 }
 
 let _cotLogoTmp = null;  // logo en edición (dataURL base64)
+let _cotFirmaTmp = null; // firma en edición (dataURL base64)
 
 function abrirConfigPdfCotizacion() {
   const c = _cotPdfConfig();
   _cotLogoTmp = c.logo || '';
+  _cotFirmaTmp = null; // null = no cambió; se preserva el guardado
   document.getElementById('modal-cot-pdf')?.remove();
   const m = document.createElement('div');
   m.id = 'modal-cot-pdf';
@@ -684,6 +688,19 @@ function abrirConfigPdfCotizacion() {
         <div class="field" style="margin:0"><label>Texto de encabezado <span style="color:var(--gris-mid);font-weight:400">(opcional)</span></label><input id="cpdf-encabezado" value="${escapeHtml(c.encabezado)}" placeholder="Ej: Especialistas en latonería y pintura"></div>
         <div class="field" style="margin:0"><label>Nota de pie</label><input id="cpdf-nota" value="${escapeHtml(c.nota)}"></div>
         <div class="field" style="margin:0"><label>Términos y condiciones <span style="color:var(--gris-mid);font-weight:400">(opcional)</span></label><textarea id="cpdf-terminos" rows="4" style="width:100%;box-sizing:border-box;resize:vertical;font-family:inherit;font-size:13px;padding:8px 10px;border:1.5px solid var(--gris-borde);border-radius:6px">${escapeHtml(c.terminos)}</textarea></div>
+        <div class="field" style="margin:0"><label>Nombre en firma</label><textarea id="cpdf-firma-nombre" rows="2" style="width:100%;box-sizing:border-box;resize:vertical;font-family:inherit;font-size:13px;padding:8px 10px;border:1.5px solid var(--gris-borde);border-radius:6px" placeholder="RAFAEL ANTONIO BEJARANO&#10;JEFE DE TALLER">${escapeHtml(c.firma_nombre)}</textarea></div>
+        <div class="field" style="margin:0">
+          <label>Imagen de firma <span style="color:var(--gris-mid);font-weight:400">(PNG fondo blanco/transparente)</span></label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div id="cpdf-firma-prev" style="width:160px;height:60px;border:1.5px dashed var(--gris-borde);border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--gris-bg);overflow:hidden">
+              ${c.firma_img ? `<img src="${c.firma_img}" style="max-width:100%;max-height:100%;object-fit:contain">` : '<span style="font-size:10px;color:var(--gris-mid)">sin firma</span>'}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label class="btn btn-outline btn-sm" style="margin:0;cursor:pointer">📁 Subir firma<input type="file" accept="image/*" style="display:none" onchange="_cotPdfFirmaUpload(this)"></label>
+              <button class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--rojo)" onclick="_cotPdfQuitarFirma()">Quitar firma</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="document.getElementById('modal-cot-pdf').remove()">Cancelar</button>
@@ -713,19 +730,40 @@ function _cotPdfLogoUpload(input) {
   reader.readAsDataURL(f);
 }
 
+function _cotPdfFirmaUpload(input) {
+  const f = input.files?.[0];
+  if (!f) return;
+  if (f.size > 1.5 * 1024 * 1024) { toast('La firma es muy grande (máx 1.5 MB)', 'err'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    _cotFirmaTmp = reader.result;
+    const prev = document.getElementById('cpdf-firma-prev');
+    if (prev) prev.innerHTML = `<img src="${_cotFirmaTmp}" style="max-width:100%;max-height:100%;object-fit:contain">`;
+  };
+  reader.readAsDataURL(f);
+}
+
+function _cotPdfQuitarFirma() {
+  _cotFirmaTmp = '';
+  const prev = document.getElementById('cpdf-firma-prev');
+  if (prev) prev.innerHTML = '<span style="font-size:10px;color:var(--gris-mid)">sin firma</span>';
+}
+
 function guardarConfigPdfCotizacion() {
   const v = id => (document.getElementById(id)?.value ?? '').trim();
   const cfg = {
-    logo:       _cotLogoTmp || '',
-    nombre:     v('cpdf-nombre'),
-    nit:        v('cpdf-nit'),
-    slogan:     v('cpdf-slogan'),
-    telefono:   v('cpdf-telefono'),
-    direccion:  v('cpdf-direccion'),
-    email:      v('cpdf-email'),
-    encabezado: v('cpdf-encabezado'),
-    nota:       v('cpdf-nota'),
-    terminos:   v('cpdf-terminos')
+    logo:         _cotLogoTmp || '',
+    nombre:       v('cpdf-nombre'),
+    nit:          v('cpdf-nit'),
+    slogan:       v('cpdf-slogan'),
+    telefono:     v('cpdf-telefono'),
+    direccion:    v('cpdf-direccion'),
+    email:        v('cpdf-email'),
+    encabezado:   v('cpdf-encabezado'),
+    nota:         v('cpdf-nota'),
+    terminos:     v('cpdf-terminos'),
+    firma_nombre: v('cpdf-firma-nombre'),
+    firma_img:    _cotFirmaTmp !== null ? _cotFirmaTmp : (JSON.parse(localStorage.getItem('cot_pdf_config') || '{}').firma_img || '')
   };
   try { localStorage.setItem('cot_pdf_config', JSON.stringify(cfg)); }
   catch (e) { toast('No se pudo guardar (¿logo muy pesado?): ' + e.message, 'err'); return; }
@@ -885,12 +923,20 @@ async function generarPdfCotizacion(cotId, accion = 'descargar') {
     }
 
     // ── Firma / ejecutivo a cargo ──
-    if (y > H - 80) { doc.addPage(); y = 50; }
+    if (y > H - 90) { doc.addPage(); y = 50; }
+    // Imagen de firma (si está configurada)
+    if (CFG.firma_img) {
+      try {
+        const fmtFirma = CFG.firma_img.indexOf('image/png') >= 0 ? 'PNG' : CFG.firma_img.indexOf('image/webp') >= 0 ? 'WEBP' : 'JPEG';
+        doc.addImage(CFG.firma_img, fmtFirma, M, y, 120, 40);
+        y += 42;
+      } catch(e) { /* imagen inválida, ignorar */ }
+    }
     doc.setDrawColor(100,100,100); doc.setLineWidth(0.4);
-    doc.line(M, y + 28, M + 160, y + 28);
+    doc.line(M, y + 2, M + 160, y + 2);
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
-    doc.text('FIRMA:', M, y + 38);
-    doc.text(ejecutivo, M, y + 50);
+    const firmaLineas = String(CFG.firma_nombre || ejecutivo).split('\n');
+    firmaLineas.forEach((ln, i) => { doc.text(ln, M, y + 14 + i * 12); });
 
     // ── Pie (texto de la plantilla, configurable) ──
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(150,150,150);
