@@ -706,6 +706,15 @@
             </div>
           </div>
 
+          <!-- ═══ OBSERVACIONES ═══ -->
+          <div class="form-section" style="padding-bottom:14px">
+            <div class="form-section-titulo" style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <svg width="16" height="16" fill="none" stroke="var(--azul)" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              Observaciones
+            </div>
+            <textarea id="cn-obs" rows="3" placeholder="Ej: Se requiere el vehículo dentro de 3 días / Cliente solicita cotización urgente / Vehículo disponible solo mañana..." style="width:100%;box-sizing:border-box;resize:vertical;font-family:inherit;font-size:13px;padding:10px 12px;border:1.5px solid var(--gris-borde);border-radius:8px;background:var(--surface);color:var(--text);line-height:1.5"></textarea>
+          </div>
+
           <div class="btn-row" style="margin-top:24px">
             <button class="btn btn-ghost" onclick="volverACotizaciones()">Cancelar</button>
             <button class="btn btn-outline" id="btn-guardar-pdf-cot" onclick="guardarNuevaCotizacion(true)" style="display:flex;align-items:center;gap:6px">

@@ -197,7 +197,8 @@ function _cotLimpiarFormulario() {
   ['cn-placa','cn-marca','cn-linea','cn-ano','cn-color','cn-vin','cn-km',
    'cn-nombre','cn-cedula','cn-celular','cn-correo',
    'cn-emp-buscar','cn-empresa-id','cn-emp-nombre','cn-emp-nit','cn-emp-tel',
-   'cn-emp-correo','cn-emp-dir','cn-emp-cnom','cn-emp-ctel','cn-emp-ccorreo'].forEach(id => {
+   'cn-emp-correo','cn-emp-dir','cn-emp-cnom','cn-emp-ctel','cn-emp-ccorreo',
+   'cn-obs'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -268,6 +269,7 @@ async function _editarCotizacionReal(cotId) {
   set('cn-color',  cot.color);
   set('cn-vin',    cot.vin);
   set('cn-km',     cot.kilometraje);
+  const obsEl = document.getElementById('cn-obs'); if (obsEl) obsEl.value = cot.observaciones || '';
 
   // Tipo de cliente
   const tipo = cot.tipo_cliente || 'persona';
@@ -860,10 +862,24 @@ async function generarPdfCotizacion(cotId, accion = 'descargar') {
     doc.text(_money(_tot), bx + bw - 12, y + 17, { align:'right' });
     y += 40;
 
+    // ── Nota fija de imprevistos ──
+    if (y > H - 60) { doc.addPage(); y = 50; }
+    doc.setFillColor(255, 243, 205);
+    const notaFijaTxt = '⚠  NO SE INCLUYE IMPREVISTOS EN EL MOMENTO DEL DESARME';
+    const notaFijaLines = doc.splitTextToSize(notaFijaTxt, W - 2 * M - 16);
+    const notaFijaH = notaFijaLines.length * 12 + 10;
+    doc.rect(M, y, W - 2 * M, notaFijaH, 'F');
+    doc.setDrawColor(230, 180, 0); doc.setLineWidth(0.5);
+    doc.rect(M, y, W - 2 * M, notaFijaH);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(120, 80, 0);
+    doc.text(notaFijaLines, M + 8, y + 9);
+    y += notaFijaH + 10;
+
     // ── Observaciones + ejecutivo a cargo ──
     if (y > H - 80) { doc.addPage(); y = 50; }
     doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]); doc.text('OBSERVACIONES', M, y); y += 14;
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+    if (cot.observaciones) { const ol = doc.splitTextToSize(String(cot.observaciones), W - 2 * M); doc.text(ol, M, y); y += ol.length * 11 + 6; }
     if (CFG.terminos) { const tl = doc.splitTextToSize(String(CFG.terminos), W - 2 * M); doc.text(tl, M, y); y += tl.length * 11 + 4; }
     doc.text(`Ejecutivo a cargo: ${ejecutivo}`, M, y);
 
@@ -964,6 +980,7 @@ async function guardarNuevaCotizacion(conPdf = false) {
       mano_obra:         totalMo,
       iva:               iva,
       total_general:     totalFinal,
+      observaciones:     document.getElementById('cn-obs')?.value.trim() || null,
     };
 
     let cotId;
