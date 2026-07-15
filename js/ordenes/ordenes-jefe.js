@@ -532,6 +532,37 @@ function montarJefe() {
         </button>
       </div>
 
+      ${_grupoHeader('admin','Administración')}
+        <button class="nav-item" id="nav-repuestos" onclick="navJefe('repuestos')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+          <span class="nav-label">Repuestos</span>
+        </button>
+        <button class="nav-item" id="nav-aseguradoras" onclick="navJefe('aseguradoras')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span class="nav-label">Aseguradoras</span>
+        </button>
+        <button class="nav-item" id="nav-flotillas" onclick="navJefe('flotillas')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          <span class="nav-label">Flotillas</span>
+        </button>
+        <button class="nav-item" id="nav-organizaciones" onclick="navJefe('organizaciones')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span class="nav-label">Organizaciones</span>
+        </button>
+        <button class="nav-item" id="nav-cartera-flotillas" onclick="navJefe('cartera-flotillas')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+          <span class="nav-label">Cartera flotillas</span>
+        </button>
+        <button class="nav-item" id="nav-cartera-empresas" onclick="navJefe('cartera-empresas')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+          <span class="nav-label">Cartera empresas</span>
+        </button>
+        <button class="nav-item" id="nav-vehiculos" onclick="navJefe('vehiculos')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v9a2 2 0 01-2 2h-2M9 21a2 2 0 100-4 2 2 0 000 4zM15 21a2 2 0 100-4 2 2 0 000 4z"/></svg>
+          <span class="nav-label">Vehículos</span>
+        </button>
+      </div>
+
       ${_grupoHeader('informes','Informes')}
         <button class="nav-item" id="nav-caja" onclick="navJefe('caja')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
