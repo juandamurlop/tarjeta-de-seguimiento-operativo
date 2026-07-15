@@ -844,6 +844,15 @@ async function generarPdfCotizacion(cotId, accion = 'descargar') {
       y = doc.lastAutoTable.finalY + 12;
     }
 
+    // ── Nota fija de imprevistos (texto plano, antes de totales) ──
+    if (y > H - 60) { doc.addPage(); y = 50; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+    doc.text('NOTA:', M, y); y += 12;
+    doc.setFont('helvetica','normal');
+    const notaFijaLines = doc.splitTextToSize('NO SE INCLUYE IMPREVISTOS EN EL MOMENTO DEL DESARME', W - 2 * M);
+    doc.text(notaFijaLines, M, y);
+    y += notaFijaLines.length * 11 + 14;
+
     // ── Totales (estructura de la plantilla) ──
     if (y > H - 175) { doc.addPage(); y = 50; }
     const bw = 250, bx = W - M - bw;
@@ -860,28 +869,28 @@ async function generarPdfCotizacion(cotId, accion = 'descargar') {
     doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11);
     doc.text('VALOR TOTAL:', bx + 12, y + 17);
     doc.text(_money(_tot), bx + bw - 12, y + 17, { align:'right' });
-    y += 40;
+    y += 50;
 
-    // ── Nota fija de imprevistos ──
-    if (y > H - 60) { doc.addPage(); y = 50; }
-    doc.setFillColor(255, 243, 205);
-    const notaFijaTxt = '⚠  NO SE INCLUYE IMPREVISTOS EN EL MOMENTO DEL DESARME';
-    const notaFijaLines = doc.splitTextToSize(notaFijaTxt, W - 2 * M - 16);
-    const notaFijaH = notaFijaLines.length * 12 + 10;
-    doc.rect(M, y, W - 2 * M, notaFijaH, 'F');
-    doc.setDrawColor(230, 180, 0); doc.setLineWidth(0.5);
-    doc.rect(M, y, W - 2 * M, notaFijaH);
-    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(120, 80, 0);
-    doc.text(notaFijaLines, M + 8, y + 9);
-    y += notaFijaH + 10;
+    // ── Observaciones por cotización ──
+    if (cot.observaciones) {
+      if (y > H - 80) { doc.addPage(); y = 50; }
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]); doc.text('OBSERVACIONES', M, y); y += 13;
+      doc.setFont('helvetica','normal'); doc.setTextColor(60,60,60);
+      const ol = doc.splitTextToSize(String(cot.observaciones), W - 2 * M); doc.text(ol, M, y); y += ol.length * 11 + 10;
+    }
+    if (CFG.terminos) {
+      if (y > H - 60) { doc.addPage(); y = 50; }
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+      const tl = doc.splitTextToSize(String(CFG.terminos), W - 2 * M); doc.text(tl, M, y); y += tl.length * 11 + 10;
+    }
 
-    // ── Observaciones + ejecutivo a cargo ──
+    // ── Firma / ejecutivo a cargo ──
     if (y > H - 80) { doc.addPage(); y = 50; }
-    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(AZUL[0],AZUL[1],AZUL[2]); doc.text('OBSERVACIONES', M, y); y += 14;
+    doc.setDrawColor(100,100,100); doc.setLineWidth(0.4);
+    doc.line(M, y + 28, M + 160, y + 28);
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
-    if (cot.observaciones) { const ol = doc.splitTextToSize(String(cot.observaciones), W - 2 * M); doc.text(ol, M, y); y += ol.length * 11 + 6; }
-    if (CFG.terminos) { const tl = doc.splitTextToSize(String(CFG.terminos), W - 2 * M); doc.text(tl, M, y); y += tl.length * 11 + 4; }
-    doc.text(`Ejecutivo a cargo: ${ejecutivo}`, M, y);
+    doc.text('FIRMA:', M, y + 38);
+    doc.text(ejecutivo, M, y + 50);
 
     // ── Pie (texto de la plantilla, configurable) ──
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(150,150,150);
