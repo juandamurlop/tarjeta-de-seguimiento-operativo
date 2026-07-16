@@ -9,20 +9,37 @@ let _cotEmpresasCache = [];        // cache de empresas cargadas
 let _cotEmpresaPersonas = [];      // personas/contactos de la empresa seleccionada
 
 // ── Tipo de cliente ──────────────────────────────────────
+const _COT_ORG_LABELS = {
+  empresa:     { titulo: 'Datos de la empresa',    buscar: 'Buscar empresa por NIT o nombre...', nueva: 'Nueva empresa',     datTit: 'Datos de la empresa',    tabla: '/empresas',     correoCol: 'correo' },
+  flotilla:    { titulo: 'Datos de la flotilla',   buscar: 'Buscar flotilla por NIT o nombre...', nueva: 'Nueva flotilla',   datTit: 'Datos de la flotilla',   tabla: '/flotillas',    correoCol: 'correo' },
+  aseguradora: { titulo: 'Datos de la aseguradora',buscar: 'Buscar aseguradora por NIT o nombre...', nueva: 'Nueva aseguradora', datTit: 'Datos de la aseguradora', tabla: '/aseguradoras', correoCol: 'email' },
+};
+
 function _cotSelTipo(tipo) {
   const wrapP = document.getElementById('cn-wrap-persona');
   const wrapE = document.getElementById('cn-wrap-empresa');
   const sel   = document.getElementById('cn-tipo-cliente');
+  const esOrg = ['empresa','flotilla','aseguradora'].includes(tipo);
   if (wrapP) wrapP.style.display = tipo === 'persona' ? '' : 'none';
-  if (wrapE) wrapE.style.display = tipo === 'empresa' ? '' : 'none';
+  if (wrapE) wrapE.style.display = esOrg ? '' : 'none';
   if (sel && sel.value !== tipo) sel.value = tipo;
-  if (tipo === 'empresa') _cotCargarEmpresas();
+  if (esOrg) {
+    // Actualizar etiquetas dinámicas según el tipo de organización
+    const cfg = _COT_ORG_LABELS[tipo];
+    const buscarEl = document.getElementById('cn-emp-buscar');
+    if (buscarEl) buscarEl.placeholder = cfg.buscar;
+    const btnNueva = document.querySelector('#cn-wrap-empresa .btn-ghost.btn-sm');
+    if (btnNueva) btnNueva.lastChild.textContent = ' ' + cfg.nueva;
+    _cotCargarEmpresas(tipo);
+  }
 }
 
-// ── Cargar empresas en caché ─────────────────────────────
-async function _cotCargarEmpresas() {
+// ── Cargar organizaciones en caché según tipo ────────────
+async function _cotCargarEmpresas(tipo) {
+  tipo = tipo || document.getElementById('cn-tipo-cliente')?.value || 'empresa';
+  const cfg = _COT_ORG_LABELS[tipo] || _COT_ORG_LABELS.empresa;
   try {
-    _cotEmpresasCache = await api('/empresas?activo=eq.true&order=nombre.asc').catch(() => []) || [];
+    _cotEmpresasCache = await api(`${cfg.tabla}?activo=eq.true&order=nombre.asc`).catch(() => []) || [];
   } catch(e) { _cotEmpresasCache = []; }
 }
 
@@ -153,41 +170,46 @@ function _cotCerrarEmpresaDatos() {
   if (buscar) buscar.value = '';
 }
 
-// ── Guardar empresa (nueva o actualizar existente) ───────
+// ── Guardar organización (empresa/flotilla/aseguradora) ──
 async function _cotGuardarEmpresa() {
+  const tipo = document.getElementById('cn-tipo-cliente')?.value || 'empresa';
+  const cfg  = _COT_ORG_LABELS[tipo] || _COT_ORG_LABELS.empresa;
   const nombre = document.getElementById('cn-emp-nombre')?.value.trim();
-  if (!nombre) { toast('El nombre de la empresa es obligatorio', 'err'); return null; }
+  if (!nombre) { toast(`El nombre de la ${tipo} es obligatorio`, 'err'); return null; }
+
+  const correoVal = document.getElementById('cn-emp-correo')?.value.trim() || null;
   const body = {
     nombre,
-    nit:               document.getElementById('cn-emp-nit')?.value.trim()    || null,
-    telefono:          document.getElementById('cn-emp-tel')?.value.trim()    || null,
-    correo:            document.getElementById('cn-emp-correo')?.value.trim() || null,
-    direccion:         document.getElementById('cn-emp-dir')?.value.trim()    || null,
-    contacto_nombre:   document.getElementById('cn-emp-cnom')?.value.trim()   || null,
-    contacto_telefono: document.getElementById('cn-emp-ctel')?.value.trim()   || null,
-    contacto_correo:   document.getElementById('cn-emp-ccorreo')?.value.trim()|| null,
-    activo: true,
+    nit:      document.getElementById('cn-emp-nit')?.value.trim() || null,
+    telefono: document.getElementById('cn-emp-tel')?.value.trim() || null,
+    direccion:document.getElementById('cn-emp-dir')?.value.trim() || null,
+    activo:   true,
+    // correo vs email según tabla
+    ...(cfg.correoCol === 'email' ? { email: correoVal } : { correo: correoVal }),
+    // contactos solo para empresa y flotilla
+    ...(tipo !== 'aseguradora' ? {
+      contacto_nombre:   document.getElementById('cn-emp-cnom')?.value.trim()    || null,
+      contacto_telefono: document.getElementById('cn-emp-ctel')?.value.trim()    || null,
+      contacto_correo:   document.getElementById('cn-emp-ccorreo')?.value.trim() || null,
+    } : {}),
   };
+
   const empId = document.getElementById('cn-empresa-id')?.value;
   try {
     let id;
     if (empId) {
-      await api(`/empresas?id=eq.${empId}`, 'PATCH', body);
+      await api(`${cfg.tabla}?id=eq.${empId}`, 'PATCH', body);
       id = parseInt(empId);
     } else {
-      const res = await api('/empresas', 'POST', body, { Prefer: 'return=representation' });
+      const res = await api(cfg.tabla, 'POST', body, { Prefer: 'return=representation' });
       id = res?.[0]?.id || null;
-      if (id) {
-        const idEl = document.getElementById('cn-empresa-id');
-        if (idEl) idEl.value = id;
-      }
+      if (id) { const idEl = document.getElementById('cn-empresa-id'); if (idEl) idEl.value = id; }
     }
-    // Guardar la LISTA de personas aparte (best-effort): si la columna 'personas'
-    // aún no existe en la BD, no rompe el guardado de la empresa.
-    if (id) await api(`/empresas?id=eq.${id}`, 'PATCH', { personas: _cotEmpresaPersonas }).catch(() => {});
+    // Personas solo para empresa (best-effort)
+    if (id && tipo === 'empresa') await api(`/empresas?id=eq.${id}`, 'PATCH', { personas: _cotEmpresaPersonas }).catch(() => {});
     return id;
   } catch(e) {
-    toast('Error guardando empresa: ' + e.message, 'err');
+    toast(`Error guardando ${tipo}: ` + e.message, 'err');
     return null;
   }
 }
@@ -276,7 +298,6 @@ async function _editarCotizacionReal(cotId) {
   _cotSelTipo(tipo);
 
   if (tipo === 'empresa' && cot.empresa_id) {
-    // Cargar empresa desde DB
     const emps = await api(`/empresas?id=eq.${cot.empresa_id}&limit=1`).catch(() => []) || [];
     const emp  = emps[0];
     if (emp) {
@@ -290,15 +311,31 @@ async function _editarCotizacionReal(cotId) {
       set('cn-emp-ctel',     emp.contacto_telefono);
       set('cn-emp-ccorreo',  emp.contacto_correo);
       _cotEmpresaPersonas = Array.isArray(emp.personas) ? emp.personas.slice() : [];
-      if (!_cotEmpresaPersonas.length && emp.contacto_nombre) {
+      if (!_cotEmpresaPersonas.length && emp.contacto_nombre)
         _cotEmpresaPersonas = [{ nombre: emp.contacto_nombre, telefono: emp.contacto_telefono || null, correo: emp.contacto_correo || null }];
-      }
       _cotRenderPersonasSelect();
       const tit = document.getElementById('cn-emp-datos-titulo');
       if (tit) tit.textContent = 'Empresa seleccionada';
       const datos = document.getElementById('cn-emp-datos');
       if (datos) datos.style.display = 'block';
     }
+  } else if (['flotilla','aseguradora'].includes(tipo) && cot.nombre_cliente) {
+    // Pre-llenar desde los datos guardados en la cotización
+    const cfg = _COT_ORG_LABELS[tipo];
+    const orgs = await api(`${cfg.tabla}?nombre=eq.${encodeURIComponent(cot.nombre_cliente)}&limit=1`).catch(() => []) || [];
+    const org  = orgs[0];
+    set('cn-emp-nombre', cot.nombre_cliente);
+    set('cn-emp-nit',    cot.cedula_cliente);
+    set('cn-emp-tel',    cot.telefono_cliente);
+    set('cn-emp-correo', cot.correo_cliente);
+    if (org) {
+      set('cn-empresa-id', org.id);
+      set('cn-emp-dir',    org.direccion);
+    }
+    const tit = document.getElementById('cn-emp-datos-titulo');
+    if (tit) tit.textContent = cfg.datTit;
+    const datos = document.getElementById('cn-emp-datos');
+    if (datos) datos.style.display = 'block';
   } else {
     set('cn-nombre', cot.nombre_cliente);
     set('cn-cedula', cot.cedula_cliente);
@@ -984,16 +1021,16 @@ async function guardarNuevaCotizacion(conPdf = false) {
   // Validación según tipo
   let nombreCliente, cedulaCliente, telefonoCliente, correoCliente, empresaId = null;
 
-  if (tipoCliente === 'empresa') {
+  if (['empresa','flotilla','aseguradora'].includes(tipoCliente)) {
     const empNombre = document.getElementById('cn-emp-nombre')?.value.trim();
     if (!empNombre) {
-      toast('El nombre de la empresa es obligatorio', 'err');
+      toast(`El nombre de la ${tipoCliente} es obligatorio`, 'err');
       document.getElementById('cn-emp-nombre')?.focus();
       return;
     }
-    // Guardar/actualizar empresa
-    empresaId = await _cotGuardarEmpresa();
-    if (!empresaId) return; // _cotGuardarEmpresa ya muestra el toast de error
+    const orgId = await _cotGuardarEmpresa();
+    if (!orgId) return;
+    if (tipoCliente === 'empresa') empresaId = orgId;
     nombreCliente   = empNombre;
     cedulaCliente   = document.getElementById('cn-emp-nit')?.value.trim()    || '';
     telefonoCliente = document.getElementById('cn-emp-tel')?.value.trim()    || '';
@@ -1036,6 +1073,7 @@ async function guardarNuevaCotizacion(conPdf = false) {
       correo_cliente:    correoCliente,
       tipo_cliente:      tipoCliente,
       empresa_id:        empresaId,
+      aseguradora:       ['flotilla','aseguradora'].includes(tipoCliente) ? (document.getElementById('cn-emp-nombre')?.value.trim() || null) : null,
       repuestos:         JSON.stringify(repItems),
       mano_obra_items:   JSON.stringify(moItems),
       total_repuestos:   totalRep,
