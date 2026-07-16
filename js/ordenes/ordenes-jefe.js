@@ -507,6 +507,14 @@ function montarJefe() {
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           <span class="nav-label">Calendario</span>
         </button>
+        <button class="nav-item" id="nav-citas" onclick="navJefe('citas')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
+          <span class="nav-label">Agenda de citas</span>
+        </button>
+        <button class="nav-item" id="nav-historial-vehiculo" onclick="navJefe('historial-vehiculo')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span class="nav-label">Historial vehicular</span>
+        </button>
         <button class="nav-item" id="nav-mecanicos" onclick="navJefe('mecanicos')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
           <span class="nav-label">Operarios</span>
@@ -845,6 +853,16 @@ function navJefe(pag) {
       pagId = 'pag-vehiculos';
       titulo = 'Vehículos ingresados';
       setTimeout(() => { if (typeof cargarVehiculos === 'function') cargarVehiculos(); }, 50);
+      break;
+    case 'historial-vehiculo':
+      pagId = 'pag-historial-vehiculo';
+      titulo = 'Historial vehicular';
+      setTimeout(() => { if (typeof montarHistorialVehiculo === 'function') montarHistorialVehiculo(); }, 50);
+      break;
+    case 'citas':
+      pagId = 'pag-citas';
+      titulo = 'Agenda de citas';
+      setTimeout(() => { if (typeof montarCitas === 'function') montarCitas(); }, 50);
       break;
     default:
       pagId = 'pag-ordenes';
