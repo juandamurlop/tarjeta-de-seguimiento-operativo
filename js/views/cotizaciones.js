@@ -857,11 +857,18 @@ async function generarPdfCotizacion(cotId, accion = 'descargar') {
     doc.text('DATOS DEL CLIENTE', xL, y); doc.text('DATOS DEL VEHÍCULO', xR, y);
     doc.setDrawColor(225,225,225); doc.setLineWidth(0.6); doc.line(xL, y + 4, xL + colW, y + 4); doc.line(xR, y + 4, xR + colW, y + 4);
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
-    const fila = (k, v, x, yy) => { doc.setTextColor(135,135,135); doc.text(k, x, yy); doc.setTextColor(40,40,40); doc.text(String(v || '—'), x + 82, yy); };
+    const labelW = 82, maxValW = colW - labelW - 4;
+    const fila = (k, v, x, yy) => {
+      doc.setTextColor(135,135,135); doc.text(k, x, yy);
+      doc.setTextColor(40,40,40);
+      const lines = doc.splitTextToSize(String(v || '—'), maxValW);
+      doc.text(lines, x + labelW, yy);
+      return lines.length;
+    };
     const cli = [['Nombre:',cot.nombre_cliente],['Cédula / NIT:',cot.cedula_cliente],['Celular:',cot.telefono_cliente],['Correo:',cot.correo_cliente],['Kilometraje:',cot.kilometraje]];
     const veh = [['Placa:',cot.placa],['Marca:',cot.marca],['Modelo:',cot.modelo],['Año:',cot.año],['Color:',cot.color],['VIN:',cot.vin]];
-    let yc = y + 18; cli.forEach(([k,v]) => { fila(k,v,xL,yc); yc += 13.5; });
-    let yv = y + 18; veh.forEach(([k,v]) => { fila(k,v,xR,yv); yv += 13.5; });
+    let yc = y + 18; cli.forEach(([k,v]) => { const n = fila(k,v,xL,yc); yc += 13.5 + (n - 1) * 11; });
+    let yv = y + 18; veh.forEach(([k,v]) => { const n = fila(k,v,xR,yv); yv += 13.5 + (n - 1) * 11; });
     y = Math.max(yc, yv) + 8;
 
     // ── Tablas: Cant. · Descripción · Vr. Unitario · Dcto. · Total ──
