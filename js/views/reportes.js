@@ -213,6 +213,7 @@ async function montarReportes() {
           <button class="rep-opcion" onclick="_repSelAlcance('aseguradora',this)">Por aseguradora</button>
           <button class="rep-opcion" onclick="_repSelAlcance('servicio',this)">Por servicio</button>
           <button class="rep-opcion" onclick="_repSelAlcance('pagos',this)">Pagos a técnicos</button>
+          <button class="rep-opcion" onclick="_repSelAlcance('rentabilidad',this)">Rentabilidad</button>
         </div>
         <!-- Campos condicionales de alcance -->
         <div id="rep-campos-operarios" style="display:none;margin-top:12px">
@@ -248,6 +249,18 @@ async function montarReportes() {
             <select id="rep-pago-mec-sel" style="width:100%">
               <option value="">— Todos los técnicos —</option>
               ${mecOpts}
+            </select>
+          </div>
+        </div>
+        <div id="rep-campos-rentabilidad" style="display:none;margin-top:12px">
+          <div class="field" style="margin:0;max-width:280px">
+            <label style="font-size:11px">Tipo de cliente <span style="color:var(--gris-mid);font-weight:400">(opcional)</span></label>
+            <select id="rep-rent-tipo" style="width:100%">
+              <option value="">— Todos —</option>
+              <option value="particular">Particular</option>
+              <option value="aseguradora">Aseguradora</option>
+              <option value="flotilla">Flotilla</option>
+              <option value="empresa">Empresa</option>
             </select>
           </div>
         </div>
@@ -346,7 +359,7 @@ function _repSelAlcance(a, btn) {
   _repAlcance = a;
   document.querySelectorAll('#rep-alcance-btns .rep-opcion').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  ['operarios','aseguradora','servicio','pagos'].forEach(k => {
+  ['operarios','aseguradora','servicio','pagos','rentabilidad'].forEach(k => {
     const el = document.getElementById('rep-campos-' + k);
     if (el) el.style.display = (k === a) ? 'block' : 'none';
   });
@@ -397,6 +410,11 @@ function _repGenerar(formato) {
     const iniP = ini || new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().split('T')[0];
     const finP = fin || ini || ahora.toISOString().split('T')[0];
     generarReportePagosTecnicos(mecId, iniP, finP, formato);
+  } else if (a === 'rentabilidad') {
+    const tipoCli = document.getElementById('rep-rent-tipo')?.value || null;
+    const iniR = ini || new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().split('T')[0];
+    const finR = fin || ahora.toISOString().split('T')[0];
+    generarReporteRentabilidad(tipoCli, iniR, finR, formato);
   }
 }
 
@@ -440,6 +458,172 @@ function _lanzarReporteSrv(formato) {
   const fin = ahora.toISOString().split('T')[0];
   if (!srv) { toast('Selecciona un servicio', 'err'); return; }
   generarReporteServicio(srv, ini, fin, formato);
+}
+
+// ─── Reporte de RENTABILIDAD por orden ───────────────────────
+async function generarReporteRentabilidad(tipoCli, ini, fin, formato) {
+  const repLoading = document.getElementById('rep-loading');
+  if (repLoading) repLoading.style.display = 'flex';
+  try {
+    const fmt = v => v == null ? '—' : '$' + Math.round(v).toLocaleString('es-CO');
+    const fmtF = d => d ? new Date(d).toLocaleDateString('es-CO', {day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+    const desdeISO = ini + 'T00:00:00';
+    const hastaISO = fin + 'T23:59:59';
+
+    let qOrd = `/ordenes?estado=eq.Entregada&entregada_en=gte.${desdeISO}&entregada_en=lte.${hastaISO}&select=id,placa,marca,linea,propietario,tipo_cliente,aseguradora,creado_en,entregada_en&order=entregada_en.desc&limit=300`;
+    if (tipoCli) qOrd += `&tipo_cliente=eq.${tipoCli}`;
+    const ordenes = await api(qOrd).catch(() => []) || [];
+
+    if (!ordenes.length) {
+      const box = document.getElementById('rep-resultado');
+      if (box) box.innerHTML = '<div class="rep-card" style="text-align:center;padding:32px;color:var(--gris-mid)">Sin órdenes entregadas en el período seleccionado.</div>';
+      return;
+    }
+
+    const ids = ordenes.map(o => o.id);
+    const [etapas, reps] = await Promise.all([
+      api(`/etapas?orden_id=in.(${ids.join(',')})&select=orden_id,valor,horas_facturadas,servicio,tiempo_pausado_min`).catch(() => []) || [],
+      api(`/solicitudes_repuesto?orden_id=in.(${ids.join(',')})&estado=eq.recibido_taller&select=orden_id,precio_venta,unidades`).catch(() => []) || [],
+    ]);
+
+    const etMap = {};
+    etapas.forEach(e => {
+      if (!etMap[e.orden_id]) etMap[e.orden_id] = { mo: 0, horas: 0, pausadoMin: 0 };
+      etMap[e.orden_id].mo += (e.valor || 0);
+      etMap[e.orden_id].horas += (e.horas_facturadas || 0);
+      etMap[e.orden_id].pausadoMin += (e.tiempo_pausado_min || 0);
+    });
+    const repMap = {};
+    reps.forEach(r => {
+      if (!repMap[r.orden_id]) repMap[r.orden_id] = 0;
+      repMap[r.orden_id] += (r.precio_venta || 0) * (r.unidades || 1);
+    });
+
+    const rows = ordenes.map(o => {
+      const mo    = etMap[o.id]?.mo || 0;
+      const rep   = repMap[o.id] || 0;
+      const total = mo + rep;
+      const horas = etMap[o.id]?.horas || 0;
+      const dias  = (o.creado_en && o.entregada_en)
+        ? Math.ceil((new Date(o.entregada_en) - new Date(o.creado_en)) / 86400000) : null;
+      return { o, mo, rep, total, horas, dias };
+    }).sort((a, b) => b.total - a.total);
+
+    const sumaTotal = rows.reduce((s, r) => s + r.total, 0);
+    const sumaMO    = rows.reduce((s, r) => s + r.mo, 0);
+    const sumaRep   = rows.reduce((s, r) => s + r.rep, 0);
+    const promTicket = rows.length ? sumaTotal / rows.length : 0;
+    const rowsConDias = rows.filter(r => r.dias != null);
+    const promDias   = rowsConDias.length
+      ? rowsConDias.reduce((s,r) => s + r.dias, 0) / rowsConDias.length : null;
+
+    const porTipo = {};
+    rows.forEach(r => {
+      const t = r.o.tipo_cliente || 'particular';
+      if (!porTipo[t]) porTipo[t] = { count: 0, total: 0 };
+      porTipo[t].count++;
+      porTipo[t].total += r.total;
+    });
+
+    const kpiBox = (val, lbl, color='var(--azul)') =>
+      `<div style="background:var(--surface);border:1.5px solid var(--gris-borde);border-radius:10px;padding:14px 18px;min-width:130px;flex:1">
+        <div style="font-size:20px;font-weight:800;color:${color}">${val}</div>
+        <div style="font-size:11px;color:var(--gris-mid);margin-top:2px">${lbl}</div>
+      </div>`;
+
+    const tipoLabel = { particular:'Particular', aseguradora:'Aseguradora', flotilla:'Flotilla', empresa:'Empresa' };
+    const tipoFilasHtml = Object.entries(porTipo).map(([t, d]) =>
+      `<tr><td>${tipoLabel[t]||t}</td><td style="text-align:center">${d.count}</td>
+       <td style="text-align:right">${fmt(d.total)}</td>
+       <td style="text-align:right">${fmt(d.count ? d.total/d.count : 0)}</td></tr>`
+    ).join('');
+
+    const tablaHtml = rows.slice(0, 100).map(({o, mo, rep, total, horas, dias}) =>
+      `<tr>
+        <td style="font-family:monospace;font-size:10px">${escapeHtml(o.placa||'—')}</td>
+        <td>${escapeHtml((o.propietario||'').substring(0,28))}${o.aseguradora ? `<br><span style="font-size:10px;color:var(--gris-mid)">${escapeHtml(o.aseguradora)}</span>` : ''}</td>
+        <td style="text-align:center;font-size:10px">${fmtF(o.entregada_en)}</td>
+        <td style="text-align:right">${fmt(mo)}</td>
+        <td style="text-align:right">${fmt(rep)}</td>
+        <td style="text-align:right;font-weight:700;color:${total>0?'var(--texto)':'var(--rojo)'}">${fmt(total)}</td>
+        <td style="text-align:center">${horas ? horas.toFixed(1)+'h' : '—'}</td>
+        <td style="text-align:center">${dias != null ? dias+'d' : '—'}</td>
+      </tr>`
+    ).join('');
+
+    const html = `
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+        ${kpiBox(fmt(sumaTotal), 'Ingresos totales')}
+        ${kpiBox(fmt(sumaMO), 'Mano de obra', '#7C3AED')}
+        ${kpiBox(fmt(sumaRep), 'Repuestos', '#D97706')}
+        ${kpiBox(fmt(promTicket), 'Ticket promedio', '#059669')}
+        ${kpiBox(rows.length+'', 'Órdenes')}
+        ${promDias != null ? kpiBox(promDias.toFixed(1)+'d', 'Días promedio en taller', '#6B7280') : ''}
+      </div>
+
+      <div class="rep-card" style="margin-bottom:14px">
+        <div class="rep-card-title">Por tipo de cliente</div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--gris-bg)">
+            <th style="text-align:left;padding:7px 10px">Tipo</th>
+            <th style="padding:7px 10px;text-align:center">Órdenes</th>
+            <th style="padding:7px 10px;text-align:right">Total</th>
+            <th style="padding:7px 10px;text-align:right">Ticket prom.</th>
+          </tr></thead>
+          <tbody>${tipoFilasHtml}</tbody>
+        </table></div>
+      </div>
+
+      <div class="rep-card">
+        <div class="rep-card-title">Detalle por orden ${rows.length > 100 ? '(top 100)' : ''}</div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead><tr style="background:var(--gris-bg)">
+            <th style="padding:6px 8px;text-align:left">Placa</th>
+            <th style="padding:6px 8px;text-align:left">Cliente</th>
+            <th style="padding:6px 8px;text-align:center">Entregada</th>
+            <th style="padding:6px 8px;text-align:right">M. Obra</th>
+            <th style="padding:6px 8px;text-align:right">Repuestos</th>
+            <th style="padding:6px 8px;text-align:right">Total</th>
+            <th style="padding:6px 8px;text-align:center">Horas</th>
+            <th style="padding:6px 8px;text-align:center">Días</th>
+          </tr></thead>
+          <tbody>${tablaHtml}</tbody>
+          <tfoot><tr style="font-weight:700;border-top:2px solid var(--gris-borde)">
+            <td colspan="3" style="padding:7px 8px">TOTALES</td>
+            <td style="padding:7px 8px;text-align:right">${fmt(sumaMO)}</td>
+            <td style="padding:7px 8px;text-align:right">${fmt(sumaRep)}</td>
+            <td style="padding:7px 8px;text-align:right;color:var(--azul)">${fmt(sumaTotal)}</td>
+            <td colspan="2"></td>
+          </tfoot>
+        </table></div>
+        ${rows.length > 100 ? '<div style="font-size:11px;color:var(--gris-mid);margin-top:8px">Se muestran las 100 órdenes de mayor ingreso. Exporta a Excel para ver todas.</div>' : ''}
+      </div>`;
+
+    let box = document.getElementById('rep-resultado');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'rep-resultado';
+      box.style.marginTop = '16px';
+      document.getElementById('reportes-contenido')?.appendChild(box);
+    }
+    box.innerHTML = html;
+
+    if (formato === 'excel' && typeof XLSX !== 'undefined') {
+      const exRows = rows.map(({o, mo, rep, total, horas, dias}) => ({
+        'Placa': o.placa||'', 'Cliente': o.propietario||'', 'Tipo': o.tipo_cliente||'',
+        'Aseguradora': o.aseguradora||'', 'Entregada': fmtF(o.entregada_en),
+        'M. Obra': mo, 'Repuestos': rep, 'Total': total, 'Horas': horas, 'Días': dias
+      }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exRows), 'Rentabilidad');
+      XLSX.writeFile(wb, `Rentabilidad_${ini}_${fin}.xlsx`);
+    }
+  } catch(e) {
+    toast('Error al generar reporte: ' + e.message, 'err');
+  } finally {
+    const repLoading = document.getElementById('rep-loading');
+    if (repLoading) repLoading.style.display = 'none';
+  }
 }
 
 // ─── Reporte INTEGRAL de aseguradoras ────────────────────────
@@ -506,6 +690,47 @@ async function generarReporteAseguradoras(asegFiltro, fechaIni, fechaFin, format
       });
       detalle.push({ o, va, pago, r, diasSist: o.creado_en ? Math.floor((today - new Date(o.creado_en)) / 86400000) : null, est: o.estado_aseguradora || 'peritaje_pendiente' });
     });
+
+    // ── Ciclo de estados por aseguradora ──
+    const ESTADO_LABELS = {
+      'peritaje_pendiente': 'Peritaje pendiente',
+      'peritaje_enviado':   'Peritaje enviado',
+      'aprobado':           'Aprobado / En reparación',
+      'cobrado':            'Cobrado',
+    };
+    const cicloMap = {}; // aseg -> estado -> [dias]
+    detalle.forEach(({o}) => {
+      if (!o.aseguradora) return;
+      const est = o.estado_aseguradora || 'peritaje_pendiente';
+      const dias = o.creado_en ? Math.floor((today - new Date(o.creado_en)) / 86400000) : null;
+      if (dias == null) return;
+      if (!cicloMap[o.aseguradora]) cicloMap[o.aseguradora] = {};
+      if (!cicloMap[o.aseguradora][est]) cicloMap[o.aseguradora][est] = [];
+      cicloMap[o.aseguradora][est].push(dias);
+    });
+
+    const estadosOrden = ['peritaje_pendiente','peritaje_enviado','aprobado','cobrado'];
+    const cicloHtml = Object.entries(cicloMap).map(([aseg, estados]) => {
+      const cols = estadosOrden.map(est => {
+        const arr = estados[est] || [];
+        if (!arr.length) return '<td style="text-align:center;color:var(--gris-mid)">—</td>';
+        const prom2 = Math.round(arr.reduce((s,v)=>s+v,0)/arr.length);
+        const color = prom2 > 30 ? '#DC2626' : prom2 > 15 ? '#D97706' : '#059669';
+        return `<td style="text-align:center;font-weight:700;color:${color}">${prom2}d <span style="font-weight:400;font-size:10px;color:var(--gris-mid)">(${arr.length})</span></td>`;
+      }).join('');
+      return `<tr><td style="padding:6px 10px;font-weight:600">${escapeHtml(aseg)}</td>${cols}</tr>`;
+    }).join('');
+
+    const cicloSection = cicloHtml ? `
+      <div class="section"><div class="section-title">Ciclo por estado — días promedio en taller</div>
+      <div style="font-size:10px;color:#888;margin-bottom:10px">Días promedio que llevan las órdenes en cada estado. Verde &lt;15d · Naranja 15-30d · Rojo &gt;30d. Entre paréntesis: cantidad de órdenes.</div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="background:#f5f3ff">
+          <th style="padding:7px 10px;text-align:left">Aseguradora</th>
+          ${estadosOrden.map(e=>`<th style="padding:7px 10px;text-align:center">${ESTADO_LABELS[e]||e}</th>`).join('')}
+        </tr></thead>
+        <tbody>${cicloHtml}</tbody>
+      </table></div></div>` : '';
 
     const prom = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : 0;
     const resumenAseg = Object.entries(porAseg).map(([nombre,A]) => ({ nombre, ...A, promAprob: prom(A.aprobDias), cicloProm: A.cicloHrs.length ? prom(A.cicloHrs) : null })).sort((a,b)=>b.total-a.total);
@@ -637,6 +862,7 @@ async function generarReporteAseguradoras(asegFiltro, fechaIni, fechaFin, format
     <div class="section"><div class="section-title">Resumen por aseguradora</div>
     <table><thead><tr><th>Aseguradora</th><th>Órdenes</th><th>Autorizado</th><th>Por cobrar</th><th>Vencida</th><th>Sin aut.</th><th>Rent. neta</th><th>T.aprob</th><th>Ciclo</th><th>Estadía</th></tr></thead>
     <tbody>${resumenHtml}</tbody></table></div>
+    ${cicloSection}
     <div class="section"><div class="section-title">Detalle de órdenes${detalle.length>45?' (primeras 45 de '+detalle.length+')':''}</div>
     <table><thead><tr><th>Placa</th><th>Propietario</th><th>Aseguradora</th><th>Estado proceso</th><th>Días</th><th>Autorizado</th><th>Pago</th><th>Renta/Pérdida</th></tr></thead>
     <tbody>${tablaOrdenes}</tbody></table></div>
