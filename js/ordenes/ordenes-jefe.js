@@ -521,18 +521,7 @@ function montarJefe() {
       </div>
 
       ${sesion?.perfil === 'gerente' ? `
-      ${_grupoHeader('registro','Registro')}
-        <button class="nav-item" id="nav-nueva-prog" onclick="navJefe('nueva-prog')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="16" r="1"/></svg>
-          <span class="nav-label">Ingreso de vehículos</span>
-        </button>
-        <button class="nav-item" id="nav-historial-v" onclick="navJefe('historial-v')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
-          <span class="nav-label">Vehículos ingresados</span>
-        </button>
-      </div>
-
-      ${_grupoHeader('admin','Administración')}
+${_grupoHeader('admin','Administración')}
         <button class="nav-item" id="nav-repuestos" onclick="navJefe('repuestos')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
           <span class="nav-label">Repuestos</span>
