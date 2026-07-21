@@ -156,8 +156,9 @@ function _buildOrdenRow(o, etapas, opts) {
   else if (o.estado === 'Programada') { pillCls = 'pill-programada'; pillTxt = 'Programada'; }
   else {
     const hoy = new Date(); hoy.setHours(0,0,0,0);
-    const atrasada = o.fecha_entrega_1 && new Date(o.fecha_entrega_1) < hoy;
-    if (o.entrega_avisada_en) {
+    const atrasada    = o.fecha_entrega_1 && new Date(o.fecha_entrega_1) < hoy;
+    const todoListo   = (comp === total && total > 0) || !!o.entrega_avisada_en;
+    if (todoListo) {
       pillCls = 'pill-listo';
       pillTxt = 'Listo p/entrega';
     } else if (atrasada) {
