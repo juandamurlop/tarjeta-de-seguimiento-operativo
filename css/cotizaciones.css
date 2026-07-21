@@ -141,6 +141,7 @@
 .pill-pulmon     { background: var(--amarillo-bg); color: var(--amarillo); }
 .pill-entregada  { background: var(--gris-bg);     color: var(--gris-mid); }
 .pill-programada { background: var(--azul-light);  color: var(--azul-mid); }
+.pill-listo      { background: #F0FDF4;            color: #15803D; border: 1px solid #86EFAC; }
 
 /* ══════════════════════════════════════════════════════════
    NUEVA ORDEN — WIZARD

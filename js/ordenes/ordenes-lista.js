@@ -157,8 +157,16 @@ function _buildOrdenRow(o, etapas, opts) {
   else {
     const hoy = new Date(); hoy.setHours(0,0,0,0);
     const atrasada = o.fecha_entrega_1 && new Date(o.fecha_entrega_1) < hoy;
-    pillCls = atrasada ? 'pill-atrasada' : 'pill-a-tiempo';
-    pillTxt = atrasada ? 'Atrasada' : 'A tiempo';
+    if (o.entrega_avisada_en) {
+      pillCls = 'pill-listo';
+      pillTxt = 'Listo p/entrega';
+    } else if (atrasada) {
+      pillCls = 'pill-atrasada';
+      pillTxt = 'Atrasada';
+    } else {
+      pillCls = 'pill-a-tiempo';
+      pillTxt = 'A tiempo';
+    }
   }
 
   const fechaEnt = o.fecha_entrega_1 ? formatFecha(o.fecha_entrega_1) : '—';
