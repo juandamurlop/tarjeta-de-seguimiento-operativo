@@ -253,6 +253,7 @@ function nuevaCotizacion() {
   cotAgregarRepuesto();
   cotAgregarManoObra();
   mostrarPagina('pag-cotizacion-nueva');
+  if (typeof _activarDirtyTracking === 'function') _activarDirtyTracking('pag-cotizacion-nueva');
   const titleEl = document.getElementById('topbar-title');
   if (titleEl) titleEl.textContent = 'Nueva Cotización';
   const actEl = document.getElementById('topbar-actions');
@@ -1116,6 +1117,7 @@ async function guardarNuevaCotizacion(conPdf = false) {
     }
 
     _cotEditandoId = null;
+    if (typeof _setDirty === 'function') _setDirty(false);
     volverACotizaciones();
     await cargarCotizaciones();
   } catch(e) {

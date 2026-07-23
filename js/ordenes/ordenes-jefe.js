@@ -718,7 +718,37 @@ async function actualizarBadgesNav() {
   } catch (e) {}
 }
 
+// ── Borrador sin guardar ─────────────────────────────────
+let _formDirty = false;
+function _setDirty(v) { _formDirty = !!v; }
+function _isDirty()   { return _formDirty; }
+
+// Activa el seguimiento de cambios en un contenedor de formulario
+function _activarDirtyTracking(contenedorId) {
+  const el = document.getElementById(contenedorId);
+  if (!el) return;
+  const marca = () => _setDirty(true);
+  el.addEventListener('input',  marca);
+  el.addEventListener('change', marca);
+}
+
+// Pide confirmación si hay cambios sin guardar. Devuelve true si puede navegar.
+function _confirmarSalir() {
+  if (!_formDirty) return true;
+  return confirm('Tienes cambios sin guardar en el formulario.\n¿Deseas salir y perder los cambios?');
+}
+
+// Aviso del navegador al cerrar pestaña / refrescar
+window.addEventListener('beforeunload', e => {
+  if (_formDirty) { e.preventDefault(); e.returnValue = ''; }
+});
+
 function navJefe(pag) {
+  // Páginas con formulario activo — pedir confirmación antes de salir
+  const paginaActual = document.querySelector('.pagina.active')?.id;
+  const formsConBorrador = ['pag-cotizacion-nueva', 'pag-nueva'];
+  if (formsConBorrador.includes(paginaActual) && !_confirmarSalir()) return;
+  _setDirty(false);
   // Al entrar a una sección, apagar su iluminación de notificación
   if (typeof _navMarcarVisto === 'function') _navMarcarVisto('nav-' + pag);
   // Actualizar clases active en sidebar y bottom nav
@@ -756,6 +786,7 @@ function navJefe(pag) {
       resetNuevaOrden();
       setTimeout(() => { if (typeof recargarListasNuevaOrden === 'function') recargarListasNuevaOrden(); }, 50);
       setTimeout(() => { if (typeof _borradoRestaurar === 'function') _borradoRestaurar(); }, 100);
+      setTimeout(() => _activarDirtyTracking('pag-nueva'), 150);
       break;
     case 'dashboard':
       pagId = 'pag-dashboard';

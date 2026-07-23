@@ -1657,6 +1657,7 @@ async function _crearOrdenInterna() {
     _revocarBlobUrls();
     fotosIngresoPendientes = [];
     modalOrdenId = ordenId;
+    if (typeof _setDirty === 'function') _setDirty(false);
     toast(completando ? '✓ Vehículo recibido — orden activada' : 'Orden creada ✓');
     _logEvento('orden_abierta', '🚗', completando ? `Vehículo recibido: ${placa}` : `Nueva orden: ${placa}`, ordenId, placa, '#059669');
     abrirModalServicios();
