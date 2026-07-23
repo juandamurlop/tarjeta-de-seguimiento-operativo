@@ -203,7 +203,11 @@ async function _cotGuardarEmpresa() {
     } else {
       const res = await api(cfg.tabla, 'POST', body, { Prefer: 'return=representation' });
       id = res?.[0]?.id || null;
-      if (id) { const idEl = document.getElementById('cn-empresa-id'); if (idEl) idEl.value = id; }
+      if (id) {
+        const idEl = document.getElementById('cn-empresa-id'); if (idEl) idEl.value = id;
+        // Agregar al cache local para que aparezca en búsquedas inmediatas
+        _cotEmpresasCache = [{ ...body, id }, ..._cotEmpresasCache];
+      }
     }
     // Personas solo para empresa (best-effort)
     if (id && tipo === 'empresa') await api(`/empresas?id=eq.${id}`, 'PATCH', { personas: _cotEmpresaPersonas }).catch(() => {});
