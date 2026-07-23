@@ -188,6 +188,7 @@ function _buildOrdenRow(o, etapas, opts) {
     <td style="text-align:center">
       <div class="ord-placa">${escapeHtml(o.placa)}</div>
       <div class="ord-ot">${otDe(o)}${contactAlert}</div>
+      ${(() => { const mismaPlaca = _ordenesTablaData.filter(x => x.placa === o.placa && x.id !== o.id); return mismaPlaca.length > 0 ? `<div style="font-size:9.5px;font-weight:700;color:#D97706;background:#FFFBEB;border:1px solid #FDE68A;padding:1px 6px;border-radius:99px;margin-top:2px">↩ Reingreso</div>` : ''; })()}
       ${opts && opts.ubicacion ? _badgeUbicacion(o) : ''}
     </td>
     <td><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">${_chipTipoOrden(o)}<button class="btn btn-ghost btn-xs" style="font-size:10px;padding:1px 6px;color:var(--azul)" title="Mover a una organización" onclick="event.stopPropagation();abrirMoverOrganizacion(${o.id})">🏢 Mover</button></div></td>

@@ -400,7 +400,7 @@ function _hvRenderResultados(ordenes, etapas, solicitudes, perfiles) {
       <div>
         <p class="hv-timeline-titulo">Historial de órdenes</p>
         <div class="hv-timeline" id="hv-timeline">
-          ${ordenes.map(o => _hvOrdenHtml(o, etapasPorOrden[o.id] || [], repsPorOrden[o.id] || [], perfilMap)).join('')}
+          ${ordenes.map((o, i) => _hvOrdenHtml(o, etapasPorOrden[o.id] || [], repsPorOrden[o.id] || [], perfilMap, ordenes.length - i, ordenes.length)).join('')}
         </div>
       </div>
     </div>
@@ -418,7 +418,7 @@ function _hvRenderResultados(ordenes, etapas, solicitudes, perfiles) {
 }
 
 // ─── HTML de una orden ────────────────────────────────────────────────────────
-function _hvOrdenHtml(orden, etapas, reps, perfilMap) {
+function _hvOrdenHtml(orden, etapas, reps, perfilMap, visitaNum, totalVisitas) {
   const chipClass = {
     'Activa':    'hv-chip-azul',
     'Entregada': 'hv-chip-verde',
@@ -478,6 +478,7 @@ function _hvOrdenHtml(orden, etapas, reps, perfilMap) {
           ${diasTaller}
         </div>
         <span class="hv-chip ${chipClass}">${escapeHtml(orden.estado || '—')}</span>
+        ${visitaNum != null ? `<span style="font-size:11px;font-weight:700;background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;padding:2px 9px;border-radius:99px;white-space:nowrap">Visita ${visitaNum} de ${totalVisitas}</span>` : ''}
         <div class="hv-orden-servicios">${tagsHtml}</div>
         <div class="hv-orden-total">${_hvMoneda(totalOrden)}</div>
         <span class="hv-orden-caret">▼</span>

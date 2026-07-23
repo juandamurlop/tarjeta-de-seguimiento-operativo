@@ -136,6 +136,35 @@ async function abrirOrden(id) {
     // Datos de la organización (si la orden es de aseguradora/flotilla/empresa).
     const orgCliente = await _cargarOrgDeOrden(orden);
 
+    // Contador de visitas de la placa
+    let _visitaBadgeHtml = '';
+    if (orden.placa) {
+      try {
+        const histPlaca = await api(`/ordenes?placa=eq.${encodeURIComponent(orden.placa)}&select=id,creado_en&order=creado_en.asc`).catch(() => []) || [];
+        const visitaNum = histPlaca.findIndex(o => o.id === orden.id) + 1;
+        const totalVisitas = histPlaca.length;
+        if (visitaNum > 0 && totalVisitas > 0) {
+          // Detectar reingreso reciente (< 30 días desde la visita anterior)
+          let reingresoReciente = false;
+          if (visitaNum > 1 && orden.creado_en) {
+            const anterior = histPlaca[visitaNum - 2];
+            if (anterior?.creado_en) {
+              const diasDesdeAnterior = (new Date(orden.creado_en) - new Date(anterior.creado_en)) / 86400000;
+              reingresoReciente = diasDesdeAnterior < 30;
+            }
+          }
+          const alertaHtml = reingresoReciente
+            ? `<span title="Reingreso reciente (menos de 30 días desde la visita anterior)" style="cursor:help">⚠️</span>`
+            : '';
+          if (totalVisitas === 1) {
+            _visitaBadgeHtml = `<span style="font-size:11px;font-weight:700;background:#F0FDF4;color:#16A34A;border:1px solid #BBF7D0;padding:2px 9px;border-radius:99px;white-space:nowrap">1° ingreso de este vehículo</span>`;
+          } else {
+            _visitaBadgeHtml = `<span style="font-size:11px;font-weight:700;background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;padding:2px 9px;border-radius:99px;white-space:nowrap">${alertaHtml} Ingreso #${visitaNum} de ${totalVisitas}</span>`;
+          }
+        }
+      } catch (e) { /* silencioso */ }
+    }
+
     // Ítems de cada solicitud de repuesto (para el panel de repuestos de la orden)
     const _repIds = solicitudesRep.map(s => s.id).filter(Boolean);
     const repItems = _repIds.length
@@ -269,6 +298,7 @@ async function abrirOrden(id) {
                 <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
                   <div class="detalle-placa">${escapeHtml(orden.placa)}</div>
                   <div style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--gris-mid);letter-spacing:.5px">${otDe(orden)}</div>
+                  ${_visitaBadgeHtml}
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;margin-top:5px;min-width:0">
                   <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;color:var(--gris-mid)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
