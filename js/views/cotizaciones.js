@@ -357,22 +357,23 @@ async function _editarCotizacionReal(cotId) {
   try { repItems = typeof cot.repuestos       === 'string' ? JSON.parse(cot.repuestos)       : (cot.repuestos       || []); } catch(e) { repItems = []; }
   try { moItems  = typeof cot.mano_obra_items === 'string' ? JSON.parse(cot.mano_obra_items) : (cot.mano_obra_items || []); } catch(e) { moItems  = []; }
 
-  const _llenarTabla = (tbodyId, items, placeholderDesc) => {
+  const _llenarTabla = (tbodyId, items, placeholderDesc, conCategoria = false) => {
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
     tbody.innerHTML = '';
-    if (!items.length) { tbody.appendChild(_cotFila(placeholderDesc)); return; }
+    if (!items.length) { tbody.appendChild(_cotFila(placeholderDesc, conCategoria)); return; }
     items.forEach(it => {
-      const tr = _cotFila(placeholderDesc);
-      tr.querySelector('.cot-inp-num').value = it.cantidad  ?? 1;
-      tr.querySelector('.cot-inp-desc').value= it.descripcion || '';
-      tr.querySelector('.cot-inp-dto').value = it.descuento_pct ?? 0;
-      tr.querySelector('.cot-inp-val').value = it.valor_unitario ?? 0;
+      const tr = _cotFila(placeholderDesc, conCategoria);
+      tr.querySelector('.cot-inp-num').value  = it.cantidad      ?? 1;
+      tr.querySelector('.cot-inp-desc').value = it.descripcion   || '';
+      tr.querySelector('.cot-inp-dto').value  = it.descuento_pct ?? 0;
+      tr.querySelector('.cot-inp-val').value  = it.valor_unitario ?? 0;
+      const catEl = tr.querySelector('.cot-inp-cat'); if (catEl && it.categoria) catEl.value = it.categoria;
       tbody.appendChild(tr);
     });
   };
-  _llenarTabla('cot-rep-tbody', repItems, 'Descripción del repuesto');
-  _llenarTabla('cot-mo-tbody',  moItems,  'Concepto de mano de obra');
+  _llenarTabla('cot-rep-tbody', repItems, 'Descripción del repuesto', false);
+  _llenarTabla('cot-mo-tbody',  moItems,  'Concepto de mano de obra', true);
   _cotActualizarTotales();
 
   mostrarPagina('pag-cotizacion-nueva');
@@ -581,11 +582,20 @@ function _cotAcSeleccionar(i) {
 
 // ─── TABLA DE ÍTEMS ───────────────────────────────────────
 
-function _cotFila(placeholderDesc) {
+const _COT_CATS = ['Latonería','Pintura','Mecánica','Eléctrico','Diagnóstico','Otros'];
+
+function _cotFila(placeholderDesc, conCategoria = false) {
   const tr = document.createElement('tr');
   tr.className = 'cot-item-row';
+  const catCell = conCategoria
+    ? `<td><select class="cot-inp cot-inp-cat" style="font-size:11px;padding:3px 4px;min-width:96px">
+        <option value="">Categoría</option>
+        ${_COT_CATS.map(c => `<option value="${c}">${c}</option>`).join('')}
+       </select></td>`
+    : '<td style="display:none"><input type="hidden" class="cot-inp-cat" value=""></td>';
   tr.innerHTML = `
     <td><input type="number" class="cot-inp cot-inp-num" min="1" value="1" onfocus="this.select()" oninput="_cotActualizarTotales()"></td>
+    ${catCell}
     <td><input type="text"   class="cot-inp cot-inp-desc" placeholder="${escapeHtml(placeholderDesc)}"></td>
     <td style="white-space:nowrap"><input type="number" class="cot-inp cot-inp-dto" min="0" max="100" value="0" onfocus="this.select()" oninput="_cotActualizarTotales()">%</td>
     <td><input type="number" class="cot-inp cot-inp-val" min="0" value="0" onfocus="this.select()" oninput="_cotActualizarTotales()"></td>
@@ -596,12 +606,12 @@ function _cotFila(placeholderDesc) {
 
 function cotAgregarRepuesto() {
   const tbody = document.getElementById('cot-rep-tbody');
-  if (tbody) tbody.appendChild(_cotFila('Descripción del repuesto'));
+  if (tbody) tbody.appendChild(_cotFila('Descripción del repuesto', false));
 }
 
 function cotAgregarManoObra() {
   const tbody = document.getElementById('cot-mo-tbody');
-  if (tbody) tbody.appendChild(_cotFila('Concepto de mano de obra'));
+  if (tbody) tbody.appendChild(_cotFila('Concepto de mano de obra', true));
 }
 
 function cotEliminarFila(btn) {
@@ -658,9 +668,10 @@ function _cotLeerItems(tbodyId) {
     const dto  = parseFloat(tr.querySelector('.cot-inp-dto')?.value || 0);
     const val  = parseFloat(tr.querySelector('.cot-inp-val')?.value || 0);
     if (!desc && val === 0) return;
+    const cat  = tr.querySelector('.cot-inp-cat')?.value?.trim() || '';
     const sub = cant * val;
     const dv  = Math.round(sub * dto / 100);
-    items.push({ cantidad: cant, descripcion: desc, descuento_pct: dto, valor_unitario: val, total: sub - dv });
+    items.push({ cantidad: cant, descripcion: desc, categoria: cat, descuento_pct: dto, valor_unitario: val, total: sub - dv });
   });
   return items;
 }
@@ -926,7 +937,19 @@ async function generarPdfCotizacion(cotId, accion = 'descargar') {
     }
     if (moItems.length) {
       tituloTabla('DETALLE DE MANO DE OBRA');
-      doc.autoTable({ startY: y, head: [headTabla], body: moItems.map(filaItem), theme:'grid',
+      // Insertar filas de encabezado de categoría cuando cambia la categoría
+      const moBody = [], moStyles = {};
+      let lastCat = null;
+      moItems.forEach(i => {
+        const cat = (i.categoria || '').trim();
+        if (cat && cat !== lastCat) {
+          moStyles[moBody.length] = { fontStyle:'bold', fillColor:[235,240,250], textColor:AZUL };
+          moBody.push([{ content: cat.toUpperCase(), colSpan: 5, styles:{ fontStyle:'bold', fillColor:[235,240,250], textColor:AZUL, fontSize:8 } }]);
+          lastCat = cat;
+        }
+        moBody.push(filaItem(i));
+      });
+      doc.autoTable({ startY: y, head: [headTabla], body: moBody, theme:'grid',
         headStyles:{ fillColor: AZUL, fontSize:8.5, halign:'left' }, bodyStyles:{ fontSize:8.5 }, margin:{ left:M, right:M }, columnStyles: colStyles });
       y = doc.lastAutoTable.finalY + 12;
     }

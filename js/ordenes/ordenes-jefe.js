@@ -723,13 +723,16 @@ let _formDirty = false;
 function _setDirty(v) { _formDirty = !!v; }
 function _isDirty()   { return _formDirty; }
 
-// Activa el seguimiento de cambios en un contenedor de formulario
+// Activa el seguimiento de cambios en un contenedor de formulario (una sola vez)
+const _dirtyTracked = new Set();
 function _activarDirtyTracking(contenedorId) {
+  if (_dirtyTracked.has(contenedorId)) return;
   const el = document.getElementById(contenedorId);
   if (!el) return;
   const marca = () => _setDirty(true);
   el.addEventListener('input',  marca);
   el.addEventListener('change', marca);
+  _dirtyTracked.add(contenedorId);
 }
 
 // Pide confirmación si hay cambios sin guardar. Devuelve true si puede navegar.
