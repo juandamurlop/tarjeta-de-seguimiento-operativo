@@ -159,6 +159,7 @@ module.exports = [
 
         // ── taller.js ─────────────────────────────────────────
         montarTaller: 'readonly',
+        montarSalaEspera: 'readonly',
         actualizarCapacidad: 'readonly',
 
         // ── taller-kpi.js ─────────────────────────────────────

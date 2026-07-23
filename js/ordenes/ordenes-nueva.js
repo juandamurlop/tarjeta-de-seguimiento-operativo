@@ -1116,11 +1116,56 @@ function _bloquePreliqCierre(orden) {
   h += enviada
     ? `<div style="font-size:11px;color:var(--verde);font-weight:600;margin-top:6px">✓ Enviado el ${formatTS(orden.preliquidacion_enviada_en)}</div>`
     : '';
+  h += `<button class="btn btn-ghost btn-sm" style="width:100%;margin-top:6px;display:flex;align-items:center;gap:7px;justify-content:center" onclick="mostrarModalQRCliente(${orden.id})">🔗 Link / QR para cliente</button>`;
   h += `</div>`;
   h += avisado
     ? `<button class="btn btn-success" style="width:100%;font-size:14px;font-weight:700;padding:12px;border-radius:10px" onclick="intentarCerrarOrden(${orden.id})">✅ Cerrar orden</button>`
     : `<button class="btn" style="width:100%;opacity:.4;cursor:not-allowed;font-size:14px;padding:12px;border-radius:10px" disabled title="Primero avisa al cliente que está listo (botón de arriba)">✅ Cerrar orden</button>`;
   return h;
+}
+
+// ─── Modal de QR y link de seguimiento para el cliente ──────
+function mostrarModalQRCliente(ordenId) {
+  const orden = (typeof ordenActual !== 'undefined' && ordenActual?.id === ordenId) ? ordenActual : null;
+  const cedula = orden?.cedula_cliente;
+
+  if (!cedula) {
+    toast('Este cliente no tiene cédula registrada. Agrégala en los datos de la orden para generar el link.', 'err');
+    return;
+  }
+
+  const url    = window.location.origin + window.location.pathname + '?cliente=' + encodeURIComponent(cedula);
+  const qrUrl  = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(url);
+
+  document.getElementById('modal-qr-cliente')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-qr-cliente';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--gris-borde);border-radius:14px;padding:20px 18px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.22)">
+      <div style="font-size:14px;font-weight:700;color:var(--texto);margin-bottom:3px">🔗 Link de seguimiento</div>
+      <div style="font-size:12px;color:var(--gris-mid);margin-bottom:14px">El cliente escanea este QR o usa el link para ver el estado de su vehículo</div>
+      <img src="${qrUrl}" alt="QR Seguimiento" loading="lazy"
+           style="width:180px;height:180px;border-radius:8px;border:1px solid var(--gris-borde);display:block;margin:0 auto 12px;background:var(--fondo)">
+      <div style="font-size:11px;color:var(--gris-mid);word-break:break-all;background:var(--fondo);border:1px solid var(--gris-borde);border-radius:6px;padding:7px 10px;margin-bottom:12px;text-align:left;line-height:1.5">${url}</div>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <button class="btn btn-primary btn-sm" style="width:100%"
+          onclick="navigator.clipboard.writeText(${JSON.stringify(url)}).then(()=>toast('Link copiado ✓','ok')).catch(()=>toast('No se pudo copiar','err'))">
+          📋 Copiar link
+        </button>
+        <button class="btn btn-ghost btn-sm" style="width:100%"
+          onclick="window.open(${JSON.stringify(qrUrl)},'_blank')">
+          🖨️ Abrir / imprimir QR
+        </button>
+        <button class="btn btn-ghost btn-sm" style="width:100%;color:var(--gris-mid)"
+          onclick="document.getElementById('modal-qr-cliente')?.remove()">
+          Cerrar
+        </button>
+      </div>
+    </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
 }
 
 // Muestra el resumen de la orden antes de cerrar — sin PIN.

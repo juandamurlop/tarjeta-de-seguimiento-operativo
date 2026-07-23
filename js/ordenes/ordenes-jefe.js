@@ -898,6 +898,11 @@ function navJefe(pag) {
       titulo = 'Agenda de citas';
       setTimeout(() => { if (typeof montarCitas === 'function') montarCitas(); }, 50);
       break;
+    case 'sala-espera':
+      pagId = 'pag-sala-espera';
+      titulo = 'Sala de Espera';
+      setTimeout(() => { if (typeof montarSalaEspera === 'function') montarSalaEspera(); }, 50);
+      break;
     default:
       pagId = 'pag-ordenes';
       titulo = 'Órdenes';
