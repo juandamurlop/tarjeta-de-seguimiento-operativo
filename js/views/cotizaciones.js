@@ -368,7 +368,15 @@ async function _editarCotizacionReal(cotId) {
       tr.querySelector('.cot-inp-desc').value = it.descripcion   || '';
       tr.querySelector('.cot-inp-dto').value  = it.descuento_pct ?? 0;
       tr.querySelector('.cot-inp-val').value  = it.valor_unitario ?? 0;
-      const catEl = tr.querySelector('.cot-inp-cat'); if (catEl && it.categoria) catEl.value = it.categoria;
+      if (it.categoria) {
+        const catEl = tr.querySelector('.cot-inp-cat');
+        const catCustom = tr.querySelector('.cot-inp-cat-custom');
+        if (catEl) {
+          const conocida = _COT_CATS.includes(it.categoria);
+          catEl.value = conocida ? it.categoria : '__nueva__';
+          if (!conocida && catCustom) { catCustom.style.display = 'block'; catCustom.value = it.categoria; }
+        }
+      }
       tbody.appendChild(tr);
     });
   };
@@ -582,16 +590,20 @@ function _cotAcSeleccionar(i) {
 
 // ─── TABLA DE ÍTEMS ───────────────────────────────────────
 
-const _COT_CATS = ['Latonería','Pintura','Mecánica','Eléctrico','Diagnóstico','Otros'];
+const _COT_CATS = ['Latonería','Pintura','Mecánica','Eléctrico','Diagnóstico','Servicios'];
 
 function _cotFila(placeholderDesc, conCategoria = false) {
   const tr = document.createElement('tr');
   tr.className = 'cot-item-row';
   const catCell = conCategoria
-    ? `<td><select class="cot-inp cot-inp-cat" style="font-size:11px;padding:3px 4px;min-width:96px">
-        <option value="">Categoría</option>
-        ${_COT_CATS.map(c => `<option value="${c}">${c}</option>`).join('')}
-       </select></td>`
+    ? `<td class="cot-cat-cell">
+        <select class="cot-inp cot-inp-cat" style="font-size:11px;padding:3px 4px;min-width:96px" onchange="_cotCatChange(this)">
+          <option value="">Categoría</option>
+          ${_COT_CATS.map(c => `<option value="${c}">${c}</option>`).join('')}
+          <option value="__nueva__">＋ Agregar categoría</option>
+        </select>
+        <input type="text" class="cot-inp cot-inp-cat-custom" placeholder="Nueva categoría" style="display:none;font-size:11px;padding:3px 4px;min-width:96px;margin-top:2px">
+       </td>`
     : '<td style="display:none"><input type="hidden" class="cot-inp-cat" value=""></td>';
   tr.innerHTML = `
     <td><input type="number" class="cot-inp cot-inp-num" min="1" value="1" onfocus="this.select()" oninput="_cotActualizarTotales()"></td>
@@ -660,6 +672,27 @@ function _cotActualizarTotales() {
   _show('cn-total-siniva-row', !conIva);
 }
 
+function _cotCatChange(sel) {
+  const custom = sel.closest('td').querySelector('.cot-inp-cat-custom');
+  if (!custom) return;
+  if (sel.value === '__nueva__') {
+    custom.style.display = 'block';
+    custom.focus();
+  } else {
+    custom.style.display = 'none';
+    custom.value = '';
+  }
+}
+
+function _cotLeerCat(tr) {
+  const sel = tr.querySelector('.cot-inp-cat');
+  if (!sel) return tr.querySelector('.cot-inp-cat')?.value?.trim() || '';
+  if (sel.value === '__nueva__') {
+    return tr.querySelector('.cot-inp-cat-custom')?.value?.trim() || '';
+  }
+  return sel.value?.trim() || '';
+}
+
 function _cotLeerItems(tbodyId) {
   const items = [];
   document.querySelectorAll(`#${tbodyId} .cot-item-row`).forEach(tr => {
@@ -668,7 +701,7 @@ function _cotLeerItems(tbodyId) {
     const dto  = parseFloat(tr.querySelector('.cot-inp-dto')?.value || 0);
     const val  = parseFloat(tr.querySelector('.cot-inp-val')?.value || 0);
     if (!desc && val === 0) return;
-    const cat  = tr.querySelector('.cot-inp-cat')?.value?.trim() || '';
+    const cat  = _cotLeerCat(tr);
     const sub = cant * val;
     const dv  = Math.round(sub * dto / 100);
     items.push({ cantidad: cant, descripcion: desc, categoria: cat, descuento_pct: dto, valor_unitario: val, total: sub - dv });
