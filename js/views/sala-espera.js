@@ -321,7 +321,7 @@ function _seEsc(str) {
 }
 
 // ── Salir ──────────────────────────────────────────────────
-function _seSalir() {
+function _seRestaurarLayout() {
   if (_sePollingInterval) { clearInterval(_sePollingInterval); _sePollingInterval = null; }
   if (_seRelojInterval)   { clearInterval(_seRelojInterval);   _seRelojInterval   = null; }
 
@@ -344,6 +344,13 @@ function _seSalir() {
   document.body.style.background = '';
   document.body.style.overflow   = '';
   document.body.style.height     = '';
+}
 
+function _seSalirSilencioso() {
+  _seRestaurarLayout();
+}
+
+function _seSalir() {
+  _seRestaurarLayout();
   if (typeof navJefe === 'function') navJefe('ordenes');
 }

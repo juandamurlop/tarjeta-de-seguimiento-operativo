@@ -756,6 +756,10 @@ function navJefe(pag) {
   const formsConBorrador = ['pag-cotizacion-nueva', 'pag-nueva'];
   if (formsConBorrador.includes(paginaActual) && !_confirmarSalir()) return;
   _setDirty(false);
+  // Si venimos de sala de espera, restaurar el layout antes de navegar
+  if (paginaActual === 'pag-sala-espera' && pag !== 'sala-espera' && typeof _seSalirSilencioso === 'function') {
+    _seSalirSilencioso();
+  }
   // Al entrar a una sección, apagar su iluminación de notificación
   if (typeof _navMarcarVisto === 'function') _navMarcarVisto('nav-' + pag);
   // Actualizar clases active en sidebar y bottom nav
