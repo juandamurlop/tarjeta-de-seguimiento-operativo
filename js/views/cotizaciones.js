@@ -249,6 +249,7 @@ function _cotLimpiarFormulario() {
 
 function nuevaCotizacion() {
   _cotEditandoId = null;
+  _cotPdfConfigCargar(); // carga config compartida en background
   _cotLimpiarFormulario();
   cotAgregarRepuesto();
   cotAgregarManoObra();
@@ -269,6 +270,7 @@ function nuevaCotizacion() {
 // Editar una cotización ya creada requiere PIN (jefe/gerente), porque cambia
 // los valores que ve el cliente. Si el PIN no está disponible, no bloquea.
 async function editarCotizacion(cotId) {
+  _cotPdfConfigCargar(); // carga config compartida en background
   if (typeof pedirPin === 'function' && typeof _getPinCierre === 'function' && await _getPinCierre()) {
     pedirPin(() => _editarCotizacionReal(cotId), 'Editar cotización', 'Vas a modificar los valores de una cotización. Ingresa el PIN.');
     return;
@@ -713,10 +715,27 @@ function _cotLeerItems(tbodyId) {
 
 const N8N_PDF_WEBHOOK = CONFIG.N8N_WEBHOOK_PDF;
 
-// ─── PLANTILLA DEL PDF — editable por el usuario (localStorage) ───
+// ─── PLANTILLA DEL PDF — compartida vía Supabase ───
+let _cotPdfCfgCache = null;
+
+async function _cotPdfConfigCargar() {
+  try {
+    const rows = await api('/config_global?id=eq.default&select=datos');
+    const datos = rows?.[0]?.datos || {};
+    if (Object.keys(datos).length) {
+      _cotPdfCfgCache = datos;
+      try { localStorage.setItem('cot_pdf_config', JSON.stringify(datos)); } catch(e) {}
+      return;
+    }
+  } catch(e) { /* sin red: usa localStorage */ }
+  try { _cotPdfCfgCache = JSON.parse(localStorage.getItem('cot_pdf_config') || '{}') || {}; } catch(e) { _cotPdfCfgCache = {}; }
+}
+
 function _cotPdfConfig() {
-  let c = {};
-  try { c = JSON.parse(localStorage.getItem('cot_pdf_config') || '{}') || {}; } catch (e) {}
+  let c = _cotPdfCfgCache || {};
+  if (!Object.keys(c).length) {
+    try { c = JSON.parse(localStorage.getItem('cot_pdf_config') || '{}') || {}; } catch (e) {}
+  }
   return {
     logo:       c.logo       || 'assets/icons/Logo nuevo Freimanautos.png',
     nombre:     c.nombre     || 'FREIMANAUTOS',
@@ -835,7 +854,7 @@ function _cotPdfQuitarFirma() {
   if (prev) prev.innerHTML = '<span style="font-size:10px;color:var(--gris-mid)">sin firma</span>';
 }
 
-function guardarConfigPdfCotizacion() {
+async function guardarConfigPdfCotizacion() {
   const v = id => (document.getElementById(id)?.value ?? '').trim();
   const cfg = {
     logo:         _cotLogoTmp || '',
@@ -849,11 +868,17 @@ function guardarConfigPdfCotizacion() {
     nota:         v('cpdf-nota'),
     terminos:     v('cpdf-terminos'),
     firma_nombre: v('cpdf-firma-nombre'),
-    firma_img:    _cotFirmaTmp !== null ? _cotFirmaTmp : (JSON.parse(localStorage.getItem('cot_pdf_config') || '{}').firma_img || '')
+    firma_img:    _cotFirmaTmp !== null ? _cotFirmaTmp : (_cotPdfCfgCache?.firma_img || '')
   };
-  try { localStorage.setItem('cot_pdf_config', JSON.stringify(cfg)); }
-  catch (e) { toast('No se pudo guardar (¿logo muy pesado?): ' + e.message, 'err'); return; }
-  toast('Plantilla del PDF guardada ✓');
+  // Guardar en Supabase (compartido) y en localStorage (respaldo offline)
+  try { localStorage.setItem('cot_pdf_config', JSON.stringify(cfg)); } catch(e) {}
+  _cotPdfCfgCache = cfg;
+  try {
+    await api('/config_global?id=eq.default', 'PATCH', { datos: cfg }, { Prefer: 'return=minimal' });
+    toast('Plantilla del PDF guardada ✓');
+  } catch(e) {
+    toast('Guardado local ✓ (sin conexión — se sincronizará al volver a entrar)', 'warn');
+  }
   document.getElementById('modal-cot-pdf')?.remove();
 }
 
