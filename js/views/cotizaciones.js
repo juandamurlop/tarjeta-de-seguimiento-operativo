@@ -592,7 +592,7 @@ function _cotAcSeleccionar(i) {
 
 // ─── TABLA DE ÍTEMS ───────────────────────────────────────
 
-const _COT_CATS = ['Latonería','Pintura','Mecánica','Eléctrico','Diagnóstico','Servicios'];
+const _COT_CATS = ['Latonería','Pintura','Mecánica','Electricidad','Diagnóstico','Servicios'];
 
 function _cotFila(placeholderDesc, conCategoria = false) {
   const tr = document.createElement('tr');
