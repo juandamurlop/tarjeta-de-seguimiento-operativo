@@ -511,10 +511,7 @@ function montarJefe() {
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
           <span class="nav-label">Historial vehicular</span>
         </button>
-        <button class="nav-item" id="nav-sala-espera" onclick="navJefe('sala-espera')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
-          <span class="nav-label">Sala de espera</span>
-        </button>
+        <!-- Sala de espera: deshabilitada temporalmente -->
         <button class="nav-item" id="nav-mecanicos" onclick="navJefe('mecanicos')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
           <span class="nav-label">Operarios</span>
@@ -747,10 +744,6 @@ function navJefe(pag) {
   _setDirty(false);
   // Detener rotación del board de órdenes al navegar
   if (window._ordBoardRotInterval) { clearInterval(window._ordBoardRotInterval); window._ordBoardRotInterval = null; }
-  // Si venimos de sala de espera, restaurar el layout antes de navegar
-  if (paginaActual === 'pag-sala-espera' && pag !== 'sala-espera' && typeof _seSalirSilencioso === 'function') {
-    _seSalirSilencioso();
-  }
   // Al entrar a una sección, apagar su iluminación de notificación
   if (typeof _navMarcarVisto === 'function') _navMarcarVisto('nav-' + pag);
   // Actualizar clases active en sidebar y bottom nav
@@ -894,11 +887,6 @@ function navJefe(pag) {
     case 'citas':
       // Redirige a la sección unificada
       return navJefe('calendario');
-    case 'sala-espera':
-      pagId = 'pag-sala-espera';
-      titulo = 'Sala de Espera';
-      setTimeout(() => { if (typeof montarSalaEspera === 'function') montarSalaEspera(); }, 50);
-      break;
     default:
       pagId = 'pag-ordenes';
       titulo = 'Órdenes';
