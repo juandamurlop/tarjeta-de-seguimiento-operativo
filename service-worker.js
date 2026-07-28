@@ -48,6 +48,7 @@ const STATIC_ASSETS = [
   '/js/views/flotillas.js',
   '/js/views/aseguradoras.js',
   '/js/views/cartera-cliente.js',
+  '/js/views/cartera.js',
   '/js/views/consumibles.js',
   '/js/views/historial-vehiculo.js',
   '/js/views/citas.js',
