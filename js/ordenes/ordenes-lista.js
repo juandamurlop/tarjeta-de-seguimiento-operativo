@@ -588,7 +588,6 @@ function _boardInjectCSS() {
   const st = document.createElement('style');
   st.id = 'ord-board-css';
   st.textContent = `
-  st.textContent = `
     /* ── Contenedor principal ── */
     #lista-ordenes.board-mode { padding:0 !important; overflow:hidden; display:flex; flex-direction:column; flex:1; min-height:0; }
     .ord-board { display:flex; flex:1; min-height:0; overflow:hidden; background:var(--gris-bg); }
