@@ -594,13 +594,13 @@ function _boardInjectCSS() {
     /* ── Columnas ── */
     .ord-board-col { flex:1; display:flex; flex-direction:column; border-right:1px solid rgba(255,255,255,.07); min-width:0; overflow:hidden; background:var(--bg,#080E1C); }
     .ord-board-col:last-child { border-right:none; }
-    .ord-board-col-header { display:flex; align-items:center; justify-content:space-between; padding:11px 14px 9px; background:var(--surface,#0E1628); border-bottom:1px solid rgba(255,255,255,.07); flex-shrink:0; position:relative; }
+    .ord-board-col-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px 8px; background:var(--surface,#0E1628); border-bottom:1px solid rgba(255,255,255,.07); flex-shrink:0; position:relative; }
     .ord-board-col-header::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--col-acc); }
-    .ord-board-col-name { font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:#fff; }
-    .ord-board-col-badge { font-size:11px; font-weight:800; border-radius:20px; padding:2px 10px; background:var(--col-acc); color:#000; }
-    .ord-board-list { flex:1; overflow:hidden; padding:8px 8px 10px; display:flex; flex-direction:column; gap:7px; }
-    /* ── Card ── */
-    .ord-bc { background:var(--surface,#0E1628); border:1px solid rgba(255,255,255,.09); border-radius:10px; padding:11px 12px; cursor:pointer; flex-shrink:0; overflow:hidden; transition:background .18s,border-color .18s; box-sizing:border-box; }
+    .ord-board-col-name { font-size:13px; font-weight:900; letter-spacing:.07em; text-transform:uppercase; color:#fff; }
+    .ord-board-col-badge { font-size:13px; font-weight:800; border-radius:20px; padding:3px 12px; background:var(--col-acc); color:#000; }
+    .ord-board-list { flex:1; overflow:hidden; padding:7px 7px 10px; display:flex; flex-direction:column; gap:6px; }
+    /* ── Card: padding reducido, letras grandes ── */
+    .ord-bc { background:var(--surface,#0E1628); border:1px solid rgba(255,255,255,.09); border-radius:9px; padding:8px 10px; cursor:pointer; flex-shrink:0; overflow:hidden; transition:background .18s,border-color .18s; box-sizing:border-box; }
     .ord-bc:hover { border-color:rgba(255,255,255,.22); background:rgba(255,255,255,.04); }
     .ord-bc.con-alertas { border-left:3px solid #D97706; }
     .ord-bc.novedad { background:#1C0F12 !important; border-color:rgba(239,68,68,.65) !important; }
@@ -610,38 +610,38 @@ function _boardInjectCSS() {
     @keyframes obcGlow { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0)} 50%{box-shadow:0 0 0 6px rgba(239,68,68,.13)} }
     .ord-bc.novedad { animation:obcShake .5s ease,obcGlow 2s ease .5s infinite; }
     .ord-bc.novedad.entering { animation:obcSlide .38s cubic-bezier(.34,1.3,.64,1) both,obcGlow 2s ease .4s infinite; }
-    /* Card contenido */
-    .ord-bc-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:6px; gap:6px; }
-    .ord-bc-placa { font-family:'DM Mono',monospace; font-size:18px; font-weight:900; letter-spacing:.09em; line-height:1; color:#fff; }
-    .ord-bc-ot { font-size:10px; font-weight:600; color:#8899AA; margin-top:2px; }
-    .ord-bc-pill { font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; border-radius:20px; padding:3px 9px; white-space:nowrap; flex-shrink:0; }
+    /* ── Card contenido: letras más grandes ── */
+    .ord-bc-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:4px; gap:6px; }
+    .ord-bc-placa { font-family:'DM Mono',monospace; font-size:22px; font-weight:900; letter-spacing:.09em; line-height:1; color:#fff; }
+    .ord-bc-ot { font-size:12px; font-weight:600; color:#8899AA; margin-top:2px; }
+    .ord-bc-pill { font-size:12px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; border-radius:20px; padding:4px 10px; white-space:nowrap; flex-shrink:0; }
     .obc-act  { background:#1D4ED8; color:#BFDBFE; }
     .obc-list { background:#166534; color:#BBF7D0; }
     .obc-atr  { background:#991B1B; color:#FECACA; }
     .obc-paus { background:#78350F; color:#FDE68A; }
     .obc-prog { background:#5B21B6; color:#E9D5FF; }
-    .ord-bc-prop { font-size:13px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; color:#fff; }
-    .ord-bc-veh  { font-size:11px; color:#94A3B8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:6px; }
-    .ord-bc-org  { font-size:10.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:6px; }
-    .ord-bc-novbanner { display:flex; align-items:center; gap:5px; background:#7F1D1D; border-radius:5px; padding:4px 8px; margin-bottom:7px; font-size:10px; font-weight:800; color:#FECACA; overflow:hidden; }
-    .ord-bc-novdot { width:7px; height:7px; border-radius:50%; background:#EF4444; flex-shrink:0; }
+    .ord-bc-prop { font-size:16px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:1px; color:#fff; }
+    .ord-bc-veh  { font-size:13px; color:#94A3B8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:5px; }
+    .ord-bc-org  { font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:5px; }
+    .ord-bc-novbanner { display:flex; align-items:center; gap:5px; background:#7F1D1D; border-radius:5px; padding:4px 8px; margin-bottom:6px; font-size:12px; font-weight:800; color:#FECACA; overflow:hidden; }
+    .ord-bc-novdot { width:8px; height:8px; border-radius:50%; background:#EF4444; flex-shrink:0; }
     @keyframes obcDotP { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.25;transform:scale(.6)} }
     .ord-bc-novdot { animation:obcDotP 1.1s ease infinite; }
-    .ord-bc-prog { display:flex; align-items:center; gap:7px; margin-bottom:5px; }
-    .ord-bc-bar  { flex:1; height:4px; background:rgba(255,255,255,.09); border-radius:99px; overflow:hidden; }
+    .ord-bc-prog { display:flex; align-items:center; gap:7px; margin-bottom:4px; }
+    .ord-bc-bar  { flex:1; height:5px; background:rgba(255,255,255,.09); border-radius:99px; overflow:hidden; }
     .ord-bc-fill { height:100%; border-radius:99px; }
-    .ord-bc-pct  { font-size:11px; font-family:'DM Mono',monospace; font-weight:800; min-width:26px; text-align:right; color:#fff; }
-    .ord-bc-dots { display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-bottom:6px; }
-    .ord-bc-dot  { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .ord-bc-pct  { font-size:13px; font-family:'DM Mono',monospace; font-weight:800; min-width:30px; text-align:right; color:#fff; }
+    .ord-bc-dots { display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-bottom:5px; }
+    .ord-bc-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
     .obcd-done { background:#22C55E; }
     .obcd-act  { background:#60A5FA; box-shadow:0 0 0 2px rgba(96,165,250,.28); }
     .obcd-todo { background:rgba(255,255,255,.13); }
-    .ord-bc-foot { display:flex; align-items:center; justify-content:space-between; padding-top:6px; border-top:1px solid rgba(255,255,255,.07); gap:6px; }
-    .ord-bc-etxt { font-size:11px; color:#CBD5E1; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .ord-bc-time { font-size:11px; color:#8899AA; font-weight:700; font-family:'DM Mono',monospace; flex-shrink:0; }
-    /* Alertas dentro de la card */
-    .ord-bc-alertas { display:flex; flex-wrap:wrap; gap:4px; padding-top:7px; margin-top:6px; border-top:1px solid rgba(255,165,0,.18); }
-    .ord-bc-achip { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:800; border-radius:5px; padding:2px 7px; white-space:nowrap; line-height:1.4; }
+    .ord-bc-foot { display:flex; align-items:center; justify-content:space-between; padding-top:5px; border-top:1px solid rgba(255,255,255,.07); gap:6px; }
+    .ord-bc-etxt { font-size:13px; color:#CBD5E1; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ord-bc-time { font-size:13px; color:#8899AA; font-weight:700; font-family:'DM Mono',monospace; flex-shrink:0; }
+    /* ── Alertas dentro de la card ── */
+    .ord-bc-alertas { display:flex; flex-wrap:wrap; gap:4px; padding-top:6px; margin-top:5px; border-top:1px solid rgba(255,165,0,.18); }
+    .ord-bc-achip { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:800; border-radius:5px; padding:3px 8px; white-space:nowrap; line-height:1.4; }
     .ach-datos    { background:#3B1505; color:#FDBA74; border:1px solid rgba(251,146,60,.28); }
     .ach-vehiculo { background:#1E1047; color:#C4B5FD; border:1px solid rgba(167,139,250,.28); }
     .ach-asignar  { background:#0C2340; color:#7DD3FC; border:1px solid rgba(56,189,248,.28); }
