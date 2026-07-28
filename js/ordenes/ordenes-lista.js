@@ -589,59 +589,60 @@ function _boardInjectCSS() {
   st.id = 'ord-board-css';
   st.textContent = `
     /* ── Contenedor principal ── */
-    #lista-ordenes.board-mode { padding:0 !important; overflow:hidden; height:calc(100vh - 155px); display:flex; flex-direction:column; }
+    #lista-ordenes.board-mode { padding:0 !important; overflow:hidden; display:flex; flex-direction:column; flex:1; min-height:0; }
     .ord-board { display:flex; flex:1; min-height:0; overflow:hidden; }
     /* ── Columnas ── */
     .ord-board-col { flex:1; display:flex; flex-direction:column; border-right:1px solid rgba(255,255,255,.07); min-width:0; overflow:hidden; background:var(--bg,#080E1C); }
     .ord-board-col:last-child { border-right:none; }
-    .ord-board-col-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px 8px; background:var(--surface,#0E1628); border-bottom:1px solid rgba(255,255,255,.07); flex-shrink:0; position:relative; }
+    .ord-board-col-header { display:flex; align-items:center; justify-content:space-between; padding:7px 12px 6px; background:var(--surface,#0E1628); border-bottom:1px solid rgba(255,255,255,.07); flex-shrink:0; position:relative; }
     .ord-board-col-header::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--col-acc); }
-    .ord-board-col-name { font-size:13px; font-weight:900; letter-spacing:.07em; text-transform:uppercase; color:#fff; }
-    .ord-board-col-badge { font-size:13px; font-weight:800; border-radius:20px; padding:3px 12px; background:var(--col-acc); color:#000; }
-    .ord-board-list { flex:1; overflow:hidden; padding:5px 6px 8px; display:flex; flex-direction:column; gap:4px; }
-    /* ── Card: muy compacta ── */
-    .ord-bc { background:var(--surface,#0E1628); border:1px solid rgba(255,255,255,.09); border-radius:8px; padding:6px 9px; cursor:pointer; flex-shrink:0; overflow:hidden; transition:background .18s,border-color .18s; box-sizing:border-box; }
+    .ord-board-col-name { font-size:12px; font-weight:900; letter-spacing:.07em; text-transform:uppercase; color:#fff; }
+    .ord-board-col-badge { font-size:12px; font-weight:800; border-radius:20px; padding:2px 10px; background:var(--col-acc); color:#000; }
+    .ord-board-list { flex:1; overflow:hidden; padding:4px 5px 6px; display:flex; flex-direction:column; gap:3px; }
+    /* ── Card ultra-compacta ── */
+    .ord-bc { background:var(--surface,#0E1628); border:1px solid rgba(255,255,255,.09); border-radius:7px; padding:5px 8px; cursor:pointer; flex-shrink:0; overflow:hidden; transition:background .15s,border-color .15s; box-sizing:border-box; }
     .ord-bc:hover { border-color:rgba(255,255,255,.22); background:rgba(255,255,255,.04); }
-    .ord-bc.con-alertas { border-left:3px solid #D97706; }
+    .ord-bc.con-alertas { border-left:3px solid #D97706; padding-left:6px; }
     .ord-bc.novedad { background:#1C0F12 !important; border-color:rgba(239,68,68,.65) !important; }
-    @keyframes obcSlide { from{opacity:0;transform:translateY(-14px) scale(.98)} to{opacity:1;transform:none} }
-    .ord-bc.entering { animation:obcSlide .38s cubic-bezier(.34,1.3,.64,1) both; }
+    @keyframes obcSlide { from{opacity:0;transform:translateY(-12px) scale(.98)} to{opacity:1;transform:none} }
+    .ord-bc.entering { animation:obcSlide .35s cubic-bezier(.34,1.3,.64,1) both; }
     @keyframes obcShake { 0%,100%{transform:none} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
-    @keyframes obcGlow { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0)} 50%{box-shadow:0 0 0 6px rgba(239,68,68,.13)} }
+    @keyframes obcGlow { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0)} 50%{box-shadow:0 0 0 5px rgba(239,68,68,.12)} }
     .ord-bc.novedad { animation:obcShake .5s ease,obcGlow 2s ease .5s infinite; }
-    .ord-bc.novedad.entering { animation:obcSlide .38s cubic-bezier(.34,1.3,.64,1) both,obcGlow 2s ease .4s infinite; }
-    /* ── Card contenido ── */
-    .ord-bc-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; gap:5px; }
-    .ord-bc-placa { font-family:'DM Mono',monospace; font-size:20px; font-weight:900; letter-spacing:.09em; line-height:1; color:#fff; }
-    .ord-bc-ot { font-size:11px; font-weight:600; color:#8899AA; }
-    .ord-bc-pill { font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; border-radius:20px; padding:3px 9px; white-space:nowrap; flex-shrink:0; }
+    .ord-bc.novedad.entering { animation:obcSlide .35s cubic-bezier(.34,1.3,.64,1) both,obcGlow 2s ease .35s infinite; }
+    /* fila 1: placa + pill */
+    .ord-bc-top { display:flex; align-items:center; justify-content:space-between; gap:5px; line-height:1; }
+    .ord-bc-placa { font-family:'DM Mono',monospace; font-size:17px; font-weight:900; letter-spacing:.08em; color:#fff; }
+    .ord-bc-ot { display:none; }
+    .ord-bc-pill { font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; border-radius:20px; padding:2px 8px; white-space:nowrap; flex-shrink:0; }
     .obc-act  { background:#1D4ED8; color:#BFDBFE; }
     .obc-list { background:#166534; color:#BBF7D0; }
     .obc-atr  { background:#991B1B; color:#FECACA; }
     .obc-paus { background:#78350F; color:#FDE68A; }
     .obc-prog { background:#5B21B6; color:#E9D5FF; }
-    .ord-bc-prop { font-size:15px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:0; color:#fff; line-height:1.25; }
-    .ord-bc-veh  { font-size:12px; color:#94A3B8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:4px; line-height:1.3; }
-    .ord-bc-org  { font-size:11.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:4px; }
-    .ord-bc-novbanner { display:flex; align-items:center; gap:5px; background:#7F1D1D; border-radius:4px; padding:3px 7px; margin-bottom:4px; font-size:11px; font-weight:800; color:#FECACA; overflow:hidden; }
-    .ord-bc-novdot { width:7px; height:7px; border-radius:50%; background:#EF4444; flex-shrink:0; }
-    @keyframes obcDotP { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.25;transform:scale(.6)} }
+    /* fila 2: propietario */
+    .ord-bc-prop { font-size:13px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; line-height:1.3; margin-top:1px; }
+    /* fila 3: vehículo */
+    .ord-bc-veh  { font-size:11px; color:#94A3B8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.3; }
+    /* org (aseguradora/flotilla) */
+    .ord-bc-org  { font-size:11px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    /* novedad banner */
+    .ord-bc-novbanner { display:flex; align-items:center; gap:4px; background:#7F1D1D; border-radius:4px; padding:2px 6px; margin-bottom:3px; font-size:10px; font-weight:800; color:#FECACA; overflow:hidden; }
+    .ord-bc-novdot { width:6px; height:6px; border-radius:50%; background:#EF4444; flex-shrink:0; }
+    @keyframes obcDotP { 0%,100%{opacity:1} 50%{opacity:.2} }
     .ord-bc-novdot { animation:obcDotP 1.1s ease infinite; }
-    .ord-bc-prog { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
-    .ord-bc-bar  { flex:1; height:4px; background:rgba(255,255,255,.09); border-radius:99px; overflow:hidden; }
-    .ord-bc-fill { height:100%; border-radius:99px; }
-    .ord-bc-pct  { font-size:12px; font-family:'DM Mono',monospace; font-weight:800; min-width:28px; text-align:right; color:#fff; }
-    .ord-bc-dots { display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-bottom:3px; }
-    .ord-bc-dot  { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-    .obcd-done { background:#22C55E; }
-    .obcd-act  { background:#60A5FA; box-shadow:0 0 0 2px rgba(96,165,250,.28); }
-    .obcd-todo { background:rgba(255,255,255,.13); }
-    .ord-bc-foot { display:flex; align-items:center; justify-content:space-between; padding-top:4px; border-top:1px solid rgba(255,255,255,.07); gap:5px; }
-    .ord-bc-etxt { font-size:12px; color:#CBD5E1; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .ord-bc-time { font-size:12px; color:#8899AA; font-weight:700; font-family:'DM Mono',monospace; flex-shrink:0; }
-    /* ── Alertas dentro de la card ── */
-    .ord-bc-alertas { display:flex; flex-wrap:wrap; gap:3px; padding-top:4px; margin-top:3px; border-top:1px solid rgba(255,165,0,.18); }
-    .ord-bc-achip { display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:800; border-radius:4px; padding:2px 7px; white-space:nowrap; line-height:1.4; }
+    /* barra de progreso + pie: una sola fila */
+    .ord-bc-prog { display:none; }
+    .ord-bc-dots { display:none; }
+    .ord-bc-foot { display:flex; align-items:center; justify-content:space-between; gap:5px; margin-top:2px; }
+    .ord-bc-etxt { font-size:11px; color:#8899AA; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ord-bc-time { font-size:11px; color:#64748B; font-weight:700; font-family:'DM Mono',monospace; flex-shrink:0; }
+    /* barra de progreso integrada en el pie */
+    .ord-bc-bar-inline { flex:1; height:3px; background:rgba(255,255,255,.09); border-radius:99px; overflow:hidden; }
+    .ord-bc-fill-inline { height:100%; border-radius:99px; }
+    /* Alertas */
+    .ord-bc-alertas { display:flex; flex-wrap:wrap; gap:3px; margin-top:3px; }
+    .ord-bc-achip { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:800; border-radius:4px; padding:1px 6px; white-space:nowrap; line-height:1.5; }
     .ach-datos    { background:#3B1505; color:#FDBA74; border:1px solid rgba(251,146,60,.28); }
     .ach-vehiculo { background:#1E1047; color:#C4B5FD; border:1px solid rgba(167,139,250,.28); }
     .ach-asignar  { background:#0C2340; color:#7DD3FC; border:1px solid rgba(56,189,248,.28); }
@@ -699,10 +700,6 @@ function _boardMkCard(o, etapas, grad, entering) {
   const orgHtml = o.aseguradora
     ? `<div class="ord-bc-org" style="color:${orgColor}">${escapeHtml(o.aseguradora)}</div>` : '';
   // Dots
-  const dotsHtml = etO.map(e => {
-    const c = e.fin ? 'obcd-done' : e.inicio ? 'obcd-act' : 'obcd-todo';
-    return `<div class="ord-bc-dot ${c}"></div>`;
-  }).join('');
   // Novedad banner
   const novHtml = o._novedad
     ? `<div class="ord-bc-novbanner"><div class="ord-bc-novdot"></div><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(o._novedad)}</span></div>` : '';
@@ -721,22 +718,15 @@ function _boardMkCard(o, etapas, grad, entering) {
   return `<div class="${cls}" onclick="abrirOrden(${o.id})">
     ${novHtml}
     <div class="ord-bc-top">
-      <div style="min-width:0">
-        <div class="ord-bc-placa">${escapeHtml(o.placa || '—')}</div>
-        <div class="ord-bc-ot">${typeof otDe === 'function' ? otDe(o) : (o.numero_ot ? `OT-${o.numero_ot}` : `#${o.id}`)}</div>
-      </div>
+      <span class="ord-bc-placa">${escapeHtml(o.placa || '—')}</span>
       <span class="ord-bc-pill ${pillCls}">${pillTxt}</span>
     </div>
     <div class="ord-bc-prop">${escapeHtml(o.propietario || '—')}</div>
     <div class="ord-bc-veh">${escapeHtml([o.marca, o.linea].filter(Boolean).join(' ') || '—')}</div>
     ${orgHtml}
-    <div class="ord-bc-prog">
-      <div class="ord-bc-bar"><div class="ord-bc-fill" style="width:${pct}%;background:linear-gradient(90deg,${fillC})"></div></div>
-      <span class="ord-bc-pct">${pct}%</span>
-    </div>
-    ${dotsHtml ? `<div class="ord-bc-dots">${dotsHtml}</div>` : ''}
     <div class="ord-bc-foot">
       <span class="ord-bc-etxt">⚙ ${escapeHtml(srvNom)}</span>
+      <div class="ord-bc-bar-inline"><div class="ord-bc-fill-inline" style="width:${pct}%;background:linear-gradient(90deg,${fillC})"></div></div>
       <span class="ord-bc-time">${diasT}d</span>
     </div>
     ${alertasHtml}
