@@ -565,10 +565,7 @@ ${_grupoHeader('admin','Administración')}
       </div>
 
       ${_grupoHeader('informes','Informes')}
-        <button class="nav-item" id="nav-caja" onclick="navJefe('caja')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-          <span class="nav-label">Caja</span>
-        </button>
+        <!-- Caja: deshabilitado temporalmente -->
         <button class="nav-item" id="nav-metas" onclick="navJefe('metas')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
           <span class="nav-label">Metas</span>
