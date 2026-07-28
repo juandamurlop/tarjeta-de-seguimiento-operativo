@@ -588,31 +588,37 @@ function _boardInjectCSS() {
   const st = document.createElement('style');
   st.id = 'ord-board-css';
   st.textContent = `
+    /* ── Tokens de tema ── */
+    .ord-board { --ob-bg:#080E1C; --ob-surface:#0E1628; --ob-border:rgba(255,255,255,.07); --ob-border-card:rgba(255,255,255,.09); --ob-text:#fff; --ob-sub:#94A3B8; --ob-muted:#64748B; --ob-etxt:#8899AA; --ob-bar:rgba(255,255,255,.09); --ob-hover:rgba(255,255,255,.04); --ob-hover-border:rgba(255,255,255,.22); }
+    @media (prefers-color-scheme:light) {
+      .ord-board { --ob-bg:#F1F5F9; --ob-surface:#FFFFFF; --ob-border:rgba(0,0,0,.08); --ob-border-card:rgba(0,0,0,.1); --ob-text:#0F172A; --ob-sub:#475569; --ob-muted:#64748B; --ob-etxt:#64748B; --ob-bar:rgba(0,0,0,.1); --ob-hover:rgba(0,0,0,.03); --ob-hover-border:rgba(0,0,0,.2); }
+    }
+    :root[data-theme="dark"]  .ord-board { --ob-bg:#080E1C; --ob-surface:#0E1628; --ob-border:rgba(255,255,255,.07); --ob-border-card:rgba(255,255,255,.09); --ob-text:#fff; --ob-sub:#94A3B8; --ob-muted:#64748B; --ob-etxt:#8899AA; --ob-bar:rgba(255,255,255,.09); --ob-hover:rgba(255,255,255,.04); --ob-hover-border:rgba(255,255,255,.22); }
+    :root[data-theme="light"] .ord-board { --ob-bg:#F1F5F9; --ob-surface:#FFFFFF; --ob-border:rgba(0,0,0,.08); --ob-border-card:rgba(0,0,0,.1); --ob-text:#0F172A; --ob-sub:#475569; --ob-muted:#64748B; --ob-etxt:#64748B; --ob-bar:rgba(0,0,0,.1); --ob-hover:rgba(0,0,0,.03); --ob-hover-border:rgba(0,0,0,.2); }
     /* ── Contenedor principal ── */
     #lista-ordenes.board-mode { padding:0 !important; overflow:hidden; display:flex; flex-direction:column; flex:1; min-height:0; }
-    .ord-board { display:flex; flex:1; min-height:0; overflow:hidden; }
+    .ord-board { display:flex; flex:1; min-height:0; overflow:hidden; background:var(--ob-bg); }
     /* ── Columnas ── */
-    .ord-board-col { flex:1; display:flex; flex-direction:column; border-right:1px solid rgba(255,255,255,.07); min-width:0; overflow:hidden; background:var(--bg,#080E1C); }
+    .ord-board-col { flex:1; display:flex; flex-direction:column; border-right:1px solid var(--ob-border); min-width:0; overflow:hidden; background:var(--ob-bg); }
     .ord-board-col:last-child { border-right:none; }
-    .ord-board-col-header { display:flex; align-items:center; justify-content:space-between; padding:7px 12px 6px; background:var(--surface,#0E1628); border-bottom:1px solid rgba(255,255,255,.07); flex-shrink:0; position:relative; }
+    .ord-board-col-header { display:flex; align-items:center; justify-content:space-between; padding:7px 12px 6px; background:var(--ob-surface); border-bottom:1px solid var(--ob-border); flex-shrink:0; position:relative; }
     .ord-board-col-header::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--col-acc); }
-    .ord-board-col-name { font-size:12px; font-weight:900; letter-spacing:.07em; text-transform:uppercase; color:#fff; }
-    .ord-board-col-badge { font-size:12px; font-weight:800; border-radius:20px; padding:2px 10px; background:var(--col-acc); color:#000; }
+    .ord-board-col-name { font-size:12px; font-weight:900; letter-spacing:.07em; text-transform:uppercase; color:var(--ob-text); }
+    .ord-board-col-badge { font-size:12px; font-weight:800; border-radius:20px; padding:2px 10px; background:var(--col-acc); color:#fff; }
     .ord-board-list { flex:1; overflow:hidden; padding:4px 5px 6px; display:flex; flex-direction:column; gap:3px; }
     /* ── Card ultra-compacta ── */
-    .ord-bc { background:var(--surface,#0E1628); border:1px solid rgba(255,255,255,.09); border-radius:7px; padding:5px 8px; cursor:pointer; flex-shrink:0; overflow:hidden; transition:background .15s,border-color .15s; box-sizing:border-box; }
-    .ord-bc:hover { border-color:rgba(255,255,255,.22); background:rgba(255,255,255,.04); }
+    .ord-bc { background:var(--ob-surface); border:1px solid var(--ob-border-card); border-radius:7px; padding:5px 8px; cursor:pointer; flex-shrink:0; overflow:hidden; transition:background .15s,border-color .15s; box-sizing:border-box; }
+    .ord-bc:hover { border-color:var(--ob-hover-border); background:var(--ob-hover); }
     .ord-bc.con-alertas { border-left:3px solid #D97706; padding-left:6px; }
-    .ord-bc.novedad { background:#1C0F12 !important; border-color:rgba(239,68,68,.65) !important; }
     @keyframes obcSlide { from{opacity:0;transform:translateY(-12px) scale(.98)} to{opacity:1;transform:none} }
     .ord-bc.entering { animation:obcSlide .35s cubic-bezier(.34,1.3,.64,1) both; }
     @keyframes obcShake { 0%,100%{transform:none} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
     @keyframes obcGlow { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0)} 50%{box-shadow:0 0 0 5px rgba(239,68,68,.12)} }
-    .ord-bc.novedad { animation:obcShake .5s ease,obcGlow 2s ease .5s infinite; }
+    .ord-bc.novedad { background:#1C0F12 !important; border-color:rgba(239,68,68,.65) !important; animation:obcShake .5s ease,obcGlow 2s ease .5s infinite; }
     .ord-bc.novedad.entering { animation:obcSlide .35s cubic-bezier(.34,1.3,.64,1) both,obcGlow 2s ease .35s infinite; }
     /* fila 1: placa + pill */
     .ord-bc-top { display:flex; align-items:center; justify-content:space-between; gap:5px; line-height:1; }
-    .ord-bc-placa { font-family:'DM Mono',monospace; font-size:17px; font-weight:900; letter-spacing:.08em; color:#fff; }
+    .ord-bc-placa { font-family:'DM Mono',monospace; font-size:17px; font-weight:900; letter-spacing:.08em; color:var(--ob-text); }
     .ord-bc-ot { display:none; }
     .ord-bc-pill { font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; border-radius:20px; padding:2px 8px; white-space:nowrap; flex-shrink:0; }
     .obc-act  { background:#1D4ED8; color:#BFDBFE; }
@@ -621,32 +627,42 @@ function _boardInjectCSS() {
     .obc-paus { background:#78350F; color:#FDE68A; }
     .obc-prog { background:#5B21B6; color:#E9D5FF; }
     /* fila 2: propietario */
-    .ord-bc-prop { font-size:13px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; line-height:1.3; margin-top:1px; }
+    .ord-bc-prop { font-size:13px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--ob-text); line-height:1.3; margin-top:1px; }
     /* fila 3: vehículo */
-    .ord-bc-veh  { font-size:11px; color:#94A3B8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.3; }
+    .ord-bc-veh  { font-size:11px; color:var(--ob-sub); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.3; }
     /* org (aseguradora/flotilla) */
     .ord-bc-org  { font-size:11px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     /* novedad banner */
     .ord-bc-novbanner { display:flex; align-items:center; gap:4px; background:#7F1D1D; border-radius:4px; padding:2px 6px; margin-bottom:3px; font-size:10px; font-weight:800; color:#FECACA; overflow:hidden; }
-    .ord-bc-novdot { width:6px; height:6px; border-radius:50%; background:#EF4444; flex-shrink:0; }
+    .ord-bc-novdot { width:6px; height:6px; border-radius:50%; background:#EF4444; flex-shrink:0; animation:obcDotP 1.1s ease infinite; }
     @keyframes obcDotP { 0%,100%{opacity:1} 50%{opacity:.2} }
-    .ord-bc-novdot { animation:obcDotP 1.1s ease infinite; }
     /* barra de progreso + pie: una sola fila */
     .ord-bc-prog { display:none; }
     .ord-bc-dots { display:none; }
     .ord-bc-foot { display:flex; align-items:center; justify-content:space-between; gap:5px; margin-top:2px; }
-    .ord-bc-etxt { font-size:11px; color:#8899AA; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .ord-bc-time { font-size:11px; color:#64748B; font-weight:700; font-family:'DM Mono',monospace; flex-shrink:0; }
+    .ord-bc-etxt { font-size:11px; color:var(--ob-etxt); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ord-bc-time { font-size:11px; color:var(--ob-muted); font-weight:700; font-family:'DM Mono',monospace; flex-shrink:0; }
     /* barra de progreso integrada en el pie */
-    .ord-bc-bar-inline { flex:1; height:3px; background:rgba(255,255,255,.09); border-radius:99px; overflow:hidden; }
+    .ord-bc-bar-inline { flex:1; height:3px; background:var(--ob-bar); border-radius:99px; overflow:hidden; }
     .ord-bc-fill-inline { height:100%; border-radius:99px; }
-    /* Alertas */
+    /* Alertas - modo oscuro */
     .ord-bc-alertas { display:flex; flex-wrap:wrap; gap:3px; margin-top:3px; }
     .ord-bc-achip { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:800; border-radius:4px; padding:1px 6px; white-space:nowrap; line-height:1.5; }
     .ach-datos    { background:#3B1505; color:#FDBA74; border:1px solid rgba(251,146,60,.28); }
     .ach-vehiculo { background:#1E1047; color:#C4B5FD; border:1px solid rgba(167,139,250,.28); }
     .ach-asignar  { background:#0C2340; color:#7DD3FC; border:1px solid rgba(56,189,248,.28); }
     .ach-iniciar  { background:#111827; color:#9CA3AF; border:1px solid rgba(156,163,175,.22); }
+    /* Alertas - modo claro */
+    @media (prefers-color-scheme:light) {
+      .ach-datos    { background:#FEF3C7; color:#92400E; border:1px solid rgba(217,119,6,.3); }
+      .ach-vehiculo { background:#EDE9FE; color:#5B21B6; border:1px solid rgba(139,92,246,.3); }
+      .ach-asignar  { background:#E0F2FE; color:#0369A1; border:1px solid rgba(14,165,233,.3); }
+      .ach-iniciar  { background:#F1F5F9; color:#475569; border:1px solid rgba(100,116,139,.25); }
+    }
+    :root[data-theme="light"] .ach-datos    { background:#FEF3C7; color:#92400E; border:1px solid rgba(217,119,6,.3); }
+    :root[data-theme="light"] .ach-vehiculo { background:#EDE9FE; color:#5B21B6; border:1px solid rgba(139,92,246,.3); }
+    :root[data-theme="light"] .ach-asignar  { background:#E0F2FE; color:#0369A1; border:1px solid rgba(14,165,233,.3); }
+    :root[data-theme="light"] .ach-iniciar  { background:#F1F5F9; color:#475569; border:1px solid rgba(100,116,139,.25); }
   `;
   document.head.appendChild(st);
 }
