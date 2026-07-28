@@ -6,32 +6,24 @@ let _sePollingInterval = null;
 let _seRelojInterval   = null;
 
 function montarSalaEspera() {
-  // ── Modo TV: ocultar chrome de la app ──────────────────────
-  const sidebar   = document.getElementById('sidebar');
-  const overlay   = document.getElementById('sidebar-overlay');
-  const hamburger = document.querySelector('.hamburger');
-  const bottomNav = document.getElementById('bottom-nav');
-  const topbar    = document.querySelector('.topbar');
-  const main      = document.querySelector('.main');
-  const content   = document.querySelector('.content');
+  // ── Modo TV: ocultar chrome de la app via clase CSS ───────
 
-  if (sidebar)   sidebar.style.display   = 'none';
-  if (overlay)   overlay.style.display   = 'none';
-  if (hamburger) hamburger.style.display = 'none';
-  if (bottomNav) bottomNav.style.display = 'none';
-  if (topbar)    topbar.style.display    = 'none';
-  if (main)   { main.style.marginLeft = '0'; main.style.height = '100vh'; main.style.overflow = 'hidden'; }
-  if (content){ content.style.padding = '0'; content.style.maxWidth = '100%'; content.style.height = '100%'; }
-
-  document.body.style.background = '#0F172A';
-  document.body.style.overflow   = 'hidden';
-  document.body.style.height     = '100vh';
+  // ── Inyectar estilos una vez ───────────────────────────────
+  document.body.classList.add('se-tv-mode');
 
   // ── Inyectar estilos una vez ───────────────────────────────
   if (!document.getElementById('se-styles')) {
     const st = document.createElement('style');
     st.id = 'se-styles';
     st.textContent = `
+      body.se-tv-mode .topbar,
+      body.se-tv-mode #sidebar,
+      body.se-tv-mode .hamburger,
+      body.se-tv-mode #bottom-nav,
+      body.se-tv-mode #sidebar-overlay { display: none !important; }
+      body.se-tv-mode .main { margin-left: 0 !important; height: 100vh !important; overflow: hidden !important; }
+      body.se-tv-mode .content { padding: 0 !important; max-width: 100% !important; height: 100% !important; }
+      body.se-tv-mode { background: #0F172A !important; overflow: hidden !important; height: 100vh !important; }
       #pag-sala-espera {
         background:#0F172A; color:#F1F5F9;
         height:100vh; overflow:hidden;
@@ -325,25 +317,7 @@ function _seRestaurarLayout() {
   if (_sePollingInterval) { clearInterval(_sePollingInterval); _sePollingInterval = null; }
   if (_seRelojInterval)   { clearInterval(_seRelojInterval);   _seRelojInterval   = null; }
 
-  const sidebar   = document.getElementById('sidebar');
-  const overlay   = document.getElementById('sidebar-overlay');
-  const hamburger = document.querySelector('.hamburger');
-  const bottomNav = document.getElementById('bottom-nav');
-  const topbar    = document.querySelector('.topbar');
-  const main      = document.querySelector('.main');
-  const content   = document.querySelector('.content');
-
-  if (topbar)    topbar.style.display    = '';
-  if (sidebar)   sidebar.style.display   = '';
-  if (hamburger) hamburger.style.display = '';
-  if (bottomNav) bottomNav.style.display = '';
-  if (overlay)   overlay.style.display   = '';
-  if (main)   { main.style.marginLeft = ''; main.style.height = ''; main.style.overflow = ''; }
-  if (content){ content.style.padding = ''; content.style.maxWidth = ''; content.style.height = ''; }
-
-  document.body.style.background = '';
-  document.body.style.overflow   = '';
-  document.body.style.height     = '';
+  document.body.classList.remove('se-tv-mode');
 }
 
 function _seSalirSilencioso() {

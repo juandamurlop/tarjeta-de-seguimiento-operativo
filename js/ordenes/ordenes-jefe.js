@@ -505,11 +505,7 @@ function montarJefe() {
         </button>
         <button class="nav-item" id="nav-calendario" onclick="navJefe('calendario')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <span class="nav-label">Calendario</span>
-        </button>
-        <button class="nav-item" id="nav-citas" onclick="navJefe('citas')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
-          <span class="nav-label">Agenda de citas</span>
+          <span class="nav-label">Citas / Calendario</span>
         </button>
         <button class="nav-item" id="nav-historial-vehiculo" onclick="navJefe('historial-vehiculo')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -550,13 +546,9 @@ ${_grupoHeader('admin','Administración')}
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           <span class="nav-label">Organizaciones</span>
         </button>
-        <button class="nav-item" id="nav-cartera-flotillas" onclick="navJefe('cartera-flotillas')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
-          <span class="nav-label">Cartera flotillas</span>
-        </button>
-        <button class="nav-item" id="nav-cartera-empresas" onclick="navJefe('cartera-empresas')">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
-          <span class="nav-label">Cartera empresas</span>
+        <button class="nav-item" id="nav-cartera" onclick="navJefe('cartera')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+          <span class="nav-label">Cartera</span>
         </button>
         <button class="nav-item" id="nav-vehiculos" onclick="navJefe('vehiculos')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v9a2 2 0 01-2 2h-2M9 21a2 2 0 100-4 2 2 0 000 4zM15 21a2 2 0 100-4 2 2 0 000 4z"/></svg>
@@ -762,13 +754,7 @@ function navJefe(pag) {
   // Actualizar clases active en sidebar y bottom nav
   // Detener polling KPI al salir de esa pantalla
   if (pag !== 'taller-kpi' && window._kpiInterval) { clearInterval(window._kpiInterval); window._kpiInterval = null; }
-  const pages = ['ordenes', 'historial', 'nueva', 'dashboard', 'taller-kpi', 'cotizaciones', 'calendario', 'mecanicos', 'repuestos', 'reportes', 'encuestas', 'flotillas', 'organizaciones', 'aseguradoras', 'cartera-flotillas', 'cartera-empresas', 'vehiculos', 'vehiculos-lista', 'metas', 'caja'];
-  pages.forEach(p => {
-    const navBtn = document.getElementById('nav-' + p);
-    const bnavBtn = document.getElementById('bnav-' + p);
-    if (navBtn) navBtn.classList.remove('active');
-    if (bnavBtn) bnavBtn.classList.remove('active');
-  });
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   
   const currentNav = document.getElementById('nav-' + pag);
   const currentBnav = document.getElementById('bnav-' + pag);
@@ -812,9 +798,9 @@ function navJefe(pag) {
       cargarCotizaciones();
       break;
     case 'calendario':
-      pagId = 'pag-calendario';
-      titulo = 'Calendario de Entregas';
-      cargarCalendario();
+      pagId = 'pag-citas';
+      titulo = 'Citas / Calendario';
+      setTimeout(() => { if (typeof montarCitasCalendario === 'function') montarCitasCalendario(); }, 50);
       break;
     case 'taller-kpi':
       pagId = 'pag-taller-kpi';
@@ -863,6 +849,11 @@ function navJefe(pag) {
       titulo = 'Organizaciones';
       setTimeout(() => { if (typeof montarOrganizaciones === 'function') montarOrganizaciones('aseguradora'); }, 50);
       break;
+    case 'cartera':
+      pagId = 'pag-cartera';
+      titulo = 'Cartera';
+      setTimeout(() => { if (typeof montarCartera === 'function') montarCartera('flotilla'); }, 50);
+      break;
     // Rutas antiguas → redirigen a la pestaña correspondiente de Organizaciones.
     case 'aseguradoras':
       pagId = 'pag-organizaciones';
@@ -870,14 +861,14 @@ function navJefe(pag) {
       setTimeout(() => { if (typeof montarOrganizaciones === 'function') montarOrganizaciones('aseguradora'); }, 50);
       break;
     case 'cartera-flotillas':
-      pagId = 'pag-organizaciones';
-      titulo = 'Organizaciones';
-      setTimeout(() => { if (typeof montarOrganizaciones === 'function') montarOrganizaciones('flotilla'); }, 50);
+      pagId = 'pag-cartera';
+      titulo = 'Cartera';
+      setTimeout(() => { if (typeof montarCartera === 'function') montarCartera('flotilla'); }, 50);
       break;
     case 'cartera-empresas':
-      pagId = 'pag-organizaciones';
-      titulo = 'Organizaciones';
-      setTimeout(() => { if (typeof montarOrganizaciones === 'function') montarOrganizaciones('empresa'); }, 50);
+      pagId = 'pag-cartera';
+      titulo = 'Cartera';
+      setTimeout(() => { if (typeof montarCartera === 'function') montarCartera('empresa'); }, 50);
       break;
     case 'vehiculos':
       pagId = 'pag-vehiculos';
@@ -899,10 +890,8 @@ function navJefe(pag) {
       setTimeout(() => { if (typeof montarHistorialVehiculo === 'function') montarHistorialVehiculo(); }, 50);
       break;
     case 'citas':
-      pagId = 'pag-citas';
-      titulo = 'Agenda de citas';
-      setTimeout(() => { if (typeof montarCitas === 'function') montarCitas(); }, 50);
-      break;
+      // Redirige a la sección unificada
+      return navJefe('calendario');
     case 'sala-espera':
       pagId = 'pag-sala-espera';
       titulo = 'Sala de Espera';
@@ -944,7 +933,7 @@ calMesActual.setDate(1);
 calMesActual.setHours(0,0,0,0);
 
 async function cargarCalendario() {
-  const cont = document.getElementById('pag-calendario');
+  const cont = document.getElementById('citas-tab-content') || document.getElementById('pag-calendario');
   if (!cont) return;
   cont.innerHTML = '<div class="loading-state">Cargando...</div>';
   try {
@@ -1088,7 +1077,7 @@ function renderCalendario(cont, ordenes, mesDate) {
 
 async function calCambiarMes(delta) {
   calMesActual.setMonth(calMesActual.getMonth() + delta);
-  const cont = document.getElementById('pag-calendario');
+  const cont = document.getElementById('citas-tab-content') || document.getElementById('pag-calendario');
   if (!cont) return;
   cont.innerHTML = '<div class="loading-state">Cargando...</div>';
   try {
