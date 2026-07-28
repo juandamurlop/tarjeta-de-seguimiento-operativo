@@ -745,6 +745,8 @@ function navJefe(pag) {
   const formsConBorrador = ['pag-cotizacion-nueva', 'pag-nueva'];
   if (formsConBorrador.includes(paginaActual) && !_confirmarSalir()) return;
   _setDirty(false);
+  // Detener rotación del board de órdenes al navegar
+  if (window._ordBoardRotInterval) { clearInterval(window._ordBoardRotInterval); window._ordBoardRotInterval = null; }
   // Si venimos de sala de espera, restaurar el layout antes de navegar
   if (paginaActual === 'pag-sala-espera' && pag !== 'sala-espera' && typeof _seSalirSilencioso === 'function') {
     _seSalirSilencioso();

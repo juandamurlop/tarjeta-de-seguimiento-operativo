@@ -72,6 +72,9 @@ async function cargarOrdenes() {
   if (filtroEstado === null) return; // tab pulmón activo
   const lista = document.getElementById('lista-ordenes');
   if (!lista) return;
+  // Limpiar modo board anterior
+  if (window._ordBoardRotInterval) { clearInterval(window._ordBoardRotInterval); window._ordBoardRotInterval = null; }
+  lista.classList.remove('board-mode');
   mostrarCargandoSiVacio(lista, '<div class="loading-state">Cargando órdenes...</div>');
   try {
     let query;
@@ -91,7 +94,11 @@ async function cargarOrdenes() {
     const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico,tercero,valor_venta`).catch(() => []) || [];
     _ordenesTablaData = data;
     _etapasTablaData  = etapas;
-    renderTablaOrdenes(data, etapas);
+    if (filtroEstado === 'Activa') {
+      _renderOrdenesBoard(data, etapas);
+    } else {
+      renderTablaOrdenes(data, etapas);
+    }
   } catch(e) { lista.innerHTML = `<div class="empty-state">Error cargando órdenes: ${e.message}</div>`; }
 }
 
@@ -564,4 +571,253 @@ async function _guardarMoverOrganizacion(ordenId) {
     if (document.getElementById('hist-lista')) montarHistorialOrdenes();
     else if (typeof filtroEstado !== 'undefined' && filtroEstado !== null && typeof cargarOrdenes === 'function') cargarOrdenes();
   } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BOARD DE ÓRDENES POR COLUMNAS (vista Activas)
+// ═══════════════════════════════════════════════════════════
+const _BOARD_COLS = [
+  { key: 'particular',  label: 'Particular',  acc: '#3B82F6', grad: '#3B82F6,#60A5FA' },
+  { key: 'aseguradora', label: 'Aseguradora', acc: '#8B5CF6', grad: '#8B5CF6,#A78BFA' },
+  { key: 'flotilla',    label: 'Flotilla',    acc: '#F59E0B', grad: '#F59E0B,#FCD34D' },
+  { key: 'empresa',     label: 'Empresa',     acc: '#10B981', grad: '#10B981,#34D399' },
+];
+
+function _boardInjectCSS() {
+  if (document.getElementById('ord-board-css')) return;
+  const st = document.createElement('style');
+  st.id = 'ord-board-css';
+  st.textContent = `
+    /* ── Contenedor principal ── */
+    #lista-ordenes.board-mode { padding:0 !important; overflow:hidden; height:calc(100vh - 155px); display:flex; flex-direction:column; }
+    .ord-board { display:flex; flex:1; min-height:0; overflow:hidden; }
+    /* ── Columnas ── */
+    .ord-board-col { flex:1; display:flex; flex-direction:column; border-right:1px solid rgba(255,255,255,.07); min-width:0; overflow:hidden; background:var(--bg,#080E1C); }
+    .ord-board-col:last-child { border-right:none; }
+    .ord-board-col-header { display:flex; align-items:center; justify-content:space-between; padding:11px 14px 9px; background:var(--surface,#0E1628); border-bottom:1px solid rgba(255,255,255,.07); flex-shrink:0; position:relative; }
+    .ord-board-col-header::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--col-acc); }
+    .ord-board-col-name { font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:#fff; }
+    .ord-board-col-badge { font-size:11px; font-weight:800; border-radius:20px; padding:2px 10px; background:var(--col-acc); color:#000; }
+    .ord-board-list { flex:1; overflow:hidden; padding:8px 8px 10px; display:flex; flex-direction:column; gap:7px; }
+    /* ── Card ── */
+    .ord-bc { background:var(--surface,#0E1628); border:1px solid rgba(255,255,255,.09); border-radius:10px; padding:11px 12px; cursor:pointer; flex-shrink:0; overflow:hidden; transition:background .18s,border-color .18s; box-sizing:border-box; }
+    .ord-bc:hover { border-color:rgba(255,255,255,.22); background:rgba(255,255,255,.04); }
+    .ord-bc.con-alertas { border-left:3px solid #D97706; }
+    .ord-bc.novedad { background:#1C0F12 !important; border-color:rgba(239,68,68,.65) !important; }
+    @keyframes obcSlide { from{opacity:0;transform:translateY(-14px) scale(.98)} to{opacity:1;transform:none} }
+    .ord-bc.entering { animation:obcSlide .38s cubic-bezier(.34,1.3,.64,1) both; }
+    @keyframes obcShake { 0%,100%{transform:none} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+    @keyframes obcGlow { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0)} 50%{box-shadow:0 0 0 6px rgba(239,68,68,.13)} }
+    .ord-bc.novedad { animation:obcShake .5s ease,obcGlow 2s ease .5s infinite; }
+    .ord-bc.novedad.entering { animation:obcSlide .38s cubic-bezier(.34,1.3,.64,1) both,obcGlow 2s ease .4s infinite; }
+    /* Card contenido */
+    .ord-bc-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:6px; gap:6px; }
+    .ord-bc-placa { font-family:'DM Mono',monospace; font-size:18px; font-weight:900; letter-spacing:.09em; line-height:1; color:#fff; }
+    .ord-bc-ot { font-size:10px; font-weight:600; color:#8899AA; margin-top:2px; }
+    .ord-bc-pill { font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; border-radius:20px; padding:3px 9px; white-space:nowrap; flex-shrink:0; }
+    .obc-act  { background:#1D4ED8; color:#BFDBFE; }
+    .obc-list { background:#166534; color:#BBF7D0; }
+    .obc-atr  { background:#991B1B; color:#FECACA; }
+    .obc-paus { background:#78350F; color:#FDE68A; }
+    .obc-prog { background:#5B21B6; color:#E9D5FF; }
+    .ord-bc-prop { font-size:13px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; color:#fff; }
+    .ord-bc-veh  { font-size:11px; color:#94A3B8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:6px; }
+    .ord-bc-org  { font-size:10.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:6px; }
+    .ord-bc-novbanner { display:flex; align-items:center; gap:5px; background:#7F1D1D; border-radius:5px; padding:4px 8px; margin-bottom:7px; font-size:10px; font-weight:800; color:#FECACA; overflow:hidden; }
+    .ord-bc-novdot { width:7px; height:7px; border-radius:50%; background:#EF4444; flex-shrink:0; }
+    @keyframes obcDotP { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.25;transform:scale(.6)} }
+    .ord-bc-novdot { animation:obcDotP 1.1s ease infinite; }
+    .ord-bc-prog { display:flex; align-items:center; gap:7px; margin-bottom:5px; }
+    .ord-bc-bar  { flex:1; height:4px; background:rgba(255,255,255,.09); border-radius:99px; overflow:hidden; }
+    .ord-bc-fill { height:100%; border-radius:99px; }
+    .ord-bc-pct  { font-size:11px; font-family:'DM Mono',monospace; font-weight:800; min-width:26px; text-align:right; color:#fff; }
+    .ord-bc-dots { display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-bottom:6px; }
+    .ord-bc-dot  { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .obcd-done { background:#22C55E; }
+    .obcd-act  { background:#60A5FA; box-shadow:0 0 0 2px rgba(96,165,250,.28); }
+    .obcd-todo { background:rgba(255,255,255,.13); }
+    .ord-bc-foot { display:flex; align-items:center; justify-content:space-between; padding-top:6px; border-top:1px solid rgba(255,255,255,.07); gap:6px; }
+    .ord-bc-etxt { font-size:11px; color:#CBD5E1; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ord-bc-time { font-size:11px; color:#8899AA; font-weight:700; font-family:'DM Mono',monospace; flex-shrink:0; }
+    /* Alertas dentro de la card */
+    .ord-bc-alertas { display:flex; flex-wrap:wrap; gap:4px; padding-top:7px; margin-top:6px; border-top:1px solid rgba(255,165,0,.18); }
+    .ord-bc-achip { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:800; border-radius:5px; padding:2px 7px; white-space:nowrap; line-height:1.4; }
+    .ach-datos    { background:#3B1505; color:#FDBA74; border:1px solid rgba(251,146,60,.28); }
+    .ach-vehiculo { background:#1E1047; color:#C4B5FD; border:1px solid rgba(167,139,250,.28); }
+    .ach-asignar  { background:#0C2340; color:#7DD3FC; border:1px solid rgba(56,189,248,.28); }
+    .ach-iniciar  { background:#111827; color:#9CA3AF; border:1px solid rgba(156,163,175,.22); }
+  `;
+  document.head.appendChild(st);
+}
+
+const _WARN_SVG = `<svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+
+function _boardAlertas(o, etapas) {
+  const chips = [];
+  // Datos personales faltantes
+  const fP = [];
+  if (!o.propietario)    fP.push('nombre');
+  if (!o.cedula_cliente) fP.push('cédula');
+  if (!o.telefono)       fP.push('teléfono');
+  if (fP.length) chips.push({ cls: 'ach-datos', label: `Sin ${fP[0]}${fP.length > 1 ? ' +' + (fP.length - 1) : ''}` });
+  // Vehículo incompleto
+  if (!o.marca || !o.linea) chips.push({ cls: 'ach-vehiculo', label: 'Vehículo incompleto' });
+  // Etapas
+  const etO = etapas.filter(e => e.orden_id === o.id);
+  if (etO.length === 0) {
+    chips.push({ cls: 'ach-iniciar', label: 'Sin etapas' });
+  } else {
+    if (etO.every(e => !e.inicio)) chips.push({ cls: 'ach-iniciar', label: 'Sin iniciar' });
+    if (etO.every(e => !e.tecnico && !e.tercero)) chips.push({ cls: 'ach-asignar', label: 'Sin operario' });
+  }
+  return chips;
+}
+
+function _boardMkCard(o, etapas, grad, entering) {
+  const etO  = etapas.filter(e => e.orden_id === o.id);
+  const total = etO.length;
+  const comp  = etO.filter(e => e.fin).length;
+  const pct   = total ? Math.round((comp / total) * 100) : 0;
+  const activa = etO.find(e => e.inicio && !e.fin);
+  const srvNom = activa
+    ? (typeof CATALOGO !== 'undefined' && CATALOGO?.[activa.servicio]?.nombre || activa.servicio || '—')
+    : (comp === total && total > 0 ? 'Completada' : (total === 0 ? 'Sin etapas' : '—'));
+  const diasT = o.creado_en ? Math.floor((Date.now() - new Date(o.creado_en)) / 86400000) : 0;
+  // Pill
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const atrasada = o.fecha_entrega_1 && new Date(o.fecha_entrega_1) < hoy;
+  const listo    = (comp === total && total > 0) || !!o.entrega_avisada_en;
+  let pillCls, pillTxt;
+  if (o.estado === 'Programada')  { pillCls = 'obc-prog'; pillTxt = 'Programada'; }
+  else if (listo)                  { pillCls = 'obc-list'; pillTxt = 'Listo ✓'; }
+  else if (atrasada)               { pillCls = 'obc-atr';  pillTxt = 'Atrasada'; }
+  else                             { pillCls = 'obc-act';  pillTxt = 'Activa'; }
+  const fillC = listo ? '#16A34A,#4ADE80' : atrasada ? '#DC2626,#F87171' : grad;
+  // Org
+  const orgColor = o.tipo_cliente === 'aseguradora' ? '#C4B5FD'
+                 : o.tipo_cliente === 'flotilla'    ? '#FDE68A' : '#6EE7B7';
+  const orgHtml = o.aseguradora
+    ? `<div class="ord-bc-org" style="color:${orgColor}">${escapeHtml(o.aseguradora)}</div>` : '';
+  // Dots
+  const dotsHtml = etO.map(e => {
+    const c = e.fin ? 'obcd-done' : e.inicio ? 'obcd-act' : 'obcd-todo';
+    return `<div class="ord-bc-dot ${c}"></div>`;
+  }).join('');
+  // Novedad banner
+  const novHtml = o._novedad
+    ? `<div class="ord-bc-novbanner"><div class="ord-bc-novdot"></div><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(o._novedad)}</span></div>` : '';
+  // Alertas
+  const alertas = _boardAlertas(o, etapas);
+  const tieneAlertas = alertas.length > 0;
+  const alertasHtml = tieneAlertas
+    ? `<div class="ord-bc-alertas">${alertas.map(a => `<span class="ord-bc-achip ${a.cls}">${_WARN_SVG}${a.label}</span>`).join('')}</div>` : '';
+
+  const cls = ['ord-bc',
+    tieneAlertas ? 'con-alertas' : '',
+    o._novedad   ? 'novedad'     : '',
+    entering     ? 'entering'    : ''
+  ].filter(Boolean).join(' ');
+
+  return `<div class="${cls}" onclick="abrirOrden(${o.id})">
+    ${novHtml}
+    <div class="ord-bc-top">
+      <div style="min-width:0">
+        <div class="ord-bc-placa">${escapeHtml(o.placa || '—')}</div>
+        <div class="ord-bc-ot">${typeof otDe === 'function' ? otDe(o) : (o.numero_ot ? `OT-${o.numero_ot}` : `#${o.id}`)}</div>
+      </div>
+      <span class="ord-bc-pill ${pillCls}">${pillTxt}</span>
+    </div>
+    <div class="ord-bc-prop">${escapeHtml(o.propietario || '—')}</div>
+    <div class="ord-bc-veh">${escapeHtml([o.marca, o.linea].filter(Boolean).join(' ') || '—')}</div>
+    ${orgHtml}
+    <div class="ord-bc-prog">
+      <div class="ord-bc-bar"><div class="ord-bc-fill" style="width:${pct}%;background:linear-gradient(90deg,${fillC})"></div></div>
+      <span class="ord-bc-pct">${pct}%</span>
+    </div>
+    ${dotsHtml ? `<div class="ord-bc-dots">${dotsHtml}</div>` : ''}
+    <div class="ord-bc-foot">
+      <span class="ord-bc-etxt">⚙ ${escapeHtml(srvNom)}</span>
+      <span class="ord-bc-time">${diasT}d</span>
+    </div>
+    ${alertasHtml}
+  </div>`;
+}
+
+function _renderOrdenesBoard(data, etapas) {
+  _boardInjectCSS();
+  const lista = document.getElementById('lista-ordenes');
+  if (!lista) return;
+  lista.classList.add('board-mode');
+
+  // Agrupar por tipo_cliente
+  const grupos = {};
+  _BOARD_COLS.forEach(c => { grupos[c.key] = []; });
+  data.forEach(o => {
+    const key = (o.tipo_cliente || 'particular').toLowerCase();
+    (grupos[key] || grupos['particular']).push(o);
+  });
+
+  const colsActivas = _BOARD_COLS.filter(c => grupos[c.key]?.length > 0);
+  if (!colsActivas.length) {
+    lista.classList.remove('board-mode');
+    lista.innerHTML = `<div class="empty-state"><div class="empty-state-icon">${ico('clipboard', 32)}</div>No hay órdenes activas.</div>`;
+    return;
+  }
+
+  // Estado de rotación por columna
+  const colState = {};
+
+  const boardHtml = colsActivas.map(col => {
+    const orders = grupos[col.key];
+    // Órdenes con alertas primero, luego atrasadas
+    orders.sort((a, b) => {
+      const aA = _boardAlertas(a, etapas).length;
+      const bA = _boardAlertas(b, etapas).length;
+      if (aA && !bA) return -1; if (!aA && bA) return 1;
+      const aAt = a.fecha_entrega_1 && new Date(a.fecha_entrega_1) < new Date() ? 1 : 0;
+      const bAt = b.fecha_entrega_1 && new Date(b.fecha_entrega_1) < new Date() ? 1 : 0;
+      return bAt - aAt;
+    });
+    colState[col.key] = { orders, idx: 0, grad: col.grad };
+    const cardsHtml = orders.map(o => _boardMkCard(o, etapas, col.grad, false)).join('');
+    return `<div class="ord-board-col" style="--col-acc:${col.acc}">
+      <div class="ord-board-col-header">
+        <span class="ord-board-col-name">${col.label}</span>
+        <span class="ord-board-col-badge">${orders.length}</span>
+      </div>
+      <div class="ord-board-list" id="ordbc-${col.key}">${cardsHtml}</div>
+    </div>`;
+  }).join('');
+
+  lista.innerHTML = `<div class="ord-board">${boardHtml}</div>`;
+
+  // Rotación cada 5 s
+  if (window._ordBoardRotInterval) clearInterval(window._ordBoardRotInterval);
+  window._ordBoardRotInterval = setInterval(() => {
+    colsActivas.forEach(col => {
+      const st = colState[col.key];
+      if (!st || st.orders.length <= 1) return;
+      st.idx = (st.idx + 1) % st.orders.length;
+      const listEl = document.getElementById(`ordbc-${col.key}`);
+      if (!listEl) return;
+      // Sacar el último con fade
+      const cards = listEl.querySelectorAll('.ord-bc');
+      if (cards.length) {
+        const last = cards[cards.length - 1];
+        last.style.transition = 'opacity .22s,transform .22s';
+        last.style.opacity = '0';
+        last.style.transform = 'translateY(8px)';
+        setTimeout(() => last.remove(), 230);
+      }
+      // Insertar al tope
+      setTimeout(() => {
+        if (!document.getElementById(`ordbc-${col.key}`)) return;
+        const wrap = document.createElement('div');
+        wrap.innerHTML = _boardMkCard(st.orders[st.idx], etapas, col.grad, true);
+        const nc = wrap.firstElementChild;
+        listEl.insertBefore(nc, listEl.firstChild);
+        setTimeout(() => nc.classList.remove('entering'), 450);
+      }, 240);
+    });
+  }, 5000);
 }
