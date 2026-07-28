@@ -1,4 +1,60 @@
 // ═══════════════════════════════════════════════════════════
+// CITAS + CALENDARIO — vista unificada con pestañas
+// ═══════════════════════════════════════════════════════════
+
+async function montarCitasCalendario() {
+  const pag = document.getElementById('pag-citas');
+  if (!pag) return;
+
+  pag.innerHTML = `
+    <style>
+      #cc-shell { display:flex; flex-direction:column; height:100%; overflow:hidden; }
+      #cc-tabs {
+        display:flex; gap:0; border-bottom:2px solid var(--gris-borde);
+        background:var(--surface); padding:0 20px; flex-shrink:0;
+      }
+      .cc-tab {
+        padding:11px 18px; cursor:pointer; font-size:13px; font-weight:600;
+        color:var(--gris-mid); border-bottom:2px solid transparent; margin-bottom:-2px;
+        background:none; border-top:none; border-left:none; border-right:none;
+        transition:color .15s, border-color .15s;
+      }
+      .cc-tab.active { color:var(--azul); border-bottom-color:var(--azul); }
+      .cc-tab:hover:not(.active) { color:var(--texto); }
+      #citas-tab-content { flex:1; overflow:auto; }
+    </style>
+    <div id="cc-shell">
+      <div id="cc-tabs">
+        <button class="cc-tab active" id="cc-tab-agenda"     onclick="_ccSwitchTab('agenda')">📅 Agenda de citas</button>
+        <button class="cc-tab"        id="cc-tab-calendario" onclick="_ccSwitchTab('calendario')">🗓 Calendario mensual</button>
+      </div>
+      <div id="citas-tab-content"></div>
+    </div>`;
+
+  window._ccTabActivo = 'agenda';
+  await montarCitas();
+}
+
+async function _ccSwitchTab(tab) {
+  if (window._ccTabActivo === tab) return;
+  window._ccTabActivo = tab;
+
+  document.querySelectorAll('.cc-tab').forEach(t => t.classList.remove('active'));
+  const tabEl = document.getElementById('cc-tab-' + tab);
+  if (tabEl) tabEl.classList.add('active');
+
+  const cont = document.getElementById('citas-tab-content');
+  if (!cont) return;
+  cont.innerHTML = '<div class="loading-state" style="padding:40px;text-align:center;color:var(--gris-mid)">Cargando...</div>';
+
+  if (tab === 'agenda') {
+    await montarCitas();
+  } else {
+    if (typeof cargarCalendario === 'function') await cargarCalendario();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // CITAS / AGENDA
 // ═══════════════════════════════════════════════════════════
 
@@ -46,7 +102,9 @@ const _CITAS_ESTADO_STYLE = {
 // ─── Montaje ──────────────────────────────────────────────
 
 async function montarCitas() {
-  const pag = document.getElementById('pag-citas');
+  // Si estamos dentro de la vista unificada, renderizar en el contenedor de tab;
+  // de lo contrario, usar la página directa (compatibilidad con llamadas legacy).
+  const pag = document.getElementById('citas-tab-content') || document.getElementById('pag-citas');
   if (!pag) return;
 
   _citasLunesActual = _citasLunesDeHoy();

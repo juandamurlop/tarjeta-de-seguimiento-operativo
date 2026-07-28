@@ -7,6 +7,7 @@
 let _cotEditandoId = null;         // null = nueva, number = editando
 let _cotEmpresasCache = [];        // cache de empresas cargadas
 let _cotEmpresaPersonas = [];      // personas/contactos de la empresa seleccionada
+let _cotVerArchivadas = false;     // toggle: ver archivadas o activas
 
 // ── Tipo de cliente ──────────────────────────────────────
 const _COT_ORG_LABELS = {
@@ -1215,13 +1216,26 @@ async function cargarCotizaciones() {
   const lista = document.getElementById('cot-lista');
   if (!lista) return;
   lista.innerHTML = '<div class="loading-state">Cargando cotizaciones...</div>';
+
+  // Auto-borrado silencioso: eliminar archivadas con más de 30 días
+  const hace30 = new Date(Date.now() - 30*24*60*60*1000).toISOString();
+  api(`/cotizaciones?archivada=eq.true&archivada_en=lt.${hace30}`, 'DELETE').catch(() => {});
+
   try {
-    const data = await api('/cotizaciones?order=created_at.desc&limit=100') || [];
+    const filtro = _cotVerArchivadas
+      ? '&archivada=eq.true'
+      : '&or=(archivada.is.null,archivada.eq.false)';
+    const data = await api(`/cotizaciones?order=created_at.desc&limit=100${filtro}`) || [];
     todasCotizaciones = data;
     renderCotizaciones(data);
   } catch(e) {
     lista.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
   }
+}
+
+function _cotToggleArchivadas() {
+  _cotVerArchivadas = !_cotVerArchivadas;
+  cargarCotizaciones();
 }
 
 function filtrarCotizaciones() {
@@ -1238,13 +1252,20 @@ function filtrarCotizaciones() {
 function renderCotizaciones(data) {
   const lista = document.getElementById('cot-lista');
   if (!lista) return;
+
+  const toggleHtml = `<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+    <button class="btn btn-ghost btn-sm" style="font-size:12px;color:${_cotVerArchivadas ? 'var(--azul)' : 'var(--gris-mid)'}" onclick="_cotToggleArchivadas()">
+      ${_cotVerArchivadas ? '← Ver activas' : '📦 Ver archivadas'}
+    </button>
+  </div>`;
+
   if (!data.length) {
-    lista.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📄</div><p>No hay cotizaciones.</p></div>';
+    lista.innerHTML = toggleHtml + '<div class="empty-state"><div class="empty-state-icon">📄</div><p>No hay cotizaciones.</p></div>';
     return;
   }
   const fmt = n => n != null ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n) : '—';
-  
-  lista.innerHTML = data.map(c => {
+
+  lista.innerHTML = toggleHtml + data.map(c => {
     const estado = c.estado || 'pendiente';
     const badgeCls = `badge-cot-${estado}`;
     let badgeTxt = '';
@@ -1283,6 +1304,10 @@ function renderCotizaciones(data) {
           <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();convertirEnOrden(${c.id})">+ Crear orden desde esta</button>
         ` : ''}
         ${tienOrden ? `<span style="font-size:12px;color:var(--verde);font-weight:600">✓ Orden creada</span>` : ''}
+        ${_cotVerArchivadas
+          ? `<button class="btn btn-ghost btn-sm" style="font-size:12px;color:var(--azul)" onclick="event.stopPropagation();restaurarCotizacion(${c.id})" title="Restaurar cotización">↩ Restaurar</button>`
+          : `<button class="btn btn-ghost btn-sm" style="font-size:12px;color:var(--gris-mid)" onclick="event.stopPropagation();archivarCotizacion(${c.id})" title="Archivar cotización">📦 Archivar</button>`
+        }
       </div>
     </div>`;
   }).join('');
@@ -1457,6 +1482,22 @@ async function rechazarCotizacion(id) {
     toast('Cotización rechazada ✓');
     cargarCotizaciones();
   } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+async function archivarCotizacion(id) {
+  try {
+    await api(`/cotizaciones?id=eq.${id}`, 'PATCH', { archivada: true, archivada_en: new Date().toISOString() });
+    toast('Cotización archivada ✓');
+    cargarCotizaciones();
+  } catch(e) { toast('Error al archivar: ' + e.message, 'err'); }
+}
+
+async function restaurarCotizacion(id) {
+  try {
+    await api(`/cotizaciones?id=eq.${id}`, 'PATCH', { archivada: false, archivada_en: null });
+    toast('Cotización restaurada ✓');
+    cargarCotizaciones();
+  } catch(e) { toast('Error al restaurar: ' + e.message, 'err'); }
 }
 
 async function convertirEnOrden(cotId) {
