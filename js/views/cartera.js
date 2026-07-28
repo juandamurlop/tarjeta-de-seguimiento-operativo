@@ -18,10 +18,10 @@
     const s = document.createElement('style');
     s.id = 'cartera-styles';
     s.textContent = `
-      #pag-cartera { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-      .cartera-tabs { display: flex; gap: 8px; flex-wrap: wrap; padding: 16px 20px 0; }
-      .cartera-panel-host { flex: 1; overflow: auto; position: relative; }
-      .cartera-panel { height: 100%; }
+      #pag-cartera { display: flex; flex-direction: column; }
+      .cartera-tabs { display: flex; gap: 8px; flex-wrap: wrap; padding: 16px 20px 12px; flex-shrink: 0; }
+      .cartera-panel-host { overflow: visible; position: relative; }
+      .cartera-panel { }
     `;
     document.head.appendChild(s);
   }
