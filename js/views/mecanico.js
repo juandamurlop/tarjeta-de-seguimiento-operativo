@@ -93,7 +93,7 @@ async function cargarEtapasMecanico() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading-state">Cargando tus órdenes...</div>';
   try {
-    const etapas = await api(`/etapas?mecanico_id=eq.${sesion.id}&order=creado_en.asc`) || [];
+    const etapas = await api(`/etapas?mecanico_id=eq.${sesion.id}&fin=is.null&order=creado_en.asc`) || [];
     if (!etapas.length) {
       cont.innerHTML = `<div class="empty-state"><div class="empty-state-icon">${ico('check', 32)}</div><p>No tienes etapas asignadas por el momento.</p></div>`;
       return;
@@ -102,7 +102,7 @@ async function cargarEtapasMecanico() {
     const ids = [...new Set(etapas.map(e => e.orden_id))];
     const etapaIds = etapas.map(e => e.id).join(',');
     const [ordenes, solicitudes, aprobaciones] = await Promise.all([
-      api(`/ordenes?id=in.(${ids.join(',')})`).catch(() => []),
+      api(`/ordenes?id=in.(${ids.join(',')})&estado=not.in.(Entregada,Archivada)`).catch(() => []),
       api(`/solicitudes_repuesto?orden_id=in.(${ids.join(',')})&order=creado_en.desc&select=*`).catch(() => []),
       etapaIds ? api(`/aprobaciones_etapa?etapa_id=in.(${etapaIds})&order=creado_en.desc&select=etapa_id,estado,observacion`).catch(() => []) : []
     ]);
@@ -117,11 +117,10 @@ async function cargarEtapasMecanico() {
     });
 
 
-    const gruposActivos = Object.entries(porOrden).filter(([oid, ets]) => {
-      const orden = ordenes.find(o => o.id == oid) || {};
-      if (['Entregada','Archivada'].includes(orden.estado)) return false;
-      return ets.some(e => !e.fin);
-    });
+    // Solo mostrar grupos cuya orden llegó en el resultado (filtra Entregada/Archivada)
+    const gruposActivos = Object.entries(porOrden).filter(([oid]) =>
+      ordenes.some(o => o.id == oid)
+    );
 
     if (!gruposActivos.length) {
       cont.innerHTML = `<div class="empty-state"><div class="empty-state-icon">${ico('check', 32)}</div><p>¡Al día! No tienes etapas pendientes.</p></div>`;
