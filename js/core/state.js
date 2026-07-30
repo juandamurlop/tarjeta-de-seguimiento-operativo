@@ -90,6 +90,12 @@ const CATALOGO = {
       { key: 'adi_lavado',     nombre: 'Lavado' },
       { key: 'adi_tot',        nombre: 'TOT' },
     ]
+  },
+  embellecimiento: {
+    nombre: 'Embellecimiento', clase: 'embellecimiento',
+    etapas: [
+      { key: 'emb_embellecimiento', nombre: 'Embellecimiento' },
+    ]
   }
 };
 

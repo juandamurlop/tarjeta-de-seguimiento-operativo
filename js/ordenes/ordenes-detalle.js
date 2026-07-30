@@ -240,9 +240,9 @@ async function abrirOrden(id) {
     const etapasOrden = [...etapas].sort((a,b) =>
       (new Date(a.creado_en||0) - new Date(b.creado_en||0)) || ((a.id||0) - (b.id||0)));
 
-    const _srvNombres = { latoneria:'Latonería', pintura:'Pintura', mecanica:'Mecánica', adicionales:'Adicionales' };
-    const _srvColor   = { latoneria:'#BC5A57', pintura:'#BE8A3D', mecanica:'#5A7CB3', adicionales:'#4F9079' };
-    const _srvBg      = { latoneria:'#FEF2F2', pintura:'#FFFBEB', mecanica:'#EFF6FF', adicionales:'#ECFDF5' };
+    const _srvNombres = { latoneria:'Latonería', pintura:'Pintura', mecanica:'Mecánica', adicionales:'Adicionales', embellecimiento:'Embellecimiento' };
+    const _srvColor   = { latoneria:'#BC5A57', pintura:'#BE8A3D', mecanica:'#5A7CB3', adicionales:'#4F9079', embellecimiento:'#7C3AED' };
+    const _srvBg      = { latoneria:'#FEF2F2', pintura:'#FFFBEB', mecanica:'#EFF6FF', adicionales:'#ECFDF5', embellecimiento:'#F5F3FF' };
     const _fmtCOP = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
 
     // Cuadritos de resumen por servicio (precio VENTA real)
