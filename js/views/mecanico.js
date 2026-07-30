@@ -117,7 +117,18 @@ async function cargarEtapasMecanico() {
     });
 
 
-    cont.innerHTML = Object.entries(porOrden).map(([oid, ets]) => {
+    const gruposActivos = Object.entries(porOrden).filter(([oid, ets]) => {
+      const orden = ordenes.find(o => o.id == oid) || {};
+      if (['Entregada','Archivada'].includes(orden.estado)) return false;
+      return ets.some(e => !e.fin);
+    });
+
+    if (!gruposActivos.length) {
+      cont.innerHTML = `<div class="empty-state"><div class="empty-state-icon">${ico('check', 32)}</div><p>¡Al día! No tienes etapas pendientes.</p></div>`;
+      return;
+    }
+
+    cont.innerHTML = gruposActivos.map(([oid, ets]) => {
       const orden = ordenes.find(o => o.id == oid) || {};
       const etapsHtml = ets.map(e => {
         const esPausado = e.pausado && !e.fin;
