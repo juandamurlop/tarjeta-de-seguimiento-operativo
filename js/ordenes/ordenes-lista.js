@@ -216,7 +216,7 @@ function _buildOrdenRow(o, etapas, opts) {
     </td>
     <td class="ord-resp">${escapeHtml(tecnico) || '<span style="color:var(--gris-mid)">—</span>'}</td>
     <td class="ord-fecha-ent">${fechaEnt}</td>
-    <td class="ord-dias"><div style="font-weight:700">${diasTaller}d</div><div style="font-size:10px;color:var(--gris-mid);margin-top:1px">${formatFecha(o.creado_en)}</div></td>
+    <td class="ord-dias">${diasTaller}d</td>
     <td class="ord-valor" style="text-align:right;white-space:nowrap">${sinValor
       ? `<span title="La orden no tiene precio de venta asignado" style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:.03em;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;padding:1px 6px;border-radius:99px">SIN VALOR</span>`
       : (subtotalOrden ? `<span style="font-size:12.5px;font-weight:800;color:#047857;font-family:'DM Mono',monospace" title="Subtotal sin IVA: mano de obra + insumos + repuestos">${_fmtCOProw(subtotalOrden)}</span>` : '<span style="color:var(--gris-mid)">—</span>')}</td>
