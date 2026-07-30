@@ -436,7 +436,7 @@ async function buscarPorPlaca() {
       const ced  = document.getElementById('n-cedula-cliente');
       if (prop && !prop.value && fuente.propietario) prop.value = fuente.propietario;
       if (tel  && !tel.value  && fuente.telefono)    tel.value  = fuente.telefono;
-      if (ced  && !ced.value  && fuente.cedula_nit)  ced.value  = fuente.cedula_nit;
+      if (ced  && !ced.value  && (fuente.cedula_cliente || fuente.cedula_nit))  ced.value  = fuente.cedula_cliente || fuente.cedula_nit;
       // Heredar el origen ("¿cómo nos conoció?") si el vehículo ya lo trae.
       const orig = document.getElementById('n-origen');
       if (orig && !orig.value && fuente.origen) orig.value = fuente.origen;
