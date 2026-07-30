@@ -65,19 +65,32 @@ Deno.serve(async (req) => {
     const prompt =
       "Eres un extractor EXPERTO de datos de TARJETAS DE PROPIEDAD de vehículos de Colombia. " +
       "Lee la imagen con MÁXIMO cuidado, carácter por carácter, y devuelve SOLO un JSON válido con estas " +
-      "claves (string; vacío '' si no aparece): " +
+      "claves (todas string; usa '' si no aparece el dato): " +
       "placa, marca, linea, modelo, color, vin, propietario, documento, tipo_documento. " +
-      "'modelo' es el AÑO del vehículo (4 dígitos). 'linea' es la referencia/línea. " +
-      "REGLAS DEL VIN (número de chasis / serie): es un código de EXACTAMENTE 17 caracteres " +
-      "alfanuméricos en MAYÚSCULAS. NUNCA contiene las letras I, O ni Q: si crees ver una 'I' es un '1', " +
-      "si ves una 'O' es un '0' (cero). Léelo dígito por dígito; si en la tarjeta aparece como 'No. Motor', " +
-      "'Serie', 'Chasis' o 'VIN', usa el de 17 caracteres. No inventes: si no estás seguro de un carácter " +
-      "déjalo lo más fiel posible a lo que ves. " +
-      "'documento' es el número de identificación del propietario, SOLO DÍGITOS (sin puntos, comas ni " +
-      "guiones); si es NIT incluye el dígito de verificación final sin el guion. Léelo dígito por dígito. " +
-      "'tipo_documento' es 'CC' si el propietario es una persona (cédula), o 'NIT' si es una empresa/persona " +
-      "jurídica. La placa en MAYÚSCULAS (formato colombiano, normalmente 3 letras y 3 números). " +
-      "No agregues texto, explicaciones ni comentarios fuera del JSON.";
+      "" +
+      "PLACA: en MAYÚSCULAS, formato colombiano (3 letras + 3 dígitos, p.ej. ABC123). " +
+      "" +
+      "MODELO: el AÑO del vehículo, exactamente 4 dígitos (p.ej. 2019). " +
+      "" +
+      "LINEA: la referencia o versión del vehículo (p.ej. SPARK GT, SANDERO, TITAN). " +
+      "" +
+      "VIN (número de chasis/serie): EXACTAMENTE 17 caracteres alfanuméricos en MAYÚSCULAS. " +
+      "NUNCA contiene I, O ni Q: si ves 'I' es '1', si ves 'O' es '0'. " +
+      "En la tarjeta puede aparecer como 'No. Serie', 'Chasis', 'No. Chasis', 'VIN' o 'No. Motor'. " +
+      "Si el campo tiene más de 17 caracteres, toma solo los 17 alfanuméricos principales. " +
+      "Si tienes menos de 17 caracteres o no estás seguro, ponlos tal como los ves (no inventes). " +
+      "" +
+      "PROPIETARIO: nombre completo tal como aparece en la tarjeta (persona o razón social). " +
+      "" +
+      "DOCUMENTO: número de identificación del propietario. " +
+      "- Si es cédula de ciudadanía (persona natural): solo los dígitos, sin puntos ni espacios. " +
+      "- Si es NIT (empresa/persona jurídica): solo los dígitos sin guion ni dígito de verificación. " +
+      "Léelo dígito a dígito con máximo cuidado; confundir 1/7, 5/6, 8/3 es un error grave. " +
+      "" +
+      "TIPO_DOCUMENTO: 'CC' si es cédula de ciudadanía (persona natural), 'NIT' si es empresa. " +
+      "" +
+      "No agregues texto, explicaciones ni comentarios fuera del JSON. " +
+      "Devuelve SIEMPRE un JSON con exactamente esas 9 claves, aunque estén vacías.";
 
     const dataUrl = `data:${tipo || "image/jpeg"};base64,${imagen}`;
 

@@ -1577,9 +1577,9 @@ async function _crearOrdenInterna() {
   const vin = document.getElementById('n-vin')?.value.trim().toUpperCase() || null;
   const correoCliente = document.getElementById('n-correo-cliente')?.value.trim() || null;
 
-  // Validar VIN si fue ingresado
-  if (vin && vin.length !== 17) { toast('El VIN debe tener exactamente 17 caracteres', 'err'); return; }
-  if (vin && !/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) { toast('VIN inválido — solo mayúsculas y números (sin I, O, Q)', 'err'); return; }
+  // Validar VIN si fue ingresado (advertencia suave — no bloquea el guardado)
+  if (vin && vin.length !== 17) toast('El VIN tiene ' + vin.length + ' caracteres (debe tener 17) — verifica antes de guardar', 'warn');
+  else if (vin && !/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) toast('VIN con caracteres inusuales (revisa I, O, Q) — se guardará igual', 'warn');
   if (correoCliente && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoCliente)) { toast('Correo electrónico inválido', 'err'); return; }
 
   const invItems = {};
@@ -1653,7 +1653,8 @@ async function _crearOrdenInterna() {
     cliente_id: clienteId,
     asesor_id: Number(document.getElementById('n-asesor')?.value) || null,
     vin: vin || null,
-    correo_cliente: correoCliente || null
+    correo_cliente: correoCliente || null,
+    cedula_cliente: cedulaCliente || null
   };
 
   try {
