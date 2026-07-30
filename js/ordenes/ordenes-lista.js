@@ -141,9 +141,11 @@ function _buildOrdenRow(o, etapas, opts) {
   const valorVenta = etapasO.reduce((s, e) => s + (e.valor_venta || 0), 0);
   // Subtotal de la orden (sin IVA): mano de obra + insumos + repuestos simples.
   const _valItems = (campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (e) { return 0; } };
-  const subtotalOrden = valorVenta + _valItems('insumos') + _valItems('repuestos_simple');
+  const subtotalEtapas = valorVenta + _valItems('insumos') + _valItems('repuestos_simple');
+  // Si hay precio_venta_cliente (total manual para aseguradora u otro), ese manda.
+  const subtotalOrden = (o.precio_venta_cliente > 0) ? o.precio_venta_cliente : subtotalEtapas;
   const _fmtCOProw = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
-  const sinValor = o.estado !== 'Programada' && !valorVenta && !o.precio_venta_cliente;
+  const sinValor = o.estado !== 'Programada' && !subtotalEtapas && !o.precio_venta_cliente;
   const total    = etapasO.length;
   const comp     = etapasO.filter(e => e.fin).length;
   const pct      = total ? Math.round((comp / total) * 100) : 0;
@@ -280,7 +282,8 @@ async function cargarOrdenesPulmon() {
       const comentario = o.descripcion_general || '';
       const searchStr  = [(o.placa||''), (o.propietario||''), (tecnico||''), (o.marca||''), (o.linea||''), (comentario||'')].join(' ').toLowerCase();
       const _valItemsP = (campo) => { try { const raw = o[campo]; const a = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw ? JSON.parse(raw) : []); return a.reduce((s, i) => s + (((+i.cantidad) || 0) * ((+i.valor) || 0)), 0); } catch (e) { return 0; } };
-      const subtotalP = etapasO.reduce((s, e) => s + (e.valor_venta || 0), 0) + _valItemsP('insumos') + _valItemsP('repuestos_simple');
+      const _subtotalPEtapas = etapasO.reduce((s, e) => s + (e.valor_venta || 0), 0) + _valItemsP('insumos') + _valItemsP('repuestos_simple');
+      const subtotalP = (o.precio_venta_cliente > 0) ? o.precio_venta_cliente : _subtotalPEtapas;
       const _fmtP = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
       const ti = _tipoOrdenInfo(o);
       return `<tr class="ord-row" onclick="abrirOrden(${o.id})" data-search="${escapeHtml(searchStr)}" style="--tipo:${ti.color}">
@@ -388,7 +391,7 @@ async function montarHistorialOrdenes() {
   if (!cont) return;
   mostrarCargandoSiVacio(cont, '<div class="loading-state">Cargando historial...</div>');
   try {
-    const data = await api('/ordenes?order=creado_en.desc&limit=1000&select=id,numero_ot,placa,marca,linea,modelo,propietario,tipo_cliente,aseguradora,estado,pulmon,creado_en,entregada_en,fecha_entrega_1').catch(() => []) || [];
+    const data = await api('/ordenes?order=creado_en.desc&limit=1000&select=id,numero_ot,placa,marca,linea,modelo,propietario,tipo_cliente,aseguradora,estado,pulmon,creado_en,entregada_en,fecha_entrega_1,precio_venta_cliente').catch(() => []) || [];
     _historialData = data;
     cont.innerHTML = `<div style="padding:18px 20px">
       <div style="font-size:16px;font-weight:700;margin-bottom:12px">Historial de órdenes <span style="font-size:13px;color:var(--gris-mid);font-weight:500">(${data.length})</span></div>
@@ -451,12 +454,14 @@ function _renderHistorial(data) {
     const veh = [o.marca, o.linea, o.modelo].filter(Boolean).map(escapeHtml).join(' ');
     const org = o.aseguradora ? ` · ${escapeHtml(o.aseguradora)}` : '';
     const search = [(o.placa || ''), (o.propietario || ''), (o.aseguradora || ''), (o.marca || ''), (o.linea || ''), otDe(o)].join(' ').toLowerCase();
+    const _hFmt = n => '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n);
     return `<div class="hover-lift" data-hsearch="${escapeHtml(search)}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--gris-borde);border-radius:9px;margin-bottom:7px;background:var(--surface);cursor:pointer" onclick="abrirOrden(${o.id})">
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="font-family:'DM Mono',monospace;font-weight:800;font-size:14px">${escapeHtml(o.placa || '—')}</span>
           <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--gris-mid)">${otDe(o)}</span>
           ${_chipTipoOrden(o)}
+          ${o.precio_venta_cliente > 0 ? `<span style="font-size:11px;font-weight:800;color:#047857;font-family:'DM Mono',monospace">${_hFmt(o.precio_venta_cliente)}</span>` : ''}
         </div>
         <div style="font-size:12px;color:var(--gris-mid);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${veh || '—'}${o.propietario ? ` · ${escapeHtml(o.propietario)}` : ''}${org}</div>
         <div style="font-size:11px;color:var(--gris-mid);margin-top:1px">
@@ -695,6 +700,9 @@ function _boardMkCard(o, etapas, grad, entering) {
     ? (typeof CATALOGO !== 'undefined' && CATALOGO?.[activa.servicio]?.nombre || activa.servicio || '—')
     : (comp === total && total > 0 ? 'Completada' : (total === 0 ? 'Sin etapas' : '—'));
   const diasT = o.creado_en ? Math.floor((Date.now() - new Date(o.creado_en)) / 86400000) : 0;
+  const _bcValEtapas = etO.reduce((s, e) => s + (e.valor_venta || 0), 0);
+  const _bcVal = (o.precio_venta_cliente > 0) ? o.precio_venta_cliente : _bcValEtapas;
+  const _bcFmt = n => '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n);
   // Pill
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const atrasada = o.fecha_entrega_1 && new Date(o.fecha_entrega_1) < hoy;
@@ -737,6 +745,7 @@ function _boardMkCard(o, etapas, grad, entering) {
     ${orgHtml}
     <div class="ord-bc-foot">
       <span class="ord-bc-etxt">⚙ ${escapeHtml(srvNom)}</span>
+      ${_bcVal ? `<span class="ord-bc-valor" style="font-size:10px;font-weight:800;color:#047857;font-family:'DM Mono',monospace">${_bcFmt(_bcVal)}</span>` : ''}
       <div class="ord-bc-bar-inline"><div class="ord-bc-fill-inline" style="width:${pct}%;background:linear-gradient(90deg,${fillC})"></div></div>
       <span class="ord-bc-time" title="Ingreso: ${formatFecha(o.creado_en)}">${diasT}d · ${formatFecha(o.creado_en)}</span>
     </div>
