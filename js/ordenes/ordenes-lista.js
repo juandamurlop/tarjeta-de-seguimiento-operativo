@@ -747,7 +747,7 @@ function _boardMkCard(o, etapas, grad, entering) {
       <span class="ord-bc-etxt">⚙ ${escapeHtml(srvNom)}</span>
       ${_bcVal ? `<span class="ord-bc-valor" style="font-size:10px;font-weight:800;color:#047857;font-family:'DM Mono',monospace">${_bcFmt(_bcVal)}</span>` : ''}
       <div class="ord-bc-bar-inline"><div class="ord-bc-fill-inline" style="width:${pct}%;background:linear-gradient(90deg,${fillC})"></div></div>
-      <span class="ord-bc-time" title="Ingreso: ${formatFecha(o.creado_en)}">${diasT}d · ${formatFecha(o.creado_en)}</span>
+      <span class="ord-bc-time">${diasT}d</span>
     </div>
     ${alertasHtml}
   </div>`;
