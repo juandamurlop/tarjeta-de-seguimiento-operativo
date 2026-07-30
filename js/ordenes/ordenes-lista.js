@@ -214,7 +214,7 @@ function _buildOrdenRow(o, etapas, opts) {
     </td>
     <td class="ord-resp">${escapeHtml(tecnico) || '<span style="color:var(--gris-mid)">—</span>'}</td>
     <td class="ord-fecha-ent">${fechaEnt}</td>
-    <td class="ord-dias">${diasTaller}d</td>
+    <td class="ord-dias"><div style="font-weight:700">${diasTaller}d</div><div style="font-size:10px;color:var(--gris-mid);margin-top:1px">${formatFecha(o.creado_en)}</div></td>
     <td class="ord-valor" style="text-align:right;white-space:nowrap">${sinValor
       ? `<span title="La orden no tiene precio de venta asignado" style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:.03em;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;padding:1px 6px;border-radius:99px">SIN VALOR</span>`
       : (subtotalOrden ? `<span style="font-size:12.5px;font-weight:800;color:#047857;font-family:'DM Mono',monospace" title="Subtotal sin IVA: mano de obra + insumos + repuestos">${_fmtCOProw(subtotalOrden)}</span>` : '<span style="color:var(--gris-mid)">—</span>')}</td>
@@ -388,7 +388,7 @@ async function montarHistorialOrdenes() {
   if (!cont) return;
   mostrarCargandoSiVacio(cont, '<div class="loading-state">Cargando historial...</div>');
   try {
-    const data = await api('/ordenes?order=creado_en.desc&limit=1000&select=id,numero_ot,placa,marca,linea,modelo,propietario,tipo_cliente,aseguradora,estado,pulmon,creado_en,entregada_en').catch(() => []) || [];
+    const data = await api('/ordenes?order=creado_en.desc&limit=1000&select=id,numero_ot,placa,marca,linea,modelo,propietario,tipo_cliente,aseguradora,estado,pulmon,creado_en,entregada_en,fecha_entrega_1').catch(() => []) || [];
     _historialData = data;
     cont.innerHTML = `<div style="padding:18px 20px">
       <div style="font-size:16px;font-weight:700;margin-bottom:12px">Historial de órdenes <span style="font-size:13px;color:var(--gris-mid);font-weight:500">(${data.length})</span></div>
@@ -459,7 +459,11 @@ function _renderHistorial(data) {
           ${_chipTipoOrden(o)}
         </div>
         <div style="font-size:12px;color:var(--gris-mid);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${veh || '—'}${o.propietario ? ` · ${escapeHtml(o.propietario)}` : ''}${org}</div>
-        <div style="font-size:11px;color:var(--gris-mid);margin-top:1px">Ingreso ${formatFecha(o.creado_en)}${o.entregada_en ? ` · Entregada ${formatFecha(o.entregada_en)}` : ''}</div>
+        <div style="font-size:11px;color:var(--gris-mid);margin-top:1px">
+          📅 Ingreso: <strong>${formatFecha(o.creado_en)}</strong>
+          ${o.fecha_entrega_1 ? ` · Entrega est.: <strong>${formatFecha(o.fecha_entrega_1)}</strong>` : ''}
+          ${o.entregada_en ? ` · Cerrada: <strong style="color:#059669">${formatFecha(o.entregada_en)}</strong>${(() => { const d = Math.round((new Date(o.entregada_en) - new Date(o.creado_en)) / 86400000); return ` (${d}d)`; })()}` : ''}
+        </div>
       </div>
       <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
         ${_histEstadoPill(o)}
@@ -734,7 +738,7 @@ function _boardMkCard(o, etapas, grad, entering) {
     <div class="ord-bc-foot">
       <span class="ord-bc-etxt">⚙ ${escapeHtml(srvNom)}</span>
       <div class="ord-bc-bar-inline"><div class="ord-bc-fill-inline" style="width:${pct}%;background:linear-gradient(90deg,${fillC})"></div></div>
-      <span class="ord-bc-time">${diasT}d</span>
+      <span class="ord-bc-time" title="Ingreso: ${formatFecha(o.creado_en)}">${diasT}d · ${formatFecha(o.creado_en)}</span>
     </div>
     ${alertasHtml}
   </div>`;
