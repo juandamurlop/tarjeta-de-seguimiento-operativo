@@ -94,11 +94,7 @@ async function cargarOrdenes() {
     const etapas = await api(`/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin,tecnico,tercero,valor_venta`).catch(() => []) || [];
     _ordenesTablaData = data;
     _etapasTablaData  = etapas;
-    if (filtroEstado === 'Activa') {
-      _renderOrdenesBoard(data, etapas);
-    } else {
-      renderTablaOrdenes(data, etapas);
-    }
+    renderTablaOrdenes(data, etapas);
   } catch(e) { lista.innerHTML = `<div class="empty-state">Error cargando órdenes: ${e.message}</div>`; }
 }
 
