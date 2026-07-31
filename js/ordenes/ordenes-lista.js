@@ -405,7 +405,7 @@ async function montarHistorialOrdenes() {
 // cada uno con su contador. Al cambiar de tab se re-renderiza la lista filtrada
 // y se vuelve a aplicar el texto de búsqueda actual.
 let _histTipoActual = 'todas';
-let _histSinValor = false;
+let _histValorFiltro = 'todas'; // 'todas' | 'con_valor' | 'sin_valor'
 function _renderHistTabs() {
   const cont = document.getElementById('hist-tabs'); if (!cont) return;
   const data = _historialData || [];
@@ -417,31 +417,34 @@ function _renderHistTabs() {
     { key: 'aseguradora', label: 'Aseguradora', color: '#7C3AED' }
   ];
   const cuenta = k => k === 'todas' ? data.length : data.filter(o => _tipoOrdenInfo(o).key === k).length;
-  const cuentaSinValor = data.filter(o => ['Entregada','Archivada'].includes(o.estado) && !(o.precio_venta_cliente > 0)).length;
-  const svColor = '#B45309';
+  const cuentaConValor  = data.filter(o => o.precio_venta_cliente > 0).length;
+  const cuentaSinValor  = data.filter(o => ['Entregada','Archivada'].includes(o.estado) && !(o.precio_venta_cliente > 0)).length;
   cont.innerHTML = tipos.map(t => {
     const act = _histTipoActual === t.key;
     return `<button onclick="_setHistTipo('${t.key}')" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;padding:6px 13px;border-radius:99px;cursor:pointer;border:1.5px solid ${t.color}${act ? '' : '33'};background:${act ? t.color : 'var(--surface)'};color:${act ? '#fff' : t.color}">${t.label}<span style="font-size:11px;font-weight:800;opacity:.85">${cuenta(t.key)}</span></button>`;
   }).join('') +
-  `<button onclick="_toggleHistSinValor()" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;padding:6px 13px;border-radius:99px;cursor:pointer;border:1.5px solid ${svColor}${_histSinValor ? '' : '55'};background:${_histSinValor ? svColor : 'var(--surface)'};color:${_histSinValor ? '#fff' : svColor}">Sin valor <span style="font-size:11px;font-weight:800;opacity:.85">${cuentaSinValor}</span></button>`;
+  `<select onchange="_setHistValorFiltro(this.value)" style="font-size:12.5px;font-weight:700;padding:6px 13px;border-radius:99px;cursor:pointer;border:1.5px solid ${_histValorFiltro !== 'todas' ? '#B45309' : 'var(--gris-borde)'};background:${_histValorFiltro !== 'todas' ? '#FEF3C7' : 'var(--surface)'};color:${_histValorFiltro !== 'todas' ? '#B45309' : 'var(--texto)'};outline:none;appearance:none;-webkit-appearance:none;padding-right:28px;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center">
+    <option value="todas"     ${_histValorFiltro==='todas'     ?'selected':''}>Valor: Todas</option>
+    <option value="con_valor" ${_histValorFiltro==='con_valor' ?'selected':''}>Con valor (${cuentaConValor})</option>
+    <option value="sin_valor" ${_histValorFiltro==='sin_valor' ?'selected':''}>Sin valor (${cuentaSinValor})</option>
+  </select>`;
 }
 function _histFiltrarTipo(data) {
   let d = data || [];
   if (_histTipoActual !== 'todas') d = d.filter(o => _tipoOrdenInfo(o).key === _histTipoActual);
-  if (_histSinValor) d = d.filter(o => ['Entregada','Archivada'].includes(o.estado) && !(o.precio_venta_cliente > 0));
+  if (_histValorFiltro === 'con_valor') d = d.filter(o => o.precio_venta_cliente > 0);
+  if (_histValorFiltro === 'sin_valor') d = d.filter(o => ['Entregada','Archivada'].includes(o.estado) && !(o.precio_venta_cliente > 0));
   return d;
 }
 function _setHistTipo(tipo) {
   _histTipoActual = tipo;
-  _histSinValor = false;
   _renderHistTabs();
   _renderHistorial(_histFiltrarTipo(_historialData || []));
   const q = document.getElementById('hist-buscar')?.value;
   if (q) _filtrarHistorial(q);
 }
-function _toggleHistSinValor() {
-  _histSinValor = !_histSinValor;
-  if (_histSinValor) _histTipoActual = 'todas';
+function _setHistValorFiltro(val) {
+  _histValorFiltro = val;
   _renderHistTabs();
   _renderHistorial(_histFiltrarTipo(_historialData || []));
   const q = document.getElementById('hist-buscar')?.value;
