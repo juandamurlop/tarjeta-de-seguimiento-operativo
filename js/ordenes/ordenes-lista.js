@@ -459,7 +459,9 @@ function _renderHistorial(data) {
           ${_chipTipoOrden(o)}
           ${o.precio_venta_cliente > 0
             ? `<span style="font-size:11px;font-weight:800;color:#047857;font-family:'DM Mono',monospace">${_hFmt(o.precio_venta_cliente)}</span>`
-            : `<span style="font-size:9px;font-weight:800;letter-spacing:.03em;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;padding:1px 6px;border-radius:99px">SIN VALOR</span>`}
+            : (['Entregada','Archivada'].includes(o.estado)
+                ? `<span style="font-size:9px;font-weight:800;letter-spacing:.03em;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;padding:1px 6px;border-radius:99px">SIN VALOR</span>`
+                : '')}
         </div>
         <div style="font-size:12px;color:var(--gris-mid);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${veh || '—'}${o.propietario ? ` · ${escapeHtml(o.propietario)}` : ''}${org}</div>
         <div style="font-size:11px;color:var(--gris-mid);margin-top:1px">
