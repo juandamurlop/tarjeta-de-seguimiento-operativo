@@ -459,17 +459,9 @@ function _histEstadoPill(o) {
   return '<span class="ord-pill pill-a-tiempo">Activa</span>';
 }
 
-function _renderHistResumen(data) {
+function _renderHistResumen(_data) {
   const cont = document.getElementById('hist-resumen'); if (!cont) return;
-  const conValor = data.filter(o => o.precio_venta_cliente > 0);
-  const total = conValor.reduce((s, o) => s + o.precio_venta_cliente, 0);
-  const fmt = n => '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n);
-  if (!total) { cont.innerHTML = ''; return; }
-  cont.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:9px;flex-wrap:wrap">
-    <span style="font-size:12px;color:#166534;font-weight:600">Total facturado</span>
-    <span style="font-size:18px;font-weight:800;color:#047857;font-family:'DM Mono',monospace">${fmt(total)}</span>
-    <span style="font-size:11px;color:#166534;opacity:.75">(${conValor.length} de ${data.length} órdenes con valor)</span>
-  </div>`;
+  cont.innerHTML = '';
 }
 function _renderHistorial(data) {
   _renderHistResumen(data);
