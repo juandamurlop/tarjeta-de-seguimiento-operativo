@@ -392,7 +392,8 @@ async function montarHistorialOrdenes() {
     cont.innerHTML = `<div style="padding:18px 20px">
       <div style="font-size:16px;font-weight:700;margin-bottom:12px">Historial de órdenes <span style="font-size:13px;color:var(--gris-mid);font-weight:500">(${data.length})</span></div>
       <input id="hist-buscar" type="text" oninput="_filtrarHistorial(this.value)" autocomplete="off" placeholder="🔎 Buscar por placa, cliente, organización, N° de orden..." style="width:100%;padding:9px 13px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;outline:none;margin-bottom:12px;box-sizing:border-box">
-      <div id="hist-tabs" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px"></div>
+      <div id="hist-tabs" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px"></div>
+      <div id="hist-resumen" style="margin-bottom:12px"></div>
       <div id="hist-lista"></div>
     </div>`;
     _renderHistTabs();
@@ -404,6 +405,7 @@ async function montarHistorialOrdenes() {
 // cada uno con su contador. Al cambiar de tab se re-renderiza la lista filtrada
 // y se vuelve a aplicar el texto de búsqueda actual.
 let _histTipoActual = 'todas';
+let _histSinValor = false;
 function _renderHistTabs() {
   const cont = document.getElementById('hist-tabs'); if (!cont) return;
   const data = _historialData || [];
@@ -415,17 +417,31 @@ function _renderHistTabs() {
     { key: 'aseguradora', label: 'Aseguradora', color: '#7C3AED' }
   ];
   const cuenta = k => k === 'todas' ? data.length : data.filter(o => _tipoOrdenInfo(o).key === k).length;
+  const cuentaSinValor = data.filter(o => ['Entregada','Archivada'].includes(o.estado) && !(o.precio_venta_cliente > 0)).length;
+  const svColor = '#B45309';
   cont.innerHTML = tipos.map(t => {
     const act = _histTipoActual === t.key;
     return `<button onclick="_setHistTipo('${t.key}')" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;padding:6px 13px;border-radius:99px;cursor:pointer;border:1.5px solid ${t.color}${act ? '' : '33'};background:${act ? t.color : 'var(--surface)'};color:${act ? '#fff' : t.color}">${t.label}<span style="font-size:11px;font-weight:800;opacity:.85">${cuenta(t.key)}</span></button>`;
-  }).join('');
+  }).join('') +
+  `<button onclick="_toggleHistSinValor()" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;padding:6px 13px;border-radius:99px;cursor:pointer;border:1.5px solid ${svColor}${_histSinValor ? '' : '55'};background:${_histSinValor ? svColor : 'var(--surface)'};color:${_histSinValor ? '#fff' : svColor}">Sin valor <span style="font-size:11px;font-weight:800;opacity:.85">${cuentaSinValor}</span></button>`;
 }
 function _histFiltrarTipo(data) {
-  if (_histTipoActual === 'todas') return data;
-  return (data || []).filter(o => _tipoOrdenInfo(o).key === _histTipoActual);
+  let d = data || [];
+  if (_histTipoActual !== 'todas') d = d.filter(o => _tipoOrdenInfo(o).key === _histTipoActual);
+  if (_histSinValor) d = d.filter(o => ['Entregada','Archivada'].includes(o.estado) && !(o.precio_venta_cliente > 0));
+  return d;
 }
 function _setHistTipo(tipo) {
   _histTipoActual = tipo;
+  _histSinValor = false;
+  _renderHistTabs();
+  _renderHistorial(_histFiltrarTipo(_historialData || []));
+  const q = document.getElementById('hist-buscar')?.value;
+  if (q) _filtrarHistorial(q);
+}
+function _toggleHistSinValor() {
+  _histSinValor = !_histSinValor;
+  if (_histSinValor) _histTipoActual = 'todas';
   _renderHistTabs();
   _renderHistorial(_histFiltrarTipo(_historialData || []));
   const q = document.getElementById('hist-buscar')?.value;
@@ -440,7 +456,20 @@ function _histEstadoPill(o) {
   return '<span class="ord-pill pill-a-tiempo">Activa</span>';
 }
 
+function _renderHistResumen(data) {
+  const cont = document.getElementById('hist-resumen'); if (!cont) return;
+  const conValor = data.filter(o => o.precio_venta_cliente > 0);
+  const total = conValor.reduce((s, o) => s + o.precio_venta_cliente, 0);
+  const fmt = n => '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n);
+  if (!total) { cont.innerHTML = ''; return; }
+  cont.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:9px;flex-wrap:wrap">
+    <span style="font-size:12px;color:#166534;font-weight:600">Total facturado</span>
+    <span style="font-size:18px;font-weight:800;color:#047857;font-family:'DM Mono',monospace">${fmt(total)}</span>
+    <span style="font-size:11px;color:#166534;opacity:.75">(${conValor.length} de ${data.length} órdenes con valor)</span>
+  </div>`;
+}
 function _renderHistorial(data) {
+  _renderHistResumen(data);
   const cont = document.getElementById('hist-lista');
   if (!cont) return;
   if (!data.length) { cont.innerHTML = '<div class="empty-state"><p>Sin órdenes.</p></div>'; return; }
