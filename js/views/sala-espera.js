@@ -206,7 +206,7 @@ async function _seCargarOrdenes() {
 
   try {
     const resOrdenes = await fetch(
-      `${SUPABASE_URL}/rest/v1/ordenes?or=(estado.eq.Activa,estado.is.null)&pulmon=not.eq.true&order=creado_en.desc&limit=20&select=id,placa,propietario,estado,creado_en`,
+      `${SUPABASE_URL}/rest/v1/ordenes?or=(estado.eq.Activa,estado.eq.Programada,estado.is.null)&pulmon=not.eq.true&order=creado_en.desc&limit=20&select=id,placa,propietario,estado,creado_en`,
       { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY } }
     );
     if (!resOrdenes.ok) throw new Error('ordenes');
