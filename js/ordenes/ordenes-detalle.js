@@ -1508,6 +1508,7 @@ async function abrirEditorValor(ordenId) {
   const o = (ordenActual && ordenActual.id === ordenId) ? ordenActual : await api(`/ordenes?id=eq.${ordenId}&select=insumos,repuestos_simple`).then(r => r?.[0]).catch(() => null);
   _edvState = {
     ordenId,
+    ivaRate: 0.19,
     etapas: etapas.map(e => ({ id: e.id, nombre: e.etapa || (typeof CATALOGO !== 'undefined' && CATALOGO[e.servicio]?.nombre) || e.servicio || 'Servicio', valor: +e.valor_venta || 0 })),
     insumos: _leerItems(o || {}, 'insumos').map(i => ({ nombre: i.nombre || '', cantidad: +i.cantidad || 1, valor: +i.valor || 0 })),
     repuestos: _leerItems(o || {}, 'repuestos_simple').map(i => ({ nombre: i.nombre || '', cantidad: +i.cantidad || 1, valor: +i.valor || 0 }))
@@ -1523,8 +1524,15 @@ async function abrirEditorValor(ordenId) {
       </div>
       <div id="edv-body" style="padding:14px 18px;overflow:auto;flex:1"></div>
       <div style="padding:12px 18px;border-top:1px solid var(--gris-borde);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-        <div id="edv-tot" style="font-size:12.5px;color:var(--gris-mid)"></div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;font-weight:700;color:var(--gris-mid);text-transform:uppercase;letter-spacing:.04em">IVA</span>
+            <button id="edv-iva-19" onclick="_edvSetIva(0.19)" style="font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:99px;cursor:pointer;border:1.5px solid #2563EB;background:#2563EB;color:#fff">19%</button>
+            <button id="edv-iva-10" onclick="_edvSetIva(0.10)" style="font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:99px;cursor:pointer;border:1.5px solid #2563EB33;background:var(--surface);color:#2563EB">10%</button>
+          </div>
+          <div id="edv-tot" style="font-size:12.5px;color:var(--gris-mid)"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-editor-valor').remove()">Cancelar</button>
           <button class="btn btn-primary btn-sm" onclick="_guardarEditorValor()">Guardar</button>
         </div>
@@ -1552,7 +1560,7 @@ function _edvTotales() {
   const mo = _edvState.etapas.reduce((s, e) => s + (+e.valor || 0), 0);
   const ins = _edvState.insumos.reduce((s, i) => s + ((+i.cantidad || 0) * (+i.valor || 0)), 0);
   const rep = _edvState.repuestos.reduce((s, i) => s + ((+i.cantidad || 0) * (+i.valor || 0)), 0);
-  const sub = mo + ins + rep, iva = Math.round(sub * 0.19);
+  const sub = mo + ins + rep, iva = Math.round(sub * (_edvState.ivaRate || 0.19));
   return { sub, iva, tot: sub + iva };
 }
 function _edvActualizarTot() {
@@ -1588,6 +1596,14 @@ function _edvRender() {
 }
 function _edvAddItem(tipo) { _edvSync(); _edvState[tipo].push({ nombre: '', cantidad: 1, valor: 0 }); _edvRender(); }
 function _edvDelItem(tipo, idx) { _edvSync(); _edvState[tipo].splice(idx, 1); _edvRender(); }
+function _edvSetIva(rate) {
+  _edvState.ivaRate = rate;
+  const btn19 = document.getElementById('edv-iva-19');
+  const btn10 = document.getElementById('edv-iva-10');
+  if (btn19) { btn19.style.background = rate === 0.19 ? '#2563EB' : 'var(--surface)'; btn19.style.color = rate === 0.19 ? '#fff' : '#2563EB'; btn19.style.borderColor = rate === 0.19 ? '#2563EB' : '#2563EB33'; }
+  if (btn10) { btn10.style.background = rate === 0.10 ? '#2563EB' : 'var(--surface)'; btn10.style.color = rate === 0.10 ? '#fff' : '#2563EB'; btn10.style.borderColor = rate === 0.10 ? '#2563EB' : '#2563EB33'; }
+  _edvActualizarTot();
+}
 async function _guardarEditorValor() {
   _edvSync();
   const oid = _edvState.ordenId;
@@ -1595,8 +1611,9 @@ async function _guardarEditorValor() {
     for (const e of _edvState.etapas) { await api(`/etapas?id=eq.${e.id}`, 'PATCH', { valor_venta: +e.valor || 0 }); }
     const insumos = _edvState.insumos.filter(i => i.nombre || i.valor);
     const repuestos = _edvState.repuestos.filter(i => i.nombre || i.valor);
-    await api(`/ordenes?id=eq.${oid}`, 'PATCH', { insumos, repuestos_simple: repuestos });
-    if (ordenActual && ordenActual.id === oid) { ordenActual.insumos = insumos; ordenActual.repuestos_simple = repuestos; }
+    const { tot } = _edvTotales();
+    await api(`/ordenes?id=eq.${oid}`, 'PATCH', { insumos, repuestos_simple: repuestos, precio_venta_cliente: tot || null });
+    if (ordenActual && ordenActual.id === oid) { ordenActual.insumos = insumos; ordenActual.repuestos_simple = repuestos; ordenActual.precio_venta_cliente = tot || null; }
     document.getElementById('modal-editor-valor')?.remove();
     toast('Valor actualizado ✓');
     abrirOrden(oid);
