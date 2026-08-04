@@ -1179,7 +1179,7 @@ async function cargarPantallaTaller() {
       const esIngreso = creadasHoy.some(o => o.id === orden.id);
       const esEntrega = entregarHoy.some(o => o.id === orden.id);
       const dias      = orden.fecha_entrega_1
-        ? Math.round((new Date(orden.fecha_entrega_1) - new Date()) / 86400000) : null;
+        ? Math.round((new Date(orden.fecha_entrega_1 + 'T23:59:59') - new Date()) / 86400000) : null;
 
       let badge = '';
       if (esEntrega && dias !== null && dias < 0)
