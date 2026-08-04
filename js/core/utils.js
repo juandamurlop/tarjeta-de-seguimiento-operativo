@@ -257,7 +257,13 @@ function nombreTec(e) {
   return '';
 }
 
-function formatFecha(f) { return f ? new Date(f).toLocaleDateString('es-CO') : '—'; }
+function formatFecha(f) {
+  if (!f) return '—';
+  // Fecha sin hora (YYYY-MM-DD): parsear como mediodia local para evitar
+  // el salto UTC que retrocede un dia en Colombia (UTC-5).
+  const iso = /^\d{4}-\d{2}-\d{2}$/.test(f) ? f + 'T12:00:00' : f;
+  return new Date(iso).toLocaleDateString('es-CO');
+}
 function formatTS(ts) { return ts ? new Date(ts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '—'; }
 function kid(id) { return 'e' + String(id).replace(/\D/g, ''); }
 

@@ -1246,8 +1246,8 @@ async function abrirEditarOrden(ordenId) {
           </div>
         </div>
 
-        <div class="field"><label>Fecha estimada de entrega</label><input id="ed-fecha1" type="datetime-local" value="${orden.fecha_entrega_1 ? orden.fecha_entrega_1.slice(0,16) : ''}"></div>
-        <div class="field"><label>Fecha entrega alternativa</label><input id="ed-fecha2" type="datetime-local" value="${orden.fecha_entrega_2 ? orden.fecha_entrega_2.slice(0,16) : ''}"></div>
+        <div class="field"><label>Fecha estimada de entrega</label><input id="ed-fecha1" type="date" value="${orden.fecha_entrega_1 ? orden.fecha_entrega_1.slice(0,10) : ''}"></div>
+        <div class="field"><label>Fecha entrega alternativa</label><input id="ed-fecha2" type="date" value="${orden.fecha_entrega_2 ? orden.fecha_entrega_2.slice(0,10) : ''}"></div>
         <div class="field"><label>¿Cómo nos conoció?</label><select id="ed-origen">${typeof origenOptionsHtml==='function' ? origenOptionsHtml(orden.origen) : ''}</select></div>
       </div>
     </div>
