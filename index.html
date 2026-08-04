@@ -702,7 +702,11 @@
               <div class="cot-res-row"><span>Mano de obra</span><span id="cn-res-mo">$0</span></div>
               <div class="cot-res-row" id="cn-dto-row" style="display:none"><span style="color:var(--verde)">Descuento total</span><span id="cn-dto-total" style="color:var(--verde)">−$0</span></div>
               <div class="cot-res-row cot-res-subtotal"><span>Subtotal</span><span id="cn-total">$0</span></div>
-              <div class="cot-res-row" id="cn-iva-row"><span>IVA (19%)</span><span id="cn-iva-val">$0</span></div>
+              <div class="cot-res-row" id="cn-iva-row"><span>IVA <span id="cn-iva-label">19%</span></span><span id="cn-iva-val">$0</span></div>
+              <div style="display:flex;gap:6px;margin:-4px 0 6px">
+                <button id="cn-iva-btn-19" onclick="_cotSetIva(0.19)" style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;cursor:pointer;border:1.5px solid #2563EB;background:#2563EB;color:#fff">19%</button>
+                <button id="cn-iva-btn-10" onclick="_cotSetIva(0.10)" style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;cursor:pointer;border:1.5px solid #2563EB33;background:var(--surface);color:#2563EB">10%</button>
+              </div>
               <div class="cot-res-row cot-res-total" id="cn-total-iva-row" style="border-top:2px solid var(--azul)"><span>Total</span><span id="cn-total-iva">$0</span></div>
               <div class="cot-res-row cot-res-total" id="cn-total-siniva-row" style="display:none"><span>Total</span><span id="cn-total-siniva">$0</span></div>
             </div>

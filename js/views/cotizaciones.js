@@ -8,6 +8,18 @@ let _cotEditandoId = null;         // null = nueva, number = editando
 let _cotEmpresasCache = [];        // cache de empresas cargadas
 let _cotEmpresaPersonas = [];      // personas/contactos de la empresa seleccionada
 let _cotVerArchivadas = false;     // toggle: ver archivadas o activas
+let _cotIvaRate = 0.19;            // tasa de IVA activa (0.19 por defecto, 0.10 para internos)
+
+function _cotSetIva(rate) {
+  _cotIvaRate = rate;
+  const lbl = document.getElementById('cn-iva-label');
+  if (lbl) lbl.textContent = rate === 0.10 ? '10%' : '19%';
+  const btn19 = document.getElementById('cn-iva-btn-19');
+  const btn10 = document.getElementById('cn-iva-btn-10');
+  if (btn19) { btn19.style.background = rate === 0.19 ? '#2563EB' : 'var(--surface)'; btn19.style.color = rate === 0.19 ? '#fff' : '#2563EB'; btn19.style.borderColor = rate === 0.19 ? '#2563EB' : '#2563EB33'; }
+  if (btn10) { btn10.style.background = rate === 0.10 ? '#2563EB' : 'var(--surface)'; btn10.style.color = rate === 0.10 ? '#fff' : '#2563EB'; btn10.style.borderColor = rate === 0.10 ? '#2563EB' : '#2563EB33'; }
+  _cotRecalcular();
+}
 
 // ── Tipo de cliente ──────────────────────────────────────
 const _COT_ORG_LABELS = {
@@ -233,6 +245,7 @@ function _cotLimpiarFormulario() {
   if (ocrEst) ocrEst.style.display = 'none';
   const ivaCheck = document.getElementById('cn-iva-check');
   if (ivaCheck) ivaCheck.checked = false;
+  _cotSetIva(0.19);
   const repTbody = document.getElementById('cot-rep-tbody');
   const moTbody  = document.getElementById('cot-mo-tbody');
   if (repTbody) repTbody.innerHTML = '';
@@ -656,7 +669,7 @@ function _cotActualizarTotales() {
   const dtoTotal = rep.descuento + mo.descuento;
   const total    = rep.subtotal  + mo.subtotal;
   const conIva   = true; // el IVA siempre se incluye en las cotizaciones
-  const iva      = Math.round(total * 0.19);
+  const iva      = Math.round(total * _cotIvaRate);
   const totalIva = total + iva;
   const _txt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   _txt('cn-sub-rep',   formatCOP(rep.subtotal));
@@ -914,7 +927,7 @@ async function generarPdfCotizacion(cotId, accion = 'descargar') {
     const grRep = _gross(repuestos), grMo = _gross(moItems);
     const descTot = _desc(repuestos) + _desc(moItems);
     const base  = grRep + grMo - descTot;                          // subtotal neto
-    const _ivaV = Math.round(base * 0.19);  // IVA 19% siempre incluido
+    const _ivaV = Math.round(base * _cotIvaRate);
     const _tot  = base + _ivaV;
     // Ejecutivo a cargo = el perfil que CREÓ la cotización (guardado en
     // cot.tecnico). Si es una cotización antigua sin ese dato, cae al usuario
@@ -1143,7 +1156,7 @@ async function guardarNuevaCotizacion(conPdf = false) {
     const totalRep   = repItems.reduce((s, i) => s + i.total, 0);
     const totalMo    = moItems.reduce((s, i)  => s + i.total, 0);
     const subtotal   = totalRep + totalMo;
-    const iva        = Math.round(subtotal * 0.19); // IVA siempre incluido
+    const iva        = Math.round(subtotal * _cotIvaRate);
     const totalFinal = subtotal + iva;
 
     const camposBase = {
