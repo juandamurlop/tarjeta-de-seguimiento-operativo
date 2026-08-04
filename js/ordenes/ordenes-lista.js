@@ -161,7 +161,7 @@ function _buildOrdenRow(o, etapas, opts) {
   else if (o.estado === 'Programada') { pillCls = 'pill-programada'; pillTxt = 'Programada'; }
   else {
     const hoy = new Date(); hoy.setHours(0,0,0,0);
-    const atrasada    = o.fecha_entrega_1 && new Date(o.fecha_entrega_1) < hoy;
+    const atrasada    = o.fecha_entrega_1 && new Date(o.fecha_entrega_1 + 'T23:59:59') < hoy;
     const todoListo   = (comp === total && total > 0) || !!o.entrega_avisada_en;
     if (todoListo) {
       pillCls = 'pill-listo';
@@ -729,7 +729,7 @@ function _boardMkCard(o, etapas, grad, entering) {
   const _bcFmt = n => '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n);
   // Pill
   const hoy = new Date(); hoy.setHours(0,0,0,0);
-  const atrasada = o.fecha_entrega_1 && new Date(o.fecha_entrega_1) < hoy;
+  const atrasada = o.fecha_entrega_1 && new Date(o.fecha_entrega_1 + 'T23:59:59') < hoy;
   const listo    = (comp === total && total > 0) || !!o.entrega_avisada_en;
   let pillCls, pillTxt;
   if (o.estado === 'Programada')  { pillCls = 'obc-prog'; pillTxt = 'Programada'; }
@@ -808,8 +808,8 @@ function _renderOrdenesBoard(data, etapas) {
       const aA = _boardAlertas(a, etapas).length;
       const bA = _boardAlertas(b, etapas).length;
       if (aA && !bA) return -1; if (!aA && bA) return 1;
-      const aAt = a.fecha_entrega_1 && new Date(a.fecha_entrega_1) < new Date() ? 1 : 0;
-      const bAt = b.fecha_entrega_1 && new Date(b.fecha_entrega_1) < new Date() ? 1 : 0;
+      const aAt = a.fecha_entrega_1 && new Date(a.fecha_entrega_1 + 'T23:59:59') < new Date() ? 1 : 0;
+      const bAt = b.fecha_entrega_1 && new Date(b.fecha_entrega_1 + 'T23:59:59') < new Date() ? 1 : 0;
       return bAt - aAt;
     });
     colState[col.key] = { orders, idx: 0, grad: col.grad };
