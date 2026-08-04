@@ -1503,24 +1503,39 @@ async function _eliminarItem(ordenId, tipo, idx) {
 let _edvState = { ordenId: null, etapas: [], insumos: [], repuestos: [] };
 const _edvFmt = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n || 0);
 
+const _EDV_GRUPOS = [
+  { key: 'latoneria',      label: 'Latonería',      color: '#1D4ED8' },
+  { key: 'pintura',        label: 'Pintura',         color: '#7C3AED' },
+  { key: 'mecanica',       label: 'Mecánica',        color: '#0F766E' },
+  { key: 'adicionales',    label: 'Adicionales',     color: '#B45309' },
+  { key: 'embellecimiento',label: 'Embellecimiento', color: '#BE185D' },
+];
+
 async function abrirEditorValor(ordenId) {
-  const etapas = await api(`/etapas?orden_id=eq.${ordenId}&order=creado_en.asc&select=id,etapa,servicio,valor_venta`).catch(() => []) || [];
-  const o = (ordenActual && ordenActual.id === ordenId) ? ordenActual : await api(`/ordenes?id=eq.${ordenId}&select=insumos,repuestos_simple`).then(r => r?.[0]).catch(() => null);
+  const [etapas, o] = await Promise.all([
+    api(`/etapas?orden_id=eq.${ordenId}&order=creado_en.asc&select=id,etapa,servicio,valor_venta`).catch(() => []),
+    (ordenActual && ordenActual.id === ordenId)
+      ? Promise.resolve(ordenActual)
+      : api(`/ordenes?id=eq.${ordenId}&select=insumos,repuestos_simple,precios_servicios`).then(r => r?.[0]).catch(() => null)
+  ]);
+  const ps = o?.precios_servicios || {};
   _edvState = {
     ordenId,
     ivaRate: 0.19,
-    etapas: etapas.map(e => ({ id: e.id, nombre: e.etapa || (typeof CATALOGO !== 'undefined' && CATALOGO[e.servicio]?.nombre) || e.servicio || 'Servicio', valor: +e.valor_venta || 0 })),
-    insumos: _leerItems(o || {}, 'insumos').map(i => ({ nombre: i.nombre || '', cantidad: +i.cantidad || 1, valor: +i.valor || 0 })),
-    repuestos: _leerItems(o || {}, 'repuestos_simple').map(i => ({ nombre: i.nombre || '', cantidad: +i.cantidad || 1, valor: +i.valor || 0 }))
+    precios_servicios: { latoneria: +ps.latoneria||0, pintura: +ps.pintura||0, mecanica: +ps.mecanica||0, adicionales: +ps.adicionales||0, embellecimiento: +ps.embellecimiento||0 },
+    etapas: (etapas||[]).map(e => ({ id: e.id, nombre: e.etapa || e.servicio || 'Etapa', servicio: e.servicio || '', valor: +e.valor_venta || 0 })),
+    insumos:   _leerItems(o||{}, 'insumos').map(i => ({ nombre: i.nombre||'', cantidad: +i.cantidad||1, valor: +i.valor||0 })),
+    repuestos: _leerItems(o||{}, 'repuestos_simple').map(i => ({ nombre: i.nombre||'', cantidad: +i.cantidad||1, valor: +i.valor||0 }))
   };
   document.getElementById('modal-editor-valor')?.remove();
   const ov = document.createElement('div');
   ov.id = 'modal-editor-valor';
   ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
   ov.innerHTML = `
-    <div style="background:var(--surface);border-radius:14px;max-width:560px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.28);font-family:'DM Sans',sans-serif">
+    <div style="background:var(--surface);border-radius:14px;max-width:600px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.28);font-family:'DM Sans',sans-serif">
       <div style="padding:16px 18px 10px;border-bottom:1px solid var(--gris-borde)">
         <div style="font-size:16px;font-weight:800;color:var(--azul)">Editar valor de la orden</div>
+        <div style="font-size:12px;color:var(--gris-mid);margin-top:3px">Precio general por servicio · si detallas ítems, déjalo en 0</div>
       </div>
       <div id="edv-body" style="padding:14px 18px;overflow:auto;flex:1"></div>
       <div style="padding:12px 18px;border-top:1px solid var(--gris-borde);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
@@ -1544,76 +1559,135 @@ async function abrirEditorValor(ordenId) {
 }
 
 function _edvSync() {
+  // Precios generales por grupo
+  _EDV_GRUPOS.forEach(g => {
+    const inp = document.getElementById(`edv-ps-${g.key}`);
+    if (inp) _edvState.precios_servicios[g.key] = parseFloat(inp.value) || 0;
+  });
+  // Etapas individuales
   document.querySelectorAll('#edv-body [data-edv-et]').forEach(inp => {
     const i = +inp.dataset.edvEt; if (_edvState.etapas[i]) _edvState.etapas[i].valor = parseFloat(inp.value) || 0;
   });
-  ['insumos', 'repuestos'].forEach(tipo => {
+  ['insumos','repuestos'].forEach(tipo => {
     document.querySelectorAll(`#edv-body [data-edv-row="${tipo}"]`).forEach(row => {
       const it = _edvState[tipo][+row.dataset.edvIdx]; if (!it) return;
-      it.nombre = row.querySelector('.edv-nom')?.value.trim() || '';
+      it.nombre   = row.querySelector('.edv-nom')?.value.trim() || '';
       it.cantidad = parseFloat(row.querySelector('.edv-cant')?.value) || 0;
-      it.valor = parseFloat(row.querySelector('.edv-val')?.value) || 0;
+      it.valor    = parseFloat(row.querySelector('.edv-val')?.value)  || 0;
     });
   });
 }
+
 function _edvTotales() {
-  const mo = _edvState.etapas.reduce((s, e) => s + (+e.valor || 0), 0);
-  const ins = _edvState.insumos.reduce((s, i) => s + ((+i.cantidad || 0) * (+i.valor || 0)), 0);
-  const rep = _edvState.repuestos.reduce((s, i) => s + ((+i.cantidad || 0) * (+i.valor || 0)), 0);
+  let mo = 0;
+  _EDV_GRUPOS.forEach(g => {
+    const general = +(_edvState.precios_servicios[g.key] || 0);
+    if (general > 0) {
+      mo += general;
+    } else {
+      mo += _edvState.etapas.filter(e => e.servicio === g.key).reduce((s, e) => s + (+e.valor||0), 0);
+    }
+  });
+  // Etapas de servicios no mapeados
+  const conocidos = new Set(_EDV_GRUPOS.map(g => g.key));
+  mo += _edvState.etapas.filter(e => !conocidos.has(e.servicio)).reduce((s, e) => s + (+e.valor||0), 0);
+  const ins = _edvState.insumos.reduce((s,i)  => s + ((+i.cantidad||0)*(+i.valor||0)), 0);
+  const rep = _edvState.repuestos.reduce((s,i) => s + ((+i.cantidad||0)*(+i.valor||0)), 0);
   const sub = mo + ins + rep, iva = Math.round(sub * (_edvState.ivaRate || 0.19));
   return { sub, iva, tot: sub + iva };
 }
+
 function _edvActualizarTot() {
   _edvSync();
   const t = _edvTotales(); const el = document.getElementById('edv-tot');
   if (el) el.innerHTML = `Subtotal <strong>${_edvFmt(t.sub)}</strong> · IVA <strong>${_edvFmt(t.iva)}</strong> · Total <strong style="color:var(--azul)">${_edvFmt(t.tot)}</strong>`;
 }
+
 function _edvRender() {
   const body = document.getElementById('edv-body'); if (!body) return;
-  const lbl = (txt, col) => `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${col};margin:10px 0 6px">${txt}</div>`;
-  const inCss = 'box-sizing:border-box;padding:6px 8px;border:1px solid var(--gris-borde);border-radius:6px;font-size:12.5px';
-  const mo = _edvState.etapas.length
-    ? _edvState.etapas.map((e, i) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(e.nombre)}</span>
-        <input data-edv-et="${i}" type="number" min="0" step="1000" value="${e.valor || ''}" placeholder="0" oninput="_edvActualizarTot()" style="${inCss};width:120px;font-family:'DM Mono',monospace;text-align:right">
-      </div>`).join('')
-    : '<div style="font-size:12px;color:var(--gris-mid)">Sin servicios.</div>';
-  const listaItems = (tipo, color) => {
+  const inCss = 'box-sizing:border-box;padding:6px 8px;border:1px solid var(--gris-borde);border-radius:6px;font-size:12.5px;background:var(--surface);color:var(--texto)';
+
+  // ── Bloques de servicio ──────────────────────────────────
+  const gruposHtml = _EDV_GRUPOS.map(g => {
+    const etapasGrupo = _edvState.etapas.filter(e => e.servicio === g.key);
+    const general = _edvState.precios_servicios[g.key] || 0;
+    const sumaEtapas = etapasGrupo.reduce((s, e) => s + (+e.valor||0), 0);
+    const usandoGeneral = general > 0;
+
+    const etapasHtml = etapasGrupo.length ? etapasGrupo.map((e, i) => {
+      const idx = _edvState.etapas.indexOf(e);
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;opacity:${usandoGeneral ? '.4' : '1'}">
+        <span style="flex:1;font-size:12px;color:var(--gris-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(e.nombre)}">${escapeHtml(e.nombre)}</span>
+        <input data-edv-et="${idx}" type="number" min="0" step="1000" value="${e.valor||''}" placeholder="0" oninput="_edvActualizarTot()" ${usandoGeneral?'disabled':''} style="${inCss};width:110px;font-family:'DM Mono',monospace;text-align:right;${usandoGeneral?'pointer-events:none':''}">
+      </div>`;
+    }).join('') : '';
+
+    return `<div style="border:1.5px solid ${g.color}22;border-radius:9px;padding:10px 12px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${etapasGrupo.length ? '8px' : '0'}">
+        <span style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:${g.color};flex:1">${g.label}</span>
+        <input id="edv-ps-${g.key}" type="number" min="0" step="1000" value="${general||''}" placeholder="Precio general (opcional)"
+          oninput="_edvActualizarTot()" style="${inCss};width:160px;font-family:'DM Mono',monospace;text-align:right;border-color:${g.color}55">
+      </div>
+      ${etapasHtml}
+      ${etapasGrupo.length && !usandoGeneral && sumaEtapas > 0 ? `<div style="font-size:10.5px;color:var(--gris-mid);text-align:right;margin-top:2px">Suma ítems: ${_edvFmt(sumaEtapas)}</div>` : ''}
+      ${usandoGeneral && etapasGrupo.length ? `<div style="font-size:10.5px;color:${g.color};margin-top:2px">Usando precio general · ítems desactivados</div>` : ''}
+    </div>`;
+  }).join('');
+
+  // Etapas sin grupo conocido
+  const conocidos = new Set(_EDV_GRUPOS.map(g => g.key));
+  const huerfanas = _edvState.etapas.filter(e => !conocidos.has(e.servicio));
+  const huerfanasHtml = huerfanas.length ? `
+    <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#6B7280;margin:4px 0 6px">Otros servicios</div>
+    ${huerfanas.map(e => { const idx = _edvState.etapas.indexOf(e); return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(e.nombre)}</span>
+      <input data-edv-et="${idx}" type="number" min="0" step="1000" value="${e.valor||''}" placeholder="0" oninput="_edvActualizarTot()" style="${inCss};width:110px;font-family:'DM Mono',monospace;text-align:right">
+    </div>`; }).join('')}` : '';
+
+  // ── Insumos y repuestos ──────────────────────────────────
+  const listaItems = (tipo, color, titulo) => {
     const arr = _edvState[tipo];
     const filas = arr.length ? arr.map((it, idx) => `<div data-edv-row="${tipo}" data-edv-idx="${idx}" style="display:flex;gap:5px;margin-bottom:6px">
         <input class="edv-nom" value="${escapeHtml(it.nombre)}" placeholder="Nombre" oninput="_edvActualizarTot()" style="${inCss};flex:2;min-width:0">
         <input class="edv-cant" type="number" min="0" step="1" value="${it.cantidad}" oninput="_edvActualizarTot()" style="${inCss};flex:.6;min-width:42px" title="Cantidad">
-        <input class="edv-val" type="number" min="0" step="1000" value="${it.valor || ''}" placeholder="Valor" oninput="_edvActualizarTot()" style="${inCss};flex:1;min-width:70px;font-family:'DM Mono',monospace" title="Valor unitario">
+        <input class="edv-val" type="number" min="0" step="1000" value="${it.valor||''}" placeholder="Valor" oninput="_edvActualizarTot()" style="${inCss};flex:1;min-width:70px;font-family:'DM Mono',monospace" title="Valor unitario">
         <button class="btn btn-ghost btn-xs" style="flex-shrink:0;color:#DC2626" onclick="_edvDelItem('${tipo}',${idx})">✕</button>
-      </div>`).join('') : `<div style="font-size:12px;color:var(--gris-mid);margin-bottom:4px">Ninguno.</div>`;
-    return filas + `<button class="btn btn-ghost btn-sm" style="width:100%;color:${color};border:1px dashed var(--gris-borde)" onclick="_edvAddItem('${tipo}')">➕ Agregar</button>`;
+      </div>`).join('')
+      : `<div style="font-size:12px;color:var(--gris-mid);margin-bottom:4px">Ninguno.</div>`;
+    return `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${color};margin:10px 0 6px">${titulo}</div>` +
+      filas + `<button class="btn btn-ghost btn-sm" style="width:100%;color:${color};border:1px dashed var(--gris-borde)" onclick="_edvAddItem('${tipo}')">➕ Agregar</button>`;
   };
-  body.innerHTML =
-    lbl('🔧 Mano de obra (servicios)', '#1D4ED8') + mo +
-    lbl('🛢 Insumos', '#B45309') + listaItems('insumos', '#B45309') +
-    lbl('🔧 Repuestos', '#0F766E') + listaItems('repuestos', '#0F766E');
+
+  body.innerHTML = gruposHtml + huerfanasHtml +
+    listaItems('insumos',   '#B45309', '🛢 Insumos') +
+    listaItems('repuestos', '#0F766E', '🔩 Repuestos');
   _edvActualizarTot();
 }
-function _edvAddItem(tipo) { _edvSync(); _edvState[tipo].push({ nombre: '', cantidad: 1, valor: 0 }); _edvRender(); }
-function _edvDelItem(tipo, idx) { _edvSync(); _edvState[tipo].splice(idx, 1); _edvRender(); }
+
+function _edvAddItem(tipo) { _edvSync(); _edvState[tipo].push({ nombre:'', cantidad:1, valor:0 }); _edvRender(); }
+function _edvDelItem(tipo, idx) { _edvSync(); _edvState[tipo].splice(idx,1); _edvRender(); }
 function _edvSetIva(rate) {
   _edvState.ivaRate = rate;
   const btn19 = document.getElementById('edv-iva-19');
   const btn10 = document.getElementById('edv-iva-10');
-  if (btn19) { btn19.style.background = rate === 0.19 ? '#2563EB' : 'var(--surface)'; btn19.style.color = rate === 0.19 ? '#fff' : '#2563EB'; btn19.style.borderColor = rate === 0.19 ? '#2563EB' : '#2563EB33'; }
-  if (btn10) { btn10.style.background = rate === 0.10 ? '#2563EB' : 'var(--surface)'; btn10.style.color = rate === 0.10 ? '#fff' : '#2563EB'; btn10.style.borderColor = rate === 0.10 ? '#2563EB' : '#2563EB33'; }
+  if (btn19) { btn19.style.background = rate===0.19?'#2563EB':'var(--surface)'; btn19.style.color = rate===0.19?'#fff':'#2563EB'; btn19.style.borderColor = rate===0.19?'#2563EB':'#2563EB33'; }
+  if (btn10) { btn10.style.background = rate===0.10?'#2563EB':'var(--surface)'; btn10.style.color = rate===0.10?'#fff':'#2563EB'; btn10.style.borderColor = rate===0.10?'#2563EB':'#2563EB33'; }
   _edvActualizarTot();
 }
 async function _guardarEditorValor() {
   _edvSync();
   const oid = _edvState.ordenId;
   try {
-    for (const e of _edvState.etapas) { await api(`/etapas?id=eq.${e.id}`, 'PATCH', { valor_venta: +e.valor || 0 }); }
-    const insumos = _edvState.insumos.filter(i => i.nombre || i.valor);
-    const repuestos = _edvState.repuestos.filter(i => i.nombre || i.valor);
+    for (const e of _edvState.etapas) { await api(`/etapas?id=eq.${e.id}`, 'PATCH', { valor_venta: +e.valor||0 }); }
+    const insumos   = _edvState.insumos.filter(i => i.nombre||i.valor);
+    const repuestos = _edvState.repuestos.filter(i => i.nombre||i.valor);
     const { tot } = _edvTotales();
-    await api(`/ordenes?id=eq.${oid}`, 'PATCH', { insumos, repuestos_simple: repuestos, precio_venta_cliente: tot || null });
-    if (ordenActual && ordenActual.id === oid) { ordenActual.insumos = insumos; ordenActual.repuestos_simple = repuestos; ordenActual.precio_venta_cliente = tot || null; }
+    const precios_servicios = _edvState.precios_servicios;
+    await api(`/ordenes?id=eq.${oid}`, 'PATCH', { insumos, repuestos_simple: repuestos, precios_servicios, precio_venta_cliente: tot||null });
+    if (ordenActual && ordenActual.id === oid) {
+      ordenActual.insumos = insumos; ordenActual.repuestos_simple = repuestos;
+      ordenActual.precios_servicios = precios_servicios; ordenActual.precio_venta_cliente = tot||null;
+    }
     document.getElementById('modal-editor-valor')?.remove();
     toast('Valor actualizado ✓');
     abrirOrden(oid);
