@@ -18,7 +18,7 @@ function _cotSetIva(rate) {
   const btn10 = document.getElementById('cn-iva-btn-10');
   if (btn19) { btn19.style.background = rate === 0.19 ? '#2563EB' : 'var(--surface)'; btn19.style.color = rate === 0.19 ? '#fff' : '#2563EB'; btn19.style.borderColor = rate === 0.19 ? '#2563EB' : '#2563EB33'; }
   if (btn10) { btn10.style.background = rate === 0.10 ? '#2563EB' : 'var(--surface)'; btn10.style.color = rate === 0.10 ? '#fff' : '#2563EB'; btn10.style.borderColor = rate === 0.10 ? '#2563EB' : '#2563EB33'; }
-  _cotRecalcular();
+  _cotActualizarTotales();
 }
 
 // ── Tipo de cliente ──────────────────────────────────────
