@@ -852,10 +852,15 @@ async function cargarKPITaller() {
     const valorPulmonExt  = _ordsPulmonExt.reduce((s, o) => s + _valOrden(o), 0);
     const totalValorTaller = valorEnProceso + valorPulmonInt + valorPulmonExt;
 
-    // FACTURADO del mes: base manual (localStorage) + órdenes entregadas en el mes en curso.
+    // FACTURADO del mes: base manual (localStorage) + órdenes entregadas DESPUÉS de fijar la base.
     const _kpiMesKey = `facturado_base_${hoy.getFullYear()}_${hoy.getMonth()}`;
+    const _kpiBaseFechaKey = `facturado_base_fecha_${hoy.getFullYear()}_${hoy.getMonth()}`;
     const _kpiBase = parseInt(localStorage.getItem(_kpiMesKey) || '0', 10);
-    const facturadoMes = _kpiBase + (entregadasMesVal || []).reduce((s, o) => s + _valOrden(o), 0);
+    const _kpiBaseFecha = localStorage.getItem(_kpiBaseFechaKey) || null;
+    const _entregadasPost = (_kpiBase > 0 && _kpiBaseFecha)
+      ? (entregadasMesVal || []).filter(o => o.entregada_en && o.entregada_en > _kpiBaseFecha)
+      : (entregadasMesVal || []);
+    const facturadoMes = _kpiBase + _entregadasPost.reduce((s, o) => s + _valOrden(o), 0);
     // META del mes: meta_base del mes calendario actual en ventas_mensuales.
     const _metaMes = (metasTallerArr || [])[0];
     const metaIngresosMes = Number(_metaMes?.meta_base) || 0;
@@ -1584,11 +1589,13 @@ async function abrirPanelValorTaller() {
 function _kpiEditarBase() {
   const hoy = new Date();
   const mesKey = `facturado_base_${hoy.getFullYear()}_${hoy.getMonth()}`;
+  const fechaKey = `facturado_base_fecha_${hoy.getFullYear()}_${hoy.getMonth()}`;
   const actual = parseInt(localStorage.getItem(mesKey) || '0', 10);
   const val = prompt('Valor base facturado del mes (sin puntos ni $):', actual || '');
   if (val === null) return;
   const num = parseInt(val.replace(/\D/g, ''), 10);
   if (isNaN(num)) { alert('Valor inválido'); return; }
   localStorage.setItem(mesKey, num);
+  localStorage.setItem(fechaKey, new Date().toISOString());
   if (typeof cargarKpiTaller === 'function') cargarKpiTaller();
 }
