@@ -1691,6 +1691,8 @@ async function _guardarEditorValor() {
     document.getElementById('modal-editor-valor')?.remove();
     toast('Valor actualizado ✓');
     abrirOrden(oid);
+    try { if (typeof cargarDashboard === 'function') cargarDashboard(); } catch(_) {}
+    try { if (typeof cargarDashboardMes === 'function') cargarDashboardMes(); } catch(_) {}
   } catch (e) { toast('Error guardando: ' + e.message, 'err'); }
 }
 
