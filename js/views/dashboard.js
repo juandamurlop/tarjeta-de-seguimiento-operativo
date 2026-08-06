@@ -982,8 +982,9 @@ async function cargarDashboardFinanciero() {
 
     // ── Entregadas ───────────────────────────────────────
     const ordenesEntregadas = ordenes.filter(o=>o.estado==='Entregada');
-    const totalFacturado    = ordenesEntregadas.reduce((s,o)=> s + (o.precio_venta_cliente > 0 ? o.precio_venta_cliente : (valorMOPorOrden[o.id]||0)+(valorRepPorOrden[o.id]||0)), 0);
-    const ticketProm        = ordenesEntregadas.length ? Math.round(totalFacturado/ordenesEntregadas.length) : 0;
+    const totalFacturado    = ordenesEntregadas.reduce((s,o)=> s + (o.precio_venta_cliente > 0 ? o.precio_venta_cliente : 0), 0);
+    const ticketProm        = ordenesEntregadas.filter(o=>o.precio_venta_cliente>0).length
+      ? Math.round(totalFacturado / ordenesEntregadas.filter(o=>o.precio_venta_cliente>0).length) : 0;
 
     // ── Tiempo real vs estimado por servicio ─────────────
     const tiempoSrv = {};
