@@ -982,7 +982,9 @@ async function cargarDashboardFinanciero() {
 
     // ── Entregadas ───────────────────────────────────────
     const ordenesEntregadas = ordenes.filter(o=>o.estado==='Entregada');
-    const totalFacturado    = ordenesEntregadas.reduce((s,o)=> s + (o.precio_venta_cliente > 0 ? o.precio_venta_cliente : 0), 0);
+    const _mesKey = `facturado_base_${new Date().getFullYear()}_${new Date().getMonth()}`;
+    const _base = parseInt(localStorage.getItem(_mesKey) || '0', 10);
+    const totalFacturado    = _base + ordenesEntregadas.reduce((s,o)=> s + (o.precio_venta_cliente > 0 ? o.precio_venta_cliente : 0), 0);
     const ticketProm        = ordenesEntregadas.filter(o=>o.precio_venta_cliente>0).length
       ? Math.round(totalFacturado / ordenesEntregadas.filter(o=>o.precio_venta_cliente>0).length) : 0;
 
@@ -1128,8 +1130,11 @@ async function cargarDashboardFinanciero() {
             <svg width="14" height="14" fill="none" stroke="#059669" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           </div>
           <div style="font-size:18px;font-weight:800;color:#059669;line-height:1;font-family:'DM Mono',monospace">${fmt(totalFacturado)}</div>
-          <div style="font-size:11px;font-weight:600;color:var(--texto)">Total facturado</div>
-          <div style="font-size:10px;color:var(--gris-mid)">${ordenesEntregadas.length} órdenes entregadas</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;font-weight:600;color:var(--texto)">Total facturado</span>
+            <button onclick="_dashEditarBase()" title="Ajustar valor base del mes" style="font-size:9px;padding:1px 6px;border-radius:99px;border:1px solid var(--gris-borde);background:var(--surface);color:var(--gris-mid);cursor:pointer">✏️ base</button>
+          </div>
+          <div style="font-size:10px;color:var(--gris-mid)">${_base > 0 ? `Base: ${fmt(_base)} + ` : ''}${ordenesEntregadas.length} órdenes</div>
         </div>
         <div style="background:var(--surface);border:1px solid var(--gris-borde);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:5px">
           <div style="width:28px;height:28px;background:#FEF3C7;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -1274,4 +1279,16 @@ function dashFiltrarOrdenes(tipo) {
       if (btns[0]) btns[0].classList.add('active');
     }
   });
+}
+
+function _dashEditarBase() {
+  const mesKey = `facturado_base_${new Date().getFullYear()}_${new Date().getMonth()}`;
+  const actual = parseInt(localStorage.getItem(mesKey) || '0', 10);
+  const val = prompt('Valor base facturado del mes (sin puntos ni $):', actual || '');
+  if (val === null) return;
+  const num = parseInt(val.replace(/\D/g, ''), 10);
+  if (isNaN(num)) { alert('Valor inválido'); return; }
+  localStorage.setItem(mesKey, num);
+  if (typeof cargarDashboard === 'function') cargarDashboard();
+  if (typeof cargarDashboardMes === 'function') cargarDashboardMes();
 }
