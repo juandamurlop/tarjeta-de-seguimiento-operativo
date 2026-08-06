@@ -1496,7 +1496,7 @@ async function abrirPanelValorTaller() {
     const [ords, metasArr, ordsEnt] = await Promise.all([
       api(`/ordenes?or=(estado.eq.Activa,estado.is.null)&select=id,placa,pulmon,pulmon_tipo,precio_venta_cliente,insumos,repuestos_simple&limit=300`).catch(() => []) || [],
       api(`/ventas_mensuales?ano=eq.${anio}&mes_num=eq.${mesNum}&select=meta_base,ventas&limit=1`).catch(() => []) || [],
-      api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${inicioMes}&select=id,precio_venta_cliente,insumos,repuestos_simple&limit=500`).catch(() => []) || []
+      api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${inicioMes}&select=id,precio_venta_cliente,insumos,repuestos_simple,entregada_en&limit=500`).catch(() => []) || []
     ]);
     const metaMes = metasArr[0];
     const ids = ords.map(o => o.id).join(',');
@@ -1521,10 +1521,17 @@ async function abrirPanelValorTaller() {
     const totalTaller = vProc + vPInt + vPExt;
     const maxV = Math.max(1, ...[...filasProc, ...filasPInt, ...filasPExt].map(f => f.v));
     const meta = Number(metaMes?.meta_base) || 0;
-    // Facturado del mes: órdenes entregadas en el mes en curso.
-    const idsEnt = ordsEnt.map(o => o.id).join(',');
+    // Facturado del mes: base manual + órdenes entregadas DESPUÉS de fijar la base.
+    const _pvtMesKey = `facturado_base_${ahora.getFullYear()}_${ahora.getMonth()}`;
+    const _pvtFechaKey = `facturado_base_fecha_${ahora.getFullYear()}_${ahora.getMonth()}`;
+    const _pvtBase = parseInt(localStorage.getItem(_pvtMesKey) || '0', 10);
+    const _pvtBaseFecha = localStorage.getItem(_pvtFechaKey) || null;
+    const ordsEntFiltradas = (_pvtBase > 0 && _pvtBaseFecha)
+      ? ordsEnt.filter(o => o.entregada_en && o.entregada_en > _pvtBaseFecha)
+      : ordsEnt;
+    const idsEnt = ordsEntFiltradas.map(o => o.id).join(',');
     const etsEnt = idsEnt ? (await api(`/etapas?orden_id=in.(${idsEnt})&select=orden_id,valor_venta`).catch(() => []) || []) : [];
-    const ingresosMes = ordsEnt.reduce((s, o) => {
+    const ingresosMes = _pvtBase + ordsEntFiltradas.reduce((s, o) => {
       const mo = etsEnt.filter(e => e.orden_id === o.id).reduce((a, e) => a + (e.valor_venta || 0), 0);
       return s + ((o.precio_venta_cliente && o.precio_venta_cliente > 0) ? o.precio_venta_cliente : (mo + valItems(o, 'insumos') + valItems(o, 'repuestos_simple')));
     }, 0);
