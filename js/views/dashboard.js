@@ -73,7 +73,7 @@ async function cargarDashboardMes() {
     const hoy          = new Date(); hoy.setHours(0,0,0,0);
 
     const [ordenesMes, ordenesActivas, todasEtapas, solicitudesPend, aprobaciones, metasMes] = await Promise.all([
-      api(`/ordenes?creado_en=gte.${inicioMes}&creado_en=lt.${finMes}&select=id,numero_ot,placa,marca,linea,modelo,propietario,estado,pulmon,pulmon_tipo,creado_en,fecha_entrega_1,fecha_entrega_2,entregada_en&order=creado_en.desc`).catch(()=>[]) || [],
+      api(`/ordenes?creado_en=gte.${inicioMes}&creado_en=lt.${finMes}&select=id,numero_ot,placa,marca,linea,modelo,propietario,estado,pulmon,pulmon_tipo,creado_en,fecha_entrega_1,fecha_entrega_2,entregada_en,precio_venta_cliente&order=creado_en.desc`).catch(()=>[]) || [],
       api(`/ordenes?estado=eq.Activa&select=id,numero_ot,placa,marca,linea,modelo,propietario,estado,pulmon,pulmon_tipo,creado_en,fecha_entrega_1,fecha_entrega_2`).catch(()=>[]) || [],
       api(`/etapas?select=id,orden_id,servicio,etapa,inicio,fin,valor,tecnico,mecanico_id,tiempo_pausado_min`).catch(()=>[]) || [],
       api(`/solicitudes_repuesto?estado=in.(pendiente_jefe,enviado_repuestos,cotizado,pedido,recibido_taller)&select=id,orden_id,estado,repuesto`).catch(()=>[]) || [],
@@ -982,7 +982,7 @@ async function cargarDashboardFinanciero() {
 
     // ── Entregadas ───────────────────────────────────────
     const ordenesEntregadas = ordenes.filter(o=>o.estado==='Entregada');
-    const totalFacturado    = ordenesEntregadas.reduce((s,o)=>(valorMOPorOrden[o.id]||0)+(valorRepPorOrden[o.id]||0)+s, 0);
+    const totalFacturado    = ordenesEntregadas.reduce((s,o)=> s + (o.precio_venta_cliente > 0 ? o.precio_venta_cliente : (valorMOPorOrden[o.id]||0)+(valorRepPorOrden[o.id]||0)), 0);
     const ticketProm        = ordenesEntregadas.length ? Math.round(totalFacturado/ordenesEntregadas.length) : 0;
 
     // ── Tiempo real vs estimado por servicio ─────────────
