@@ -852,8 +852,10 @@ async function cargarKPITaller() {
     const valorPulmonExt  = _ordsPulmonExt.reduce((s, o) => s + _valOrden(o), 0);
     const totalValorTaller = valorEnProceso + valorPulmonInt + valorPulmonExt;
 
-    // FACTURADO del mes: suma de órdenes entregadas en el mes en curso.
-    const facturadoMes = (entregadasMesVal || []).reduce((s, o) => s + _valOrden(o), 0);
+    // FACTURADO del mes: base manual (localStorage) + órdenes entregadas en el mes en curso.
+    const _kpiMesKey = `facturado_base_${hoy.getFullYear()}_${hoy.getMonth()}`;
+    const _kpiBase = parseInt(localStorage.getItem(_kpiMesKey) || '0', 10);
+    const facturadoMes = _kpiBase + (entregadasMesVal || []).reduce((s, o) => s + _valOrden(o), 0);
     // META del mes: meta_base del mes calendario actual en ventas_mensuales.
     const _metaMes = (metasTallerArr || [])[0];
     const metaIngresosMes = Number(_metaMes?.meta_base) || 0;
@@ -875,7 +877,10 @@ async function cargarKPITaller() {
             <span class="kpi-vt-num" style="font-size:20px">${_fmtCOP(totalValorTaller)}</span>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;border-top:1px solid rgba(255,255,255,.22);padding-top:5px">
-            <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.7">Facturado mes</span>
+            <div style="display:flex;align-items:center;gap:5px">
+              <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.7">Facturado mes</span>
+              <button onclick="event.stopPropagation();_kpiEditarBase()" title="Ajustar valor base del mes" style="font-size:8px;padding:1px 5px;border-radius:99px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);cursor:pointer;line-height:1.4">✏️</button>
+            </div>
             <span class="kpi-vt-num" style="font-size:20px;color:#A7F3D0">${_fmtCOP(facturadoMes)}</span>
             ${_pctFact !== null ? `<div style="display:flex;align-items:center;gap:5px;margin-top:2px">
               <div style="width:70px;height:3px;background:rgba(255,255,255,.2);border-radius:99px;overflow:hidden">
@@ -1574,4 +1579,16 @@ async function abrirPanelValorTaller() {
         <div style="display:flex;justify-content:space-between;font-size:12.5px"><span style="color:var(--gris-mid)">Meta: <strong style="color:var(--texto)">${_fmt(meta)}</strong></span><span style="color:${falta > 0 ? '#DC2626' : '#059669'};font-weight:700">${falta > 0 ? 'Faltan ' + _fmt(falta) : '¡Meta cumplida! 🎉'}</span></div>
       ` : `<div style="font-size:13px;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:10px 12px">No hay meta cargada para este mes. Cárgala en el módulo <strong>Metas</strong>.</div>`}`;
   } catch (e) { const b = document.getElementById('pvt-body'); if (b) b.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+}
+
+function _kpiEditarBase() {
+  const hoy = new Date();
+  const mesKey = `facturado_base_${hoy.getFullYear()}_${hoy.getMonth()}`;
+  const actual = parseInt(localStorage.getItem(mesKey) || '0', 10);
+  const val = prompt('Valor base facturado del mes (sin puntos ni $):', actual || '');
+  if (val === null) return;
+  const num = parseInt(val.replace(/\D/g, ''), 10);
+  if (isNaN(num)) { alert('Valor inválido'); return; }
+  localStorage.setItem(mesKey, num);
+  if (typeof cargarKpiTaller === 'function') cargarKpiTaller();
 }
