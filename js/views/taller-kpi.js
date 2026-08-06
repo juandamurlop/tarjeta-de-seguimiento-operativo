@@ -627,7 +627,7 @@ async function cargarKPITaller() {
       api('/ordenes?estado=eq.Activa&pulmon=eq.false&select=id').catch(() => []),
       api('/ordenes?pulmon=eq.true&pulmon_tipo=eq.interno&select=id').catch(() => []),
       // Órdenes entregadas este mes + meta del mes (tabla ventas_mensuales, misma que usa el módulo Metas).
-      api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${_inicioMes}&select=id,precio_venta_cliente,insumos,repuestos_simple&limit=500`).catch(() => []),
+      api(`/ordenes?estado=eq.Entregada&entregada_en=gte.${_inicioMes}&select=id,precio_venta_cliente,insumos,repuestos_simple,entregada_en&limit=500`).catch(() => []),
       api(`/ventas_mensuales?ano=eq.${hoy.getFullYear()}&mes_num=eq.${hoy.getMonth()+1}&select=meta_base,ventas&limit=1`).catch(() => [])
     ]);
 
