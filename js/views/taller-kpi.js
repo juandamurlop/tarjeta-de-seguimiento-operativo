@@ -1604,5 +1604,5 @@ function _kpiEditarBase() {
   if (isNaN(num)) { alert('Valor inválido'); return; }
   localStorage.setItem(mesKey, num);
   localStorage.setItem(fechaKey, new Date().toISOString());
-  if (typeof cargarKpiTaller === 'function') cargarKpiTaller();
+  if (typeof cargarKPITaller === 'function') cargarKPITaller();
 }
