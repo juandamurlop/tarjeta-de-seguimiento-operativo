@@ -1046,7 +1046,11 @@ async function cargarPantallaTaller() {
     // La pantalla de TV NO inicia sesión, así que NO accede a las tablas
     // directamente: pide todo a la función segura `tablero_taller`, que
     // devuelve los mismos 7 conjuntos. Así las tablas quedan cerradas al público.
-    const _tab = await api('/rpc/tablero_taller', 'POST', {}).catch(()=>({})) || {};
+    const ahora2 = new Date();
+    const [_tab, _metaArr] = await Promise.all([
+      api('/rpc/tablero_taller', 'POST', {}).catch(()=>({})),
+      api(`/ventas_mensuales?ano=eq.${ahora2.getFullYear()}&mes_num=eq.${ahora2.getMonth()+1}&select=meta_base&limit=1`).catch(()=>[])
+    ]);
     const ordenesActivas     = _tab.ordenesActivas     || [];
     const entregadasHoy      = _tab.entregadasHoy      || [];
     const etapasActivas      = _tab.etapasActivas      || [];
@@ -1054,6 +1058,11 @@ async function cargarPantallaTaller() {
     const aprobacionesTodas  = _tab.aprobacionesTodas  || [];
     const ordenesProgramadas = _tab.ordenesProgramadas || [];
     const ordenesPulmon      = _tab.ordenesPulmon      || [];
+    const _metaBase = Number((_metaArr||[])[0]?.meta_base) || 0;
+    const _mesKey   = `facturado_base_${ahora2.getFullYear()}_${ahora2.getMonth()}`;
+    const _baseVal  = parseInt(localStorage.getItem(_mesKey) || '0', 10);
+    const _fmtM = v => v >= 1e6 ? (v/1e6).toFixed(1).replace('.0','') + 'M' : v >= 1e3 ? Math.round(v/1e3) + 'K' : String(Math.round(v));
+    const _metaPct  = _metaBase > 0 ? Math.min(Math.round((_baseVal / _metaBase) * 100), 100) : null;
 
     // Tomar el estado MÁS RECIENTE por etapa (orden desc ya viene del query)
     const _ultimoEstadoEtapa = {};
@@ -1405,12 +1414,24 @@ async function cargarPantallaTaller() {
             </div>
 
             <div class="tv-panel-right">
-              <div class="tv-panel-section" id="tv-section-listos">
+              ${_metaBase > 0 ? `
+              <div style="padding:.6vh 1vw;border-bottom:1.5px solid #D1D5DB;flex-shrink:0">
+                <div style="font-family:'DM Mono',monospace;font-size:.5vw;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6B7280;margin-bottom:.4vh">Meta del mes</div>
+                <div style="display:flex;align-items:baseline;gap:.4vw;margin-bottom:.35vh">
+                  <span style="font-family:'DM Mono',monospace;font-size:1vw;font-weight:800;color:#059669">${_fmtM(_baseVal)}</span>
+                  <span style="font-size:.55vw;color:#9CA3AF">/ ${_fmtM(_metaBase)}</span>
+                  <span style="font-family:'DM Mono',monospace;font-size:.65vw;font-weight:700;color:${_metaPct>=100?'#059669':_metaPct>=70?'#D97706':'#DC2626'};margin-left:auto">${_metaPct}%</span>
+                </div>
+                <div style="height:4px;background:#E5E7EB;border-radius:99px;overflow:hidden">
+                  <div style="height:100%;width:${_metaPct}%;background:${_metaPct>=100?'#059669':_metaPct>=70?'#D97706':'#DC2626'};border-radius:99px;transition:width .5s"></div>
+                </div>
+              </div>` : ''}
+              <div class="tv-panel-section" id="tv-section-listos" ${panelItems.length === 0 ? 'style="display:none"' : ''}>
                 <div class="tv-panel-title">Listos hoy</div>
                 <div class="tv-panel-list" id="tv-panel-listos">${panelListosHtmlInner}</div>
               </div>
-              <div class="tv-panel-divider"></div>
-              <div class="tv-panel-section">
+              ${panelItems.length > 0 ? '<div class="tv-panel-divider" id="tv-divider-prog"></div>' : '<div id="tv-divider-prog" style="display:none"></div>'}
+              <div class="tv-panel-section" id="tv-section-prog" ${ordenesProgramadas.length === 0 ? 'style="display:none"' : ''}>
                 <div class="tv-panel-title" id="tv-prog-title" style="color:#6366F1">Programadas · ${ordenesProgramadas.length}</div>
                 <div class="tv-panel-list" id="tv-panel-programadas" style="gap:.3vh">${progHtml}</div>
               </div>
@@ -1487,6 +1508,14 @@ async function cargarPantallaTaller() {
       // Panel programadas: reemplazar completo (pequeño, cambia poco)
       const panelProg = document.getElementById('tv-panel-programadas');
       if (panelProg) panelProg.innerHTML = progHtml;
+
+      // Visibilidad dinámica de secciones
+      const secListos = document.getElementById('tv-section-listos');
+      const secProg   = document.getElementById('tv-section-prog');
+      const divProg   = document.getElementById('tv-divider-prog');
+      if (secListos) secListos.style.display = panelItems.length ? '' : 'none';
+      if (secProg)   secProg.style.display   = ordenesProgramadas.length ? '' : 'none';
+      if (divProg)   divProg.style.display   = (panelItems.length && ordenesProgramadas.length) ? '' : 'none';
 
       // Franja pulmón: actualizar si cambió
       const pulmonCards = document.getElementById('tv-pulmon-cards');
