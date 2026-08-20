@@ -157,6 +157,78 @@ function montarSalaEspera() {
     document.head.appendChild(st);
   }
 
+  // ── Estilos adicionales para sidebar dinámico, pulmón y meta ─
+  if (!document.getElementById('se-styles-extra')) {
+    const st2 = document.createElement('style');
+    st2.id = 'se-styles-extra';
+    st2.textContent = `
+      .se-body { flex:1; display:flex; overflow:hidden; }
+      .se-main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+      .se-sidebar {
+        width:200px; flex-shrink:0;
+        border-left:1px solid rgba(255,255,255,.06);
+        display:flex; flex-direction:column; overflow:hidden;
+      }
+      .se-sb-section { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.06); }
+      .se-sb-label {
+        font-size:9px; font-weight:800; letter-spacing:.12em;
+        text-transform:uppercase; color:#64748B; margin-bottom:7px;
+      }
+      .se-sb-item {
+        display:flex; align-items:center; gap:7px;
+        padding:4px 0; border-bottom:1px solid rgba(255,255,255,.03);
+      }
+      .se-sb-item:last-child { border-bottom:none; }
+      .se-sb-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+      .se-sb-placa { font-family:'DM Mono',monospace; font-size:12px; font-weight:700; color:#F1F5F9; }
+      .se-sb-sub   { font-size:9px; color:#64748B; }
+
+      .se-pulmon-strip {
+        flex-shrink:0;
+        border-top:1px solid rgba(167,139,250,.15);
+        padding:5px 12px 6px;
+        background:rgba(167,139,250,.04);
+        display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      }
+      .se-pulmon-lbl {
+        font-size:9px; font-weight:800; letter-spacing:.12em;
+        text-transform:uppercase; color:#A78BFA; white-space:nowrap;
+        display:flex; align-items:center; gap:5px; flex-shrink:0;
+      }
+      .se-pulmon-lbl::before {
+        content:''; display:inline-block;
+        width:5px; height:5px; border-radius:50%; background:#A78BFA;
+      }
+      .se-pulmon-chips { display:flex; gap:5px; flex-wrap:wrap; }
+      .se-pulmon-chip {
+        display:flex; align-items:center; gap:5px;
+        background:rgba(167,139,250,.1);
+        border:1px solid rgba(167,139,250,.22);
+        border-radius:99px; padding:2px 9px 2px 6px;
+      }
+      .se-pulmon-chip-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+      .se-pulmon-chip-placa { font-family:'DM Mono',monospace; font-size:11px; font-weight:800; letter-spacing:.07em; color:#C4B5FD; }
+      .se-pulmon-chip-sub   { font-size:9px; color:#64748B; }
+
+      .se-meta-footer {
+        flex-shrink:0;
+        display:flex; align-items:center; gap:14px;
+        padding:6px 16px;
+        background:rgba(16,185,129,.04);
+        border-top:1px solid rgba(16,185,129,.12);
+      }
+      .se-meta-lbl { font-size:9px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#10B981; white-space:nowrap; }
+      .se-meta-nums { font-family:'DM Mono',monospace; font-size:13px; font-weight:700; color:#F1F5F9; white-space:nowrap; }
+      .se-meta-nums span { color:#10B981; }
+      .se-meta-bar-wrap { flex:1; height:5px; background:rgba(255,255,255,.06); border-radius:99px; overflow:hidden; }
+      .se-meta-bar-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#059669,#10B981); }
+      .se-meta-pct { font-family:'DM Mono',monospace; font-size:11px; font-weight:700; color:#10B981; white-space:nowrap; }
+      .se-meta-faltan { font-size:10px; color:#64748B; white-space:nowrap; }
+      .se-meta-faltan strong { color:#F59E0B; }
+    `;
+    document.head.appendChild(st2);
+  }
+
   // ── Construir estructura ───────────────────────────────────
   const pag = document.getElementById('pag-sala-espera');
   pag.innerHTML = `
@@ -168,7 +240,14 @@ function montarSalaEspera() {
         </div>
         <div class="se-reloj" id="se-reloj">--:--:--</div>
       </div>
-      <div class="se-lista-wrap" id="se-lista"></div>
+      <div class="se-body">
+        <div class="se-main">
+          <div class="se-lista-wrap" id="se-lista"></div>
+          <div id="se-pulmon-strip" style="display:none"></div>
+        </div>
+        <div class="se-sidebar" id="se-sidebar" style="display:none"></div>
+      </div>
+      <div id="se-meta-footer" style="display:none"></div>
     </div>
     <button class="se-btn-salir" id="se-btn-salir">✕ Salir</button>
   `;
@@ -205,14 +284,28 @@ async function _seCargarOrdenes() {
   if (!lista) return;
 
   try {
-    const resOrdenes = await fetch(
-      `${SUPABASE_URL}/rest/v1/ordenes?or=(estado.eq.Activa,estado.eq.Programada,estado.is.null)&pulmon=not.eq.true&order=creado_en.desc&limit=20&select=id,placa,propietario,estado,creado_en`,
-      { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY } }
-    );
-    if (!resOrdenes.ok) throw new Error('ordenes');
-    const ordenes = await resOrdenes.json();
+    const hdrs = { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY };
+    const hoy = new Date();
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString();
 
-    if (!ordenes.length) {
+    const [resOrdenes, resPulmon, resMeta] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/ordenes?or=(estado.eq.Activa,estado.eq.Programada,estado.is.null)&pulmon=not.eq.true&order=creado_en.desc&limit=30&select=id,placa,propietario,estado,creado_en`, { headers: hdrs }),
+      fetch(`${SUPABASE_URL}/rest/v1/ordenes?pulmon=eq.true&or=(estado.eq.Activa,estado.eq.Programada)&select=id,placa,pulmon_tipo&order=creado_en.desc&limit=30`, { headers: hdrs }),
+      fetch(`${SUPABASE_URL}/rest/v1/ventas_mensuales?ano=eq.${hoy.getFullYear()}&mes_num=eq.${hoy.getMonth()+1}&select=meta_base&limit=1`, { headers: hdrs }),
+    ]);
+
+    const ordenes  = resOrdenes.ok  ? await resOrdenes.json()  : [];
+    const pulmon   = resPulmon.ok   ? await resPulmon.json()   : [];
+    const metaArr  = resMeta.ok     ? await resMeta.json()     : [];
+    const metaBase = Number(metaArr[0]?.meta_base) || 0;
+
+    // Facturado del mes (localStorage base + ordenes post-base)
+    const _mesKey   = `facturado_base_${hoy.getFullYear()}_${hoy.getMonth()}`;
+    const _fechaKey = `facturado_base_fecha_${hoy.getFullYear()}_${hoy.getMonth()}`;
+    const _base     = parseInt(localStorage.getItem(_mesKey) || '0', 10);
+
+    // Etapas para órdenes activas
+    if (!ordenes.length && !pulmon.length) {
       lista.innerHTML = `
         <div class="se-vacio">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -220,15 +313,18 @@ async function _seCargarOrdenes() {
           </svg>
           <p>No hay vehículos en taller en este momento</p>
         </div>`;
+      _seRenderSidebar([], []);
+      _seRenderPulmon([]);
+      _seRenderMeta(0, metaBase);
       return;
     }
 
     const ids = ordenes.map(o => o.id).join(',');
-    const resEtapas = await fetch(
+    const resEtapas = ids ? await fetch(
       `${SUPABASE_URL}/rest/v1/etapas?orden_id=in.(${ids})&select=orden_id,servicio,inicio,fin&order=orden_id`,
-      { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY } }
-    );
-    const etapas = resEtapas.ok ? await resEtapas.json() : [];
+      { headers: hdrs }
+    ) : null;
+    const etapas = resEtapas?.ok ? await resEtapas.json() : [];
 
     const etapasPorOrden = {};
     for (const e of etapas) {
@@ -236,11 +332,93 @@ async function _seCargarOrdenes() {
       etapasPorOrden[e.orden_id].push(e);
     }
 
-    lista.innerHTML = ordenes.map(o => _seRenderCard(o, etapasPorOrden[o.id] || [])).join('');
+    // Separar activas/programadas de listos para entrega
+    const listos      = ordenes.filter(o => {
+      const ets = etapasPorOrden[o.id] || [];
+      return ets.length > 0 && ets.every(e => e.fin);
+    });
+    const programadas = ordenes.filter(o => o.estado === 'Programada');
+    const enProceso   = ordenes.filter(o => !listos.includes(o) && o.estado !== 'Programada');
+
+    lista.innerHTML = enProceso.map(o => _seRenderCard(o, etapasPorOrden[o.id] || [])).join('') ||
+      `<div class="se-vacio"><p>Sin vehículos en proceso</p></div>`;
+
+    _seRenderSidebar(listos, programadas);
+    _seRenderPulmon(pulmon);
+    _seRenderMeta(_base, metaBase);
 
   } catch(e) {
     console.error('[SalaEspera] Error cargando órdenes:', e);
   }
+}
+
+function _seRenderSidebar(listos, programadas) {
+  const sb = document.getElementById('se-sidebar');
+  if (!sb) return;
+  const hayAlgo = listos.length || programadas.length;
+  sb.style.display = hayAlgo ? '' : 'none';
+  if (!hayAlgo) return;
+
+  const mkItem = (o, color) => `
+    <div class="se-sb-item">
+      <div class="se-sb-dot" style="background:${color}"></div>
+      <div>
+        <div class="se-sb-placa">${_seEsc(o.placa || '—')}</div>
+        <div class="se-sb-sub">${o.estado === 'Programada' ? 'Programada' : 'Listo para entrega'}</div>
+      </div>
+    </div>`;
+
+  sb.innerHTML =
+    (listos.length ? `<div class="se-sb-section">
+      <div class="se-sb-label">Para entregar · ${listos.length}</div>
+      ${listos.map(o => mkItem(o, '#10B981')).join('')}
+    </div>` : '') +
+    (programadas.length ? `<div class="se-sb-section">
+      <div class="se-sb-label">Programadas · ${programadas.length}</div>
+      ${programadas.map(o => mkItem(o, '#F59E0B')).join('')}
+    </div>` : '');
+}
+
+function _seRenderPulmon(pulmon) {
+  const el = document.getElementById('se-pulmon-strip');
+  if (!el) return;
+  if (!pulmon.length) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.className = 'se-pulmon-strip';
+  el.innerHTML = `
+    <div class="se-pulmon-lbl">Pulmón · ${pulmon.length}</div>
+    <div class="se-pulmon-chips">
+      ${pulmon.map(o => {
+        const esInt = o.pulmon_tipo === 'interno';
+        const dot   = esInt ? '#A78BFA' : '#60A5FA';
+        const sub   = esInt ? 'Int.' : 'Ext.';
+        return `<div class="se-pulmon-chip">
+          <div class="se-pulmon-chip-dot" style="background:${dot}"></div>
+          <span class="se-pulmon-chip-placa">${_seEsc(o.placa || '—')}</span>
+          <span class="se-pulmon-chip-sub">${sub}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function _seRenderMeta(base, metaBase) {
+  const el = document.getElementById('se-meta-footer');
+  if (!el) return;
+  if (!metaBase) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.className = 'se-meta-footer';
+  const fmtM = v => v >= 1e6 ? (v/1e6).toFixed(1).replace('.0','') + 'M'
+                  : v >= 1e3 ? Math.round(v/1e3) + 'K' : String(Math.round(v));
+  const pct   = Math.min(Math.round((base / metaBase) * 100), 100);
+  const falta = Math.max(0, metaBase - base);
+  el.innerHTML = `
+    <div class="se-meta-lbl">Meta mes</div>
+    <div class="se-meta-nums"><span>${fmtM(base)}</span> / ${fmtM(metaBase)}</div>
+    <div class="se-meta-bar-wrap">
+      <div class="se-meta-bar-fill" style="width:${pct}%"></div>
+    </div>
+    <div class="se-meta-pct">${pct}%</div>
+    <div class="se-meta-faltan">Faltan <strong>${fmtM(falta)}</strong></div>`;
 }
 
 function _seRenderCard(orden, etapas) {
